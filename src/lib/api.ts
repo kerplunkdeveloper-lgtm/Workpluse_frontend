@@ -66,9 +66,30 @@ export const api = axios.create({
   },
 });
 
+function isFormDataBody(data: unknown): boolean {
+  if (!data || typeof data !== "object") return false;
+  if (typeof FormData !== "undefined" && data instanceof FormData) return true;
+  return (data as { constructor?: { name?: string } }).constructor?.name === "FormData";
+}
+
+function stripFormDataContentType(headers: unknown) {
+  if (!headers) return;
+  const bag = headers as { delete?: (name: string) => void; [key: string]: unknown };
+  if (typeof bag.delete === "function") {
+    bag.delete("Content-Type");
+    bag.delete("content-type");
+    return;
+  }
+  delete bag["Content-Type"];
+  delete bag["content-type"];
+}
+
 // Request interceptor to attach JWT token
 api.interceptors.request.use(
   (config) => {
+    if (isFormDataBody(config.data)) {
+      stripFormDataContentType(config.headers);
+    }
     if (typeof window !== "undefined") {
       const token = localStorage.getItem("workpulse_access_token");
       if (token) {
@@ -207,6 +228,16 @@ export const authApi = {
   },
   resetPassword: async (payload: { token: string; newPassword: string }) => {
     const res = await api.post("/auth/reset-password", payload);
+    return res.data;
+  },
+  uploadAvatar: async (file: File) => {
+    const form = new FormData();
+    form.append("image", file);
+    const res = await api.post("/auth/avatar", form);
+    return res.data;
+  },
+  removeAvatar: async () => {
+    const res = await api.put("/auth/me", { avatarUrl: null });
     return res.data;
   },
 };
@@ -678,6 +709,18 @@ export const employeesApi = {
   },
   updateMe: async (payload: any) => {
     const res = await api.put("/employees/me", payload);
+    return res.data;
+  },
+  uploadMyAvatar: async (file: File) => {
+    const form = new FormData();
+    form.append("image", file);
+    const res = await api.post("/employees/me/avatar", form);
+    return res.data;
+  },
+  uploadAvatar: async (employeeId: string, file: File) => {
+    const form = new FormData();
+    form.append("image", file);
+    const res = await api.post(`/employees/${employeeId}/avatar`, form);
     return res.data;
   },
   create: async (payload: any) => {

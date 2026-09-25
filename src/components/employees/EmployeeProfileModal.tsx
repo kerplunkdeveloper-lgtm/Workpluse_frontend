@@ -22,7 +22,9 @@ import {
   Loader2,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
-import { assetsApi } from "@/lib/api";
+import { assetsApi, employeesApi } from "@/lib/api";
+import ProfilePhotoPicker from "@/components/profile/ProfilePhotoPicker";
+import { toast } from "sonner";
 import { Asset, AssetAssignment } from "@/types";
 
 interface EmployeeProfileModalProps {
@@ -31,6 +33,7 @@ interface EmployeeProfileModalProps {
   initialTab?: "PROFILE" | "DOCUMENTS" | "ASSETS";
   onClose: () => void;
   isCurrentUserAdmin?: boolean;
+  onEmployeeUpdated?: (employee: Employee) => void;
 }
 
 export default function EmployeeProfileModal({
@@ -39,10 +42,17 @@ export default function EmployeeProfileModal({
   initialTab = "DOCUMENTS",
   onClose,
   isCurrentUserAdmin = true,
+  onEmployeeUpdated,
 }: EmployeeProfileModalProps) {
   const [activeTab, setActiveTab] = useState<"PROFILE" | "DOCUMENTS" | "ASSETS">(initialTab);
   const [empAssets, setEmpAssets] = useState<{ assignedAssets: Asset[]; history: AssetAssignment[] } | null>(null);
   const [assetsLoading, setAssetsLoading] = useState(false);
+  const [savingPhoto, setSavingPhoto] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(employee?.avatarUrl || "");
+
+  React.useEffect(() => {
+    setAvatarUrl(employee?.avatarUrl || "");
+  }, [employee?.id, employee?.avatarUrl]);
 
   React.useEffect(() => {
     if (employee?.id && activeTab === "ASSETS") {
@@ -72,14 +82,41 @@ export default function EmployeeProfileModal({
           </button>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            {employee.avatarUrl ? (
+            {isCurrentUserAdmin ? (
+              <ProfilePhotoPicker
+                size="md"
+                src={avatarUrl}
+                initials={employee.firstName?.[0] || "E"}
+                uploading={savingPhoto}
+                hint="Add photo"
+                onFile={async (file) => {
+                  setSavingPhoto(true);
+                  try {
+                    const res = await employeesApi.uploadAvatar(employee.id, file);
+                    if (res?.success === false) {
+                      toast.error(res?.message || "Could not update photo");
+                      return;
+                    }
+                    const next = res?.data;
+                    const nextUrl = next?.avatarUrl || next?.user?.avatarUrl || avatarUrl;
+                    setAvatarUrl(nextUrl);
+                    toast.success("Employee photo updated");
+                    onEmployeeUpdated?.({ ...employee, ...next, avatarUrl: nextUrl });
+                  } catch (err: any) {
+                    toast.error(err.response?.data?.message || "Could not update photo");
+                  } finally {
+                    setSavingPhoto(false);
+                  }
+                }}
+              />
+            ) : avatarUrl ? (
               <img
-                src={employee.avatarUrl}
+                src={avatarUrl}
                 alt={`${employee.firstName} ${employee.lastName || ""}`}
                 className="w-16 h-16 rounded-2xl object-cover shadow-md shrink-0 border border-slate-200"
               />
             ) : (
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 to-sky-500 text-white font-black text-2xl flex items-center justify-center shadow-md shrink-0">
+              <div className="w-16 h-16 rounded-2xl bg-indigo-600 text-white font-serif text-2xl flex items-center justify-center shadow-md shrink-0">
                 {employee.firstName?.[0] || "E"}
               </div>
             )}

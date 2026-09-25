@@ -24,6 +24,7 @@ import {
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import EmployeeProfileModal from "./EmployeeProfileModal";
+import ProfilePhotoPicker from "@/components/profile/ProfilePhotoPicker";
 
 export default function EmployeeDirectory() {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -59,6 +60,7 @@ export default function EmployeeDirectory() {
   const [uanNumber, setUanNumber] = useState("");
   const [esiNumber, setEsiNumber] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -145,6 +147,14 @@ export default function EmployeeDirectory() {
       }
 
       if (res?.success) {
+        const createdId = res.data?.id || res.employee?.id;
+        if (photoFile && createdId) {
+          try {
+            await employeesApi.uploadAvatar(createdId, photoFile);
+          } catch (err: any) {
+            toast.error(err.response?.data?.message || "Employee saved, but the photo did not upload.");
+          }
+        }
         if (inviteMode === "INVITE") {
           toast.success(`Invitation dispatched! Credentials emailed to ${email}.`);
         } else {
@@ -162,6 +172,7 @@ export default function EmployeeDirectory() {
         setPanNumber("");
         setUanNumber("");
         setEsiNumber("");
+        setPhotoFile(null);
         loadData();
       } else {
         toast.error(res?.message || "Failed to add employee");
@@ -180,7 +191,7 @@ export default function EmployeeDirectory() {
       {/* Header & Add Action */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2.5">
+          <h1 className="font-serif text-2xl font-semibold tracking-tight text-slate-900 flex items-center gap-2.5">
             <Users className="w-7 h-7 text-indigo-600" />
             Workforce Employee Directory
           </h1>
@@ -198,7 +209,7 @@ export default function EmployeeDirectory() {
               if (shifts.length > 0 && !shiftId) setShiftId(shifts[0].id);
               setModalOpen(true);
             }}
-            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold text-xs flex items-center gap-2 shadow-lg shadow-indigo-600/25 transition"
+            className="px-4 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center gap-2 shadow-lg shadow-indigo-600/25 transition"
           >
             <Mail className="w-4 h-4" />
             Invite Employee
@@ -318,7 +329,7 @@ export default function EmployeeDirectory() {
                             className="w-8 h-8 rounded-full object-cover shadow-xs group-hover:ring-2 group-hover:ring-indigo-400/40 transition"
                           />
                         ) : (
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-sky-400 text-white font-bold text-xs flex items-center justify-center shadow-xs group-hover:ring-2 group-hover:ring-indigo-400/40 transition">
+                          <div className="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs group-hover:ring-2 group-hover:ring-indigo-400/40 transition">
                             {emp.firstName?.[0] || "E"}
                           </div>
                         )}
@@ -479,6 +490,12 @@ export default function EmployeeDirectory() {
             )}
 
             <form onSubmit={handleCreateEmployee} className="space-y-4">
+              <ProfilePhotoPicker
+                size="md"
+                initials={firstName?.[0] || "E"}
+                hint="Add profile photo"
+                onFile={(file) => setPhotoFile(file)}
+              />
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">First Name *</label>
@@ -678,6 +695,11 @@ export default function EmployeeDirectory() {
           employee={selectedEmployeeForProfile}
           isOpen={profileModalOpen}
           initialTab="DOCUMENTS"
+          isCurrentUserAdmin
+          onEmployeeUpdated={(updated) => {
+            setSelectedEmployeeForProfile(updated);
+            setEmployees((prev) => prev.map((row) => (row.id === updated.id ? { ...row, ...updated } : row)));
+          }}
           onClose={() => {
             setProfileModalOpen(false);
             setSelectedEmployeeForProfile(null);

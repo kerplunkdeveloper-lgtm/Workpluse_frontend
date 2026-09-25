@@ -24,7 +24,8 @@ import {
   Box,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
-import { offboardingApi, assetsApi, employeesApi, branchesApi } from "@/lib/api";
+import { offboardingApi, assetsApi, employeesApi, branchesApi, authApi } from "@/lib/api";
+import ProfilePhotoPicker from "@/components/profile/ProfilePhotoPicker";
 import { toast } from "sonner";
 import { unwrapList } from "@/lib/utils";
 import { Asset, AssetAssignment } from "@/types";
@@ -36,6 +37,7 @@ export default function ProfilePage() {
   const [assetsLoading, setAssetsLoading] = useState(false);
   const [branches, setBranches] = useState<any[]>([]);
   const [savingBranch, setSavingBranch] = useState(false);
+  const [savingPhoto, setSavingPhoto] = useState(false);
 
   // Exit & Resignation state
   const [myExit, setMyExit] = useState<any>(null);
@@ -138,12 +140,30 @@ export default function ProfilePage() {
         <div className="rounded-3xl p-6 sm:p-8 border border-slate-200 bg-white shadow-sm relative overflow-hidden">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="flex items-center gap-5">
-              <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-indigo-600 to-sky-500 text-white font-black text-3xl flex items-center justify-center shadow-md shrink-0">
-                {employee?.firstName?.[0] || user?.email?.[0]?.toUpperCase() || "U"}
-              </div>
+              <ProfilePhotoPicker
+                src={user?.avatarUrl || employee?.avatarUrl}
+                initials={employee?.firstName?.[0] || user?.email?.[0]?.toUpperCase() || "U"}
+                uploading={savingPhoto}
+                onFile={async (file) => {
+                  setSavingPhoto(true);
+                  try {
+                    const res = await authApi.uploadAvatar(file);
+                    if (res?.success === false) {
+                      toast.error(res?.message || "Could not update photo");
+                      return;
+                    }
+                    toast.success("Profile photo updated");
+                    await refreshUser();
+                  } catch (err: any) {
+                    toast.error(err.response?.data?.message || "Could not update photo");
+                  } finally {
+                    setSavingPhoto(false);
+                  }
+                }}
+              />
               <div>
                 <div className="flex items-center gap-2.5 flex-wrap">
-                  <h1 className="text-2xl font-black text-slate-900">
+                  <h1 className="font-serif text-2xl font-semibold text-slate-900">
                     {employee?.firstName
                       ? `${employee.firstName} ${employee.lastName || ""}`
                       : user?.email?.split("@")[0]}
