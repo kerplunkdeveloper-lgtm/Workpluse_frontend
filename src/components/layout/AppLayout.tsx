@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import Brand from "@/components/ui/Brand";
 import { useAttendance } from "@/context/AttendanceContext";
 import {
   LayoutDashboard,
@@ -46,10 +46,11 @@ import {
   Award,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { notificationsApi } from "@/lib/api";
+import { employeesApi, notificationsApi } from "@/lib/api";
 import { NotificationItem } from "@/types";
 import { unwrapList } from "@/lib/utils";
 import PunchConfirmDialog, { PunchConfirmAction } from "@/components/attendance/PunchConfirmDialog";
+import { SubscriptionBanner } from "@/components/billing/WorkspaceBilling";
 
 interface NavItem {
   label: string;
@@ -60,6 +61,7 @@ interface NavItem {
   badge?: string;
   badgeColor?: string;
   roles?: string[];
+  feature?: "hasPayroll" | "hasApiAccess" | "hasShiftPlanner" | "hasGeofence";
 }
 
 interface NavSection {
@@ -90,9 +92,9 @@ const NAV_SECTIONS: NavSection[] = [
     blurb: "Salary, claims, and growth",
     dot: "bg-emerald-400",
     items: [
-      { label: "Payroll", href: "/payroll", icon: Receipt, hint: "Payslips, runs, and salary", keywords: ["salary", "payslip", "pay"] },
+      { label: "Payroll", href: "/payroll", icon: Receipt, hint: "Payslips, runs, and salary", keywords: ["salary", "payslip", "pay"], feature: "hasPayroll" },
       { label: "Loans", href: "/loans", icon: HandCoins, hint: "Advances and repayment", keywords: ["advance", "loan"] },
-      { label: "Statutory", href: "/statutory", icon: Landmark, hint: "PF, ESI, and compliance", keywords: ["pf", "esi", "tax", "compliance"] },
+      { label: "Statutory", href: "/statutory", icon: Landmark, hint: "PF, ESI, and compliance", keywords: ["pf", "esi", "tax", "compliance"], feature: "hasPayroll" },
       { label: "Expenses", href: "/expenses", icon: CreditCard, hint: "Claims and reimbursements", keywords: ["claim", "reimburse"] },
       { label: "Overtime", href: "/overtime", icon: Layers, hint: "Extra hours and comp-off", keywords: ["ot", "comp off"] },
       { label: "Appraisals", href: "/appraisals", icon: Award, hint: "Reviews and ratings", keywords: ["review", "performance"] },
@@ -142,9 +144,14 @@ function isNavActive(pathname: string | null, href: string) {
   return href !== "/dashboard" && pathname.startsWith(href);
 }
 
-function itemVisible(item: NavItem, role?: string | null) {
-  if (!item.roles) return true;
-  return !!role && item.roles.includes(role);
+function itemVisible(
+  item: NavItem,
+  role?: string | null,
+  features?: { hasPayroll?: boolean; hasApiAccess?: boolean; hasShiftPlanner?: boolean; hasGeofence?: boolean } | null,
+) {
+  if (item.roles && (!role || !item.roles.includes(role))) return false;
+  if (item.feature && features && features[item.feature] === false) return false;
+  return true;
 }
 
 function itemMatches(item: NavItem, query: string) {
@@ -161,7 +168,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, role, logout } = useAuth();
-  const { todayStatus, checkIn, checkOut, startBreak, endBreak, isActionLoading, isWithinGeofence, currentLocation } = useAttendance();
+  const { todayStatus, checkIn, checkOut, startBreak, endBreak, isActionLoading, isWithinGeofence, locationLabel } = useAttendance();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -174,6 +181,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [pendingPunch, setPendingPunch] = useState<PunchConfirmAction | null>(null);
   const [openSections, setOpenSections] = useState<string[]>(["my-work"]);
+  const [seatCount, setSeatCount] = useState<number | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchBoxRef = useRef<HTMLDivElement>(null);
 
@@ -229,17 +237,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         // ignore
       }
     }
+    async function loadSeatCount() {
+      try {
+        const res = await employeesApi.list({ page: 1, limit: 1 });
+        const total = Number(res?.total ?? res?.data?.total);
+        if (Number.isFinite(total)) setSeatCount(total);
+      } catch {
+        // ignore
+      }
+    }
     loadNotifications();
+    loadSeatCount();
   }, []);
 
   const visibleSections = NAV_SECTIONS.map((section) => ({
     ...section,
-    items: section.items.filter((item) => itemVisible(item, role) && itemMatches(item, navQuery)),
+    items: section.items.filter((item) => itemVisible(item, role, user?.features) && itemMatches(item, navQuery)),
   })).filter((section) => section.items.length > 0);
 
   const searchResults = NAV_SECTIONS.flatMap((section) =>
     section.items
-      .filter((item) => itemVisible(item, role) && itemMatches(item, searchQuery))
+      .filter((item) => itemVisible(item, role, user?.features) && itemMatches(item, searchQuery))
       .map((item) => ({ ...item, section: section.title }))
   ).slice(0, 8);
 
@@ -268,14 +286,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const isCheckedIn = todayStatus?.hasCheckedIn && !todayStatus?.hasCheckedOut;
+  const isCheckedIn = Boolean(
+    todayStatus?.hasCheckedIn || todayStatus?.attendance?.checkIn
+  ) && !Boolean(todayStatus?.hasCheckedOut || todayStatus?.attendance?.checkOut);
   const isOnBreak = todayStatus?.isOnBreak;
 
   const orgName = user?.organization?.name || "WorkPulse";
   const planName = user?.organization?.subscriptionPlan || "Standard Plan";
-  const maxEmps = user?.organization?.maxEmployees || 10;
-  const activeEmps = Number((user?.organization as any)?._count?.employees || 0);
-  const empRatio = Math.min(Math.round((activeEmps / (maxEmps || 1)) * 100), 100);
+  const maxEmps = user?.features?.maxEmployees || user?.organization?.maxEmployees || 10;
+  const countedSeats = Number(
+    (user?.organization as any)?._count?.employees ??
+    (user?.organization as any)?.employeeCount ??
+    seatCount ??
+    NaN
+  );
+  const hasSeatCount = Number.isFinite(countedSeats);
+  const activeEmps = hasSeatCount ? countedSeats : 0;
+  const empRatio = hasSeatCount ? Math.min(Math.round((activeEmps / (maxEmps || 1)) * 100), 100) : 0;
 
   const displayName = user?.employee?.firstName
     ? `${user.employee.firstName} ${user.employee.lastName || ""}`.trim()
@@ -294,33 +321,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="fixed inset-0 w-full h-full bg-[#F6F7FB] text-slate-900 flex overflow-hidden antialiased">
+    <div className="fixed inset-0 w-full h-full bg-[#f8fafc] text-slate-900 flex overflow-hidden antialiased">
       {/* ─────────────────────────────────────────────────────────────────────────────
           1. Sleek Dark Navy Left Sidebar
       ───────────────────────────────────────────────────────────────────────────── */}
-      <aside className={`hidden lg:flex flex-col ${sidebarCollapsed ? "w-[76px]" : "w-[268px]"} bg-[#0B132B] text-slate-300 shrink-0 h-full border-r border-white/5 z-30 select-none transition-[width] duration-200`}>
+      <aside className={`hidden lg:flex flex-col ${sidebarCollapsed ? "w-[76px]" : "w-[268px]"} bg-[#0f172a] text-slate-300 shrink-0 h-full border-r border-white/5 z-30 select-none transition-[width] duration-200`}>
         {/* Brand Header */}
-        <div className={`h-16 ${sidebarCollapsed ? "px-3 justify-center" : "px-4"} flex items-center gap-2 border-b border-[#1E293B]/70 shrink-0`}>
-          <Link href="/dashboard" className="flex items-center gap-3 group min-w-0">
-            <div className="relative w-9 h-9 rounded-xl overflow-hidden shadow-lg shadow-indigo-500/25 group-hover:scale-105 transition-transform shrink-0">
-              <Image
-                src="/logo.png"
-                alt="WorkPulse Logo"
-                width={36}
-                height={36}
-                className="w-full h-full object-cover"
-                priority
-              />
-            </div>
-            {!sidebarCollapsed && (
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 leading-none">
-                  <span className="text-base font-bold text-white tracking-tight">WorkPulse</span>
-                </div>
-                <span className="text-[10px] font-medium text-slate-400 tracking-wider">Enterprise</span>
-              </div>
-            )}
-          </Link>
+        <div className={`h-16 ${sidebarCollapsed ? "px-3 justify-center" : "px-4"} flex items-center gap-2 border-b border-white/10 shrink-0`}>
+          <Brand
+            href="/dashboard"
+            inverse
+            compact={sidebarCollapsed}
+            subtitle={sidebarCollapsed ? undefined : "Workspace"}
+            className="min-w-0"
+          />
 
           {!sidebarCollapsed && (
             <button
@@ -377,8 +391,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   >
                     <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${section.dot}`} />
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">{section.title}</span>
-                      {isOpen && <span className="block text-[10px] text-slate-500 font-medium normal-case tracking-normal">{section.blurb}</span>}
+                      <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">{section.title}</span>
+                      {isOpen && <span className="block text-[10px] text-white/35 font-medium normal-case tracking-normal">{section.blurb}</span>}
                     </span>
                     <span className="text-[10px] text-slate-500 tabular-nums">{section.items.length}</span>
                     {!filtering && (
@@ -399,8 +413,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                           title={sidebarCollapsed ? item.label : item.hint}
                           className={`group flex items-center ${sidebarCollapsed ? "justify-center px-0 py-1.5" : "gap-2.5 px-2 py-1.5"} rounded-xl text-[13px] font-medium transition-colors ${
                             isActive
-                              ? "bg-[#4F46E5] text-white shadow-lg shadow-indigo-950/40"
-                              : "text-slate-400 hover:text-white hover:bg-white/[0.06]"
+                              ? "bg-indigo-600 text-white shadow-lg shadow-black/30"
+                              : "text-white/55 hover:text-white hover:bg-white/[0.06]"
                           }`}
                         >
                           <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isActive ? "bg-white/15 text-white" : "bg-white/[0.04] text-slate-400 group-hover:text-slate-200"}`}>
@@ -430,11 +444,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Sidebar Footer: Organization Plan Meter */}
-        <div className={`${sidebarCollapsed ? "p-2" : "p-3"} border-t border-[#1E293B]/80 bg-[#070D1F] space-y-2.5`}>
+        <div className={`${sidebarCollapsed ? "p-2" : "p-3"} border-t border-white/10 bg-black/25 space-y-2.5`}>
           <Link
             href="/settings"
             title={orgName}
-            className={`block rounded-xl bg-[#131E3A] border border-[#1E293B] hover:border-indigo-500/40 transition group ${sidebarCollapsed ? "p-2" : "p-3"}`}
+            className={`block rounded-xl bg-white/[0.04] border border-white/10 hover:border-indigo-400/50 transition group ${sidebarCollapsed ? "p-2" : "p-3"}`}
           >
             <div className={`flex items-center ${sidebarCollapsed ? "justify-center" : "justify-between"} mb-1.5`}>
               <div className="flex items-center gap-2 min-w-0">
@@ -460,8 +474,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {!sidebarCollapsed && (
               <div className="mt-2.5">
                 <div className="flex items-center justify-between text-[10px] text-slate-400 mb-1 font-medium">
-                  <span>{activeEmps} / {maxEmps} employees</span>
-                  <span>{empRatio}%</span>
+                  <span>{hasSeatCount ? activeEmps : "—"} / {maxEmps} employees</span>
+                  <span>{hasSeatCount ? `${empRatio}%` : ""}</span>
                 </div>
                 <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
                   <div
@@ -492,7 +506,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       ───────────────────────────────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
         {/* Top Header Bar */}
-        <header className="h-16 shrink-0 bg-white border-b border-slate-200/80 px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 z-20 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+        <header className="h-16 shrink-0 bg-[#ffffff]/90 backdrop-blur-xl border-b border-slate-200/80 px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 z-20">
           {/* Left: Mobile Menu Toggle & Full-width Search Bar */}
           <div className="flex items-center gap-2 sm:gap-3 flex-1 max-w-xs md:max-w-sm lg:max-w-md xl:max-w-lg min-w-0">
             <button
@@ -576,7 +590,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   onClick={() => setPendingPunch("CHECK_IN")}
                   disabled={isActionLoading}
                   className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-2xs transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                  title={!currentLocation ? "Click to verify GPS and check in" : "Clock in for your shift"}
+                  title="Clock in from any location"
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   Clock In
@@ -604,7 +618,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     onClick={() => setPendingPunch("CHECK_OUT")}
                     disabled={isActionLoading}
                     className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-rose-600 hover:bg-rose-500 text-white shadow-2xs transition cursor-pointer disabled:opacity-50"
-                    title={!currentLocation ? "Click to verify GPS and clock out" : "Clock out and end shift"}
+                    title="Clock out from any location"
                   >
                     Clock Out
                   </button>
@@ -768,24 +782,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               initial={{ opacity: 0, x: -30 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -30 }}
-              className="lg:hidden fixed inset-0 z-50 bg-[#0B132B] text-slate-300 p-5 flex flex-col"
+              className="lg:hidden fixed inset-0 z-50 bg-[#0f172a] text-slate-300 p-5 flex flex-col"
             >
-              <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-                <div className="flex items-center gap-2.5">
-                  <div className="relative w-9 h-9 rounded-xl overflow-hidden shadow-md shadow-indigo-500/25 shrink-0">
-                    <Image
-                      src="/logo.png"
-                      alt="WorkPulse Logo"
-                      width={36}
-                      height={36}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div>
-                    <span className="text-base font-bold text-white">WorkPulse</span>
-                    <span className="text-[10px] text-slate-400 block font-medium">Enterprise</span>
-                  </div>
-                </div>
+              <div className="flex items-center justify-between pb-4 border-b border-white/10">
+                <Brand href="/dashboard" inverse subtitle="Workspace" />
                 <button
                   onClick={() => setMobileMenuOpen(false)}
                   className="p-2 rounded-xl bg-slate-800 text-slate-300"
@@ -831,7 +831,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                             href={item.href}
                             onClick={() => setMobileMenuOpen(false)}
                             className={`flex items-center gap-2.5 px-2 py-1.5 rounded-xl text-[13px] font-medium ${
-                              isActive ? "bg-[#4F46E5] text-white" : "text-slate-400"
+                              isActive ? "bg-indigo-600 text-white" : "text-slate-400"
                             }`}
                           >
                             <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${isActive ? "bg-white/15" : "bg-white/[0.04]"}`}>
@@ -866,7 +866,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </AnimatePresence>
 
         {/* Main Scrollable Canvas */}
-        <main className="flex-1 h-full overflow-y-auto p-3 sm:p-6 lg:p-8 bg-[#F6F7FB] pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <main className="flex-1 h-full overflow-y-auto p-3 sm:p-6 lg:p-8 bg-[#f8fafc] pb-[max(1rem,env(safe-area-inset-bottom))]">
           <motion.div
             key={pathname}
             initial={{ opacity: 0, y: 5 }}
@@ -874,6 +874,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             transition={{ duration: 0.2, ease: "easeOut" }}
             className="min-h-full"
           >
+            <SubscriptionBanner />
             {children}
           </motion.div>
         </main>
@@ -882,6 +883,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <PunchConfirmDialog
         action={pendingPunch}
         loading={isActionLoading}
+        locationLabel={locationLabel}
         onCancel={() => setPendingPunch(null)}
         onConfirm={async () => {
           const ok = pendingPunch === "CHECK_OUT" ? await checkOut() : await checkIn();

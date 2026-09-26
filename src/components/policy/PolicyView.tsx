@@ -14,7 +14,7 @@ const DEFAULTS = {
   lateDeductionPercent: 0.25,
   allowWfh: true,
   requireOtApproval: false,
-  geofenceStrict: true,
+  geofenceStrict: false,
 };
 
 export default function PolicyView() {
@@ -161,7 +161,7 @@ export default function PolicyView() {
             checked={form.geofenceStrict}
             onChange={(e) => setForm((p) => ({ ...p, geofenceStrict: e.target.checked }))}
           />
-          Strict geofence — reject punches outside branch radius
+          Strict geofence — reject punches outside branch radius (off = punch from any location)
         </label>
       </div>
 

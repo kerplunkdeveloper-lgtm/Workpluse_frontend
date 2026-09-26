@@ -20,6 +20,7 @@ import {
 } from "@/lib/offlineQueue";
 import { useAuth } from "./AuthContext";
 import { calculateDistanceMeters } from "@/lib/utils";
+import { reverseGeocodeLabel } from "@/lib/reverseGeocode";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 
@@ -34,6 +35,7 @@ type SyncStatus = "idle" | "syncing" | "synced" | "error";
 export interface PunchOptions {
   workMode?: "OFFICE" | "SHOOT" | "WORK_FROM_HOME" | "CLIENT_VISIT" | "TRAVEL";
   note?: string;
+  locationLabel?: string;
 }
 
 interface AttendanceContextType {
@@ -41,6 +43,7 @@ interface AttendanceContextType {
   isLoading: boolean;
   isActionLoading: boolean;
   currentLocation: GeoCoordinates | null;
+  locationLabel: string | null;
   locationError: string | null;
   distanceToBranch: number | null;
   isWithinGeofence: boolean;
@@ -67,9 +70,10 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isActionLoading, setIsActionLoading] = useState<boolean>(false);
   const [currentLocation, setCurrentLocation] = useState<GeoCoordinates | null>(null);
+  const [locationLabel, setLocationLabel] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [distanceToBranch, setDistanceToBranch] = useState<number | null>(null);
-  const [isWithinGeofence, setIsWithinGeofence] = useState<boolean>(false);
+  const [isWithinGeofence, setIsWithinGeofence] = useState<boolean>(true);
 
   // ── Offline tracking ────────────────────────────────────────────────────────
   const [isOnline, setIsOnline] = useState<boolean>(
@@ -167,42 +171,57 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
   }, [triggerSync]);
 
   // ── Track browser GPS location ───────────────────────────────────────────────
-  const updateLocation = useCallback(() => {
-    if (typeof window === "undefined" || !navigator.geolocation) {
-      setLocationError("Geolocation is not supported by this browser.");
-      return;
-    }
+  const applyCoords = useCallback(
+    async (coords: GeoCoordinates) => {
+      setCurrentLocation(coords);
+      setLocationError(null);
+      setIsWithinGeofence(true);
+      const branch = user?.employee?.branch;
+      if (branch && branch.latitude && branch.longitude) {
+        const branchLat = typeof branch.latitude === "string" ? parseFloat(branch.latitude) : branch.latitude;
+        const branchLng = typeof branch.longitude === "string" ? parseFloat(branch.longitude) : branch.longitude;
+        setDistanceToBranch(calculateDistanceMeters(coords.latitude, coords.longitude, branchLat, branchLng));
+      }
+      const label = await reverseGeocodeLabel(coords.latitude, coords.longitude);
+      if (label) setLocationLabel(label);
+      return label;
+    },
+    [user]
+  );
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const coords = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy: position.coords.accuracy,
-        };
-        setCurrentLocation(coords);
-        setLocationError(null);
+  const requestBrowserLocation = useCallback((): Promise<GeoCoordinates | null> => {
+    return new Promise((resolve) => {
+      if (typeof window === "undefined" || !navigator.geolocation) {
+        setIsWithinGeofence(true);
+        setLocationError("Geolocation is not supported by this browser.");
+        resolve(null);
+        return;
+      }
 
-        const branch = user?.employee?.branch;
-        if (branch && branch.latitude && branch.longitude) {
-          const branchLat = typeof branch.latitude === "string" ? parseFloat(branch.latitude) : branch.latitude;
-          const branchLng = typeof branch.longitude === "string" ? parseFloat(branch.longitude) : branch.longitude;
-          const dist = calculateDistanceMeters(coords.latitude, coords.longitude, branchLat, branchLng);
-          setDistanceToBranch(dist);
-          setIsWithinGeofence(dist <= (branch.radiusMeters || 300));
-        } else {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const coords = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+          };
+          await applyCoords(coords);
+          resolve(coords);
+        },
+        (error) => {
+          setDistanceToBranch(null);
           setIsWithinGeofence(true);
-        }
-      },
-      (error) => {
-        setCurrentLocation(null);
-        setDistanceToBranch(null);
-        setIsWithinGeofence(false);
-        setLocationError(error.message || "Location permission is required to punch.");
-      },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 }
-    );
-  }, [user]);
+          setLocationError(error.message || "Location unavailable. You can still punch from here.");
+          resolve(null);
+        },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 15000 }
+      );
+    });
+  }, [applyCoords]);
+
+  const updateLocation = useCallback(() => {
+    void requestBrowserLocation();
+  }, [requestBrowserLocation]);
 
   const fetchTodayStatus = useCallback(async () => {
     if (!token || !isOnline) return;
@@ -237,6 +256,9 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
           workedMinutesToday: raw.attendance?.workingMinutes || 0,
           shift: raw.employee?.shift || raw.shift,
         });
+        if (raw.attendance?.checkInLocation) {
+          setLocationLabel(raw.attendance.checkInLocation);
+        }
       }
     } catch (err: any) {
       console.warn("Could not fetch today status:", err.message);
@@ -279,7 +301,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
       apiCall: () => Promise<any>,
       successMessage: string,
       coords?: GeoCoordinates,
-      metadata?: Pick<OfflinePunch, "workMode" | "note" | "wfhNote" | "deviceId">
+      metadata?: Pick<OfflinePunch, "workMode" | "note" | "wfhNote" | "deviceId" | "locationLabel">
     ): Promise<boolean> => {
       setIsActionLoading(true);
       const punchTimestamp = new Date().toISOString();
@@ -370,12 +392,12 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
 
   const checkIn = useCallback(
     async (options?: PunchOptions): Promise<boolean> => {
-      const remoteMode = ["WORK_FROM_HOME", "CLIENT_VISIT", "TRAVEL"].includes(options?.workMode || "");
-      if (!currentLocation && !remoteMode) {
-        toast.error("Location is required to punch. Allow GPS and try again.");
-        return false;
-      }
-      const coords = currentLocation || undefined;
+      const coords = currentLocation || (await requestBrowserLocation()) || undefined;
+      const resolvedLabel =
+        options?.locationLabel ||
+        locationLabel ||
+        (coords ? await reverseGeocodeLabel(coords.latitude, coords.longitude) : null) ||
+        undefined;
       const modeLabel =
         options?.workMode === "SHOOT"
           ? "On-Site Shoot"
@@ -389,31 +411,44 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
 
       return handlePunch(
         "CHECK_IN",
-        () => attendanceApi.checkIn({ ...(coords || { latitude: 0, longitude: 0 }), ...options }),
-        `Check-in Confirmed! Started shift in ${modeLabel} mode.`,
+        () => attendanceApi.checkIn({ ...(coords || {}), ...options, locationLabel: resolvedLabel }),
+        resolvedLabel
+          ? `Check-in confirmed from ${resolvedLabel}.`
+          : `Check-in Confirmed! Started shift in ${modeLabel} mode.`,
         coords,
-        { workMode: options?.workMode, note: options?.note, deviceId: getWebDeviceId() || undefined }
+        {
+          workMode: options?.workMode,
+          note: options?.note,
+          deviceId: getWebDeviceId() || undefined,
+          locationLabel: resolvedLabel,
+        }
       );
     },
-    [currentLocation, handlePunch]
+    [currentLocation, handlePunch, locationLabel, requestBrowserLocation]
   );
 
   const checkOut = useCallback(
     async (options?: PunchOptions): Promise<boolean> => {
-      if (!currentLocation && !["WORK_FROM_HOME", "CLIENT_VISIT", "TRAVEL"].includes(options?.workMode || "")) {
-        toast.error("Location is required to punch. Allow GPS and try again.");
-        return false;
-      }
-      const coords = currentLocation || undefined;
+      const coords = currentLocation || (await requestBrowserLocation()) || undefined;
+      const resolvedLabel =
+        options?.locationLabel ||
+        locationLabel ||
+        (coords ? await reverseGeocodeLabel(coords.latitude, coords.longitude) : null) ||
+        undefined;
       return handlePunch(
         "CHECK_OUT",
-        () => attendanceApi.checkOut({ ...(coords || { latitude: 0, longitude: 0 }), ...options }),
-        "Check-out Confirmed! Shift concluded successfully.",
+        () => attendanceApi.checkOut({ ...(coords || {}), ...options, locationLabel: resolvedLabel }),
+        resolvedLabel ? `Check-out confirmed from ${resolvedLabel}.` : "Check-out Confirmed! Shift concluded successfully.",
         coords,
-        { workMode: options?.workMode, note: options?.note, deviceId: getWebDeviceId() || undefined }
+        {
+          workMode: options?.workMode,
+          note: options?.note,
+          deviceId: getWebDeviceId() || undefined,
+          locationLabel: resolvedLabel,
+        }
       );
     },
-    [currentLocation, handlePunch]
+    [currentLocation, handlePunch, locationLabel, requestBrowserLocation]
   );
 
   const startBreak = useCallback(async (): Promise<boolean> => {
@@ -484,6 +519,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
         isLoading,
         isActionLoading,
         currentLocation,
+        locationLabel,
         locationError,
         distanceToBranch,
         isWithinGeofence,

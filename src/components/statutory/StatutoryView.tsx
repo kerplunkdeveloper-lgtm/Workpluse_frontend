@@ -198,7 +198,7 @@ export default function StatutoryView() {
             <button onClick={() => handleSave(false)} disabled={saving} className="px-4 py-2 rounded-xl border text-xs font-semibold">
               {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Save draft"}
             </button>
-            <button onClick={() => handleSave(true)} className="px-4 py-2 rounded-xl bg-[#4F46E5] text-white text-xs font-semibold">
+            <button onClick={() => handleSave(true)} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold">
               Submit
             </button>
             <button onClick={handleForm16} className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold">

@@ -56,7 +56,7 @@ export default function AppraisalsView() {
           <input required placeholder="Cycle name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="px-3 py-2 rounded-xl border" />
           <input required type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} className="px-3 py-2 rounded-xl border" />
           <input required type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} className="px-3 py-2 rounded-xl border" />
-          <button className="px-3 py-2 rounded-xl bg-[#4F46E5] text-white font-semibold">Create cycle</button>
+          <button className="px-3 py-2 rounded-xl bg-indigo-600 text-white font-semibold">Create cycle</button>
         </form>
       )}
       {loading && <div className="bg-white rounded-2xl border p-8 text-sm text-slate-500">Loading appraisals…</div>}

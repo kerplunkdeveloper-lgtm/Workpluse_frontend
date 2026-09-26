@@ -26,10 +26,11 @@ import {
 
 export default function LandingPage() {
   const { user, token } = useAuth();
-  const [currentTime, setCurrentTime] = useState<Date>(new Date());
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [billingCycle, setBillingCycle] = useState<"MONTHLY" | "ANNUAL">("MONTHLY");
 
   useEffect(() => {
+    setCurrentTime(new Date());
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
@@ -122,7 +123,7 @@ export default function LandingPage() {
       <div className="absolute bottom-1/4 left-10 w-[500px] h-[500px] bg-purple-500/8 rounded-full blur-[140px] pointer-events-none" />
 
       {/* ─── Navigation Header ────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/90 border-b border-slate-200 shadow-xs">
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#ffffff]/90 border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
           {/* Brand Logo */}
           <Link href="/" className="flex items-center gap-3 group">
@@ -137,14 +138,14 @@ export default function LandingPage() {
               />
             </div>
             <div>
-              <span className="text-xl font-black tracking-tight text-slate-900 flex items-center gap-1.5">
+              <span className="font-serif text-xl font-semibold tracking-tight text-slate-900 flex items-center gap-1.5">
                 WorkPulse
-                <span className="px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-bold border border-indigo-200">
-                  PRO
+                <span className="px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-bold border border-indigo-200 font-sans">
+                  LIVE
                 </span>
               </span>
-              <span className="text-[10px] text-slate-500 tracking-wider block uppercase font-semibold">
-                Workforce Intelligence
+              <span className="text-[10px] text-slate-500 tracking-[0.16em] block uppercase font-semibold">
+                Workforce, in rhythm
               </span>
             </div>
           </Link>
@@ -173,7 +174,7 @@ export default function LandingPage() {
             {token && user ? (
               <Link
                 href="/dashboard"
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition flex items-center gap-2"
+                className="px-5 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition flex items-center gap-2"
               >
                 Go to Workspace
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -215,13 +216,11 @@ export default function LandingPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-slate-900 max-w-5xl mx-auto leading-[1.1]"
+          className="font-serif text-4xl sm:text-6xl lg:text-[4.6rem] font-semibold tracking-tight text-slate-900 max-w-5xl mx-auto leading-[1.08]"
         >
-          The Complete{" "}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600">
-            Workforce Operating System
-          </span>{" "}
-          for Modern Teams.
+          Run the workday
+          <br />
+          <span className="italic text-indigo-600">without losing the people.</span>
         </motion.h1>
 
         <motion.p
@@ -244,14 +243,14 @@ export default function LandingPage() {
         >
           <Link
             href="/register"
-            className="px-7 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-sm shadow-lg shadow-indigo-600/25 transition flex items-center gap-2 transform hover:-translate-y-0.5"
+            className="px-7 py-3.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow-lg shadow-indigo-600/25 transition flex items-center gap-2"
           >
             Create Organization Free
             <ArrowRight className="w-4 h-4" />
           </Link>
           <Link
             href="/login"
-            className="px-6 py-3.5 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 font-bold text-sm shadow-xs transition flex items-center gap-2"
+            className="px-6 py-3.5 rounded-full bg-[#ffffff] hover:bg-slate-50 text-slate-800 border border-slate-200 font-bold text-sm shadow-xs transition flex items-center gap-2"
           >
             Live Workspace Sign In
           </Link>
@@ -262,7 +261,7 @@ export default function LandingPage() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
-          className="mt-14 max-w-4xl mx-auto rounded-3xl p-6 sm:p-8 bg-white border border-slate-200 shadow-xl relative overflow-hidden text-left"
+          className="mt-14 max-w-4xl mx-auto rounded-3xl p-6 sm:p-8 bg-[#ffffff] border border-slate-200 shadow-xl relative overflow-hidden text-left"
         >
           <div className="flex flex-wrap items-center justify-between gap-4 pb-5 border-b border-slate-200">
             <div className="flex items-center gap-3">
@@ -294,13 +293,15 @@ export default function LandingPage() {
                   <Clock className="w-3.5 h-3.5 text-indigo-600" />
                   Real-time Timekeeper
                 </div>
-                <div className="font-mono text-3xl font-black text-slate-900">
-                  {currentTime.toLocaleTimeString("en-IN", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    second: "2-digit",
-                    hour12: true,
-                  })}
+                <div className="font-mono text-3xl font-semibold text-slate-900 tabular-nums">
+                  {currentTime
+                    ? currentTime.toLocaleTimeString("en-IN", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                        hour12: true,
+                      })
+                    : "--:--:--"}
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1">
                   Assigned Shift: General (09:00 - 18:00)
@@ -356,11 +357,11 @@ export default function LandingPage() {
       {/* ─── Core Features Section ────────────────────────────────────────── */}
       <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">
-            Enterprise Architecture
+          <span className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">
+            The full workday
           </span>
-          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mt-2">
-            Built for Accurate Attendance, Compliance & Peace of Mind.
+          <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-slate-900 tracking-tight mt-2">
+            Attendance, leave, and payroll — without the noise.
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-3">
             Every feature is engineered to eliminate leakage, keep employees informed, and simplify
@@ -452,8 +453,8 @@ export default function LandingPage() {
                 <WifiOff className="w-3.5 h-3.5 text-amber-600" />
                 Zero Connectivity Tolerance
               </div>
-              <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight leading-snug">
-                Attendance Never Fails — Even When the Internet Does.
+              <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-slate-900 tracking-tight leading-snug">
+                Clock in even when the signal drops.
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 mt-4 leading-relaxed">
                 Factory basements, warehouse deadzones, or sudden carrier outages won't disrupt your
@@ -507,8 +508,8 @@ export default function LandingPage() {
           <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">
             Predictable Pricing
           </span>
-          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mt-2">
-            Plans Tailored to Every Stage of Growth.
+          <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-slate-900 tracking-tight mt-2">
+            Simple plans. Full workday.
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-3">
             All plans include full geofencing, leave tracking, mobile integration, and email unlock code.
@@ -567,7 +568,7 @@ export default function LandingPage() {
                   </div>
 
                   <div className="mb-4">
-                    <span className="text-3xl font-black text-slate-900">${price}</span>
+                    <span className="font-serif text-3xl font-semibold text-slate-900">${price}</span>
                     <span className="text-xs text-slate-500"> / month</span>
                   </div>
 
@@ -647,7 +648,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── Footer ───────────────────────────────────────────────────────── */}
-      <footer className="border-t border-slate-200 bg-white py-12 px-4 sm:px-6 lg:px-8">
+      <footer className="border-t border-slate-200 bg-[#ffffff] py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-6">
           <div className="flex items-center gap-3">
             <div className="relative w-8 h-8 rounded-xl overflow-hidden shadow-xs shrink-0">
@@ -659,7 +660,7 @@ export default function LandingPage() {
                 className="w-full h-full object-cover"
               />
             </div>
-            <span className="text-sm font-bold text-slate-900">WorkPulse Technologies Inc.</span>
+            <span className="font-serif text-sm font-semibold text-slate-900">WorkPulse</span>
           </div>
 
           <div className="flex items-center gap-6 text-xs text-slate-600">

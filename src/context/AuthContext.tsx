@@ -26,6 +26,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const router = useRouter();
 
+  const go = (path: string) => {
+    if (typeof window === "undefined") return;
+    window.setTimeout(() => {
+      router.replace(path);
+    }, 0);
+  };
+
   const loadUser = async (authToken?: string) => {
     try {
       const activeToken = authToken || localStorage.getItem("workpulse_access_token");
@@ -63,8 +70,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(null);
       setToken(null);
     };
+    const onBilling = () => {
+      void loadUser();
+    };
     window.addEventListener("workpulse:unauthorized", onUnauthorized);
-    return () => window.removeEventListener("workpulse:unauthorized", onUnauthorized);
+    window.addEventListener("workpulse:billing", onBilling);
+    return () => {
+      window.removeEventListener("workpulse:unauthorized", onUnauthorized);
+      window.removeEventListener("workpulse:billing", onBilling);
+    };
   }, []);
 
   const login = async (email: string, pass: string): Promise<boolean> => {
@@ -91,9 +105,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (loggedUser.mustChangePassword) {
           toast.info("Please set a new secure password to activate your account.");
-          router.push("/change-password");
+          go("/change-password");
         } else {
-          router.push("/dashboard");
+          go("/dashboard");
         }
         return true;
       } else {
@@ -129,7 +143,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           void registerWebDevice();
         }
         toast.success(`Welcome back, ${loggedUser.employee?.firstName || loggedUser.email}!`);
-        router.push("/dashboard");
+        go("/dashboard");
         return true;
       }
       toast.error(res?.message || "Google sign-in failed");
@@ -161,12 +175,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(newUser);
         }
 
-        if (newUser?.planLocked) {
+        if (res.data?.requiresCheckout && res.data?.selectedPlan && res.data.selectedPlan !== "FREE_TRIAL") {
+          toast.success("Workspace created on a 14-day trial. Complete checkout to activate the paid plan.");
+          go(`/settings?checkout=${encodeURIComponent(res.data.selectedPlan)}`);
+        } else if (newUser?.planLocked) {
           toast.success("Organization created! Check your email for your Plan Unlock Code.", { duration: 6000 });
+          go("/dashboard");
         } else {
           toast.success("Organization & Account registered successfully!");
+          go("/dashboard");
         }
-        router.push("/dashboard");
         return true;
       }
       return false;
@@ -190,7 +208,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(null);
       setToken(null);
       toast.info("Logged out successfully");
-      router.push("/login");
+      go("/login");
     }
   };
 

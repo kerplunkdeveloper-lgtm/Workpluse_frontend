@@ -13,6 +13,10 @@ function normalizeApiUrl(url: string): string {
 }
 
 function getApiBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_PROXY !== "false") {
+    return "/backend-api";
+  }
+
   const remoteOverride = process.env.NEXT_PUBLIC_USE_REMOTE_API === "true";
   let url = (process.env.NEXT_PUBLIC_API_URL || "").trim();
 
@@ -176,6 +180,25 @@ api.interceptors.response.use(
       }
     }
 
+    if (typeof window !== "undefined" && error.response?.status === 402) {
+      const payload = error.response.data || {};
+      window.dispatchEvent(new CustomEvent("workpulse:billing", { detail: payload }));
+      const path = window.location.pathname || "";
+      const canOpenBilling = path.startsWith("/settings") || path.startsWith("/login") || path.startsWith("/register");
+      if (!canOpenBilling) {
+        const role = (() => {
+          try {
+            return JSON.parse(localStorage.getItem("workpulse_user") || "{}")?.role;
+          } catch {
+            return null;
+          }
+        })();
+        if (role === "SUPER_ADMIN" || role === "COMPANY_ADMIN") {
+          window.location.href = "/settings?billing=1";
+        }
+      }
+    }
+
     return Promise.reject(error);
   }
 );
@@ -214,10 +237,6 @@ export const authApi = {
     const res = await api.post("/auth/activate-plan", { unlockCode });
     return res.data;
   },
-  upgradePlan: async (plan: string, billingCycle?: string) => {
-    const res = await api.post("/auth/upgrade-plan", { plan, billingCycle });
-    return res.data;
-  },
   changePassword: async (payload: { currentPassword?: string; newPassword: string }) => {
     const res = await api.post("/auth/change-password", payload);
     return res.data;
@@ -244,11 +263,12 @@ export const authApi = {
 
 export const attendanceApi = {
   checkIn: async (data: {
-    latitude: number;
-    longitude: number;
+    latitude?: number;
+    longitude?: number;
     accuracy?: number;
     workMode?: string;
     note?: string;
+    locationLabel?: string;
   }) => {
     const res = await api.post("/attendance/check-in", {
       ...data,
@@ -258,11 +278,12 @@ export const attendanceApi = {
     return res.data;
   },
   checkOut: async (data: {
-    latitude: number;
-    longitude: number;
+    latitude?: number;
+    longitude?: number;
     accuracy?: number;
     workMode?: string;
     note?: string;
+    locationLabel?: string;
   }) => {
     const res = await api.post("/attendance/check-out", {
       ...data,
@@ -291,8 +312,12 @@ export const attendanceApi = {
     const res = await api.get("/attendance/today");
     return res.data;
   },
+  getLiveToday: async () => {
+    const res = await api.get("/attendance/live-today");
+    return res.data;
+  },
   getMyAttendance: async (params?: any) => {
-    const res = await api.get("/attendance/history", { params });
+    const res = await api.get("/attendance/my", { params });
     return res.data;
   },
   getAllAttendance: async (params?: any) => {
@@ -326,6 +351,7 @@ export const attendanceApi = {
     workMode?: string;
     note?: string;
     deviceId?: string;
+    locationLabel?: string;
   }>) => {
     const res = await api.post("/attendance/sync-offline", { punches });
     return res.data;

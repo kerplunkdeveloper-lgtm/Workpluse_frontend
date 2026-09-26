@@ -8,11 +8,12 @@ export type PunchConfirmAction = "CHECK_IN" | "CHECK_OUT";
 interface PunchConfirmDialogProps {
   action: PunchConfirmAction | null;
   loading?: boolean;
+  locationLabel?: string | null;
   onCancel: () => void;
   onConfirm: () => void;
 }
 
-export default function PunchConfirmDialog({ action, loading, onCancel, onConfirm }: PunchConfirmDialogProps) {
+export default function PunchConfirmDialog({ action, loading, locationLabel, onCancel, onConfirm }: PunchConfirmDialogProps) {
   if (!action) return null;
 
   const isCheckIn = action === "CHECK_IN";
@@ -29,7 +30,9 @@ export default function PunchConfirmDialog({ action, loading, onCancel, onConfir
           </h3>
           <p className="text-sm text-slate-500 leading-relaxed">
             {isCheckIn
-              ? "Your current time and location will be recorded and your shift will start."
+              ? locationLabel
+                ? `Your shift will start and the team will see you clocked in at ${locationLabel}.`
+                : "Your current time and location will be recorded. The team can see where you clocked in."
               : "Your shift will end now. Today's hours will be saved to your timesheet."}
           </p>
         </div>

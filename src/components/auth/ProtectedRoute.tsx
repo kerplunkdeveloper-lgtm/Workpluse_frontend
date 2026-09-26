@@ -1,25 +1,29 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, ReactNode } from "react";
 import { UserRole } from "@/types";
-import { Loader2 } from "lucide-react";
 
 import AppSkeletonLoader from "@/components/ui/AppSkeletonLoader";
+import { BillingLocked } from "@/components/billing/WorkspaceBilling";
 
 interface ProtectedRouteProps {
   children: ReactNode;
   allowedRoles?: UserRole[];
 }
 
+const BILLING_PATHS = ["/settings"];
+
 export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   const { user, token, isLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!isLoading && !token) {
-      router.push("/login");
+      const id = window.setTimeout(() => router.replace("/login"), 0);
+      return () => window.clearTimeout(id);
     }
   }, [isLoading, token, router]);
 
@@ -43,13 +47,20 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
           <span className="px-2 py-0.5 rounded bg-slate-100 text-indigo-700 font-semibold border border-slate-200">{user.role}</span>.
         </p>
         <button
-          onClick={() => router.push("/dashboard")}
+          onClick={() => router.replace("/dashboard")}
           className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition shadow-sm"
         >
           Return to Dashboard
         </button>
       </div>
     );
+  }
+
+  const locked = user.entitlement && user.entitlement.allowApp === false;
+  const billingEscape = BILLING_PATHS.some((path) => pathname?.startsWith(path));
+  const canManageBilling = user.role === "SUPER_ADMIN" || user.role === "COMPANY_ADMIN";
+  if (locked && !(billingEscape && canManageBilling)) {
+    return <BillingLocked />;
   }
 
   return <>{children}</>;

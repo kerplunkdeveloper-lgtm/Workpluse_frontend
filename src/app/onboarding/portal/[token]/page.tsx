@@ -6,14 +6,10 @@ import { onboardingApi } from "@/lib/api";
 import { OnboardingCandidate } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import {
-  Sparkles,
   CheckCircle2,
   XCircle,
   FileText,
   Upload,
-  Clock,
-  ShieldCheck,
-  Building2,
   Loader2,
   Check,
 } from "lucide-react";
@@ -130,18 +126,16 @@ export default function CandidatePortalPage() {
   const isRejected = candidate.status === "REJECTED";
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 p-4 sm:p-8 flex justify-center">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 p-4 sm:p-8 flex justify-center">
       <div className="w-full max-w-3xl space-y-6">
         {/* Header Branding */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-200">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-cyan-500 p-0.5 shadow-md shadow-indigo-500/20">
-              <div className="w-full h-full bg-white rounded-[10px] flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-indigo-600" />
-              </div>
+            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 font-serif text-lg">
+              W
             </div>
             <div>
-              <h1 className="text-xl font-black text-slate-900">WorkPulse Onboarding Portal</h1>
+              <h1 className="font-serif text-xl font-semibold text-slate-900">WorkPulse onboarding</h1>
               <p className="text-xs text-slate-500">Digital Candidate Journey & Offer Acceptance</p>
             </div>
           </div>

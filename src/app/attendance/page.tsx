@@ -5,7 +5,8 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
 import PunchClockCard from "@/components/attendance/PunchClockCard";
 import AttendanceHistoryView from "@/components/attendance/AttendanceHistoryView";
-import { ChevronRight, Calendar, MapPin, Sparkles, Clock } from "lucide-react";
+import TeamPunchBoard from "@/components/attendance/TeamPunchBoard";
+import { ChevronRight, Calendar, Clock } from "lucide-react";
 import Link from "next/link";
 
 export default function AttendancePage() {
@@ -56,10 +57,10 @@ export default function AttendancePage() {
 
               {/* Title & Subtitle */}
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                Smart Geofenced Punch & Timesheet
+                Smart Punch & Timesheet
               </h1>
               <p className="text-xs text-slate-500 font-medium max-w-2xl">
-                Real-time GPS boundary verification, WFH punches, break logging, and miss punch regularization.
+                Punch from anywhere. Your location is saved and shown to everyone on the team.
               </p>
             </div>
 
@@ -89,6 +90,8 @@ export default function AttendancePage() {
 
           {/* Master Punch & Clock Widget + Today's Details Panel */}
           <PunchClockCard />
+
+          <TeamPunchBoard />
 
           {/* Attendance Log Table & 4 Metric Cards */}
           <Suspense fallback={<div className="p-8 text-center text-slate-500">Loading attendance view...</div>}>

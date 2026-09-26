@@ -45,6 +45,14 @@ export default function ChatView() {
     load();
   }, []);
 
+  useEffect(() => {
+    if (!activeId) return undefined;
+    const tick = window.setInterval(() => {
+      chatApi.messages(activeId).then((res) => setMessages(toList(res))).catch(() => {});
+    }, 8000);
+    return () => window.clearInterval(tick);
+  }, [activeId]);
+
   const openThread = async (id: string) => {
     setActiveId(id);
     try {
@@ -164,7 +172,7 @@ export default function ChatView() {
               placeholder="Message"
               className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-sm"
             />
-            <button className="px-4 py-2 rounded-xl bg-[#4F46E5] text-white text-xs font-semibold">Send</button>
+            <button className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold">Send</button>
           </form>
         </section>
       </div>

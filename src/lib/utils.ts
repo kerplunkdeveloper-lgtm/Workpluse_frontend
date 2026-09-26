@@ -33,6 +33,7 @@ export function unwrapList<T = any>(res: any): T[] {
     res.shifts,
     res.branches,
     res.candidates,
+    res.people,
     res.teammates,
     res.threads,
     res.messages,

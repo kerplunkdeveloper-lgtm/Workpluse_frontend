@@ -61,7 +61,15 @@ export default function AttendanceHistoryView() {
   const fetchHistory = async (nextPage = page) => {
     setLoading(true);
     try {
-      const res = await attendanceApi.getMyAttendance({ page: nextPage, limit: 20 });
+      const isTeamView = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER";
+      const params = {
+        page: nextPage,
+        limit: 20,
+        status: filterStatus !== "ALL" ? filterStatus : undefined,
+      };
+      const res = isTeamView
+        ? await attendanceApi.getAllAttendance(params)
+        : await attendanceApi.getMyAttendance(params);
       setAttendances(unwrapList<Attendance>(res));
       setTotalPages(res?.totalPages || 1);
     } catch (err: any) {
@@ -73,7 +81,8 @@ export default function AttendanceHistoryView() {
 
   useEffect(() => {
     fetchHistory(page);
-  }, [page]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, filterStatus, role]);
 
   const handleAdminMarkSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -310,6 +319,7 @@ export default function AttendanceHistoryView() {
               <tr className="whitespace-nowrap">
                 <th className="py-3.5 px-5">DATE</th>
                 <th className="py-3.5 px-4">PUNCH IN</th>
+                <th className="py-3.5 px-4">LOCATION</th>
                 <th className="py-3.5 px-4">PUNCH OUT</th>
                 <th className="py-3.5 px-4">WORK HOURS</th>
                 <th className="py-3.5 px-4">BREAKS</th>
@@ -329,7 +339,7 @@ export default function AttendanceHistoryView() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-slate-400">
+                  <td colSpan={9} className="text-center py-12 text-slate-400">
                     <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-indigo-500" />
                     <span>Loading attendance records...</span>
                   </td>
@@ -337,7 +347,7 @@ export default function AttendanceHistoryView() {
               ) : filteredLogs.length === 0 ? (
                 /* Empty state matching dashboard_design_2.png */
                 <tr>
-                  <td colSpan={8} className="text-center py-16 px-4">
+                  <td colSpan={9} className="text-center py-16 px-4">
                     <div className="flex flex-col items-center justify-center max-w-sm mx-auto space-y-3">
                       {/* Document with Magnifier Icon Graphic */}
                       <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
@@ -365,6 +375,9 @@ export default function AttendanceHistoryView() {
                     </td>
                     <td className="py-3.5 px-4 font-mono text-slate-700">
                       {formatTime(log.checkIn)}
+                    </td>
+                    <td className="py-3.5 px-4 text-slate-600 max-w-[180px] truncate" title={log.checkInLocation || log.branch?.name || ""}>
+                      {log.checkInLocation || log.branch?.name || "—"}
                     </td>
                     <td className="py-3.5 px-4 font-mono text-slate-700">
                       {formatTime(log.checkOut)}

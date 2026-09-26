@@ -35,6 +35,7 @@ import { useAttendance } from "@/context/AttendanceContext";
 import { attendanceApi, leavesApi, employeesApi } from "@/lib/api";
 import UnlockPlanModal from "@/components/auth/UnlockPlanModal";
 import PunchConfirmDialog, { PunchConfirmAction } from "@/components/attendance/PunchConfirmDialog";
+import TeamPunchBoard from "@/components/attendance/TeamPunchBoard";
 import { formatTime, formatDurationMinutes, unwrapList, unwrapItem } from "@/lib/utils";
 
 type RosterStatus = "PRESENT" | "REMOTE" | "ON_LEAVE" | "LATE" | "ABSENT";
@@ -46,6 +47,7 @@ interface RosterPerson {
   designation: string;
   department: string;
   checkInTime?: string;
+  location?: string | null;
   status: RosterStatus;
 }
 
@@ -80,7 +82,7 @@ function isSameDay(value?: string | Date | null) {
 export default function DashboardOverview() {
   const router = useRouter();
   const { user, role, refreshUser } = useAuth();
-  const { todayStatus, checkIn, checkOut, isActionLoading, currentLocation, isWithinGeofence } = useAttendance();
+  const { todayStatus, checkIn, checkOut, isActionLoading, currentLocation, locationLabel, isWithinGeofence } = useAttendance();
 
   const [summary, setSummary] = useState<any>(null);
   const [recentAttendance, setRecentAttendance] = useState<any[]>([]);
@@ -176,16 +178,25 @@ export default function DashboardOverview() {
         designation: employee.designation || employee.role || "Staff",
         department: employee.department?.name || employee.department || "General",
         checkInTime: att?.checkIn ? formatTime(att.checkIn) : undefined,
+        location: att?.checkInLocation || att?.branch?.name || null,
         status,
       };
     });
   }, [allAttendance, allEmployees, allLeaves]);
 
-  const totalEmployees = summary?.totalEmployees || employeeTotal || allEmployees.length || 0;
-  const presentCount = summary?.presentCount ?? roster.filter((p) => p.status === "PRESENT").length;
-  const wfhCount = summary?.wfhCount ?? roster.filter((p) => p.status === "REMOTE").length;
-  const leaveCount = summary?.leaveCount ?? roster.filter((p) => p.status === "ON_LEAVE").length;
-  const lateCount = summary?.lateCount ?? roster.filter((p) => p.status === "LATE").length;
+  const countFrom = (keys: string[], fallback: number) => {
+    for (const key of keys) {
+      const n = Number(summary?.[key]);
+      if (Number.isFinite(n)) return n;
+    }
+    return fallback;
+  };
+
+  const totalEmployees = countFrom(["totalEmployees", "total"], employeeTotal || allEmployees.length || 0);
+  const presentCount = countFrom(["present", "presentCount"], roster.filter((p) => p.status === "PRESENT").length);
+  const wfhCount = countFrom(["wfh", "wfhCount"], roster.filter((p) => p.status === "REMOTE").length);
+  const leaveCount = countFrom(["onLeave", "leaveCount"], roster.filter((p) => p.status === "ON_LEAVE").length);
+  const lateCount = countFrom(["late", "lateCount"], roster.filter((p) => p.status === "LATE").length);
   const pendingLeaves = allLeaves.filter((leave) => leave.status === "PENDING").length;
 
   const pct = (count: number) => (totalEmployees > 0 ? ((count / totalEmployees) * 100).toFixed(1) : "0.0");
@@ -194,10 +205,15 @@ export default function DashboardOverview() {
   const leavePercentage = pct(leaveCount);
   const latePercentage = pct(lateCount);
 
-  const completedCount = presentCount;
+  const completedCount = presentCount + lateCount;
   const inProgressCount = wfhCount;
   const notStartedCount = Math.max(0, totalEmployees - completedCount - inProgressCount - leaveCount);
-  const completionPercent = totalEmployees > 0 ? Math.round((completedCount / totalEmployees) * 100) : 0;
+  const completionPercent =
+    Number.isFinite(Number(summary?.attendanceRate))
+      ? Math.round(Number(summary.attendanceRate))
+      : totalEmployees > 0
+        ? Math.round((completedCount / totalEmployees) * 100)
+        : 0;
 
   const displayName = user?.employee?.firstName || user?.email?.split("@")[0] || "User";
   const formattedDate = currentTime.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -318,7 +334,7 @@ export default function DashboardOverview() {
         </div>
       )}
 
-      <section className="relative overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/60 to-sky-50 p-5 sm:p-7">
+      <section className="relative overflow-hidden rounded-3xl border border-blue-100 bg-gradient-to-br from-white via-blue-50/80 to-sky-50 p-5 sm:p-7">
         <div className="relative z-10 grid gap-6 xl:grid-cols-[1fr_280px] items-start">
           <div className="min-w-0 space-y-4">
             <p className="text-xs font-medium text-slate-500 flex flex-wrap items-center gap-2">
@@ -327,7 +343,7 @@ export default function DashboardOverview() {
               <span className="font-mono font-semibold text-indigo-700 bg-white/80 px-2 py-0.5 rounded-md border border-indigo-100">{formattedTime}</span>
             </p>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900">
+              <h1 className="font-serif text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900">
                 {greetingFor(currentTime)}, {displayName}
               </h1>
               <p className="text-sm text-slate-500 mt-1.5 max-w-xl">
@@ -354,7 +370,7 @@ export default function DashboardOverview() {
             <div className="flex items-center justify-between text-xs text-slate-600">
               <span className="flex items-center gap-1.5 font-medium">
                 <MapPin className={`w-3.5 h-3.5 ${isWithinGeofence ? "text-emerald-500" : "text-amber-500"}`} />
-                {isWithinGeofence ? "Inside geofence" : currentLocation ? "Outside geofence" : "Finding GPS…"}
+                {todayStatus?.attendance?.checkInLocation || locationLabel || (currentLocation ? "Location ready" : "Punch from anywhere")}
               </span>
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isCheckedIn ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
                 {isCheckedIn ? "On shift" : hasCheckedOutToday ? "Done" : "Not in"}
@@ -364,7 +380,7 @@ export default function DashboardOverview() {
               <button
                 onClick={() => setPendingPunch("CHECK_IN")}
                 disabled={isActionLoading}
-                className="w-full py-3 rounded-xl bg-[#4F46E5] hover:bg-indigo-500 text-white text-sm font-semibold disabled:opacity-50"
+                className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold disabled:opacity-50"
               >
                 {hasCheckedOutToday ? "Already clocked out" : "Clock in"}
               </button>
@@ -446,6 +462,8 @@ export default function DashboardOverview() {
         })}
       </section>
 
+      <TeamPunchBoard />
+
       <AnimatePresence>
         {activeBreakdownTab && (
           <motion.section
@@ -478,7 +496,7 @@ export default function DashboardOverview() {
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-800 truncate">{person.name}</p>
                       <p className="text-[11px] text-slate-500 truncate">
-                        {person.department}
+                        {person.location || person.department}
                         {person.employeeCode ? ` · ${person.employeeCode}` : ""}
                       </p>
                     </div>
@@ -640,7 +658,7 @@ export default function DashboardOverview() {
           <button
             onClick={() => setPendingPunch("CHECK_IN")}
             disabled={isActionLoading || hasCheckedOutToday}
-            className="w-full py-3 rounded-xl bg-[#4F46E5] text-white text-sm font-semibold disabled:opacity-50"
+            className="w-full py-3 rounded-xl bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50"
           >
             Clock in
           </button>
@@ -654,6 +672,7 @@ export default function DashboardOverview() {
       <PunchConfirmDialog
         action={pendingPunch}
         loading={isActionLoading}
+        locationLabel={locationLabel}
         onCancel={() => setPendingPunch(null)}
         onConfirm={async () => {
           const ok = pendingPunch === "CHECK_OUT" ? await checkOut() : await checkIn();

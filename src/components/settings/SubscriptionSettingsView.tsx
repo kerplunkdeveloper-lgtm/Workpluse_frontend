@@ -8,15 +8,13 @@ import {
   Check,
   Loader2,
   FileText,
-  ExternalLink,
   Save,
   Building,
-  Zap,
   Shield,
-  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { unwrapList } from "@/lib/utils";
+import { trialDaysLabel, trialDaysRemaining } from "@/components/billing/WorkspaceBilling";
 
 export default function SubscriptionSettingsView() {
   const { user, refreshUser } = useAuth();
@@ -35,6 +33,8 @@ export default function SubscriptionSettingsView() {
   const [apiKeys, setApiKeys] = useState<any[]>([]);
   const [newApiKey, setNewApiKey] = useState<string | null>(null);
   const [activeEmployeesCount, setActiveEmployeesCount] = useState(0);
+  const [cancelling, setCancelling] = useState(false);
+  const [keyName, setKeyName] = useState("Production");
 
   useEffect(() => {
     if (user?.organization) {
@@ -105,11 +105,7 @@ export default function SubscriptionSettingsView() {
         rzp.open();
         return;
       }
-      const res = await authApi.upgradePlan(planId, billingCycle);
-      if (res?.success) {
-        toast.success(res.message || `Upgraded to ${planId}`);
-        await refreshUser();
-      } else toast.error(res?.message || "Upgrade failed");
+      toast.error(checkout?.message || "Checkout could not be started. Payment is required to activate a paid plan.");
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || "Failed to upgrade";
       if (String(msg).includes("Razorpay is not configured")) {
@@ -117,6 +113,54 @@ export default function SubscriptionSettingsView() {
       } else toast.error(msg);
     } finally {
       setUpgradingPlan(null);
+    }
+  };
+
+  useEffect(() => {
+    const plan = new URLSearchParams(window.location.search).get("checkout");
+    if (plan && plan !== "FREE_TRIAL") {
+      void handleUpgrade(plan);
+    }
+    // Signup checkout should fire once after mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleCancel = async () => {
+    if (!confirm("Cancel at period end? The workspace stays usable until the current period expires.")) return;
+    setCancelling(true);
+    try {
+      const res = await billingApi.cancel();
+      if (res?.success) {
+        toast.success(res.data?.message || "Subscription canceled at period end.");
+        await refreshUser();
+      } else toast.error(res?.message || "Could not cancel");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Could not cancel subscription");
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  const createApiKey = async () => {
+    try {
+      const res = await apiKeysApi.create(keyName.trim() || "Production");
+      const raw = res?.data?.apiKey;
+      if (raw) setNewApiKey(raw);
+      const list = await apiKeysApi.list();
+      setApiKeys(unwrapList(list).length ? unwrapList(list) : list?.data || []);
+      toast.success("API key created. Copy it now — it will not be shown again.");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Could not create API key");
+    }
+  };
+
+  const revokeApiKey = async (id: string) => {
+    try {
+      await apiKeysApi.revoke(id);
+      setApiKeys((prev) => prev.map((k) => (k.id === id ? { ...k, isActive: false } : k)));
+      toast.success("API key revoked");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Could not revoke key");
     }
   };
 
@@ -137,8 +181,18 @@ export default function SubscriptionSettingsView() {
   };
 
   const currentPlan = user?.organization?.subscriptionPlan || "FREE_TRIAL";
-  const maxEmployees = user?.organization?.maxEmployees || 10;
+  const maxEmployees = user?.features?.maxEmployees || user?.organization?.maxEmployees || 10;
   const usagePercentage = Math.min(Math.round((activeEmployeesCount / maxEmployees) * 100), 100);
+  const entitlement = user?.entitlement;
+  const statusLabel = entitlement?.allowApp === false
+    ? "Inactive"
+    : entitlement?.state === "TRIAL" || entitlement?.state === "TRIALING"
+      ? "Trial"
+      : entitlement?.state === "CANCELED_ACTIVE"
+        ? "Canceled"
+        : entitlement?.state === "GRACE"
+          ? "Grace period"
+          : "Active";
 
   const invoices = orders.map((o) => ({
     id: o.razorpayOrderId || o.id,
@@ -170,17 +224,36 @@ export default function SubscriptionSettingsView() {
               <span className="px-3 py-1 rounded-full text-xs font-black bg-indigo-50 text-indigo-700 border border-indigo-200 uppercase tracking-wide">
                 {currentPlan.replace(/_/g, " ")}
               </span>
-              <span className="text-xs text-emerald-700 font-semibold px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
-                Active Tier
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1.5 ${
+                entitlement?.allowApp === false
+                  ? "text-rose-700 bg-rose-50 border-rose-200"
+                  : statusLabel === "Trial" || statusLabel === "Grace period" || statusLabel === "Canceled"
+                    ? "text-amber-800 bg-amber-50 border-amber-200"
+                    : "text-emerald-700 bg-emerald-50 border-emerald-200"
+              }`}>
+                <span className="w-1.5 h-1.5 rounded-full bg-current inline-block" />
+                {statusLabel}
               </span>
             </div>
             <h2 className="text-xl font-bold text-slate-900">
               {user?.organization?.name || "WorkPulse Global Technologies"}
             </h2>
             <p className="text-xs text-slate-500 max-w-lg leading-relaxed">
-              Your organization has full access to GPS Geofencing, Automated Payroll, Multi-Branch Hierarchies, and WhatsApp communications.
+              {entitlement?.message ||
+                (statusLabel === "Trial"
+                  ? `${trialDaysLabel(trialDaysRemaining(entitlement, user?.organization))}. Paid plans unlock after checkout.`
+                  : "GPS attendance, payroll, and people operations for this workspace.")}
             </p>
+            {["STARTER", "PROFESSIONAL", "ENTERPRISE"].includes(currentPlan) && statusLabel !== "Canceled" && entitlement?.allowApp !== false && (
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={cancelling}
+                className="mt-2 text-xs font-semibold text-rose-600 hover:text-rose-800 disabled:opacity-50"
+              >
+                {cancelling ? "Canceling…" : "Cancel subscription at period end"}
+              </button>
+            )}
           </div>
 
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs min-w-[260px]">
@@ -331,7 +404,7 @@ export default function SubscriptionSettingsView() {
               }`}
             >
               {p.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-gradient-to-r from-indigo-600 to-sky-500 text-white text-[10px] font-black uppercase tracking-wider shadow">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-wider shadow">
                   Most Popular
                 </div>
               )}
@@ -351,8 +424,8 @@ export default function SubscriptionSettingsView() {
                 </div>
 
                 <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-black text-slate-900">${price}</span>
-                  <span className="text-xs text-slate-500">/ user / mo</span>
+                  <span className="text-3xl font-black text-slate-900">₹{Number(price || 0).toLocaleString("en-IN")}</span>
+                  <span className="text-xs text-slate-500">{billingCycle === "ANNUAL" ? "/ year" : "/ month"}</span>
                 </div>
 
                 <div className="space-y-2 pt-2 border-t border-slate-100 text-xs">
@@ -411,29 +484,24 @@ export default function SubscriptionSettingsView() {
                 <th className="pb-3 px-3">Plan Tier</th>
                 <th className="pb-3 px-3">Amount</th>
                 <th className="pb-3 px-3">Status</th>
-                <th className="pb-3 px-3 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
+              {invoices.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-6 px-3 text-slate-400 text-center">No orders yet.</td>
+                </tr>
+              )}
               {invoices.map((inv) => (
                 <tr key={inv.id} className="hover:bg-slate-50/60 transition">
-                  <td className="py-3 px-3 font-bold text-slate-900">{inv.id}</td>
-                  <td className="py-3 px-3 text-slate-500">{inv.date}</td>
+                  <td className="py-3 px-3 font-bold text-slate-900 break-all">{inv.id}</td>
+                  <td className="py-3 px-3 text-slate-500">{inv.date ? new Date(inv.date).toLocaleDateString() : "—"}</td>
                   <td className="py-3 px-3 font-medium">{inv.plan}</td>
                   <td className="py-3 px-3 font-bold text-slate-900">{inv.amount}</td>
                   <td className="py-3 px-3">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-50 text-slate-700 border border-slate-200">
                       {inv.status}
                     </span>
-                  </td>
-                  <td className="py-3 px-3 text-right">
-                    <button
-                      onClick={() => toast.success(`Downloading ${inv.id}...`)}
-                      className="text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 ml-auto transition"
-                    >
-                      <span>PDF</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </button>
                   </td>
                 </tr>
               ))}
@@ -441,6 +509,53 @@ export default function SubscriptionSettingsView() {
           </table>
         </div>
       </div>
+
+      {user?.features?.hasApiAccess && (
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs">
+          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+            <div className="p-2.5 rounded-2xl bg-indigo-50 text-indigo-600">
+              <Shield className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900">Integration API keys</h3>
+              <p className="text-xs text-slate-500">Scoped keys for attendance and employee read APIs. Shown once at creation.</p>
+            </div>
+          </div>
+          {newApiKey && (
+            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950 break-all">
+              <p className="font-bold mb-1">Copy this key now</p>
+              {newApiKey}
+            </div>
+          )}
+          <div className="flex gap-2 mb-4">
+            <input
+              value={keyName}
+              onChange={(e) => setKeyName(e.target.value)}
+              className="flex-1 px-3 py-2 rounded-xl text-xs border border-slate-200"
+              placeholder="Key name"
+            />
+            <button type="button" onClick={createApiKey} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold">
+              Create key
+            </button>
+          </div>
+          <div className="space-y-2">
+            {apiKeys.length === 0 && <p className="text-xs text-slate-400">No keys yet.</p>}
+            {apiKeys.map((key) => (
+              <div key={key.id} className="flex items-center justify-between text-xs border border-slate-100 rounded-xl px-3 py-2">
+                <div>
+                  <p className="font-semibold text-slate-800">{key.name} · {key.keyPrefix}…</p>
+                  <p className="text-slate-400">{key.isActive === false ? "Revoked" : "Active"}</p>
+                </div>
+                {key.isActive !== false && (
+                  <button type="button" onClick={() => revokeApiKey(key.id)} className="text-rose-600 font-semibold">
+                    Revoke
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

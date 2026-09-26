@@ -13,10 +13,10 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  Sparkles,
   ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
+import Brand from "@/components/ui/Brand";
 
 export default function ChangePasswordPage() {
   const router = useRouter();
@@ -75,19 +75,14 @@ export default function ChangePasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center relative z-10">
-        <div className="inline-flex items-center gap-3 mb-4">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-600 to-cyan-500 p-0.5 shadow-md shadow-indigo-500/20">
-            <div className="w-full h-full bg-white rounded-[14px] flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-indigo-600" />
-            </div>
-          </div>
-          <span className="text-2xl font-black tracking-tight text-slate-900">WorkPulse</span>
+        <div className="inline-flex items-center justify-center mb-4">
+          <Brand subtitle="Workforce, in rhythm" />
         </div>
 
-        <h2 className="text-2xl font-black tracking-tight text-slate-900">
-          Set Up Your Permanent Password
+        <h2 className="font-serif text-2xl font-semibold tracking-tight text-slate-900">
+          Set a permanent password
         </h2>
         <p className="mt-1 text-xs text-slate-500">
           {user?.mustChangePassword

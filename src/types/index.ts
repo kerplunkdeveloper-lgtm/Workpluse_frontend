@@ -14,6 +14,24 @@ export type RequestStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 export type SubscriptionPlan = "FREE_TRIAL" | "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
 
+export interface WorkspaceFeatures {
+  maxEmployees?: number;
+  maxBranches?: number;
+  hasPayroll?: boolean;
+  hasApiAccess?: boolean;
+  hasGeofence?: boolean;
+  hasShiftPlanner?: boolean;
+}
+
+export interface WorkspaceEntitlement {
+  state: string;
+  allowApp: boolean;
+  code?: string | null;
+  message?: string | null;
+  daysRemaining?: number | null;
+  expiresAt?: string | Date | null;
+}
+
 export interface Organization {
   id: string;
   name: string;
@@ -23,9 +41,12 @@ export interface Organization {
   taxId?: string;
   subscriptionPlan?: SubscriptionPlan;
   subscriptionStatus?: string;
+  subscriptionExpiresAt?: string | Date | null;
+  trialEndsAt?: string | Date | null;
   maxEmployees?: number;
   planLocked?: boolean;
   unlockCode?: string;
+  createdAt?: string | Date;
   branches?: Branch[];
   departments?: Department[];
 }
@@ -104,6 +125,8 @@ export interface User {
   avatarUrl?: string;
   planLocked?: boolean;
   mustChangePassword?: boolean;
+  entitlement?: WorkspaceEntitlement;
+  features?: WorkspaceFeatures;
 }
 
 export interface BreakRecord {
@@ -131,7 +154,12 @@ export interface Attendance {
   breaks?: BreakRecord[];
   checkInLatitude?: number;
   checkInLongitude?: number;
+  checkOutLatitude?: number;
+  checkOutLongitude?: number;
+  checkInLocation?: string | null;
+  checkOutLocation?: string | null;
   employee?: Employee;
+  branch?: Branch;
 }
 
 export interface AttendanceTodayStatus {

@@ -77,7 +77,7 @@ export default function LoansView() {
         </select>
         <input type="number" required placeholder="Amount" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="px-3 py-2 rounded-xl border" />
         <input type="number" placeholder="Monthly recovery" value={form.monthlyRecovery} onChange={(e) => setForm({ ...form, monthlyRecovery: e.target.value })} className="px-3 py-2 rounded-xl border" />
-        <button className="px-3 py-2 rounded-xl bg-[#4F46E5] text-white font-semibold">Apply</button>
+        <button className="px-3 py-2 rounded-xl bg-indigo-600 text-white font-semibold">Apply</button>
         <input placeholder="Reason" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} className="md:col-span-5 px-3 py-2 rounded-xl border" />
       </form>
       {loading && <div className="bg-white rounded-2xl border p-8 text-sm text-slate-500">Loading loans…</div>}

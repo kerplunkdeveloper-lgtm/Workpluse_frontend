@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -15,6 +14,7 @@ import {
 } from "lucide-react";
 import { authApi } from "@/lib/api";
 import { toast } from "sonner";
+import Brand from "@/components/ui/Brand";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -54,22 +54,12 @@ export default function ForgotPasswordPage() {
       <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center relative z-10">
-        <div className="inline-flex items-center gap-3 mb-4">
-          <div className="relative w-12 h-12 rounded-2xl overflow-hidden shadow-lg shadow-indigo-500/25 shrink-0">
-            <Image
-              src="/logo.png"
-              alt="WorkPulse Logo"
-              width={48}
-              height={48}
-              className="w-full h-full object-cover"
-              priority
-            />
-          </div>
-          <span className="text-2xl font-black tracking-tight text-slate-900">WorkPulse</span>
+        <div className="inline-flex items-center justify-center mb-4">
+          <Brand subtitle="Workforce, in rhythm" />
         </div>
 
-        <h2 className="text-2xl font-black tracking-tight text-slate-900">
-          Reset Your Password
+        <h2 className="font-serif text-2xl font-semibold tracking-tight text-slate-900">
+          Reset your password
         </h2>
         <p className="mt-1 text-xs text-slate-500">
           Enter your registered work email to receive password recovery instructions
@@ -174,7 +164,7 @@ export default function ForgotPasswordPage() {
               <button
                 type="submit"
                 disabled={submitting || !email.trim()}
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? (
                   <>

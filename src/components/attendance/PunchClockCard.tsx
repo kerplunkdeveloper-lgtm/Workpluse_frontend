@@ -6,10 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import {
   Clock,
   MapPin,
-  Coffee,
   CheckCircle2,
-  Home,
-  AlertCircle,
   Briefcase,
   Building2,
   Play,
@@ -31,12 +28,10 @@ export default function PunchClockCard() {
   const {
     todayStatus,
     currentLocation,
+    locationLabel,
     distanceToBranch,
-    locationError,
     checkIn,
     checkOut,
-    startBreak,
-    endBreak,
     isActionLoading,
     isOnline,
     pendingPunchCount,
@@ -70,8 +65,6 @@ export default function PunchClockCard() {
 
   const isOnBreak = todayStatus?.isOnBreak;
   const shift = user?.employee?.shift;
-  const remoteMode = ["WORK_FROM_HOME", "CLIENT_VISIT", "TRAVEL"].includes(selectedWorkMode);
-  const punchBlockedByLocation = !currentLocation && !remoteMode;
 
   const punchInTimeString = todayStatus?.attendance?.checkIn
     ? formatTime(todayStatus.attendance.checkIn)
@@ -87,6 +80,12 @@ export default function PunchClockCard() {
     ? "Active"
     : "0 hrs";
 
+  const punchedLocation =
+    todayStatus?.attendance?.checkInLocation ||
+    todayStatus?.attendance?.checkOutLocation ||
+    locationLabel ||
+    null;
+
   const handlePunchClick = (action: "CHECK_IN" | "CHECK_OUT") => {
     setPendingAction(action);
     setConfirmModalOpen(true);
@@ -96,6 +95,7 @@ export default function PunchClockCard() {
     const options: PunchOptions = {
       workMode: selectedWorkMode as any,
       note: punchNote.trim() || undefined,
+      locationLabel: locationLabel || undefined,
     };
 
     let ok = false;
@@ -118,6 +118,7 @@ export default function PunchClockCard() {
         workMode: selectedWorkMode,
         isWithinGeofence: isWithinGeofence,
         distanceMeters: distanceToBranch,
+        locationLabel: locationLabel || punchedLocation,
         shiftName: shift ? `${shift.name} (${shift.startTime} - ${shift.endTime})` : "Standard General Shift (09:00 - 18:00)",
       });
     }
@@ -131,6 +132,7 @@ export default function PunchClockCard() {
     workMode: WorkMode;
     isWithinGeofence: boolean;
     distanceMeters: number | null;
+    locationLabel?: string | null;
     shiftName: string;
   } | null>(null);
 
@@ -173,7 +175,7 @@ export default function PunchClockCard() {
       {/* ─────────────────────────────────────────────────────────────────────────────
           1. Hero Timekeeper Card (Deep Dark Navy with Glowing Radar) - 8 cols
       ───────────────────────────────────────────────────────────────────────────── */}
-      <div className="hero-timekeeper keep-white xl:col-span-8 rounded-3xl bg-gradient-to-br from-[#0B132B] via-[#0F172A] to-[#172554] p-6 sm:p-7 text-white shadow-2xl border border-slate-800 relative overflow-hidden flex flex-col justify-between">
+      <div className="hero-timekeeper keep-white xl:col-span-8 rounded-3xl bg-gradient-to-br from-slate-900 via-blue-900 to-blue-600 p-6 sm:p-7 text-white shadow-2xl border border-blue-800 relative overflow-hidden flex flex-col justify-between">
         {/* Subtle radial light effect */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -182,20 +184,20 @@ export default function PunchClockCard() {
           {/* Left Column: Digital Clock & Assigned Shift */}
           <div className="md:col-span-5 space-y-4">
             {/* Live Status Pill */}
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/90 border border-slate-700/80 text-[11px] font-bold tracking-wider text-cyan-300">
-              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-              <span>LIVE ENTERPRISE TIMEKEEPER</span>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/30 border border-white/10 text-[11px] font-bold tracking-[0.16em] text-indigo-200">
+              <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+              <span>LIVE TIMEKEEPER</span>
             </div>
 
             {/* Huge Monospace Digital Clock */}
             <div>
-              <div className="text-3xl sm:text-4xl lg:text-5xl font-black font-mono tracking-tight flex items-baseline gap-2">
+              <div className="text-3xl sm:text-4xl lg:text-5xl font-serif font-semibold tracking-tight flex items-baseline gap-2">
                 <span className="text-white drop-shadow-md">{displayHours}</span>
-                <span className="text-cyan-400 font-bold animate-pulse">:</span>
+                <span className="text-indigo-300 font-bold animate-pulse">:</span>
                 <span className="text-white drop-shadow-md">{minutes}</span>
-                <span className="text-cyan-400 font-bold animate-pulse">:</span>
+                <span className="text-indigo-300 font-bold animate-pulse">:</span>
                 <span className="text-white drop-shadow-md">{seconds}</span>
-                <span className="text-base sm:text-lg font-extrabold text-cyan-300 ml-1.5 px-2.5 py-0.5 rounded-lg bg-cyan-950/70 border border-cyan-500/40 tracking-wider">{ampm}</span>
+                <span className="text-base sm:text-lg font-extrabold text-indigo-100 ml-1.5 px-2.5 py-0.5 rounded-lg bg-indigo-950/70 border border-indigo-500/40 tracking-wider font-sans">{ampm}</span>
               </div>
               <p className="text-xs text-slate-300 font-medium mt-2 flex items-center gap-1.5">
                 <span>{fullDateFormatted}</span>
@@ -203,9 +205,9 @@ export default function PunchClockCard() {
             </div>
 
             {/* Assigned Shift Card */}
-            <div className="p-3 rounded-2xl bg-[#1E293B]/80 border border-slate-700/80 text-xs">
+            <div className="p-3 rounded-2xl bg-black/30 border border-white/10 text-xs">
               <div className="flex items-center gap-2 text-slate-300 mb-0.5">
-                <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                <Clock className="w-3.5 h-3.5 text-indigo-300" />
                 <span className="font-semibold text-[11px] text-slate-300">Assigned Shift</span>
               </div>
               <p className="font-bold text-white drop-shadow-xs">
@@ -235,7 +237,7 @@ export default function PunchClockCard() {
               {hasCheckedOut
                 ? "You have clocked out for today. See you tomorrow!"
                 : isCheckedIn
-                ? "Shift active • Geofence verified."
+                ? "Shift active • Punch from any location."
                 : "Tap Punch In to record your daily attendance."}
             </p>
           </div>
@@ -249,7 +251,7 @@ export default function PunchClockCard() {
               className={`w-full py-3 px-5 rounded-2xl font-bold text-xs flex items-center justify-center gap-2.5 transition-all shadow-md cursor-pointer ${
                 isCheckedIn
                   ? "bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/50"
-                  : "bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-indigo-600/30 hover:scale-[1.02]"
+                  : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30"
               }`}
             >
               <Play className="w-4 h-4 fill-current" />
@@ -262,7 +264,7 @@ export default function PunchClockCard() {
               disabled={!isCheckedIn || isActionLoading}
               className={`w-full py-3 px-5 rounded-2xl font-bold text-xs flex items-center justify-center gap-2.5 transition-all border cursor-pointer ${
                 !isCheckedIn
-                  ? "bg-[#162032] text-slate-500 border-slate-800 cursor-not-allowed"
+                  ? "bg-black/40 text-slate-500 border-white/10 cursor-not-allowed"
                   : "bg-slate-800/90 hover:bg-rose-600 hover:border-rose-500 text-slate-200 hover:text-white border-slate-700 hover:scale-[1.02]"
               }`}
             >
@@ -271,24 +273,25 @@ export default function PunchClockCard() {
             </button>
 
             {/* GPS Verified Status Badge */}
-            <div className="p-2.5 rounded-2xl bg-[#1E293B]/80 border border-slate-700/80 flex items-center gap-2.5">
+            <div className="p-2.5 rounded-2xl bg-black/30 border border-white/10 flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
                 <Navigation className="w-4 h-4" />
               </div>
-              <div className="leading-tight">
-                <p className={`text-xs font-bold ${currentLocation ? "text-emerald-400" : "text-amber-400"}`}>
-                  {currentLocation ? "GPS Verified" : "GPS Required"}
+              <div className="leading-tight min-w-0 flex-1">
+                <p className={`text-xs font-bold truncate ${currentLocation || punchedLocation ? "text-emerald-400" : "text-slate-200"}`}>
+                  {punchedLocation || locationLabel || (currentLocation ? "Location ready" : "Detecting location…")}
                 </p>
                 <p className="text-[10px] text-slate-300">
-                  {punchBlockedByLocation
-                    ? locationError || "Allow location or select WFH to punch."
-                    : isWithinGeofence
-                    ? "Within office geofence (250m)"
-                    : distanceToBranch
-                    ? `${Math.round(distanceToBranch)}m from office boundary`
-                    : "Within approved geofence perimeter"}
+                  {pendingPunchCount > 0
+                    ? `${pendingPunchCount} punch${pendingPunchCount === 1 ? "" : "es"} waiting to sync.`
+                    : punchedLocation
+                      ? "Saved on your punch and visible to the team."
+                      : "Clock in from anywhere. Your place name is shared with the team."}
                 </p>
               </div>
+              <span className={`shrink-0 ${isOnline ? "text-emerald-400" : "text-amber-300"}`} title={isOnline ? "Online" : "Offline"}>
+                {isOnline ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
+              </span>
             </div>
           </div>
         </div>
@@ -410,7 +413,7 @@ export default function PunchClockCard() {
             </h3>
             <p className="text-xs text-slate-500">
               {pendingAction === "CHECK_IN"
-                ? "Your punch will record your current time, GPS coordinate, and attendance status."
+                ? `Your punch will record this time and place${locationLabel ? `: ${locationLabel}` : ""}. The team can see where you clocked in.`
                 : "Ending your work shift. Total hours will be automatically saved to your payroll timesheet."}
             </p>
 
@@ -504,7 +507,7 @@ export default function PunchClockCard() {
                 {punchAlertData.action === "CHECK_IN" ? "Shift Activated" : "Shift Completed"}
               </span>
 
-              <h3 className="text-2xl font-black tracking-tight text-slate-900">
+              <h3 className="font-serif text-2xl font-semibold tracking-tight text-slate-900">
                 {punchAlertData.action === "CHECK_IN" ? "Check-In Confirmed!" : "Check-Out Confirmed!"}
               </h3>
 
@@ -546,15 +549,11 @@ export default function PunchClockCard() {
               <div className="flex items-center justify-between pb-2 border-b border-slate-200">
                 <span className="text-slate-500 font-semibold flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                  Location Verification
+                  Location
                 </span>
-                <span className="flex items-center gap-1 font-bold text-emerald-600 text-[11px]">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  {punchAlertData.isWithinGeofence
-                    ? "Verified Geofence"
-                    : punchAlertData.workMode === "WORK_FROM_HOME"
-                    ? "Remote Approved"
-                    : "GPS Logged"}
+                <span className="flex items-center gap-1 font-bold text-emerald-600 text-[11px] text-right max-w-[200px]">
+                  <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">{punchAlertData.locationLabel || "Location saved"}</span>
                 </span>
               </div>
 

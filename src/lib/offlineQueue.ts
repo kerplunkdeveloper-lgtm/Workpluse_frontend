@@ -24,6 +24,7 @@ export interface OfflinePunch {
   workMode?: string;
   note?: string;
   deviceId?: string;
+  locationLabel?: string;
   enqueuedAt: string;  // ISO — when it was saved to IndexedDB (for display)
 }
 

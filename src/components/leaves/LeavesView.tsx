@@ -162,7 +162,7 @@ export default function LeavesView() {
             }
             setApplyModalOpen(true);
           }}
-          className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-semibold text-xs flex items-center gap-2 shadow-sm transition"
+          className="px-4 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center gap-2 shadow-sm transition"
         >
           <Plus className="w-4 h-4" />
           Apply for Leave
@@ -258,7 +258,7 @@ export default function LeavesView() {
                 loadData();
               } else toast.error(res?.message || "Failed");
             }}
-            className="px-3 py-2 rounded-xl bg-[#4F46E5] text-white font-semibold"
+            className="px-3 py-2 rounded-xl bg-indigo-600 text-white font-semibold"
           >
             Add type
           </button>

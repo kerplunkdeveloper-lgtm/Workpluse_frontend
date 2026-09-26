@@ -1,19 +1,25 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-fraunces), Georgia, "Times New Roman", serif;
+}
+
 :root {
-  --background: #f6f8fc;
-  --foreground: #10213f;
+  --background: #f8fafc;
+  --foreground: #0f172a;
   --surface: #ffffff;
-  --surface-muted: #f1f5fb;
-  --surface-raised: rgba(255, 255, 255, 0.84);
-  --border: #dce5f1;
-  --border-strong: #c8d5e7;
-  --muted: #61718c;
-  --primary: #3157d5;
-  --primary-strong: #2444b5;
-  --primary-soft: #e9eeff;
-  --teal: #0d9f9a;
-  --ring: rgba(49, 87, 213, 0.22);
+  --surface-muted: #f1f5f9;
+  --surface-raised: rgba(255, 255, 255, 0.88);
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --muted: #64748b;
+  --primary: #2563eb;
+  --primary-strong: #1d4ed8;
+  --primary-soft: #eff6ff;
+  --teal: #0ea5e9;
+  --ink: #0f172a;
+  --ring: rgba(37, 99, 235, 0.24);
   color-scheme: light;
 }
 
@@ -25,10 +31,26 @@ body {
   min-height: 100vh;
   margin: 0;
   overflow-x: hidden;
-  background: var(--background);
+  background:
+    radial-gradient(1200px 500px at 8% -10%, rgba(37, 99, 235, 0.08), transparent 50%),
+    radial-gradient(900px 420px at 100% 0%, rgba(14, 165, 233, 0.08), transparent 46%),
+    var(--background);
   color: var(--foreground);
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  font-feature-settings: "ss01", "cv02";
   text-rendering: optimizeLegibility;
+}
+
+h1, h2, .font-display {
+  font-family: var(--font-serif), Georgia, serif;
+}
+
+.auth-canvas {
+  background: var(--background);
+}
+
+.marketing-grid {
+  background-image: radial-gradient(rgba(148, 163, 184, 0.35) 0.7px, transparent 0.7px);
+  background-size: 18px 18px;
 }
 
 button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
@@ -40,54 +62,74 @@ button, a { transition: color 160ms ease, background-color 160ms ease, border-co
   outline-offset: 2px;
 }
 
-::selection { background: rgba(49, 87, 213, 0.18); color: #10213f; }
+::selection { background: rgba(37, 99, 235, 0.18); color: #0f172a; }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #cbd7e8; border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
-::-webkit-scrollbar-thumb:hover { background: #aebfd7; border-width: 1px; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; border-width: 1px; }
 
 .glass-panel {
   background: var(--surface-raised);
-  border: 1px solid rgba(220, 229, 241, 0.95);
-  box-shadow: 0 18px 48px -30px rgba(25, 49, 95, 0.35);
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  box-shadow: 0 18px 48px -30px rgba(15, 23, 42, 0.28);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 }
 
-.glass-card {
+.glass-card,
+.app-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 1.25rem;
-  box-shadow: 0 8px 24px -20px rgba(25, 49, 95, 0.38);
+  box-shadow: 0 10px 28px -24px rgba(15, 23, 42, 0.28);
 }
 
 .glass-card-hover { transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease; }
-.glass-card-hover:hover { transform: translateY(-3px); border-color: #b9c9e1; box-shadow: 0 22px 38px -28px rgba(49, 87, 213, 0.42); }
+.glass-card-hover:hover { transform: translateY(-3px); border-color: #93c5fd; box-shadow: 0 22px 38px -28px rgba(37, 99, 235, 0.28); }
 
 .glass-input {
   background: var(--surface);
   border: 1px solid var(--border-strong);
   color: var(--foreground);
-  border-radius: 0.75rem;
+  border-radius: 0.85rem;
   transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
 }
-.glass-input:hover { border-color: #aebfd7; }
+.glass-input:hover { border-color: #94a3b8; }
 .glass-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
 
 .bg-mesh-radial {
-  background: radial-gradient(circle at 10% 0%, rgba(49, 87, 213, 0.11), transparent 34%),
-    radial-gradient(circle at 92% 12%, rgba(13, 159, 154, 0.10), transparent 30%),
-    radial-gradient(circle at 50% 100%, rgba(123, 92, 218, 0.07), transparent 36%),
+  background:
+    radial-gradient(circle at 10% 0%, rgba(37, 99, 235, 0.12), transparent 34%),
+    radial-gradient(circle at 92% 12%, rgba(14, 165, 233, 0.10), transparent 30%),
+    radial-gradient(circle at 50% 100%, rgba(79, 70, 229, 0.07), transparent 36%),
     var(--background);
 }
 
-.glow-indigo { box-shadow: 0 0 42px -14px rgba(49, 87, 213, 0.55); }
-.glow-emerald { box-shadow: 0 0 42px -14px rgba(13, 159, 154, 0.48); }
+.glow-indigo { box-shadow: 0 0 42px -14px rgba(37, 99, 235, 0.5); }
+.glow-emerald { box-shadow: 0 0 42px -14px rgba(16, 185, 129, 0.45); }
 
-.hero-timekeeper { color: #fff; background: linear-gradient(135deg, #1b327d 0%, #3157d5 54%, #159e9c 100%); }
-.dark-card { color: #fff; background: #10213f; }
+.hero-timekeeper {
+  color: #fff;
+  background:
+    radial-gradient(800px 280px at 100% 0%, rgba(37, 99, 235, 0.45), transparent 55%),
+    linear-gradient(145deg, #0f172a 0%, #1e3a8a 52%, #2563eb 100%);
+}
+.dark-card { color: #fff; background: #0f172a; }
 .keep-white, .keep-white * { color: #fff !important; }
+
+.wp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 12px 24px -14px rgba(37, 99, 235, 0.7);
+}
+.wp-btn:hover { background: var(--primary-strong); }
 
 @keyframes pulse-ring {
   0%, 100% { transform: scale(0.96); opacity: 0.68; }
@@ -104,10 +146,10 @@ button, a { transition: color 160ms ease, background-color 160ms ease, border-co
 
 .animate-ripple { animation: pulse-ring 3s ease-in-out infinite; }
 .animate-float-y { animation: float-y 4s ease-in-out infinite; }
-.skeleton-shimmer { background: linear-gradient(100deg, #eef3f9 20%, #f9fbff 38%, #eef3f9 56%); background-size: 200% 100%; animation: shimmer 1.8s linear infinite; }
+.skeleton-shimmer { background: linear-gradient(100deg, #e2e8f0 20%, #ffffff 38%, #e2e8f0 56%); background-size: 200% 100%; animation: shimmer 1.8s linear infinite; }
 
 @media (max-width: 640px) {
-  .glass-card { border-radius: 1rem; }
+  .glass-card, .app-card { border-radius: 1rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

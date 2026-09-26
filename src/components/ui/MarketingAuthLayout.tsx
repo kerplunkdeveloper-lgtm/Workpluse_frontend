@@ -18,7 +18,7 @@ import {
 export function WorkPulseMark({ size = 36 }: { size?: number }) {
   return (
     <span
-      className="inline-flex shrink-0 items-center justify-center rounded-[9px] bg-gradient-to-br from-[#6D5EF6] to-[#4F46E5] text-white shadow-[0_8px_18px_-10px_rgba(79,70,229,0.7)]"
+      className="inline-flex shrink-0 items-center justify-center rounded-[14px] bg-gradient-to-br from-blue-500 to-blue-800 text-white shadow-[0_8px_18px_-10px_rgba(37,99,235,0.7)] font-serif"
       style={{ width: size, height: size }}
     >
       <span
@@ -45,12 +45,12 @@ function DashboardPreview() {
   const absent = new Set([7, 20, 27]);
 
   return (
-    <div className="w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_24px_50px_-28px_rgba(79,70,229,0.35)]">
+    <div className="w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-[#ffffff] shadow-[0_24px_50px_-28px_rgba(22,19,16,0.35)]">
       <div className="flex min-h-[260px]">
-        <aside className="hidden w-[118px] shrink-0 flex-col border-r border-slate-100 bg-[#F7F8FF] px-2.5 py-3 sm:flex">
+        <aside className="hidden w-[118px] shrink-0 flex-col border-r border-slate-100 bg-[#0f172a] px-2.5 py-3 sm:flex">
           <div className="mb-3 flex items-center gap-1.5 px-1">
             <WorkPulseMark size={22} />
-            <span className="text-[10px] font-bold text-slate-800">WorkPulse</span>
+            <span className="text-[10px] font-bold text-white">WorkPulse</span>
           </div>
           <nav className="space-y-0.5">
             {[
@@ -64,7 +64,7 @@ function DashboardPreview() {
               <div
                 key={item.label}
                 className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[9px] font-semibold ${
-                  item.active ? "bg-[#5B52F5] text-white shadow-sm" : "text-slate-500"
+                  item.active ? "bg-indigo-600 text-white shadow-sm" : "text-white/50"
                 }`}
               >
                 <item.icon className="h-3 w-3 shrink-0" />
@@ -74,7 +74,7 @@ function DashboardPreview() {
           </nav>
         </aside>
 
-        <div className="min-w-0 flex-1 bg-[#F8F9FF] p-3">
+        <div className="min-w-0 flex-1 bg-[#f7f3ec] p-3">
           <div className="mb-2.5 flex items-start justify-between gap-2">
             <div>
               <p className="text-[13px] font-black tracking-tight text-slate-900">Good morning!</p>
@@ -183,7 +183,7 @@ function DashboardPreview() {
                 {[38, 52, 44, 58, 48, 72].map((h, i) => (
                   <div
                     key={i}
-                    className={`flex-1 rounded-t ${i === 5 ? "bg-[#5B52F5]" : "bg-indigo-200"}`}
+                    className={`flex-1 rounded-t ${i === 5 ? "bg-indigo-600" : "bg-indigo-200"}`}
                     style={{ height: `${h}%` }}
                   />
                 ))}
@@ -212,7 +212,7 @@ const NAV_LINKS = [
 
 export function AuthCard({ children }: { children: ReactNode }) {
   return (
-    <div className="rounded-[28px] border border-slate-100 bg-white p-6 shadow-[0_28px_60px_-28px_rgba(79,70,229,0.38)] sm:p-8">
+    <div className="rounded-[28px] border border-slate-200 bg-[#ffffff] p-6 shadow-[0_28px_60px_-28px_rgba(22,19,16,0.45)] sm:p-8">
       {children}
     </div>
   );
@@ -220,25 +220,25 @@ export function AuthCard({ children }: { children: ReactNode }) {
 
 export function authFieldRing(focused: boolean) {
   return focused
-    ? "border-indigo-400 shadow-[0_0_0_3px_rgba(91,82,245,0.12)]"
+    ? "border-blue-400 shadow-[0_0_0_3px_rgba(37,99,235,0.14)]"
     : "border-slate-200 hover:border-slate-300";
 }
 
 export default function MarketingAuthLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#F3F5FD] text-slate-900">
+    <div className="relative min-h-screen overflow-hidden bg-[#f8fafc] text-slate-900">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-24 top-10 h-[420px] w-[520px] rounded-full bg-[#C9D4FF]/55 blur-[90px]" />
-        <div className="absolute right-[-80px] top-24 h-[380px] w-[420px] rounded-full bg-[#D9C8FF]/50 blur-[100px]" />
-        <div className="absolute bottom-[-40px] left-1/4 h-[360px] w-[480px] rounded-full bg-[#BFD4FF]/45 blur-[110px]" />
+        <div className="absolute -left-24 top-10 h-[420px] w-[520px] rounded-full bg-blue-200/55 blur-[90px]" />
+        <div className="absolute right-[-80px] top-24 h-[380px] w-[420px] rounded-full bg-sky-200/50 blur-[100px]" />
+        <div className="absolute bottom-[-40px] left-1/4 h-[360px] w-[480px] rounded-full bg-[#F0D9C4]/45 blur-[110px]" />
         <div className="absolute left-[28%] top-[38%] h-40 w-[420px] rounded-full bg-white/70 blur-3xl" />
       </div>
 
       <div className="relative mx-auto flex min-h-screen max-w-[1280px] items-center px-3 py-4 sm:px-5 lg:px-8">
-        <div className="relative w-full overflow-hidden rounded-[28px] border border-white/80 bg-white/70 shadow-[0_30px_80px_-36px_rgba(79,70,229,0.35)] backdrop-blur-sm">
+        <div className="relative w-full overflow-hidden rounded-[28px] border border-white/80 bg-[#ffffff]/80 shadow-[0_30px_80px_-36px_rgba(22,19,16,0.4)] backdrop-blur-sm">
           <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-            <div className="absolute left-[36%] top-[32%] h-56 w-[420px] rounded-full bg-[#DDE4FF]/85 blur-3xl" />
-            <div className="absolute bottom-6 left-8 h-44 w-80 rounded-full bg-[#E4D9FF]/75 blur-3xl" />
+            <div className="absolute left-[36%] top-[32%] h-56 w-[420px] rounded-full bg-[#F6E4D4]/85 blur-3xl" />
+            <div className="absolute bottom-6 left-8 h-44 w-80 rounded-full bg-[#D7EDE8]/75 blur-3xl" />
           </div>
 
           <div className="relative flex items-center gap-1.5 px-5 pt-3.5 sm:px-7">
@@ -250,7 +250,7 @@ export default function MarketingAuthLayout({ children }: { children: ReactNode 
           <header className="relative flex items-center justify-between gap-3 px-5 py-3 sm:px-8">
             <Link href="/" className="flex items-center gap-2.5">
               <WorkPulseMark />
-              <span className="text-[15px] font-bold tracking-tight text-slate-900">WorkPulse</span>
+              <span className="font-serif text-[17px] font-semibold tracking-tight text-slate-900">WorkPulse</span>
             </Link>
 
             <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 text-[13px] font-medium text-slate-500 md:flex">
@@ -273,21 +273,18 @@ export default function MarketingAuthLayout({ children }: { children: ReactNode 
           <div className="relative px-5 pb-8 pt-4 sm:px-8 lg:pb-10 lg:pt-6">
             <div className="relative z-10 grid items-start gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,400px)] lg:gap-10">
               <section className="order-2 min-w-0 lg:order-1">
-                <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
-                  All-in-one workforce platform
+                <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.22em] text-indigo-600">
+                  Workforce, in rhythm
                 </p>
-                <h1 className="max-w-xl text-[40px] font-black leading-[1.05] tracking-tight text-slate-950 sm:text-[48px] xl:text-[56px]">
-                  Your people.
+                <h1 className="max-w-xl font-serif text-[40px] font-semibold leading-[1.08] tracking-tight text-slate-950 sm:text-[48px] xl:text-[56px]">
+                  Clock the day.
                   <br />
-                  <span className="bg-gradient-to-r from-[#7C3AED] via-[#5B52F5] to-[#2563EB] bg-clip-text text-transparent">
-                    Your work.
-                  </span>{" "}
-                  In sync.
+                  <span className="italic text-indigo-600">Pay the people.</span>
+                  <br />
+                  Keep the beat.
                 </h1>
                 <p className="mt-4 max-w-md text-[15px] leading-relaxed text-slate-500">
-                  Workforce, attendance, and payroll in one workspace.
-                  <br />
-                  Smarter operations. Happier teams.
+                  Attendance, leave, payroll, and joining in one calm workspace — not a stack of tools.
                 </p>
 
                 <div className="relative mt-7">
@@ -301,7 +298,7 @@ export default function MarketingAuthLayout({ children }: { children: ReactNode 
                         key={label}
                         className="flex items-center gap-3 rounded-full border border-slate-100 bg-white px-3.5 py-2.5 shadow-[0_8px_24px_-18px_rgba(15,23,42,0.35)]"
                       >
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F3F4FF] text-[#5B52F5]">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
                           <Icon className="h-4 w-4" />
                         </div>
                         <div>
@@ -317,14 +314,13 @@ export default function MarketingAuthLayout({ children }: { children: ReactNode 
                     className="pointer-events-none absolute -right-[8%] top-[-18px] hidden w-[158px] xl:block"
                   >
                     <p
-                      className="rotate-[-8deg] text-[20px] leading-tight text-[#7B8CFF]"
-                      style={{ fontFamily: '"Segoe Script","Bradley Hand","Comic Sans MS",cursive' }}
+                      className="rotate-[-8deg] font-serif text-[20px] leading-tight text-indigo-500"
                     >
                       A more productive
                       <br />
                       tomorrow, together.
                     </p>
-                    <svg className="mt-1 ml-10 h-10 w-20 text-[#9AA8FF]" viewBox="0 0 80 40" fill="none">
+                    <svg className="mt-1 ml-10 h-10 w-20 text-indigo-400" viewBox="0 0 80 40" fill="none">
                       <path
                         d="M4 6 C 28 10, 42 22, 62 34"
                         stroke="currentColor"
