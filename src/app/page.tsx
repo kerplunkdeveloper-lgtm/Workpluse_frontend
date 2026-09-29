@@ -323,6 +323,32 @@ export default function LandingPage() {
         </motion.div>
       </section>
 
+      {/* Attendance hero visual: generated illustration with accessible HTML labels over it. */}
+      <motion.div
+        initial={{ opacity: 0, y: 28 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.65, delay: 0.36 }}
+        className="relative mx-auto mt-8 min-h-[185px] max-w-4xl overflow-hidden rounded-[26px] border border-indigo-300/40 bg-[#17358f] text-left shadow-[0_28px_70px_-38px_rgba(37,59,170,0.75)] sm:min-h-[220px]"
+        style={{ backgroundImage: "url('/attendance-hero.png')", backgroundPosition: "center", backgroundSize: "cover" }}
+        aria-label="Live attendance preview"
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-[#122d7f]/90 via-[#16399a]/45 to-transparent" aria-hidden="true" />
+        <div className="relative z-10 flex min-h-[185px] max-w-[55%] flex-col justify-between p-5 text-white sm:min-h-[220px] sm:p-7">
+          <div>
+            <span className="inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-slate-950/20 px-3 py-1 text-[10px] font-bold tracking-wide text-cyan-50 backdrop-blur-sm">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+              Live attendance
+            </span>
+            <p className="mt-4 font-mono text-3xl font-semibold tracking-tight sm:text-5xl">04:10:04 <span className="align-middle rounded-md border border-white/25 bg-white/15 px-1.5 py-1 text-xs font-bold tracking-normal">PM</span></p>
+            <p className="mt-1 text-[10px] text-blue-100 sm:text-xs">Tuesday, September 23, 2026</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold text-blue-50 sm:text-xs">
+            <span className="rounded-lg border border-white/20 bg-white/10 px-2.5 py-1.5 backdrop-blur-sm">Working from Thalapet, Oulgaret, Puducherry</span>
+            <span className="rounded-full bg-emerald-400 px-2.5 py-1 text-emerald-950 shadow-lg shadow-emerald-950/20">On duty</span>
+          </div>
+        </div>
+      </motion.div>
+
       {/* ─── Core Features Section ────────────────────────────────────────── */}
       <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="text-center max-w-3xl mx-auto mb-16">
