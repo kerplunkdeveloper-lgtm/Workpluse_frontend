@@ -24,6 +24,8 @@ import {
   ChevronRight,
   KeyRound,
   Award,
+  Menu,
+  X,
 } from "lucide-react";
 
 export default function LandingPage() {
@@ -32,6 +34,7 @@ export default function LandingPage() {
   const [billingCycle, setBillingCycle] = useState<"MONTHLY" | "ANNUAL">("MONTHLY");
   const [plans, setPlans] = useState<SubscriptionPlanOption[]>([]);
   const [plansUnavailable, setPlansUnavailable] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -63,11 +66,10 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 relative overflow-x-hidden selection:bg-indigo-500/20 selection:text-indigo-900">
+    <div className="wp-page-shell min-h-screen text-slate-900 relative overflow-x-hidden selection:bg-indigo-500/20 selection:text-indigo-900">
       {/* Soft Ambient Background Glows */}
-      <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-indigo-500/8 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute top-1/3 right-10 w-[500px] h-[500px] bg-sky-500/8 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-1/4 left-10 w-[500px] h-[500px] bg-purple-500/8 rounded-full blur-[140px] pointer-events-none" />
+      <div className="wp-ambient-orb left-[-7rem] top-28" aria-hidden="true" />
+      <div className="wp-ambient-orb wp-ambient-orb--alt right-[-6rem] top-[38rem]" aria-hidden="true" />
 
       {/* ─── Navigation Header ────────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#ffffff]/90 border-b border-slate-200">
@@ -143,8 +145,28 @@ export default function LandingPage() {
                 </Link>
               </>
             )}
+            <button
+              type="button"
+              className="md:hidden inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700"
+              aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileNavOpen}
+              onClick={() => setMobileNavOpen((open) => !open)}
+            >
+              {mobileNavOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            </button>
           </div>
         </div>
+        {mobileNavOpen && (
+          <nav className="md:hidden border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-xl">
+            <div className="grid gap-1">
+              {[['#features', 'Features'], ['#offline', 'Solutions'], ['#pricing', 'Pricing'], ['#security', 'Security']].map(([href, label]) => (
+                <a key={href} href={href} onClick={() => setMobileNavOpen(false)} className="rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700">
+                  {label}
+                </a>
+              ))}
+            </div>
+          </nav>
+        )}
       </header>
 
       {/* ─── Hero Section ─────────────────────────────────────────────────── */}
@@ -208,7 +230,7 @@ export default function LandingPage() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
-          className="mt-14 max-w-4xl mx-auto rounded-3xl p-6 sm:p-8 bg-[#ffffff] border border-slate-200 shadow-xl relative overflow-hidden text-left"
+          className="wp-glass wp-hover-lift mt-14 max-w-4xl mx-auto rounded-3xl p-6 sm:p-8 relative overflow-hidden text-left"
         >
           <div className="flex flex-wrap items-center justify-between gap-4 pb-5 border-b border-slate-200">
             <div className="flex items-center gap-3">
