@@ -15,10 +15,11 @@ import {
 import { toast } from "sonner";
 import { unwrapList } from "@/lib/utils";
 import { trialDaysLabel, trialDaysRemaining } from "@/components/billing/WorkspaceBilling";
+import type { SubscriptionPlanOption } from "@/types";
 
 export default function SubscriptionSettingsView() {
   const { user, refreshUser } = useAuth();
-  const [plans, setPlans] = useState<any[]>([]);
+  const [plans, setPlans] = useState<SubscriptionPlanOption[]>([]);
   const [billingCycle, setBillingCycle] = useState<"MONTHLY" | "ANNUAL">("MONTHLY");
   const [upgradingPlan, setUpgradingPlan] = useState<string | null>(null);
   const [orgForm, setOrgForm] = useState({
@@ -429,7 +430,7 @@ export default function SubscriptionSettingsView() {
                 </div>
 
                 <div className="space-y-2 pt-2 border-t border-slate-100 text-xs">
-                  {(Array.isArray(p.features) ? p.features : (p.features || "").split(" ")).map((f: string, i: number) => (
+                  {p.features.map((f, i) => (
                     <div key={i} className="flex items-start gap-2 text-slate-600">
                       <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
                       <span className="text-[11px] leading-relaxed">{f}</span>

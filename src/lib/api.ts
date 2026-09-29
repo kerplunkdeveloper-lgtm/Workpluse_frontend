@@ -1,4 +1,6 @@
 import axios from "axios";
+import { getSessionAccessToken, setSessionAccessToken } from "./sessionToken";
+export { getSessionAccessToken, setSessionAccessToken } from "./sessionToken";
 
 function normalizeApiUrl(url: string): string {
   let next = url.trim();
@@ -53,6 +55,9 @@ export function getWebDeviceId(): string | null {
 
 function forceSessionLogout() {
   if (typeof window === "undefined") return;
+  setSessionAccessToken(null);
+  delete api.defaults.headers.common.Authorization;
+  // Remove credentials left by older WorkPulse releases.
   localStorage.removeItem("workpulse_access_token");
   localStorage.removeItem("workpulse_refresh_token");
   localStorage.removeItem("workpulse_user");
@@ -95,9 +100,11 @@ api.interceptors.request.use(
       stripFormDataContentType(config.headers);
     }
     if (typeof window !== "undefined") {
-      const token = localStorage.getItem("workpulse_access_token");
+      const token = getSessionAccessToken();
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+      } else {
+        delete config.headers.Authorization;
       }
       const deviceId = getWebDeviceId();
       if (deviceId) {
@@ -152,20 +159,15 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const storedRefreshToken = typeof window !== "undefined" ? localStorage.getItem("workpulse_refresh_token") : null;
         const res = await axios.post(
           `${API_BASE_URL}/auth/refresh-token`,
-          { refreshToken: storedRefreshToken },
-          { withCredentials: true }
+          { client: "web" },
+          { withCredentials: true, headers: { "x-client-platform": "web" } }
         );
 
         const newToken = res.data?.data?.accessToken || res.data?.data?.token;
-        const newRefreshToken = res.data?.data?.refreshToken;
         if (newToken) {
-          localStorage.setItem("workpulse_access_token", newToken);
-          if (newRefreshToken) {
-            localStorage.setItem("workpulse_refresh_token", newRefreshToken);
-          }
+          setSessionAccessToken(newToken);
           api.defaults.headers.common.Authorization = `Bearer ${newToken}`;
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
           processQueue(null, newToken);
@@ -183,20 +185,8 @@ api.interceptors.response.use(
     if (typeof window !== "undefined" && error.response?.status === 402) {
       const payload = error.response.data || {};
       window.dispatchEvent(new CustomEvent("workpulse:billing", { detail: payload }));
-      const path = window.location.pathname || "";
-      const canOpenBilling = path.startsWith("/settings") || path.startsWith("/login") || path.startsWith("/register");
-      if (!canOpenBilling) {
-        const role = (() => {
-          try {
-            return JSON.parse(localStorage.getItem("workpulse_user") || "{}")?.role;
-          } catch {
-            return null;
-          }
-        })();
-        if (role === "SUPER_ADMIN" || role === "COMPANY_ADMIN") {
-          window.location.href = "/settings?billing=1";
-        }
-      }
+        // AuthContext refreshes the user entitlement and ProtectedRoute renders
+        // the correct recovery UI. Avoid relying on a stale role cached in storage.
     }
 
     return Promise.reject(error);
@@ -213,11 +203,11 @@ export const authApi = {
     return res.data;
   },
   login: async (email: string, password: string) => {
-    const res = await api.post("/auth/login", { email, password });
+    const res = await api.post("/auth/login", { email, password, client: "web" });
     return res.data;
   },
   register: async (payload: any) => {
-    const res = await api.post("/auth/register", payload);
+    const res = await api.post("/auth/register", { ...payload, client: "web" });
     return res.data;
   },
   getMe: async () => {
@@ -225,8 +215,15 @@ export const authApi = {
     return res.data;
   },
   logout: async () => {
-    const refreshToken = typeof window !== "undefined" ? localStorage.getItem("workpulse_refresh_token") : null;
-    const res = await api.post("/auth/logout", { refreshToken });
+    const res = await api.post("/auth/logout", { client: "web" });
+    return res.data;
+  },
+  refreshSession: async () => {
+    const res = await axios.post(
+      `${API_BASE_URL}/auth/refresh-token`,
+      { client: "web" },
+      { withCredentials: true, headers: { "x-client-platform": "web" } },
+    );
     return res.data;
   },
   getPlans: async () => {

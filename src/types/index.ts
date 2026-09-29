@@ -14,6 +14,20 @@ export type RequestStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 export type SubscriptionPlan = "FREE_TRIAL" | "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
 
+export interface SubscriptionPlanOption {
+  id: SubscriptionPlan;
+  name: string;
+  badge: string;
+  priceMonthly: number;
+  priceAnnual: number;
+  currency: string;
+  maxEmployees: number;
+  maxBranches: number;
+  description: string;
+  features: string[];
+  popular: boolean;
+}
+
 export interface WorkspaceFeatures {
   maxEmployees?: number;
   maxBranches?: number;

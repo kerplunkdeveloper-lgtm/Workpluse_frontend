@@ -2,9 +2,33 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User, UserRole } from "@/types";
-import { authApi, registerWebDevice } from "@/lib/api";
+import {
+  authApi,
+  api,
+  getSessionAccessToken,
+  registerWebDevice,
+  setSessionAccessToken,
+} from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import axios from "axios";
+
+interface RegistrationPayload {
+  organizationName: string;
+  firstName: string;
+  lastName?: string;
+  email: string;
+  password: string;
+  subscriptionPlan?: string;
+  billingCycle?: "MONTHLY" | "ANNUAL";
+}
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (axios.isAxiosError<{ message?: string }>(error)) {
+    return error.response?.data?.message || error.message || fallback;
+  }
+  return error instanceof Error ? error.message : fallback;
+};
 
 interface AuthContextType {
   user: User | null;
@@ -13,7 +37,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, pass: string) => Promise<boolean>;
   loginWithGoogle: (idToken: string) => Promise<boolean>;
-  register: (payload: any) => Promise<boolean>;
+  register: (payload: RegistrationPayload) => Promise<boolean>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -35,24 +59,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const loadUser = async (authToken?: string) => {
     try {
-      const activeToken = authToken || localStorage.getItem("workpulse_access_token");
+      let activeToken = authToken || getSessionAccessToken();
       if (!activeToken) {
-        setIsLoading(false);
-        return;
+        const session = await authApi.refreshSession();
+        activeToken = session?.data?.accessToken || session?.data?.token || null;
       }
+      if (!activeToken) return;
+      setSessionAccessToken(activeToken);
       setToken(activeToken);
       const res = await authApi.getMe();
       const userData = res?.user || res?.data;
       if (res?.success && userData) {
         setUser(userData);
-        localStorage.setItem("workpulse_user", JSON.stringify(userData));
         if (userData.employee?.id) {
           void registerWebDevice();
         }
       }
-    } catch (err) {
-      console.error("Failed to load user profile:", err);
+    } catch {
+      setSessionAccessToken(null);
+      delete api.defaults.headers.common.Authorization;
       localStorage.removeItem("workpulse_access_token");
+      localStorage.removeItem("workpulse_refresh_token");
       localStorage.removeItem("workpulse_user");
       setUser(null);
       setToken(null);
@@ -62,7 +89,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    loadUser();
+    void Promise.resolve().then(() => loadUser());
   }, []);
 
   useEffect(() => {
@@ -87,15 +114,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const res = await authApi.login(email, pass);
       if (res?.success && (res?.data?.accessToken || res?.data?.token)) {
         const receivedToken = res.data.accessToken || res.data.token;
-        const receivedRefreshToken = res.data.refreshToken;
         const loggedUser = res.data.user;
 
-        localStorage.setItem("workpulse_access_token", receivedToken);
-        if (receivedRefreshToken) {
-          localStorage.setItem("workpulse_refresh_token", receivedRefreshToken);
-        }
-        localStorage.setItem("workpulse_user", JSON.stringify(loggedUser));
-
+        setSessionAccessToken(receivedToken);
         setToken(receivedToken);
         setUser(loggedUser);
         if (loggedUser.employee?.id) {
@@ -114,8 +135,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         toast.error(res?.message || "Login failed");
         return false;
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || err.message || "Failed to log in");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Failed to log in"));
       return false;
     } finally {
       setIsLoading(false);
@@ -128,15 +149,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const res = await authApi.loginWithGoogle(idToken);
       if (res?.success && (res?.data?.accessToken || res?.data?.token)) {
         const receivedToken = res.data.accessToken || res.data.token;
-        const receivedRefreshToken = res.data.refreshToken;
         const loggedUser = res.data.user;
 
-        localStorage.setItem("workpulse_access_token", receivedToken);
-        if (receivedRefreshToken) {
-          localStorage.setItem("workpulse_refresh_token", receivedRefreshToken);
-        }
-        localStorage.setItem("workpulse_user", JSON.stringify(loggedUser));
-
+        setSessionAccessToken(receivedToken);
         setToken(receivedToken);
         setUser(loggedUser);
         if (loggedUser.employee?.id) {
@@ -148,29 +163,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       toast.error(res?.message || "Google sign-in failed");
       return false;
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || err.message || "Google sign-in failed");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Google sign-in failed"));
       return false;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const register = async (payload: any): Promise<boolean> => {
+  const register = async (payload: RegistrationPayload): Promise<boolean> => {
     setIsLoading(true);
     try {
       const res = await authApi.register(payload);
       if (res?.success) {
         const receivedToken = res.data?.accessToken || res.data?.token;
-        const receivedRefreshToken = res.data?.refreshToken;
         const newUser = res.data?.user;
 
         if (receivedToken) {
-          localStorage.setItem("workpulse_access_token", receivedToken);
-          if (receivedRefreshToken) {
-            localStorage.setItem("workpulse_refresh_token", receivedRefreshToken);
-          }
-          localStorage.setItem("workpulse_user", JSON.stringify(newUser));
+          setSessionAccessToken(receivedToken);
           setToken(receivedToken);
           setUser(newUser);
         }
@@ -188,8 +198,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return true;
       }
       return false;
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || err.message || "Registration failed");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Registration failed"));
       return false;
     } finally {
       setIsLoading(false);
@@ -205,6 +215,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.removeItem("workpulse_access_token");
       localStorage.removeItem("workpulse_refresh_token");
       localStorage.removeItem("workpulse_user");
+      setSessionAccessToken(null);
       setUser(null);
       setToken(null);
       toast.info("Logged out successfully");

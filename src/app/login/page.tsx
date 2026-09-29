@@ -96,11 +96,13 @@ export default function LoginPage() {
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="mb-2 block text-[12px] font-bold text-slate-600">Work email</label>
+          <label htmlFor="login-email" className="mb-2 block text-[12px] font-bold text-slate-600">Work email or employee code</label>
           <div className={`flex items-center gap-3 rounded-full border bg-[#ffffff] px-4 py-3.5 transition-all ${authFieldRing(emailFocused)}`}>
             <Mail className="h-4 w-4 shrink-0 text-slate-400" />
             <input
-              type="email"
+              type="text"
+              inputMode="email"
+              id="login-email"
               name="email"
               autoComplete="username"
               value={email}
@@ -116,7 +118,7 @@ export default function LoginPage() {
 
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <label className="text-[12px] font-bold text-slate-600">Password</label>
+            <label htmlFor="login-password" className="text-[12px] font-bold text-slate-600">Password</label>
             <Link href="/forgot-password" className="text-[12px] font-semibold text-indigo-600 hover:text-indigo-700">
               Forgot password?
             </Link>
@@ -125,6 +127,7 @@ export default function LoginPage() {
             <Lock className="h-4 w-4 shrink-0 text-slate-400" />
             <input
               type={showPassword ? "text" : "password"}
+              id="login-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"

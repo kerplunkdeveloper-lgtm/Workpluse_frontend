@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
+import { authApi } from "@/lib/api";
+import type { SubscriptionPlanOption } from "@/types";
 import { motion } from "framer-motion";
 import {
   Sparkles,
@@ -28,92 +30,37 @@ export default function LandingPage() {
   const { user, token } = useAuth();
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [billingCycle, setBillingCycle] = useState<"MONTHLY" | "ANNUAL">("MONTHLY");
+  const [plans, setPlans] = useState<SubscriptionPlanOption[]>([]);
+  const [plansUnavailable, setPlansUnavailable] = useState(false);
 
   useEffect(() => {
-    setCurrentTime(new Date());
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const plans = [
-    {
-      id: "FREE_TRIAL",
-      name: "Free Trial",
-      badge: "14 Days Full Access",
-      priceMonthly: 0,
-      priceAnnual: 0,
-      description: "Experience all enterprise features for up to 10 employees at zero cost.",
-      features: [
-        "Up to 10 Employees",
-        "1 Branch GPS Geofence",
-        "Live & Offline Punch Clock",
-        "Leave & Shift Approvals",
-        "Automated Payslips",
-        "Email Support",
-      ],
-      popular: false,
-      cta: "Start 14-Day Free Trial",
-    },
-    {
-      id: "STARTER",
-      name: "Starter",
-      badge: "For Growing Teams",
-      priceMonthly: 29,
-      priceAnnual: 24,
-      description: "Essential attendance and geofence tracking for growing small businesses.",
-      features: [
-        "Up to 25 Employees",
-        "2 Branch Locations",
-        "Smart GPS Geofencing (300m)",
-        "Shift Schedules & Grace Period",
-        "Full Payroll & CTC Breakdown",
-        "Email Unlock Code Activation",
-        "Standard Support",
-      ],
-      popular: false,
-      cta: "Get Started with Starter",
-    },
-    {
-      id: "PROFESSIONAL",
-      name: "Professional",
-      badge: "Most Popular",
-      priceMonthly: 79,
-      priceAnnual: 65,
-      description: "Complete workforce platform with shift overrides, comp-off, overtime, and payroll.",
-      features: [
-        "Up to 100 Employees",
-        "10 Branch Locations",
-        "Shift Scheduling & Day Overrides",
-        "Overtime Approval Gateways",
-        "Comp-Off Balance Ledger",
-        "Full Statutory Payroll Engine",
-        "Offline-First Attendance Sync",
-        "Priority 24/7 Support",
-      ],
-      popular: true,
-      cta: "Choose Professional",
-    },
-    {
-      id: "ENTERPRISE",
-      name: "Enterprise",
-      badge: "For Large Organizations",
-      priceMonthly: 199,
-      priceAnnual: 160,
-      description: "Unlimited power, multi-branch geofencing, custom policies, and dedicated support.",
-      features: [
-        "Unlimited Employees (1000+)",
-        "Unlimited Branch Locations",
-        "Custom Org Policy Engine",
-        "Biometric Hardware Sync",
-        "Multi-Tier Approval Routing",
-        "Custom RBAC Roles & Permissions",
-        "Dedicated Account Manager",
-        "99.9% Uptime SLA",
-      ],
-      popular: false,
-      cta: "Contact Enterprise",
-    },
-  ];
+  useEffect(() => {
+    let active = true;
+    authApi.getPlans()
+      .then((response) => {
+        if (active) setPlans(Array.isArray(response?.plans) ? response.plans : []);
+      })
+      .catch(() => {
+        if (active) setPlansUnavailable(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const formatPlanPrice = (plan: SubscriptionPlanOption) => {
+    const amount = billingCycle === "MONTHLY" ? plan.priceMonthly : plan.priceAnnual;
+    if (amount === 0) return "Free";
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: plan.currency || "INR",
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 relative overflow-x-hidden selection:bg-indigo-500/20 selection:text-indigo-900">
@@ -457,7 +404,7 @@ export default function LandingPage() {
                 Clock in even when the signal drops.
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 mt-4 leading-relaxed">
-                Factory basements, warehouse deadzones, or sudden carrier outages won't disrupt your
+                Factory basements, warehouse deadzones, or sudden carrier outages won&apos;t disrupt your
                 operations. WorkPulse records clock-ins locally with millisecond-exact timestamps and
                 synchronizes in chronological order as soon as network returns.
               </p>
@@ -512,7 +459,7 @@ export default function LandingPage() {
             Simple plans. Full workday.
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-3">
-            All plans include full geofencing, leave tracking, mobile integration, and email unlock code.
+            Compare current limits and features directly from our billing system.
           </p>
 
           {/* Billing Cycle Toggle */}
@@ -543,9 +490,13 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {plansUnavailable && (
+          <p className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-center text-sm text-amber-800">
+            Pricing is temporarily unavailable. Please try again shortly.
+          </p>
+        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" aria-live="polite">
           {plans.map((p) => {
-            const price = billingCycle === "MONTHLY" ? p.priceMonthly : p.priceAnnual;
             return (
               <div
                 key={p.id}
@@ -568,8 +519,10 @@ export default function LandingPage() {
                   </div>
 
                   <div className="mb-4">
-                    <span className="font-serif text-3xl font-semibold text-slate-900">${price}</span>
-                    <span className="text-xs text-slate-500"> / month</span>
+                    <span className="font-serif text-3xl font-semibold text-slate-900">{formatPlanPrice(p)}</span>
+                    {p.priceMonthly > 0 && (
+                      <span className="text-xs text-slate-500"> {billingCycle === "MONTHLY" ? "/ month" : "/ year"}</span>
+                    )}
                   </div>
 
                   <p className="text-xs text-slate-600 mb-6 leading-relaxed">{p.description}</p>
@@ -593,7 +546,7 @@ export default function LandingPage() {
                         : "bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200"
                     }`}
                   >
-                    {p.cta}
+                    {p.id === "FREE_TRIAL" ? "Start free trial" : `Choose ${p.name}`}
                     <ChevronRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
@@ -611,10 +564,10 @@ export default function LandingPage() {
               <Shield className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-slate-900">Bank-Grade Data Security</h4>
+              <h4 className="text-sm font-bold text-slate-900">Security-conscious access</h4>
               <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                Encrypted with bcrypt and JSON Web Tokens. Device-level authentication tokens and
-                isolated organization multi-tenancy.
+                Password hashing, short-lived access tokens, role checks, audit records, and
+                organization-scoped data access.
               </p>
             </div>
           </div>
@@ -637,10 +590,10 @@ export default function LandingPage() {
               <Award className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-slate-900">Statutory Labor Compliance</h4>
+              <h4 className="text-sm font-bold text-slate-900">Indian payroll workflows</h4>
               <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                Fully compliant with Indian Factories Act and Shops & Establishment Act rules for
-                overtime, minimum rest, and PF/ESI calculations.
+                Tools for PF, ESI, tax, overtime, payroll review, and statutory exports. Your team
+                remains responsible for reviewing rules that apply to your organization.
               </p>
             </div>
           </div>
@@ -676,6 +629,12 @@ export default function LandingPage() {
             <a href="#pricing" className="hover:text-slate-900 transition">
               Pricing
             </a>
+            <Link href="/privacy" className="hover:text-slate-900 transition">
+              Privacy
+            </Link>
+            <Link href="/terms" className="hover:text-slate-900 transition">
+              Terms
+            </Link>
           </div>
 
           <p className="text-xs text-slate-500">
