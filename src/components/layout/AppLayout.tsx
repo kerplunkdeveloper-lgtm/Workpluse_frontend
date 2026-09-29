@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -138,6 +138,9 @@ const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
+const DESKTOP_NAV_SCROLL_KEY = "wp-desktop-nav-scroll";
+const MOBILE_NAV_SCROLL_KEY = "wp-mobile-nav-scroll";
+
 function isNavActive(pathname: string | null, href: string) {
   if (!pathname) return false;
   if (pathname === href) return true;
@@ -184,6 +187,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [seatCount, setSeatCount] = useState<number | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchBoxRef = useRef<HTMLDivElement>(null);
+  const desktopNavRef = useRef<HTMLDivElement>(null);
+  const mobileNavRef = useRef<HTMLDivElement>(null);
+  const restoringNavScrollRef = useRef(false);
 
   useEffect(() => {
     const onShortcut = (event: KeyboardEvent) => {
@@ -213,6 +219,40 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setOpenSections(next);
     setSidebarCollapsed(localStorage.getItem("wp-sidebar-collapsed") === "1");
   }, [pathname]);
+
+  useLayoutEffect(() => {
+    const restoreScroll = (
+      element: HTMLDivElement | null,
+      storageKey: string,
+    ) => {
+      if (!element) return;
+      const savedPosition = Number(sessionStorage.getItem(storageKey));
+      if (Number.isFinite(savedPosition) && savedPosition >= 0) {
+        element.scrollTop = savedPosition;
+      }
+    };
+
+    restoringNavScrollRef.current = true;
+    restoreScroll(desktopNavRef.current, DESKTOP_NAV_SCROLL_KEY);
+    restoreScroll(mobileNavRef.current, MOBILE_NAV_SCROLL_KEY);
+
+    // Opening the active section can change the menu height after navigation.
+    // Restore once more on the next frame so the selected item stays in place.
+    const frame = requestAnimationFrame(() => {
+      restoreScroll(desktopNavRef.current, DESKTOP_NAV_SCROLL_KEY);
+      restoreScroll(mobileNavRef.current, MOBILE_NAV_SCROLL_KEY);
+      restoringNavScrollRef.current = false;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [pathname, openSections, sidebarCollapsed, mobileMenuOpen]);
+
+  const rememberNavScroll = (
+    event: React.UIEvent<HTMLDivElement>,
+    storageKey: string,
+  ) => {
+    if (restoringNavScrollRef.current) return;
+    sessionStorage.setItem(storageKey, String(event.currentTarget.scrollTop));
+  };
 
   useEffect(() => {
     const onPointer = (event: MouseEvent) => {
@@ -375,7 +415,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         )}
 
         {/* Navigation List */}
-        <div className="flex-1 overflow-y-auto px-2.5 py-3 space-y-3 scrollbar-thin scrollbar-thumb-slate-800">
+        <div
+          ref={desktopNavRef}
+          onScroll={(event) => rememberNavScroll(event, DESKTOP_NAV_SCROLL_KEY)}
+          className="flex-1 overflow-y-auto px-2.5 py-3 space-y-3 scrollbar-thin scrollbar-thumb-slate-800"
+        >
           {visibleSections.map((section) => {
             const filtering = navQuery.trim().length > 0;
             const isOpen = filtering || sidebarCollapsed || openSections.includes(section.id);
@@ -807,7 +851,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto py-4 space-y-3">
+              <div
+                ref={mobileNavRef}
+                onScroll={(event) => rememberNavScroll(event, MOBILE_NAV_SCROLL_KEY)}
+                className="flex-1 overflow-y-auto py-4 space-y-3"
+              >
                 {visibleSections.map((section) => {
                   const filtering = navQuery.trim().length > 0;
                   const isOpen = filtering || openSections.includes(section.id);

@@ -15,6 +15,20 @@ interface RegularizationModalProps {
   onSuccess: () => void;
 }
 
+function toRequestedTimestamp(attendanceDate: string, time: string) {
+  if (!time) return undefined;
+  const dateKey = String(attendanceDate).match(/^(\d{4}-\d{2}-\d{2})/)?.[1];
+  if (!dateKey) throw new Error("Attendance date is invalid. Please refresh and try again.");
+
+  // HTML time inputs contain only HH:mm. Send a complete instant to the API;
+  // passing the bare value to `new Date()` on the server creates an invalid date.
+  const timestamp = new Date(`${dateKey}T${time}:00`);
+  if (Number.isNaN(timestamp.getTime())) {
+    throw new Error("Corrected punch time is invalid.");
+  }
+  return timestamp.toISOString();
+}
+
 export default function RegularizationModal({
   attendance,
   isOpen,
@@ -40,9 +54,9 @@ export default function RegularizationModal({
       const res = await correctionsApi.request({
         attendanceId: attendance.id,
         date: attendance.date,
-        requestedCheckIn: requestedCheckIn || undefined,
-        requestedCheckOut: requestedCheckOut || undefined,
-        reason,
+        requestedCheckIn: toRequestedTimestamp(attendance.date, requestedCheckIn),
+        requestedCheckOut: toRequestedTimestamp(attendance.date, requestedCheckOut),
+        reason: reason.trim(),
       });
 
       if (res?.success) {
