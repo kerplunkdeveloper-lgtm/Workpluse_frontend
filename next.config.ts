@@ -8,10 +8,12 @@ const configuredBackendApiUrl = isDev && !useRemoteApi
   : process.env.NEXT_PUBLIC_API_URL;
 
 if (!configuredBackendApiUrl) {
-  throw new Error("NEXT_PUBLIC_API_URL is required for production builds");
+  console.warn(
+    "[next.config] NEXT_PUBLIC_API_URL is not set; /backend-api requests will not be proxied to the backend.",
+  );
 }
 
-const backendApiUrl = configuredBackendApiUrl.replace(/\/+$/, "");
+const backendApiUrl = configuredBackendApiUrl?.trim().replace(/\/+$/, "");
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -38,6 +40,7 @@ const nextConfig: NextConfig = {
     return [{ source: "/:path*", headers }];
   },
   async rewrites() {
+    if (!backendApiUrl) return [];
     return [
       {
         source: "/backend-api/:path*",
