@@ -21,6 +21,7 @@ export default function SubscriptionSettingsView() {
   const { user, refreshUser } = useAuth();
   const [plans, setPlans] = useState<SubscriptionPlanOption[]>([]);
   const [billingCycle, setBillingCycle] = useState<"MONTHLY" | "ANNUAL">("MONTHLY");
+  const [couponCode, setCouponCode] = useState("");
   const [upgradingPlan, setUpgradingPlan] = useState<string | null>(null);
   const [orgForm, setOrgForm] = useState({
     name: "",
@@ -74,14 +75,29 @@ export default function SubscriptionSettingsView() {
     if (planId === "FREE_TRIAL") return;
     setUpgradingPlan(planId);
     try {
-      const checkout = await billingApi.checkout({ plan: planId, billingCycle });
+      const checkout = await billingApi.checkout({ plan: planId, billingCycle, couponCode: couponCode.trim() || undefined });
       if (checkout?.success && checkout.data?.razorpayOrderId) {
+        if (Number(checkout.data.discountAmountInr || 0) > 0) {
+          toast.success(`Offer applied. You save ₹${Number(checkout.data.discountAmountInr).toLocaleString("en-IN")}.`);
+        }
         const options = {
           key: checkout.data.keyId,
           amount: Math.round(Number(checkout.data.amountInr) * 100),
           currency: "INR",
           name: "WorkPulse",
+          description: `${checkout.data.plan} ${checkout.data.billingCycle === "ANNUAL" ? "annual" : "monthly"} subscription`,
           order_id: checkout.data.razorpayOrderId,
+          prefill: {
+            name: user?.organization?.name || user?.email || "",
+            email: user?.organization?.email || user?.email || "",
+            contact: String(user?.organization?.phone || "").replace(/\D/g, "").slice(-10),
+          },
+          notes: {
+            organizationId: user?.organizationId || "",
+            plan: checkout.data.plan,
+            billingCycle: checkout.data.billingCycle,
+            couponCode: couponCode.trim().toUpperCase(),
+          },
           handler: async (response: any) => {
             const verify = await billingApi.verify(response);
             if (verify?.success) {
@@ -380,6 +396,17 @@ export default function SubscriptionSettingsView() {
           >
             <span>Annual Billing</span>
           </button>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            value={couponCode}
+            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+            placeholder="Offer code (optional)"
+            maxLength={32}
+            className="w-52 px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+            aria-label="Offer code"
+          />
+          <span className="text-[11px] text-slate-500">Try WELCOME20 or ANNUAL20</span>
         </div>
       </div>
 
