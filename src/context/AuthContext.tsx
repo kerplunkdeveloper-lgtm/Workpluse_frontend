@@ -24,7 +24,12 @@ interface RegistrationPayload {
 }
 
 const getErrorMessage = (error: unknown, fallback: string) => {
-  if (axios.isAxiosError<{ message?: string }>(error)) {
+  if (axios.isAxiosError<{ message?: string; code?: string }>(error)) {
+    const status = error.response?.status || 0;
+    const code = error.response?.data?.code;
+    if (status >= 500 || code === "AUTH_SERVICE_UNAVAILABLE") {
+      return "Login service is temporarily unavailable. Please try again shortly.";
+    }
     return error.response?.data?.message || error.message || fallback;
   }
   return error instanceof Error ? error.message : fallback;
@@ -60,10 +65,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const loadUser = async (authToken?: string) => {
     try {
       let activeToken = authToken || getSessionAccessToken();
-      if (!activeToken) {
-        const session = await authApi.refreshSession();
-        activeToken = session?.data?.accessToken || session?.data?.token || null;
-      }
       if (!activeToken) return;
       setSessionAccessToken(activeToken);
       setToken(activeToken);

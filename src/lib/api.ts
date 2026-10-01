@@ -116,70 +116,15 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor for token refresh
-let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (value?: unknown) => void;
-  reject: (reason?: unknown) => void;
-}> = [];
-
-const processQueue = (error: unknown, token: string | null = null) => {
-  failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token);
-    }
-  });
-  failedQueue = [];
-};
-
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      if (originalRequest.url?.includes("/auth/login") || originalRequest.url?.includes("/auth/refresh-token")) {
-        return Promise.reject(error);
-      }
+    if (!originalRequest) return Promise.reject(error);
 
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then((token) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            return api(originalRequest);
-          })
-          .catch((err) => Promise.reject(err));
-      }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        const res = await axios.post(
-          `${API_BASE_URL}/auth/refresh-token`,
-          { client: "web" },
-          { withCredentials: true, headers: { "x-client-platform": "web" } }
-        );
-
-        const newToken = res.data?.data?.accessToken || res.data?.data?.token;
-        if (newToken) {
-          setSessionAccessToken(newToken);
-          api.defaults.headers.common.Authorization = `Bearer ${newToken}`;
-          originalRequest.headers.Authorization = `Bearer ${newToken}`;
-          processQueue(null, newToken);
-          return api(originalRequest);
-        }
-      } catch (refreshErr) {
-        processQueue(refreshErr, null);
-        forceSessionLogout();
-        return Promise.reject(refreshErr);
-      } finally {
-        isRefreshing = false;
-      }
+    if (error.response?.status === 401 && !originalRequest.url?.includes("/auth/login")) {
+      forceSessionLogout();
     }
 
     if (typeof window !== "undefined" && error.response?.status === 402) {
@@ -219,12 +164,7 @@ export const authApi = {
     return res.data;
   },
   refreshSession: async () => {
-    const res = await axios.post(
-      `${API_BASE_URL}/auth/refresh-token`,
-      { client: "web" },
-      { withCredentials: true, headers: { "x-client-platform": "web" } },
-    );
-    return res.data;
+    throw new Error("Refresh tokens are disabled. Please sign in again.");
   },
   getPlans: async () => {
     const res = await api.get("/auth/plans");
@@ -501,7 +441,7 @@ export const payrollApi = {
 };
 
 export const billingApi = {
-  checkout: async (payload: { plan: string; billingCycle: string }) => {
+  checkout: async (payload: { plan: string; billingCycle: string; couponCode?: string }) => {
     const res = await api.post("/billing/checkout", payload);
     return res.data;
   },
