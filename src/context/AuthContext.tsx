@@ -64,7 +64,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const loadUser = async (authToken?: string) => {
     try {
-      let activeToken = authToken || getSessionAccessToken();
+      const activeToken = authToken || getSessionAccessToken();
       if (!activeToken) return;
       setSessionAccessToken(activeToken);
       setToken(activeToken);

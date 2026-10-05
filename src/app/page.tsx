@@ -8,7 +8,6 @@ import { authApi } from "@/lib/api";
 import type { SubscriptionPlanOption } from "@/types";
 import { motion } from "framer-motion";
 import {
-  Sparkles,
   Shield,
   MapPin,
   Clock,
@@ -177,7 +176,7 @@ export default function LandingPage() {
           transition={{ duration: 0.5 }}
           className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-bold mb-6"
         >
-          <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+          {/* <Sparkles className="w-3.5 h-3.5 text-indigo-600" /> */}
           <span>Enterprise GPS Geofencing · Offline-First Sync · Statutory Payroll</span>
         </motion.div>
 

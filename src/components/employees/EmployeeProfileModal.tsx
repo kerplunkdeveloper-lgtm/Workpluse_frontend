@@ -220,6 +220,10 @@ export default function EmployeeProfileModal({
                       <span className="text-indigo-700 font-mono font-semibold">{employee.employeeCode}</span>
                     </div>
                     <div className="flex justify-between">
+                      <span className="text-slate-500">Designation:</span>
+                      <span className="text-slate-800 font-medium">{employee.designation || "Not assigned"}</span>
+                    </div>
+                    <div className="flex justify-between">
                       <span className="text-slate-500">Department:</span>
                       <span className="text-slate-800 font-medium">{employee.department?.name || "General"}</span>
                     </div>

@@ -1,12 +1,4 @@
-/**
- * offlineQueue.ts
- *
- * IndexedDB wrapper for storing attendance punch events when offline.
- * When the device goes offline, punches are saved here with their exact timestamp.
- * When connectivity is restored, they are synced to the server in chronological order.
- *
- * Storage: IndexedDB → database "workpulse_offline" → objectStore "pending_punches"
- */
+/** IndexedDB-backed attendance queue for resilient offline punch capture. */
 
 const DB_NAME = "workpulse_offline";
 const DB_VERSION = 1;
@@ -31,6 +23,13 @@ export interface OfflinePunch {
 // ─── Open / initialise DB ────────────────────────────────────────────────────
 
 let _db: IDBDatabase | null = null;
+
+function createId(): string {
+  if (typeof globalThis.crypto?.randomUUID === "function") {
+    return globalThis.crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 14)}`;
+}
 
 function openDB(): Promise<IDBDatabase> {
   if (_db) return Promise.resolve(_db);
@@ -68,7 +67,7 @@ export async function enqueuePunch(
   const db = await openDB();
   const entry: OfflinePunch = {
     ...punch,
-    id: crypto.randomUUID(),
+    id: createId(),
     enqueuedAt: new Date().toISOString(),
   };
 
@@ -141,6 +140,6 @@ export async function clearAllPunches(): Promise<void> {
       tx.onerror = () => reject(tx.error);
     });
   } catch {
-    // Ignore in SSR
+    // IndexedDB may be unavailable during SSR or in restricted browser contexts.
   }
 }

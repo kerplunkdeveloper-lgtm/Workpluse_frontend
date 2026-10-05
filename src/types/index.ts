@@ -105,6 +105,7 @@ export interface Employee {
   firstName: string;
   lastName: string;
   phone?: string;
+  designation?: string;
   avatarUrl?: string;
   status: "ACTIVE" | "INACTIVE" | "TERMINATED" | "PROBATION" | "NOTICE_PERIOD";
   branchId?: string;

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { holidaysApi, branchesApi } from "@/lib/api";
 import { formatDate, unwrapList } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
-import { Calendar, Plus, Trash2, Loader2, Building2 } from "lucide-react";
+import { Calendar, Plus, Trash2, Loader2, Building2, Upload, Download } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
 
@@ -12,6 +12,7 @@ export default function HolidaysView() {
   const { role } = useAuth();
   const canManage = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER";
   const canDelete = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN";
+  const canBulkImport = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN";
 
   const [holidays, setHolidays] = useState<any[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
@@ -25,6 +26,94 @@ export default function HolidaysView() {
   const [branchId, setBranchId] = useState("");
   const [description, setDescription] = useState("");
   const [isOptional, setIsOptional] = useState(false);
+  const [importing, setImporting] = useState(false);
+
+  const parseCsv = (text: string) => {
+    const rows: string[][] = [];
+    let row: string[] = [];
+    let cell = "";
+    let quoted = false;
+    for (let i = 0; i < text.length; i += 1) {
+      const char = text[i];
+      const next = text[i + 1];
+      if (char === '"' && quoted && next === '"') {
+        cell += '"';
+        i += 1;
+      } else if (char === '"') {
+        quoted = !quoted;
+      } else if (char === "," && !quoted) {
+        row.push(cell.trim());
+        cell = "";
+      } else if ((char === "\n" || char === "\r") && !quoted) {
+        if (char === "\r" && next === "\n") i += 1;
+        row.push(cell.trim());
+        if (row.some(Boolean)) rows.push(row);
+        row = [];
+        cell = "";
+      } else {
+        cell += char;
+      }
+    }
+    row.push(cell.trim());
+    if (row.some(Boolean)) rows.push(row);
+    if (rows.length < 2) return [];
+    const headers = rows[0].map((header) => header.toLowerCase().replace(/[_\s-]+/g, "").trim());
+    return rows.slice(1).map((values) => {
+      const record: Record<string, string> = {};
+      headers.forEach((header, index) => { record[header] = values[index] || ""; });
+      return {
+        name: record.name || record.holiday || record["holidayname"],
+        date: record.date || record["holidaydate"],
+        type: record.type || record["holidaytype"] || "COMPANY",
+        branch: record.branch || record.branchname || record.branchid || "",
+        description: record.description || record.note || "",
+      };
+    }).filter((item) => item.name || item.date);
+  };
+
+  const handleCsvImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".csv")) {
+      toast.error("Please choose a .csv file.");
+      return;
+    }
+    setImporting(true);
+    try {
+      const records = parseCsv(await file.text());
+      if (!records.length) {
+        toast.error("The CSV has no holiday rows. Add name and date columns.");
+        return;
+      }
+      if (records.length > 1000) {
+        toast.error("Import is limited to 1,000 holiday rows at a time.");
+        return;
+      }
+      const res = await holidaysApi.bulk(records);
+      if (res?.success) {
+        const result = res.data || {};
+        toast.success(`Imported ${result.created || 0} holiday(s); skipped ${result.skipped || 0}.`);
+        load();
+        return;
+      }
+      toast.error(res?.message || "Could not import holidays");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || "Could not import holidays");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const downloadTemplate = () => {
+    const csv = "name,date,type,branch,description\nRepublic Day,2027-01-26,GOVERNMENT,,National holiday\nAnnual Day,2027-08-15,COMPANY,Head Office,Company holiday\n";
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "workpulse-holidays-template.csv";
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
 
   const load = async () => {
     setLoading(true);
@@ -120,13 +209,32 @@ export default function HolidaysView() {
             ))}
           </select>
           {canManage && (
-            <button
-              onClick={() => setModalOpen(true)}
-              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Add holiday
-            </button>
+            <div className="flex items-center gap-2">
+              {canBulkImport && (
+                <>
+                  <input id="holiday-csv-upload" type="file" accept=".csv,text/csv" onChange={handleCsvImport} className="hidden" />
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById("holiday-csv-upload")?.click()}
+                    disabled={importing}
+                    className="px-3 py-2 rounded-xl bg-white hover:bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-semibold flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                    Import CSV
+                  </button>
+                  <button type="button" onClick={downloadTemplate} className="p-2 rounded-xl text-slate-500 hover:bg-slate-100" title="Download CSV template">
+                    <Download className="w-4 h-4" />
+                  </button>
+                </>
+              )}
+              <button
+                onClick={() => setModalOpen(true)}
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Add holiday
+              </button>
+            </div>
           )}
         </div>
       </div>

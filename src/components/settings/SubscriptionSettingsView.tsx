@@ -75,7 +75,10 @@ export default function SubscriptionSettingsView() {
     if (planId === "FREE_TRIAL") return;
     setUpgradingPlan(planId);
     try {
-      const checkout = await billingApi.checkout({ plan: planId, billingCycle, couponCode: couponCode.trim() || undefined });
+      const idempotencyKey = typeof globalThis.crypto?.randomUUID === "function"
+        ? globalThis.crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const checkout = await billingApi.checkout({ plan: planId, billingCycle, couponCode: couponCode.trim() || undefined, idempotencyKey });
       if (checkout?.success && checkout.data?.razorpayOrderId) {
         if (Number(checkout.data.discountAmountInr || 0) > 0) {
           toast.success(`Offer applied. You save ₹${Number(checkout.data.discountAmountInr).toLocaleString("en-IN")}.`);

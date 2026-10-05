@@ -441,7 +441,7 @@ export const payrollApi = {
 };
 
 export const billingApi = {
-  checkout: async (payload: { plan: string; billingCycle: string; couponCode?: string }) => {
+  checkout: async (payload: { plan: string; billingCycle: string; couponCode?: string; idempotencyKey?: string }) => {
     const res = await api.post("/billing/checkout", payload);
     return res.data;
   },
@@ -455,6 +455,33 @@ export const billingApi = {
   },
   cancel: async () => {
     const res = await api.post("/billing/cancel");
+    return res.data;
+  },
+};
+
+export const billingAdminApi = {
+  prices: async () => {
+    const res = await api.get("/admin/billing/prices");
+    return res.data;
+  },
+  updatePrice: async (plan: string, billingCycle: string, payload: { priceInr: number; isActive?: boolean }) => {
+    const res = await api.put(`/admin/billing/prices/${plan}/${billingCycle}`, payload);
+    return res.data;
+  },
+  offers: async () => {
+    const res = await api.get("/admin/billing/offers");
+    return res.data;
+  },
+  createOffer: async (payload: any) => {
+    const res = await api.post("/admin/billing/offers", payload);
+    return res.data;
+  },
+  updateOffer: async (id: string, payload: any) => {
+    const res = await api.put(`/admin/billing/offers/${id}`, payload);
+    return res.data;
+  },
+  deactivateOffer: async (id: string) => {
+    const res = await api.delete(`/admin/billing/offers/${id}`);
     return res.data;
   },
 };

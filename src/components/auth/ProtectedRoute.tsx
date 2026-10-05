@@ -13,7 +13,7 @@ interface ProtectedRouteProps {
   allowedRoles?: UserRole[];
 }
 
-const BILLING_PATHS = ["/settings"];
+const BILLING_PATHS = ["/settings", "/platform/billing"];
 
 export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   const { user, token, isLoading } = useAuth();

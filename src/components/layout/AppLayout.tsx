@@ -24,6 +24,7 @@ import {
   ChevronRight,
   ChevronDown,
   ShieldCheck,
+  KeyRound,
   CheckCircle2,
   MapPin,
   Coffee,
@@ -75,8 +76,8 @@ interface NavSection {
 const NAV_SECTIONS: NavSection[] = [
   {
     id: "my-work",
-    title: "My Work",
-    blurb: "What you use every day",
+    title: "Workspace",
+    blurb: "Your daily command centre",
     dot: "bg-indigo-400",
     items: [
       { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, hint: "Today’s attendance, approvals, and payroll", keywords: ["home", "overview"] },
@@ -88,8 +89,8 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     id: "pay",
-    title: "Pay & Benefits",
-    blurb: "Salary, claims, and growth",
+    title: "Team & Payroll",
+    blurb: "Pay, claims, and performance",
     dot: "bg-emerald-400",
     items: [
       { label: "Payroll", href: "/payroll", icon: Receipt, hint: "Payslips, runs, and salary", keywords: ["salary", "payslip", "pay"], feature: "hasPayroll" },
@@ -102,8 +103,8 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     id: "people",
-    title: "People",
-    blurb: "Team, hiring, and exits",
+    title: "People Operations",
+    blurb: "Team lifecycle and approvals",
     dot: "bg-violet-400",
     items: [
       { label: "Approvals", href: "/approvals", icon: ShieldCheck, hint: "Leave, shift, and request inbox", keywords: ["inbox", "requests"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"] },
@@ -116,7 +117,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     id: "workplace",
     title: "Workplace",
-    blurb: "How the company runs",
+    blurb: "Locations, schedules, and policy",
     dot: "bg-amber-400",
     items: [
       { label: "Shifts", href: "/shifts", icon: CalendarRange, hint: "Rosters and shift patterns", keywords: ["roster", "schedule"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"] },
@@ -128,12 +129,14 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     id: "insights",
-    title: "Insights",
-    blurb: "Reports and workspace admin",
+    title: "Insights & Admin",
+    blurb: "Reports, controls, and settings",
     dot: "bg-sky-400",
     items: [
       { label: "Reports", href: "/reports", icon: BarChart3, hint: "Attendance and payroll reports", keywords: ["analytics", "export"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"] },
       { label: "Settings", href: "/settings", icon: Settings, hint: "Plan, company, and preferences", keywords: ["plan", "billing", "company"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN"] },
+      { label: "Permissions", href: "/permissions", icon: KeyRound, hint: "Role access and workspace permissions", keywords: ["access", "roles", "security"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN"] },
+      { label: "Platform Billing", href: "/platform/billing", icon: CreditCard, hint: "Global plan prices and offers", keywords: ["pricing", "coupon", "offer"], roles: ["SUPER_ADMIN"] },
     ],
   },
 ];
@@ -361,11 +364,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="fixed inset-0 w-full h-full bg-[#f8fafc] text-slate-900 flex overflow-hidden antialiased">
+    <div className="wp-app-shell fixed inset-0 w-full h-full bg-[#f8fafc] text-slate-900 flex overflow-hidden antialiased">
       {/* ─────────────────────────────────────────────────────────────────────────────
           1. Sleek Dark Navy Left Sidebar
       ───────────────────────────────────────────────────────────────────────────── */}
-      <aside className={`hidden lg:flex flex-col ${sidebarCollapsed ? "w-[76px]" : "w-[268px]"} bg-[#0f172a] text-slate-300 shrink-0 h-full border-r border-white/5 z-30 select-none transition-[width] duration-200`}>
+      <aside className={`wp-sidebar hidden lg:flex flex-col ${sidebarCollapsed ? "w-[76px]" : "w-[268px]"} bg-[#0f172a] text-slate-300 shrink-0 h-full border-r border-white/5 z-30 select-none transition-[width] duration-200`}>
         {/* Brand Header */}
         <div className={`h-16 ${sidebarCollapsed ? "px-3 justify-center" : "px-4"} flex items-center gap-2 border-b border-white/10 shrink-0`}>
           <Brand
@@ -388,6 +391,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           )}
         </div>
 
+        <Link
+          href="/settings"
+          title={orgName}
+          className={`wp-workspace-switcher ${sidebarCollapsed ? "mx-2 mt-3 justify-center px-0" : "mx-3 mt-3 px-3"}`}
+        >
+          <span className="wp-workspace-icon"><Building2 className="w-4 h-4" /></span>
+          {!sidebarCollapsed && (
+            <span className="min-w-0 flex-1 text-left">
+              <span className="block text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">Workspace</span>
+              <span className="mt-0.5 block truncate text-xs font-semibold text-white">{orgName}</span>
+            </span>
+          )}
+          {!sidebarCollapsed && <ChevronDown className="w-3.5 h-3.5 text-white/40" />}
+        </Link>
+
         {sidebarCollapsed && (
           <button
             onClick={toggleSidebar}
@@ -408,7 +426,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 onChange={(e) => setNavQuery(e.target.value)}
                 placeholder="Find a page"
                 aria-label="Filter menu"
-                className="w-full pl-8 pr-3 py-2 text-xs rounded-xl bg-white/[0.04] border border-white/10 text-slate-200 placeholder:text-slate-500 outline-none focus:border-indigo-400/60 focus:bg-white/[0.06]"
+                className="wp-sidebar-search w-full pl-8 pr-3 py-2 text-xs rounded-xl bg-white/[0.04] border border-white/10 text-slate-200 placeholder:text-slate-500 outline-none focus:border-indigo-400/60 focus:bg-white/[0.06]"
               />
             </div>
           </div>
@@ -430,7 +448,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <button
                     type="button"
                     onClick={() => !filtering && toggleSection(section.id)}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-white/[0.04] transition"
+                    className="wp-nav-section w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-white/[0.04] transition"
                     aria-expanded={isOpen}
                   >
                     <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${section.dot}`} />
@@ -455,7 +473,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                           key={item.href}
                           href={item.href}
                           title={sidebarCollapsed ? item.label : item.hint}
-                          className={`group flex items-center ${sidebarCollapsed ? "justify-center px-0 py-1.5" : "gap-2.5 px-2 py-1.5"} rounded-xl text-[13px] font-medium transition-colors ${
+                          aria-current={isActive ? "page" : undefined}
+                          className={`wp-nav-link group flex items-center ${sidebarCollapsed ? "justify-center px-0 py-1.5" : "gap-2.5 px-2 py-1.5"} rounded-xl text-[13px] font-medium transition-colors ${
                             isActive
                               ? "bg-indigo-600 text-white shadow-lg shadow-black/30"
                               : "text-white/55 hover:text-white hover:bg-white/[0.06]"
@@ -488,7 +507,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Sidebar Footer: Organization Plan Meter */}
-        <div className={`${sidebarCollapsed ? "p-2" : "p-3"} border-t border-white/10 bg-black/25 space-y-2.5`}>
+        <div className={`wp-sidebar-footer ${sidebarCollapsed ? "p-2" : "p-3"} border-t border-white/10 bg-black/25 space-y-2.5`}>
           <Link
             href="/settings"
             title={orgName}
@@ -550,7 +569,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       ───────────────────────────────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
         {/* Top Header Bar */}
-        <header className="h-16 shrink-0 bg-[#ffffff]/90 backdrop-blur-xl border-b border-slate-200/80 px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 z-20">
+        <header className="wp-topbar h-16 shrink-0 bg-[#ffffff]/90 backdrop-blur-xl border-b border-slate-200/80 px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 z-20">
           {/* Left: Mobile Menu Toggle & Full-width Search Bar */}
           <div className="flex items-center gap-2 sm:gap-3 flex-1 max-w-xs md:max-w-sm lg:max-w-md xl:max-w-lg min-w-0">
             <button
@@ -826,7 +845,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               initial={{ opacity: 0, x: -30 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -30 }}
-              className="lg:hidden fixed inset-0 z-50 bg-[#0f172a] text-slate-300 p-5 flex flex-col"
+              className="wp-mobile-drawer lg:hidden fixed inset-0 z-50 bg-[#0f172a] text-slate-300 p-5 flex flex-col"
             >
               <div className="flex items-center justify-between pb-4 border-b border-white/10">
                 <Brand href="/dashboard" inverse subtitle="Workspace" />
@@ -846,7 +865,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     onChange={(e) => setNavQuery(e.target.value)}
                     placeholder="Find a page"
                     aria-label="Filter menu"
-                    className="w-full pl-8 pr-3 py-2.5 text-sm rounded-xl bg-white/[0.04] border border-white/10 text-white placeholder:text-slate-500 outline-none"
+                    className="wp-sidebar-search w-full pl-8 pr-3 py-2.5 text-sm rounded-xl bg-white/[0.04] border border-white/10 text-white placeholder:text-slate-500 outline-none"
                   />
                 </div>
               </div>
@@ -878,7 +897,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                             key={item.href}
                             href={item.href}
                             onClick={() => setMobileMenuOpen(false)}
-                            className={`flex items-center gap-2.5 px-2 py-1.5 rounded-xl text-[13px] font-medium ${
+                            aria-current={isActive ? "page" : undefined}
+                            className={`wp-nav-link flex items-center gap-2.5 px-2 py-1.5 rounded-xl text-[13px] font-medium ${
                               isActive ? "bg-indigo-600 text-white" : "text-slate-400"
                             }`}
                           >
@@ -914,7 +934,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </AnimatePresence>
 
         {/* Main Scrollable Canvas */}
-        <main className="flex-1 h-full overflow-y-auto p-3 sm:p-6 lg:p-8 bg-[#f8fafc] pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <main className="wp-main-canvas flex-1 h-full overflow-y-auto p-3 sm:p-6 lg:p-8 bg-[#f8fafc] pb-[max(1rem,env(safe-area-inset-bottom))]">
           <motion.div
             key={pathname}
             initial={{ opacity: 0, y: 5 }}

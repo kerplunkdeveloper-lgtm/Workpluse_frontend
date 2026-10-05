@@ -20,7 +20,6 @@ import {
   Receipt,
   Search,
   ShieldCheck,
-  Sparkles,
   TrendingDown,
   TrendingUp,
   Users,
@@ -90,7 +89,7 @@ export default function DashboardOverview() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [employeeTotal, setEmployeeTotal] = useState(0);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
-  const [showDismissAlert, setShowDismissAlert] = useState(true);
+  const [showDismissAlert, setShowDismissAlert] = useState(false);
   const [activeBreakdownTab, setActiveBreakdownTab] = useState<Exclude<RosterStatus, "ABSENT"> | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [allAttendance, setAllAttendance] = useState<any[]>([]);
@@ -334,7 +333,7 @@ export default function DashboardOverview() {
         </div>
       )}
 
-      <section className="relative overflow-hidden rounded-3xl border border-blue-100 bg-gradient-to-br from-white via-blue-50/80 to-sky-50 p-5 sm:p-7">
+      <section className="wp-dashboard-hero relative overflow-hidden rounded-3xl border border-blue-100 bg-gradient-to-br from-white via-blue-50/80 to-sky-50 p-5 sm:p-7">
         <div className="relative z-10 grid gap-6 xl:grid-cols-[1fr_280px] items-start">
           <div className="min-w-0 space-y-4">
             <p className="text-xs font-medium text-slate-500 flex flex-wrap items-center gap-2">
@@ -437,7 +436,7 @@ export default function DashboardOverview() {
                 setSearchQuery("");
                 setActiveBreakdownTab(active ? null : kpi.key);
               }}
-              className={`text-left p-4 rounded-2xl bg-white border transition shadow-sm hover:shadow-md ${active ? `ring-2 ${meta.ring}` : "border-slate-200"}`}
+              className={`wp-kpi-card text-left p-4 rounded-2xl bg-white border transition shadow-sm hover:shadow-md ${active ? `ring-2 ${meta.ring}` : "border-slate-200"}`}
             >
               <div className="flex items-center justify-between mb-3">
                 <span className={`w-10 h-10 rounded-xl flex items-center justify-center ${meta.iconBg}`}>
@@ -537,7 +536,7 @@ export default function DashboardOverview() {
           <div>
             <div className="flex items-center justify-between px-1 mb-3">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-indigo-600" />
+                {/* <Sparkles className="w-4 h-4 text-indigo-600" /> */}
                 Open a function
               </h3>
               <span className="text-[11px] text-slate-400">All workspace tools</span>
@@ -676,7 +675,10 @@ export default function DashboardOverview() {
         onCancel={() => setPendingPunch(null)}
         onConfirm={async () => {
           const ok = pendingPunch === "CHECK_OUT" ? await checkOut() : await checkIn();
-          if (ok) setPendingPunch(null);
+          if (ok) {
+            setPendingPunch(null);
+            setShowDismissAlert(true);
+          }
         }}
       />
 

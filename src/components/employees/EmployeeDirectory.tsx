@@ -51,9 +51,13 @@ export default function EmployeeDirectory() {
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
   const [employeeCode, setEmployeeCode] = useState("");
+  const [designation, setDesignation] = useState("");
   const [role, setRole] = useState("EMPLOYEE");
   const [branchId, setBranchId] = useState("");
   const [departmentId, setDepartmentId] = useState("");
+  const [showCreateDepartment, setShowCreateDepartment] = useState(false);
+  const [newDepartmentName, setNewDepartmentName] = useState("");
+  const [creatingDepartment, setCreatingDepartment] = useState(false);
   const [shiftId, setShiftId] = useState("");
   const [ctc, setCtc] = useState("");
   const [panNumber, setPanNumber] = useState("");
@@ -118,6 +122,7 @@ export default function EmployeeDirectory() {
           email,
           phone,
           employeeCode: employeeCode || `WP-EMP-${Date.now().toString().slice(-4)}`,
+          designation: designation || undefined,
           role,
           branchId: branchId || undefined,
           departmentId: departmentId || undefined,
@@ -135,6 +140,7 @@ export default function EmployeeDirectory() {
           password,
           phone,
           employeeCode: employeeCode || `WP-EMP-${Date.now().toString().slice(-4)}`,
+          designation: designation || undefined,
           role,
           branchId: branchId || undefined,
           departmentId: departmentId || undefined,
@@ -168,6 +174,7 @@ export default function EmployeeDirectory() {
         setEmail("");
         setPhone("");
         setEmployeeCode("");
+        setDesignation("");
         setCtc("");
         setPanNumber("");
         setUanNumber("");
@@ -181,6 +188,32 @@ export default function EmployeeDirectory() {
       toast.error(err.response?.data?.message || err.message || "Failed to add employee");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleCreateDepartment = async () => {
+    const departmentName = newDepartmentName.trim();
+    if (!departmentName) {
+      toast.error("Enter a department name first.");
+      return;
+    }
+    setCreatingDepartment(true);
+    try {
+      const res = await departmentsApi.create({ name: departmentName });
+      if (!res?.success) {
+        toast.error(res?.message || "Could not create department");
+        return;
+      }
+      const created = res.data;
+      setDepartments((current) => [created, ...current]);
+      setDepartmentId(created.id);
+      setNewDepartmentName("");
+      setShowCreateDepartment(false);
+      toast.success(`${departmentName} department created and selected.`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || "Could not create department");
+    } finally {
+      setCreatingDepartment(false);
     }
   };
 
@@ -238,7 +271,7 @@ export default function EmployeeDirectory() {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search employees by name, code, email, department..."
+          placeholder="Search employees by name, designation, code, email..."
           className="bg-transparent border-none text-xs text-slate-200 placeholder-slate-500 focus:outline-none w-full"
         />
         {searchQuery && (
@@ -259,6 +292,7 @@ export default function EmployeeDirectory() {
               <tr>
                 <th className="py-3.5 px-4">Employee</th>
                 <th className="py-3.5 px-4">Code</th>
+                <th className="py-3.5 px-4">Designation</th>
                 <th className="py-3.5 px-4">Department</th>
                 <th className="py-3.5 px-4">Branch</th>
                 <th className="py-3.5 px-4">Shift</th>
@@ -307,7 +341,7 @@ export default function EmployeeDirectory() {
                 </>
               ) : filteredEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-slate-500">
+                  <td colSpan={9} className="text-center py-12 text-slate-500">
                     No employees matching search criteria.
                   </td>
                 </tr>
@@ -343,6 +377,9 @@ export default function EmployeeDirectory() {
                     </td>
                     <td className="py-3.5 px-4 font-mono font-semibold text-indigo-700">
                       {emp.employeeCode}
+                    </td>
+                    <td className="py-3.5 px-4 text-slate-700">
+                      {emp.designation || <span className="text-slate-400">Not assigned</span>}
                     </td>
                     <td className="py-3.5 px-4 text-slate-600">
                       {emp.department?.name || "-"}
@@ -556,6 +593,17 @@ export default function EmployeeDirectory() {
                   />
                 </div>
                 <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Designation</label>
+                  <input
+                    type="text"
+                    value={designation}
+                    onChange={(e) => setDesignation(e.target.value)}
+                    placeholder="e.g. Software Engineer"
+                    maxLength={120}
+                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">System Role *</label>
                   <select
                     value={role}
@@ -586,19 +634,55 @@ export default function EmployeeDirectory() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Department</label>
-                  <select
-                    value={departmentId}
-                    onChange={(e) => setDepartmentId(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
-                  >
-                    <option value="">Select Department...</option>
-                    {departments.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-slate-700">Department</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateDepartment((value) => !value)}
+                      className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800"
+                    >
+                      {showCreateDepartment ? "Choose existing" : "+ Create new"}
+                    </button>
+                  </div>
+                  {showCreateDepartment ? (
+                    <div className="flex gap-1.5">
+                      <input
+                        value={newDepartmentName}
+                        onChange={(e) => setNewDepartmentName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            void handleCreateDepartment();
+                          }
+                        }}
+                        placeholder="e.g. Engineering"
+                        maxLength={100}
+                        className="min-w-0 flex-1 bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void handleCreateDepartment()}
+                        disabled={creatingDepartment}
+                        className="px-2.5 rounded-xl bg-indigo-600 text-white disabled:opacity-50"
+                        title="Create department"
+                      >
+                        {creatingDepartment ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  ) : (
+                    <select
+                      value={departmentId}
+                      onChange={(e) => setDepartmentId(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                    >
+                      <option value="">Select Department...</option>
+                      {departments.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
 
