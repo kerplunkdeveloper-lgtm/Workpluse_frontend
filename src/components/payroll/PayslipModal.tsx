@@ -159,12 +159,12 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
                   <img src={logoUrl} alt="Logo" className="w-12 h-12 object-contain bg-white rounded-xl p-1 shrink-0" />
                 )}
                 <div>
-                  <h2 className="text-xl font-black tracking-tight">{companyName}</h2>
+                  <h2 className="text-xl font-semibold tracking-tight">{companyName}</h2>
                   <p className="text-xs text-white/80">{companyAddress}</p>
                 </div>
               </div>
               <div className="text-right">
-                <span className="px-2.5 py-0.5 rounded text-[10px] font-extrabold bg-white/20 uppercase tracking-wider block mb-0.5">
+                <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-white/20 uppercase tracking-wider block mb-0.5">
                   Salary Payslip
                 </span>
                 <span className="text-xs font-bold">{monthString} {payslip.year}</span>
@@ -176,13 +176,13 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={logoUrl} alt="Logo" className="w-12 h-12 object-contain mx-auto mb-2" />
               )}
-              <h2 className="text-xl font-black text-slate-900 tracking-tight">{companyName}</h2>
+              <h2 className="text-xl font-semibold text-slate-900 tracking-tight">{companyName}</h2>
               <p className="text-xs text-slate-500 mt-0.5">{companyAddress}</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-400 mt-0.5">
                 {taxLabel}: <span className="font-semibold text-slate-600">{taxValue}</span>
               </p>
               <div
-                className="inline-flex items-center gap-2 mt-2 px-3 py-0.5 rounded-full text-[11px] font-bold text-white"
+                className="inline-flex items-center gap-2 mt-2 px-3 py-0.5 rounded-full text-xs font-bold text-white"
                 style={{ backgroundColor: primaryColor }}
               >
                 <span>Payslip for {monthString} {payslip.year}</span>
@@ -198,23 +198,23 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
                     <img src={logoUrl} alt="Company Logo" className="max-w-full max-h-full object-contain" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-black tracking-tight text-slate-900">{companyName}</h2>
+                    <h2 className="text-xl font-semibold tracking-tight text-slate-900">{companyName}</h2>
                     <p className="text-xs text-slate-500">{companyAddress}</p>
                   </div>
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1">
+                <p className="text-xs text-slate-400 mt-1">
                   {taxLabel}: <span className="font-semibold text-slate-600">{taxValue}</span>
                 </p>
               </div>
 
               <div className="text-right">
-                <h3 className="text-base font-black text-slate-900 uppercase tracking-wide">
+                <h3 className="text-base font-semibold text-slate-900 uppercase tracking-wide">
                   Salary Payslip
                 </h3>
                 <p className="text-xs font-bold" style={{ color: primaryColor }}>
                   {monthString} {payslip.year}
                 </p>
-                <p className="text-[11px] text-slate-400 mt-1">
+                <p className="text-xs text-slate-400 mt-1">
                   Generated: {formatDate(payslip.createdAt)}
                 </p>
               </div>
@@ -224,25 +224,25 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
           {/* 2. Employee Information Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs">
             <div>
-              <span className="text-slate-400 block text-[10px] uppercase font-bold">Employee Name</span>
+              <span className="text-slate-400 block text-xs uppercase font-bold">Employee Name</span>
               <span className="font-bold text-slate-900 text-sm">
                 {details?.employee?.name || `${payslip.employee?.firstName} ${payslip.employee?.lastName || ""}`}
               </span>
             </div>
             <div>
-              <span className="text-slate-400 block text-[10px] uppercase font-bold">Employee Code</span>
+              <span className="text-slate-400 block text-xs uppercase font-bold">Employee Code</span>
               <span className="font-bold text-slate-900">
                 {details?.employee?.employeeCode || payslip.employee?.employeeCode || "WP-EMP-001"}
               </span>
             </div>
             <div>
-              <span className="text-slate-400 block text-[10px] uppercase font-bold">Designation</span>
+              <span className="text-slate-400 block text-xs uppercase font-bold">Designation</span>
               <span className="font-bold text-slate-900">
                 {details?.employee?.designation || (payslip.employee as any)?.designation || "Staff Professional"}
               </span>
             </div>
             <div>
-              <span className="text-slate-400 block text-[10px] uppercase font-bold">Department</span>
+              <span className="text-slate-400 block text-xs uppercase font-bold">Department</span>
               <span className="font-bold text-slate-900">
                 {details?.employee?.department || payslip.employee?.department?.name || "General Operations"}
               </span>
@@ -251,13 +251,13 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
             {showBank && (
               <>
                 <div>
-                  <span className="text-slate-400 block text-[10px] uppercase font-bold">Bank Name</span>
+                  <span className="text-slate-400 block text-xs uppercase font-bold">Bank Name</span>
                   <span className="font-bold text-slate-900">
                     {details?.employee?.bankName || "HDFC Bank Ltd."}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[10px] uppercase font-bold">Account Number</span>
+                  <span className="text-slate-400 block text-xs uppercase font-bold">Account Number</span>
                   <span className="font-bold text-slate-900">
                     {details?.employee?.accountNumber || "••••••••4892"}
                   </span>
@@ -268,11 +268,11 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
             {showPan && (
               <>
                 <div>
-                  <span className="text-slate-400 block text-[10px] uppercase font-bold">PAN Number</span>
+                  <span className="text-slate-400 block text-xs uppercase font-bold">PAN Number</span>
                   <span className="font-bold text-slate-900">{details?.employee?.panNumber || "ABCDE1234F"}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[10px] uppercase font-bold">Branch</span>
+                  <span className="text-slate-400 block text-xs uppercase font-bold">Branch</span>
                   <span className="font-bold text-slate-900">
                     {details?.employee?.branch || payslip.employee?.branch?.name || "Main Campus"}
                   </span>
@@ -285,33 +285,33 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
           {showAttendance && (
             <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 text-center p-3 rounded-xl border border-slate-200 text-xs bg-white">
               <div>
-                <span className="text-[10px] text-slate-400 block">Total Days</span>
-                <span className="font-extrabold text-slate-900">
+                <span className="text-xs text-slate-400 block">Total Days</span>
+                <span className="font-bold text-slate-900">
                   {details?.attendance?.workingDays || (payslip as any).workingDays || 26}
                 </span>
               </div>
               <div>
-                <span className="text-[10px] text-slate-400 block">Present</span>
-                <span className="font-extrabold text-emerald-600">
+                <span className="text-xs text-slate-400 block">Present</span>
+                <span className="font-bold text-emerald-600">
                   {details?.attendance?.presentDays !== undefined ? details.attendance.presentDays : Number((payslip as any).presentDays || 0)}
                 </span>
               </div>
               <div>
-                <span className="text-[10px] text-slate-400 block">Paid Leave</span>
-                <span className="font-extrabold text-indigo-600">
+                <span className="text-xs text-slate-400 block">Paid Leave</span>
+                <span className="font-bold text-indigo-600">
                   {details?.attendance?.paidLeaveDays !== undefined ? details.attendance.paidLeaveDays : Number((payslip as any).paidLeaveDays || 0)}
                 </span>
               </div>
               <div>
-                <span className="text-[10px] text-slate-400 block">Loss of Pay</span>
-                <span className="font-extrabold text-rose-600">
+                <span className="text-xs text-slate-400 block">Loss of Pay</span>
+                <span className="font-bold text-rose-600">
                   {details?.attendance?.unpaidLeaveDays !== undefined ? details.attendance.unpaidLeaveDays : Number((payslip as any).unpaidLeaveDays || 0)}
                 </span>
               </div>
               {showOvertime && (
                 <div>
-                  <span className="text-[10px] text-slate-400 block">Overtime</span>
-                  <span className="font-extrabold" style={{ color: primaryColor }}>
+                  <span className="text-xs text-slate-400 block">Overtime</span>
+                  <span className="font-bold" style={{ color: primaryColor }}>
                     {details?.attendance?.overtimeHours !== undefined ? details.attendance.overtimeHours : Number((payslip as any).overtimeHours || 0)} hrs
                   </span>
                 </div>
@@ -400,14 +400,14 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
               <span className="text-xs font-bold text-white/80 uppercase tracking-wide block">
                 Net Take-Home Disbursed Pay
               </span>
-              <p className="text-2xl font-black">{formatCurrency(netSalary)}</p>
+              <p className="text-2xl font-bold">{formatCurrency(netSalary)}</p>
               {showWords && details?.netSalaryWords && (
-                <p className="text-[11px] text-white/90 italic mt-0.5">{details.netSalaryWords}</p>
+                <p className="text-xs text-white/90 italic mt-0.5">{details.netSalaryWords}</p>
               )}
             </div>
 
             {showQr && (
-              <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl text-[10px] font-mono">
+              <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl text-xs font-mono">
                 <QrCode className="w-5 h-5 text-white" />
                 <span>AUTHENTICATED • ID {payslip.id.slice(-8).toUpperCase()}</span>
               </div>
@@ -418,7 +418,7 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
           <div className="pt-8 border-t border-slate-200 flex items-end justify-between text-xs text-slate-500">
             <div className="max-w-sm space-y-1">
               <p className="font-semibold text-slate-800">Compliance & Authenticity Notice:</p>
-              <p className="text-[11px] leading-relaxed">{declarationText}</p>
+              <p className="text-xs leading-relaxed">{declarationText}</p>
             </div>
 
             <div className="text-right space-y-1">
@@ -427,8 +427,8 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
                 <img src={signatureImageUrl} alt="Signature Stamp" className="h-10 object-contain ml-auto" />
               )}
               <div className="w-36 border-t border-slate-400 mt-2 pt-1">
-                <span className="text-[11px] font-bold text-slate-800 block">{signatoryName}</span>
-                <p className="text-[10px] text-slate-400">{signatoryTitle}</p>
+                <span className="text-xs font-bold text-slate-800 block">{signatoryName}</span>
+                <p className="text-xs text-slate-400">{signatoryTitle}</p>
               </div>
             </div>
           </div>

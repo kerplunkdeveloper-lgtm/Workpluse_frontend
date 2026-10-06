@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { toast } from "sonner";
+import { confirmDialog } from "@/components/ui/confirmDialog";
 import {
   Laptop,
   MonitorCheck,
@@ -256,7 +258,7 @@ export default function AssetManagementView() {
               <Laptop className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="font-serif text-2xl font-semibold text-slate-900 tracking-tight">
+              <h1 className="font-serif text-2xl font-bold text-slate-900 tracking-tight">
                 Asset Inventory & Lifecycle
               </h1>
               <p className="text-sm text-slate-500">
@@ -269,7 +271,7 @@ export default function AssetManagementView() {
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
             onClick={() => loadData()}
-            className="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50:bg-slate-800 text-slate-600 transition-colors"
+            className="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 transition-colors"
             title="Refresh"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
@@ -368,7 +370,7 @@ export default function AssetManagementView() {
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all ${
                 isSelected
                   ? "bg-indigo-600 text-white shadow-sm shadow-indigo-500/20"
-                  : "bg-white text-slate-600 hover:bg-slate-50:bg-slate-800 border border-slate-200"
+                  : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -452,7 +454,7 @@ export default function AssetManagementView() {
                   setEditingAsset(null);
                   setIsAddModalOpen(true);
                 }}
-                className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium"
+                className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add First Asset</span>
@@ -461,7 +463,7 @@ export default function AssetManagementView() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-[13px]">
               <thead className="bg-slate-50/75 border-b border-slate-200 text-slate-500 uppercase font-semibold tracking-wider">
                 <tr>
                   <th className="px-5 py-3.5">Asset Code & Item</th>
@@ -484,7 +486,7 @@ export default function AssetManagementView() {
                   return (
                     <tr
                       key={asset.id}
-                      className="hover:bg-slate-50/60:bg-slate-800/40 transition-colors group"
+                      className="hover:bg-slate-50/60 transition-colors group"
                     >
                       {/* Asset Code & Name */}
                       <td className="px-5 py-3.5">
@@ -494,7 +496,7 @@ export default function AssetManagementView() {
                           </div>
                           <div>
                             <div className="flex items-center gap-1.5">
-                              <span className="font-mono font-bold text-indigo-600 bg-indigo-50/80 px-1.5 py-0.5 rounded text-[11px] border border-indigo-200/50">
+                              <span className="font-mono font-bold text-indigo-600 bg-indigo-50/80 px-1.5 py-0.5 rounded text-xs border border-indigo-200/50">
                                 {asset.assetCode}
                               </span>
                               <button
@@ -513,7 +515,7 @@ export default function AssetManagementView() {
                               {asset.name}
                             </div>
                             {asset.brand && (
-                              <div className="text-[11px] text-slate-400">
+                              <div className="text-xs text-slate-400">
                                 {asset.brand} {asset.modelNumber ? `• ${asset.modelNumber}` : ""}
                               </div>
                             )}
@@ -530,11 +532,11 @@ export default function AssetManagementView() {
 
                       {/* Serial / Model */}
                       <td className="px-4 py-3.5">
-                        <div className="font-mono text-slate-700 text-[11px]">
+                        <div className="font-mono text-slate-700 text-xs">
                           {asset.serialNumber || "—"}
                         </div>
                         {asset.specifications && (
-                          <div className="text-[10px] text-slate-400 truncate max-w-[150px]">
+                          <div className="text-xs text-slate-400 truncate max-w-[150px]">
                             {typeof asset.specifications === "object"
                               ? Object.entries(asset.specifications)
                                   .map(([k, v]) => `${k}: ${v}`)
@@ -547,7 +549,7 @@ export default function AssetManagementView() {
                       {/* Status */}
                       <td className="px-4 py-3.5">
                         <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border ${statusBadge.bg}`}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${statusBadge.bg}`}
                         >
                           <span className={`w-1.5 h-1.5 rounded-full ${statusBadge.dot}`} />
                           {statusBadge.label}
@@ -557,7 +559,7 @@ export default function AssetManagementView() {
                       {/* Condition */}
                       <td className="px-4 py-3.5">
                         <span
-                          className={`inline-flex px-2 py-0.5 rounded text-[11px] font-medium border ${getConditionBadge(
+                          className={`inline-flex px-2 py-0.5 rounded text-xs font-medium border ${getConditionBadge(
                             asset.condition
                           )}`}
                         >
@@ -569,7 +571,7 @@ export default function AssetManagementView() {
                       <td className="px-4 py-3.5">
                         {asset.assignedTo ? (
                           <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-500 to-sky-400 text-white flex items-center justify-center font-bold text-[10px] flex-shrink-0">
+                            <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-500 to-sky-400 text-white flex items-center justify-center font-bold text-xs flex-shrink-0">
                               {asset.assignedTo.firstName[0]}
                               {asset.assignedTo.lastName?.[0] || ""}
                             </div>
@@ -577,14 +579,14 @@ export default function AssetManagementView() {
                               <div className="font-medium text-slate-900 truncate">
                                 {asset.assignedTo.firstName} {asset.assignedTo.lastName || ""}
                               </div>
-                              <div className="text-[10px] text-slate-400 truncate">
+                              <div className="text-xs text-slate-400 truncate">
                                 {asset.assignedTo.employeeCode}{" "}
                                 {asset.assignedTo.department?.name ? `• ${asset.assignedTo.department.name}` : ""}
                               </div>
                             </div>
                           </div>
                         ) : (
-                          <span className="text-slate-400 text-[11px] italic">
+                          <span className="text-slate-400 text-xs italic">
                             In Inventory (Unassigned)
                           </span>
                         )}
@@ -597,7 +599,7 @@ export default function AssetManagementView() {
                         </div>
                         {asset.warrantyExpiry && (
                           <div
-                            className={`text-[10px] ${
+                            className={`text-xs ${
                               isWarrantyExpired
                                 ? "text-rose-500 font-medium"
                                 : "text-slate-400"
@@ -616,7 +618,7 @@ export default function AssetManagementView() {
                           {asset.status === "AVAILABLE" && (
                             <button
                               onClick={() => setAssignModalAsset(asset)}
-                              className="px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-[11px] font-medium transition-colors"
+                              className="px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-medium transition-colors"
                               title="Assign to Employee"
                             >
                               Assign
@@ -627,14 +629,14 @@ export default function AssetManagementView() {
                             <>
                               <button
                                 onClick={() => setReturnModalAsset(asset)}
-                                className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 text-[11px] font-medium transition-colors"
+                                className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 text-xs font-medium transition-colors"
                                 title="Return to Store"
                               >
                                 Return
                               </button>
                               <button
                                 onClick={() => setTransferModalAsset(asset)}
-                                className="p-1.5 rounded-lg hover:bg-slate-100:bg-slate-800 text-slate-500 hover:text-slate-700 transition-colors"
+                                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
                                 title="Transfer to Colleague"
                               >
                                 <ArrowRightLeft className="w-3.5 h-3.5" />
@@ -653,7 +655,7 @@ export default function AssetManagementView() {
                                   maintenanceId: activeMaint?.id || "",
                                 });
                               }}
-                              className="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 text-[11px] font-medium transition-colors"
+                              className="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-medium transition-colors"
                               title="Complete Maintenance"
                             >
                               Resolve
@@ -663,7 +665,7 @@ export default function AssetManagementView() {
                           {asset.status !== "UNDER_MAINTENANCE" && (
                             <button
                               onClick={() => setMaintenanceModalAsset(asset)}
-                              className="p-1.5 rounded-lg hover:bg-slate-100:bg-slate-800 text-slate-500 hover:text-slate-700 transition-colors"
+                              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
                               title="Log Maintenance / Repair"
                             >
                               <Wrench className="w-3.5 h-3.5" />
@@ -672,7 +674,7 @@ export default function AssetManagementView() {
 
                           <button
                             onClick={() => openDetail(asset.id)}
-                            className="p-1.5 rounded-lg hover:bg-slate-100:bg-slate-800 text-slate-500 hover:text-indigo-600 transition-colors"
+                            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-indigo-600 transition-colors"
                             title="View History & Details"
                           >
                             <Info className="w-3.5 h-3.5" />
@@ -683,7 +685,7 @@ export default function AssetManagementView() {
                               setEditingAsset(asset);
                               setIsAddModalOpen(true);
                             }}
-                            className="p-1.5 rounded-lg hover:bg-slate-100:bg-slate-800 text-slate-500 hover:text-slate-700 transition-colors"
+                            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
                             title="Edit Asset Details"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
@@ -797,14 +799,14 @@ export default function AssetManagementView() {
           }}
           onDelete={async () => {
             if (detailAsset) {
-              if (confirm(`Are you sure you want to delete asset ${detailAsset.assetCode}?`)) {
+              if (await confirmDialog({ title: `Delete asset ${detailAsset.assetCode}?`, message: "This removes the asset record. It cannot be undone.", confirmLabel: "Delete asset" })) {
                 try {
                   await assetsApi.delete(detailAsset.id);
                   setDetailAssetId(null);
                   setDetailAsset(null);
                   loadData();
                 } catch (err: any) {
-                  alert(err.response?.data?.message || "Failed to delete asset");
+                  toast.error(err.response?.data?.message || "Failed to delete asset");
                 }
               }
             }
@@ -918,13 +920,13 @@ function AddEditAssetModal({
             <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
               <Box className="w-4 h-4" />
             </div>
-            <h2 className="text-base font-bold text-slate-900">
+            <h2 className="text-base font-semibold text-slate-900">
               {isEdit ? `Edit Asset: ${asset?.assetCode}` : "Register New Equipment"}
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600:text-slate-200 p-1.5 rounded-lg"
+            className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg"
           >
             <X className="w-4 h-4" />
           </button>
@@ -992,7 +994,7 @@ function AddEditAssetModal({
                 className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50/50 text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono disabled:opacity-60"
               />
               {!isEdit && (
-                <p className="text-[10px] text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-400 mt-0.5">
                   Leave blank to auto-generate sequentially.
                 </p>
               )}
@@ -1179,7 +1181,7 @@ function AddEditAssetModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50:bg-slate-800 font-medium"
+              className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium"
             >
               Cancel
             </button>
@@ -1247,10 +1249,10 @@ function AssignAssetModal({
               <UserCheck className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">
+              <h2 className="text-base font-semibold text-slate-900">
                 Assign Asset to Employee
               </h2>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-xs text-slate-400">
                 {asset.assetCode} • {asset.name}
               </p>
             </div>
@@ -1382,10 +1384,10 @@ function ReturnAssetModal({
               <RotateCcw className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">
+              <h2 className="text-base font-semibold text-slate-900">
                 Return Asset to Inventory
               </h2>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-xs text-slate-400">
                 {asset.assetCode} • {asset.name}
               </p>
             </div>
@@ -1404,7 +1406,7 @@ function ReturnAssetModal({
           )}
 
           <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-            <div className="text-[11px] text-slate-500">Currently assigned to:</div>
+            <div className="text-xs text-slate-500">Currently assigned to:</div>
             <div className="font-semibold text-slate-900 mt-0.5 text-sm">
               {asset.assignedTo?.firstName} {asset.assignedTo?.lastName || ""} (
               {asset.assignedTo?.employeeCode})
@@ -1438,7 +1440,7 @@ function ReturnAssetModal({
               onChange={(e) => setRecoveryCharge(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50/50 text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             />
-            <p className="text-[10px] text-slate-400 mt-1">
+            <p className="text-xs text-slate-400 mt-1">
               💡 Synergized with Offboarding: If this employee is in exit notice, any recovery amount will automatically be linked to their IT Asset Clearance and deducted from their Full & Final (F&F) Settlement.
             </p>
           </div>
@@ -1528,10 +1530,10 @@ function TransferAssetModal({
               <ArrowRightLeft className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">
+              <h2 className="text-base font-semibold text-slate-900">
                 Transfer Asset
               </h2>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-xs text-slate-400">
                 {asset.assetCode} • {asset.name}
               </p>
             </div>
@@ -1550,7 +1552,7 @@ function TransferAssetModal({
           )}
 
           <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-            <div className="text-[11px] text-slate-500">Transferring FROM:</div>
+            <div className="text-xs text-slate-500">Transferring FROM:</div>
             <div className="font-semibold text-slate-900 mt-0.5">
               {asset.assignedTo?.firstName} {asset.assignedTo?.lastName || ""} (
               {asset.assignedTo?.employeeCode})
@@ -1681,10 +1683,10 @@ function MaintenanceModal({
               <Wrench className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">
+              <h2 className="text-base font-semibold text-slate-900">
                 Log Maintenance / Repair Ticket
               </h2>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-xs text-slate-400">
                 {asset.assetCode} • {asset.name}
               </p>
             </div>
@@ -1839,10 +1841,10 @@ function CompleteMaintenanceModal({
               <CheckCircle2 className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">
+              <h2 className="text-base font-semibold text-slate-900">
                 Complete Maintenance Ticket
               </h2>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-xs text-slate-400">
                 {asset.assetCode} • {asset.name}
               </p>
             </div>
@@ -1974,7 +1976,7 @@ function AssetDetailDrawer({
                 </span>
                 {asset && (
                   <span
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${
                       getStatusBadge(asset.status).bg
                     }`}
                   >
@@ -1982,14 +1984,14 @@ function AssetDetailDrawer({
                   </span>
                 )}
               </div>
-              <h2 className="text-base font-bold text-slate-900 mt-1">
+              <h2 className="text-base font-semibold text-slate-900 mt-1">
                 {asset?.name}
               </h2>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600:text-slate-200 hover:bg-slate-100:bg-slate-800"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
           >
             <X className="w-5 h-5" />
           </button>
@@ -2015,7 +2017,7 @@ function AssetDetailDrawer({
               <div className="flex items-center justify-between">
                 <span className="text-xs text-slate-500">Condition</span>
                 <span
-                  className={`text-[10px] px-2 py-0.5 rounded font-medium border ${getConditionBadge(
+                  className={`text-xs px-2 py-0.5 rounded font-medium border ${getConditionBadge(
                     asset.condition
                   )}`}
                 >
@@ -2080,7 +2082,7 @@ function AssetDetailDrawer({
                     No custody changes recorded yet.
                   </p>
                 ) : (
-                  <div className="relative pl-6 space-y-6 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200:bg-slate-800">
+                  <div className="relative pl-6 space-y-6 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
                     {asset.assignments.map((record) => {
                       const isAssign = record.type === "ASSIGNMENT";
                       const isReturn = record.type === "RETURN";
@@ -2102,7 +2104,7 @@ function AssetDetailDrawer({
                           <div className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-sm text-xs">
                             <div className="flex items-center justify-between mb-1">
                               <span
-                                className={`font-semibold uppercase text-[10px] tracking-wider ${
+                                className={`font-semibold uppercase text-xs tracking-wider ${
                                   isAssign
                                     ? "text-blue-600"
                                     : isReturn
@@ -2112,7 +2114,7 @@ function AssetDetailDrawer({
                               >
                                 {record.type}
                               </span>
-                              <span className="text-[10px] text-slate-400">
+                              <span className="text-xs text-slate-400">
                                 {new Date(record.assignedDate || record.createdAt).toLocaleString()}
                               </span>
                             </div>
@@ -2126,7 +2128,7 @@ function AssetDetailDrawer({
                             )}
 
                             {record.conditionOnReturn && (
-                              <div className="text-[11px] text-slate-500 mt-1">
+                              <div className="text-xs text-slate-500 mt-1">
                                 Return Condition:{" "}
                                 <span className="font-semibold text-slate-700">
                                   {record.conditionOnReturn}
@@ -2141,12 +2143,12 @@ function AssetDetailDrawer({
                             )}
 
                             {record.remarks && (
-                              <div className="mt-2 text-slate-600 text-[11px] bg-slate-50 p-2 rounded-lg italic">
+                              <div className="mt-2 text-slate-600 text-xs bg-slate-50 p-2 rounded-lg italic">
                                 "{record.remarks}"
                               </div>
                             )}
 
-                            <div className="mt-2 text-[10px] text-slate-400 flex items-center justify-between">
+                            <div className="mt-2 text-xs text-slate-400 flex items-center justify-between">
                               <span>Action by: {record.assignedBy || record.returnedTo || "Admin"}</span>
                             </div>
                           </div>
@@ -2173,7 +2175,7 @@ function AssetDetailDrawer({
                     >
                       <div className="flex items-center justify-between">
                         <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          className={`px-2 py-0.5 rounded text-xs font-bold ${
                             maint.status === "COMPLETED"
                               ? "bg-emerald-50 text-emerald-600"
                               : "bg-amber-50 text-amber-600"
@@ -2181,7 +2183,7 @@ function AssetDetailDrawer({
                         >
                           {maint.status}
                         </span>
-                        <span className="text-[10px] text-slate-400">
+                        <span className="text-xs text-slate-400">
                           Started: {new Date(maint.startDate).toLocaleDateString()}
                           {maint.completedDate
                             ? ` • Completed: ${new Date(maint.completedDate).toLocaleDateString()}`
@@ -2193,7 +2195,7 @@ function AssetDetailDrawer({
                         {maint.issueDescription}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-500">
+                      <div className="grid grid-cols-2 gap-2 text-xs text-slate-500">
                         <div>
                           Vendor: <span className="font-medium text-slate-700">{maint.vendorName || "—"}</span>
                         </div>
@@ -2203,7 +2205,7 @@ function AssetDetailDrawer({
                       </div>
 
                       {maint.notes && (
-                        <div className="bg-slate-50 p-2 rounded-lg text-[11px] text-slate-600">
+                        <div className="bg-slate-50 p-2 rounded-lg text-xs text-slate-600">
                           {maint.notes}
                         </div>
                       )}
@@ -2218,21 +2220,21 @@ function AssetDetailDrawer({
               <div className="space-y-4 text-xs">
                 <div className="grid grid-cols-2 gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200">
                   <div>
-                    <span className="text-[11px] text-slate-400">Brand</span>
+                    <span className="text-xs text-slate-400">Brand</span>
                     <div className="font-medium text-slate-900">{asset.brand || "—"}</div>
                   </div>
                   <div>
-                    <span className="text-[11px] text-slate-400">Model</span>
+                    <span className="text-xs text-slate-400">Model</span>
                     <div className="font-medium text-slate-900">{asset.modelNumber || "—"}</div>
                   </div>
                   <div>
-                    <span className="text-[11px] text-slate-400">Purchase Date</span>
+                    <span className="text-xs text-slate-400">Purchase Date</span>
                     <div className="font-medium text-slate-900">
                       {asset.purchaseDate ? new Date(asset.purchaseDate).toLocaleDateString() : "—"}
                     </div>
                   </div>
                   <div>
-                    <span className="text-[11px] text-slate-400">Warranty Expiry</span>
+                    <span className="text-xs text-slate-400">Warranty Expiry</span>
                     <div className="font-medium text-slate-900">
                       {asset.warrantyExpiry ? new Date(asset.warrantyExpiry).toLocaleDateString() : "—"}
                     </div>
@@ -2241,14 +2243,14 @@ function AssetDetailDrawer({
 
                 {asset.specifications && (
                   <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-                    <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                       Hardware Specifications
                     </span>
                     <div className="grid grid-cols-2 gap-2 pt-1">
                       {typeof asset.specifications === "object" ? (
                         Object.entries(asset.specifications).map(([key, val]) => (
                           <div key={key}>
-                            <span className="text-[10px] text-slate-400 uppercase">{key}</span>
+                            <span className="text-xs text-slate-400 uppercase">{key}</span>
                             <div className="font-mono text-xs font-semibold text-slate-800">
                               {String(val)}
                             </div>
@@ -2263,7 +2265,7 @@ function AssetDetailDrawer({
 
                 {asset.notes && (
                   <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                    <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                       Notes
                     </span>
                     <p className="text-slate-700">{asset.notes}</p>
@@ -2280,7 +2282,7 @@ function AssetDetailDrawer({
             <button
               onClick={onDelete}
               disabled={asset.status === "ASSIGNED"}
-              className="p-2 text-rose-600 hover:bg-rose-50:bg-rose-950/40 rounded-xl text-xs font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none"
+              className="p-2 text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none"
               title={asset.status === "ASSIGNED" ? "Cannot delete assigned asset" : "Delete Asset"}
             >
               <Trash2 className="w-4 h-4" />
@@ -2293,7 +2295,7 @@ function AssetDetailDrawer({
                     onClose();
                     onAssign();
                   }}
-                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium transition-colors"
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition-colors"
                 >
                   Assign Asset
                 </button>
@@ -2304,7 +2306,7 @@ function AssetDetailDrawer({
                     onClose();
                     onReturn();
                   }}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium transition-colors"
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition-colors"
                 >
                   Return to Inventory
                 </button>

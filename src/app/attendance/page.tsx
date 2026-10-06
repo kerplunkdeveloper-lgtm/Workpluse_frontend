@@ -56,7 +56,7 @@ export default function AttendancePage() {
               </div>
 
               {/* Title & Subtitle */}
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              <h1 className="text-2xl sm:text-[28px] font-bold text-slate-900 tracking-tight">
                 Smart Punch & Timesheet
               </h1>
               <p className="text-xs text-slate-500 font-medium max-w-2xl">
@@ -70,14 +70,14 @@ export default function AttendancePage() {
                 <p className="text-xs font-serif italic font-bold text-indigo-700 leading-tight">
                   Accurate Attendance
                 </p>
-                <p className="text-[11px] text-slate-500 font-medium">Stronger Teams • Brighter Tomorrow</p>
+                <p className="text-xs text-slate-500 font-medium">Stronger Teams • Brighter Tomorrow</p>
               </div>
 
               {/* Live Clock & Date Pill */}
               <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 shadow-2xs">
                 <div className="flex items-center gap-1.5 text-indigo-600">
                   <Clock className="w-3.5 h-3.5 animate-pulse" />
-                  <span className="font-mono font-extrabold text-slate-900">{currentTimeStr || "--:--:--"}</span>
+                  <span className="font-mono font-bold text-slate-900">{currentTimeStr || "--:--:--"}</span>
                 </div>
                 <span className="text-slate-300">•</span>
                 <div className="flex items-center gap-1.5 text-slate-600">

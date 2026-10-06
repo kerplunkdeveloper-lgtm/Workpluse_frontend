@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Attendance, AttendanceStatus } from "@/types";
 import { attendanceApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { formatDate, formatTime, unwrapList } from "@/lib/utils";
+import { formatDate, formatTime, formatDurationMinutes, roleLabel, unwrapList } from "@/lib/utils";
 import { useSearchParams } from "next/navigation";
 import {
   Filter,
@@ -24,10 +24,12 @@ import {
 } from "lucide-react";
 import RegularizationModal from "./RegularizationModal";
 import TimeSelect from "@/components/ui/TimeSelect";
+import DatePicker from "@/components/ui/DatePicker";
 import { toast } from "sonner";
 
 export default function AttendanceHistoryView() {
   const { user, role } = useAuth();
+  const isTeamView = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER";
   const searchParams = useSearchParams();
   const statusParam = searchParams?.get("status");
 
@@ -61,7 +63,6 @@ export default function AttendanceHistoryView() {
   const fetchHistory = async (nextPage = page) => {
     setLoading(true);
     try {
-      const isTeamView = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER";
       const params = {
         page: nextPage,
         limit: 20,
@@ -178,8 +179,8 @@ export default function AttendanceHistoryView() {
             </span>
           </div>
           <p className="text-xs text-slate-500 font-semibold mb-0.5">Present Days</p>
-          <p className="text-2xl font-extrabold text-slate-900 mb-1">{totalPresent}</p>
-          <p className="text-[11px] text-slate-400 font-medium">{presentPct}% of logged records</p>
+          <p className="text-2xl font-bold text-slate-900 mb-1">{totalPresent}</p>
+          <p className="text-xs text-slate-400 font-medium">{presentPct}% of logged records</p>
         </div>
 
         {/* Late Clock-ins */}
@@ -199,8 +200,8 @@ export default function AttendanceHistoryView() {
             </span>
           </div>
           <p className="text-xs text-slate-500 font-semibold mb-0.5">Late Clock-ins</p>
-          <p className="text-2xl font-extrabold text-slate-900 mb-1">{totalLate}</p>
-          <p className="text-[11px] text-slate-400 font-medium">{latePct}% of logged records</p>
+          <p className="text-2xl font-bold text-slate-900 mb-1">{totalLate}</p>
+          <p className="text-xs text-slate-400 font-medium">{latePct}% of logged records</p>
         </div>
 
         {/* WFH / Remote Days */}
@@ -220,8 +221,8 @@ export default function AttendanceHistoryView() {
             </span>
           </div>
           <p className="text-xs text-slate-500 font-semibold mb-0.5">WFH / Remote Days</p>
-          <p className="text-2xl font-extrabold text-slate-900 mb-1">{totalWfh}</p>
-          <p className="text-[11px] text-slate-400 font-medium">{wfhPct}% of logged records</p>
+          <p className="text-2xl font-bold text-slate-900 mb-1">{totalWfh}</p>
+          <p className="text-xs text-slate-400 font-medium">{wfhPct}% of logged records</p>
         </div>
 
         {/* Total Hours */}
@@ -232,12 +233,12 @@ export default function AttendanceHistoryView() {
             </div>
             <span className="flex items-center gap-0.5 text-xs font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">
               <TrendingUp className="w-3 h-3" />
-              <span>{avgHours}h</span>
+              <span>{formatDurationMinutes(Math.round(Number(avgHours) * 60))}</span>
             </span>
           </div>
           <p className="text-xs text-slate-500 font-semibold mb-0.5">Total Hours</p>
-          <p className="text-2xl font-extrabold text-slate-900 mb-1">{totalWorkHours.toFixed(1)} hrs</p>
-          <p className="text-[11px] text-slate-400 font-medium">Avg. {avgHours} hrs/day</p>
+          <p className="text-2xl font-bold text-slate-900 mb-1">{totalWorkHours.toFixed(1)} hrs</p>
+          <p className="text-xs text-slate-400 font-medium">Avg. {formatDurationMinutes(Math.round(Number(avgHours) * 60))} / day</p>
         </div>
       </div>
 
@@ -280,7 +281,7 @@ export default function AttendanceHistoryView() {
           {filterStatus !== "ALL" && (
             <button
               onClick={() => setFilterStatus("ALL")}
-              className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold"
+              className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold"
             >
               Reset
             </button>
@@ -300,7 +301,7 @@ export default function AttendanceHistoryView() {
           {(role === "COMPANY_ADMIN" || role === "SUPER_ADMIN" || role === "MANAGER") && (
             <button
               onClick={() => setAdminMarkModalOpen(true)}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-xs flex items-center gap-1.5 transition shadow-sm"
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-sm flex items-center gap-1.5 transition shadow-sm"
             >
               <Plus className="w-4 h-4" />
               <span>Manual Mark (Admin)</span>
@@ -314,11 +315,13 @@ export default function AttendanceHistoryView() {
       ───────────────────────────────────────────────────────────────────────────── */}
       <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-2xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-700">
-            <thead className="bg-slate-50/80 text-slate-500 text-[11px] uppercase tracking-wider border-b border-slate-200 font-bold">
+          <table className="w-full text-left text-[13px] text-slate-700">
+            <thead className="bg-slate-50/80 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200 font-bold">
               <tr className="whitespace-nowrap">
+                {isTeamView && <th className="py-3.5 px-5">EMPLOYEE</th>}
                 <th className="py-3.5 px-5">DATE</th>
                 <th className="py-3.5 px-4">PUNCH IN</th>
+                {isTeamView && <th className="py-3.5 px-4">BRANCH</th>}
                 <th className="py-3.5 px-4">LOCATION</th>
                 <th className="py-3.5 px-4">PUNCH OUT</th>
                 <th className="py-3.5 px-4">WORK HOURS</th>
@@ -339,7 +342,7 @@ export default function AttendanceHistoryView() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="text-center py-12 text-slate-400">
+                  <td colSpan={isTeamView ? 11 : 9} className="text-center py-12 text-slate-400">
                     <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-indigo-500" />
                     <span>Loading attendance records...</span>
                   </td>
@@ -347,7 +350,7 @@ export default function AttendanceHistoryView() {
               ) : filteredLogs.length === 0 ? (
                 /* Empty state matching dashboard_design_2.png */
                 <tr>
-                  <td colSpan={9} className="text-center py-16 px-4">
+                  <td colSpan={isTeamView ? 11 : 9} className="text-center py-16 px-4">
                     <div className="flex flex-col items-center justify-center max-w-sm mx-auto space-y-3">
                       {/* Document with Magnifier Icon Graphic */}
                       <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
@@ -359,7 +362,7 @@ export default function AttendanceHistoryView() {
                       </p>
                       <button
                         onClick={() => fetchHistory()}
-                        className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-2 transition"
+                        className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold flex items-center gap-2 transition"
                       >
                         <RefreshCw className="w-3.5 h-3.5" />
                         <span>Refresh</span>
@@ -370,12 +373,53 @@ export default function AttendanceHistoryView() {
               ) : (
                 filteredLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-slate-50/70 transition whitespace-nowrap">
+                    {isTeamView && (
+                      <td className="py-3 px-5">
+                        <div className="flex items-center gap-3 min-w-[220px]">
+                          {log.employee?.avatarUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={log.employee.avatarUrl}
+                              alt={`${log.employee.firstName} ${log.employee.lastName || ""}`.trim()}
+                              className="h-9 w-9 shrink-0 rounded-xl object-cover"
+                            />
+                          ) : (
+                            <span
+                              aria-hidden="true"
+                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-xs font-bold text-indigo-700"
+                            >
+                              {`${log.employee?.firstName?.[0] || "?"}${log.employee?.lastName?.[0] || ""}`.toUpperCase()}
+                            </span>
+                          )}
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold text-slate-900">
+                              {log.employee
+                                ? `${log.employee.firstName} ${log.employee.lastName || ""}`.trim()
+                                : "Unknown employee"}
+                            </p>
+                            <p className="truncate text-xs text-slate-500">
+                              {[log.employee?.employeeCode, log.employee?.designation || log.employee?.department?.name]
+                                .filter(Boolean)
+                                .join(" · ") || "—"}
+                            </p>
+                            {log.employee?.user?.role && (
+                              <span className="mt-0.5 inline-block rounded-md bg-slate-100 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-slate-600">
+                                {roleLabel(log.employee.user.role)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                    )}
                     <td className="py-3.5 px-5 font-semibold text-slate-900">
                       {formatDate(log.date)}
                     </td>
                     <td className="py-3.5 px-4 font-mono text-slate-700">
                       {formatTime(log.checkIn)}
                     </td>
+                    {isTeamView && (
+                      <td className="py-3.5 px-4 text-slate-700">{log.branch?.name || "—"}</td>
+                    )}
                     <td className="py-3.5 px-4 text-slate-600 max-w-[180px] truncate" title={log.checkInLocation || log.branch?.name || ""}>
                       {log.checkInLocation || log.branch?.name || "—"}
                     </td>
@@ -386,11 +430,11 @@ export default function AttendanceHistoryView() {
                       {log.workHours ? `${log.workHours.toFixed(1)} hrs` : "-"}
                     </td>
                     <td className="py-3.5 px-4 text-slate-500">
-                      {log.totalBreakMinutes ? `${log.totalBreakMinutes} mins` : "-"}
+                      {log.totalBreakMinutes ? formatDurationMinutes(log.totalBreakMinutes) : "-"}
                     </td>
                     <td className="py-3.5 px-4">
                       <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${getStatusBadge(
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${getStatusBadge(
                           log.status
                         )}`}
                       >
@@ -403,7 +447,7 @@ export default function AttendanceHistoryView() {
                           setSelectedAttendance(log);
                           setRegularizationModalOpen(true);
                         }}
-                        className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition inline-flex items-center gap-1 shadow-2xs"
+                        className="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition inline-flex items-center gap-1 shadow-2xs"
                       >
                         <Edit3 className="w-3 h-3 text-indigo-600" />
                         <span>Regularize</span>
@@ -466,14 +510,14 @@ export default function AttendanceHistoryView() {
       {adminMarkModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl text-slate-900">
-            <h3 className="text-lg font-bold text-slate-900 mb-1">Administrative Attendance Override</h3>
+            <h3 className="text-base font-semibold text-slate-900 mb-1">Administrative Attendance Override</h3>
             <p className="text-xs text-slate-500 mb-4">
               Directly mark or correct attendance for any employee (bypasses geofence)
             </p>
 
             <form onSubmit={handleAdminMarkSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-[13px] font-medium text-slate-700 mb-1">
                   Employee ID / Code
                 </label>
                 <input
@@ -487,17 +531,16 @@ export default function AttendanceHistoryView() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Date</label>
-                  <input
-                    type="date"
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1">Date</label>
+                  <DatePicker
                     value={adminDate}
-                    onChange={(e) => setAdminDate(e.target.value)}
-                    className="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900"
+                    onChange={(val) => setAdminDate(val)}
+                    placeholder="Select date"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Status</label>
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1">Status</label>
                   <select
                     value={adminStatus}
                     onChange={(e) => setAdminStatus(e.target.value as AttendanceStatus)}
@@ -515,7 +558,7 @@ export default function AttendanceHistoryView() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">In Time</label>
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1">In Time</label>
                   <TimeSelect
                     value={adminInTime}
                     onChange={setAdminInTime}
@@ -524,7 +567,7 @@ export default function AttendanceHistoryView() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Out Time</label>
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1">Out Time</label>
                   <TimeSelect
                     value={adminOutTime}
                     onChange={setAdminOutTime}
@@ -535,7 +578,7 @@ export default function AttendanceHistoryView() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Admin Reason</label>
+                <label className="block text-[13px] font-medium text-slate-700 mb-1">Admin Reason</label>
                 <input
                   type="text"
                   value={adminReason}
@@ -549,14 +592,14 @@ export default function AttendanceHistoryView() {
                 <button
                   type="button"
                   onClick={() => setAdminMarkModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+                  className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submittingAdminMark}
-                  className="px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-sm transition"
+                  className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-sm transition"
                 >
                   {submittingAdminMark ? "Submitting..." : "Save Record"}
                 </button>

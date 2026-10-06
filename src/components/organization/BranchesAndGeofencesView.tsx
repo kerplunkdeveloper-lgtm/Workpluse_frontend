@@ -12,11 +12,12 @@ import {
   ShieldCheck,
   Loader2,
   Trash2,
-  Crosshair,
   Users,
   ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
+import LocationPicker, { PickedLocation } from "./LocationPicker";
+import { confirmDialog } from "@/components/ui/confirmDialog";
 
 export default function BranchesAndGeofencesView() {
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -30,8 +31,6 @@ export default function BranchesAndGeofencesView() {
   const [longitude, setLongitude] = useState("");
   const [radiusMeters, setRadiusMeters] = useState(250);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [locating, setLocating] = useState(false);
-  const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [assignBranch, setAssignBranch] = useState<Branch | null>(null);
@@ -62,7 +61,6 @@ export default function BranchesAndGeofencesView() {
     setLatitude("");
     setLongitude("");
     setRadiusMeters(250);
-    setLocationAccuracy(null);
   };
 
   const openCreate = () => {
@@ -72,7 +70,6 @@ export default function BranchesAndGeofencesView() {
     setLatitude("");
     setLongitude("");
     setRadiusMeters(250);
-    setLocationAccuracy(null);
     setModalOpen(true);
   };
 
@@ -83,54 +80,31 @@ export default function BranchesAndGeofencesView() {
     setLatitude(String(b.latitude ?? ""));
     setLongitude(String(b.longitude ?? ""));
     setRadiusMeters(Number(b.radiusMeters || 250));
-    setLocationAccuracy(null);
     setModalOpen(true);
   };
 
-  const fillFromCoords = async (lat: number, lng: number, accuracy?: number) => {
-    setLatitude(lat.toFixed(6));
-    setLongitude(lng.toFixed(6));
-    if (typeof accuracy === "number") setLocationAccuracy(Math.round(accuracy));
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
-        { headers: { Accept: "application/json" } }
-      );
-      if (!res.ok) return;
-      const geo = await res.json();
-      const label = geo?.display_name as string | undefined;
-      const city = geo?.address?.city || geo?.address?.town || geo?.address?.village || geo?.address?.state;
-      if (label) setAddress(label);
-      if (!name.trim() && city) setName(`${city} office`);
-    } catch {
-      // address lookup is optional
-    }
-  };
-
-  const useCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error("GPS is not available in this browser.");
+  const handleLocationChange = (loc: PickedLocation | null) => {
+    if (!loc) {
+      setLatitude("");
+      setLongitude("");
+      setAddress("");
       return;
     }
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        await fillFromCoords(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
-        toast.success("Current location captured. Save to set this as a branch.");
-        setLocating(false);
-      },
-      (err) => {
-        setLocating(false);
-        toast.error(err.message || "Could not read GPS. Allow location access and try again.");
-      },
-      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
-    );
+    setLatitude(loc.lat.toFixed(6));
+    setLongitude(loc.lng.toFixed(6));
+    setAddress(loc.address);
+    if (!name.trim() && loc.city) setName(`${loc.city} office`);
   };
+
+  const pickedLocation =
+    latitude && longitude && Number.isFinite(parseFloat(latitude)) && Number.isFinite(parseFloat(longitude))
+      ? { lat: parseFloat(latitude), lng: parseFloat(longitude), address: address || `${latitude}, ${longitude}` }
+      : null;
 
   const handleSaveBranch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!latitude || !longitude) {
-      toast.error("Set a location first — use GPS or enter coordinates.");
+      toast.error("Select the office location first: search an address, use your current location, or pick it on the map.");
       return;
     }
     setIsSubmitting(true);
@@ -158,7 +132,7 @@ export default function BranchesAndGeofencesView() {
   };
 
   const handleDeleteBranch = async (id: string) => {
-    if (!confirm("Delete this branch? Employees will be unassigned from it.")) return;
+    if (!(await confirmDialog({ title: "Delete this branch?", message: "Employees assigned to it will be left without a branch.", confirmLabel: "Delete branch" }))) return;
     try {
       const res = await branchesApi.remove(id);
       if (res?.success !== false) {
@@ -193,7 +167,6 @@ export default function BranchesAndGeofencesView() {
     }
   };
 
-  const mapUrl = latitude && longitude ? `https://www.google.com/maps?q=${latitude},${longitude}` : null;
 
   return (
     <div className="space-y-6">
@@ -209,7 +182,7 @@ export default function BranchesAndGeofencesView() {
         </div>
         <button
           onClick={openCreate}
-          className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center gap-2 shadow-lg shadow-indigo-600/20"
+          className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm flex items-center gap-2 shadow-lg shadow-indigo-600/20"
         >
           <Plus className="w-4 h-4" />
           Add location
@@ -221,7 +194,7 @@ export default function BranchesAndGeofencesView() {
         <div>
           <span className="font-semibold text-slate-900">How this works</span>
           <p className="text-slate-600 mt-0.5 leading-relaxed">
-            Stand at the office, tap <strong>Use my current location</strong>, save the branch, then set each employee to that branch. Clock-in then checks GPS against this radius.
+            Search the office address, use your current location or pick it on the map, save the branch, then set each employee to that branch. Clock-in then checks GPS against this radius.
           </p>
         </div>
       </div>
@@ -246,12 +219,12 @@ export default function BranchesAndGeofencesView() {
                     <div className="p-3 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-200">
                       <MapPin className="w-6 h-6" />
                     </div>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                       {assigned} people
                     </span>
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-slate-900">{b.name}</h3>
+                    <h3 className="text-base font-semibold text-slate-900">{b.name}</h3>
                     <p className="text-xs text-slate-500 mt-1 line-clamp-2">{b.address || "No street address"}</p>
                   </div>
                   <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
@@ -267,7 +240,7 @@ export default function BranchesAndGeofencesView() {
                     </div>
                   </div>
                 </div>
-                <div className="pt-4 mt-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                <div className="pt-4 mt-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
                   <a
                     href={b.latitude != null ? `https://www.google.com/maps?q=${b.latitude},${b.longitude}` : undefined}
                     target="_blank"
@@ -299,25 +272,12 @@ export default function BranchesAndGeofencesView() {
       {modalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl max-h-[92vh] overflow-y-auto">
-            <h3 className="text-lg font-bold text-slate-900 mb-1">{editingId ? "Edit location" : "Add location & set as branch"}</h3>
+            <h3 className="text-base font-semibold text-slate-900 mb-1">{editingId ? "Edit location" : "Add location & set as branch"}</h3>
             <p className="text-xs text-slate-500 mb-4">Capture GPS at the office, then save. You can assign people after saving.</p>
-
-            <button
-              type="button"
-              onClick={useCurrentLocation}
-              disabled={locating}
-              className="w-full mb-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
-            >
-              {locating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Crosshair className="w-4 h-4" />}
-              {locating ? "Reading GPS…" : "Use my current location"}
-            </button>
-            {locationAccuracy != null && (
-              <p className="text-[11px] text-emerald-700 mb-3">GPS accuracy about {locationAccuracy} meters.</p>
-            )}
 
             <form onSubmit={handleSaveBranch} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Branch name *</label>
+                <label className="block text-[13px] font-medium text-slate-700 mb-1">Branch name *</label>
                 <input
                   type="text"
                   value={name}
@@ -327,53 +287,13 @@ export default function BranchesAndGeofencesView() {
                   required
                 />
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Address</label>
-                <input
-                  type="text"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Filled from GPS when possible"
-                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Latitude *</label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={latitude}
-                    onChange={(e) => setLatitude(e.target.value)}
-                    placeholder="From GPS"
-                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-indigo-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Longitude *</label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={longitude}
-                    onChange={(e) => setLongitude(e.target.value)}
-                    placeholder="From GPS"
-                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-indigo-500"
-                    required
-                  />
-                </div>
-              </div>
-              {mapUrl && (
-                <a href={mapUrl} target="_blank" rel="noreferrer" className="text-[11px] font-semibold text-indigo-600 inline-flex items-center gap-1">
-                  Preview on map <ExternalLink className="w-3 h-3" />
-                </a>
-              )}
+              <LocationPicker value={pickedLocation} radiusMeters={radiusMeters} onChange={handleLocationChange} />
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <label className="text-xs font-semibold text-slate-700">
+                  <label className="text-[13px] font-medium text-slate-700">
                     Punch radius: <span className="text-indigo-600 font-bold">{radiusMeters} m</span>
                   </label>
-                  <span className="text-[10px] text-slate-500">50m – 1000m</span>
+                  <span className="text-xs text-slate-500">50m – 1000m</span>
                 </div>
                 <input
                   type="range"
@@ -386,13 +306,13 @@ export default function BranchesAndGeofencesView() {
                 />
               </div>
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
-                <button type="button" onClick={resetModal} className="px-4 py-2 text-xs font-medium text-slate-600">
+                <button type="button" onClick={resetModal} className="px-4 py-2 text-sm font-medium text-slate-600">
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm flex items-center gap-2"
                 >
                   {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   {editingId ? "Update branch" : "Save as branch"}
@@ -408,7 +328,7 @@ export default function BranchesAndGeofencesView() {
           <div className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl max-h-[92vh] overflow-y-auto">
             <div className="flex items-start justify-between gap-3 mb-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
                   <Users className="w-5 h-5 text-indigo-600" />
                   Set branch
                 </h3>
@@ -432,12 +352,12 @@ export default function BranchesAndGeofencesView() {
                         <p className="text-sm font-semibold text-slate-800 truncate">
                           {emp.firstName} {emp.lastName || ""}
                         </p>
-                        <p className="text-[11px] text-slate-500 truncate">{emp.branch?.name || "No branch"}</p>
+                        <p className="text-xs text-slate-500 truncate">{emp.branch?.name || "No branch"}</p>
                       </div>
                       <button
                         disabled={assigningId === emp.id}
                         onClick={() => handleSetEmployeeBranch(emp.id, onThis ? "" : assignBranch.id)}
-                        className={`px-3 py-1.5 rounded-lg text-[11px] font-bold ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${
                           onThis ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-indigo-600 text-white"
                         }`}
                       >

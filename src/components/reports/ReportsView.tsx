@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { reportsApi } from "@/lib/api";
-import { formatDate, formatTime } from "@/lib/utils";
+import { formatDate, formatTime, formatDurationMinutes } from "@/lib/utils";
 import {
   BarChart3,
   Download,
@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import AttendanceReportPdfModal from "./AttendanceReportPdfModal";
+import DatePicker from "@/components/ui/DatePicker";
 
 export default function ReportsView() {
   const [activeTab, setActiveTab] = useState<"DAILY" | "MONTHLY">("DAILY");
@@ -169,7 +170,7 @@ export default function ReportsView() {
         <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-white border border-slate-200 shadow-xs">
           <button
             onClick={() => setActiveTab("DAILY")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition flex items-center gap-2 ${
               activeTab === "DAILY"
                 ? "bg-indigo-600 text-white shadow-sm"
                 : "text-slate-600 hover:text-slate-900"
@@ -180,7 +181,7 @@ export default function ReportsView() {
           </button>
           <button
             onClick={() => setActiveTab("MONTHLY")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition flex items-center gap-2 ${
               activeTab === "MONTHLY"
                 ? "bg-indigo-600 text-white shadow-sm"
                 : "text-slate-600 hover:text-slate-900"
@@ -199,12 +200,13 @@ export default function ReportsView() {
           {activeTab === "DAILY" ? (
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-slate-600">Select Date:</span>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="rounded-xl px-3 py-1.5 text-xs text-slate-800 bg-white border border-slate-200 focus:outline-none focus:border-indigo-500"
-              />
+              <div className="w-44">
+                <DatePicker
+                  value={selectedDate}
+                  onChange={(val) => setSelectedDate(val)}
+                  placeholder="Select date"
+                />
+              </div>
             </div>
           ) : (
             <div className="flex flex-wrap items-center gap-2">
@@ -260,7 +262,7 @@ export default function ReportsView() {
 
           <button
             onClick={() => openPdfModal(activeTab)}
-            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-2 shadow-sm transition cursor-pointer"
+            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm flex items-center gap-2 shadow-sm transition cursor-pointer"
           >
             <Printer className="w-4 h-4 text-white" />
             {activeTab === "DAILY" ? "View & Download Daily PDF" : "View & Download Monthly PDF"}
@@ -290,11 +292,11 @@ export default function ReportsView() {
             }`}
           >
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-semibold text-slate-500 uppercase">Present</span>
+              <span className="text-xs font-semibold text-slate-500 uppercase">Present</span>
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             </div>
-            <p className="text-2xl font-black text-slate-900">{dailyReport?.summary?.present ?? 0}</p>
-            <span className="text-[10px] text-emerald-600 font-medium">Verified On-Site</span>
+            <p className="text-2xl font-bold text-slate-900">{dailyReport?.summary?.present ?? 0}</p>
+            <span className="text-xs text-emerald-600 font-medium">Verified On-Site</span>
           </button>
 
           {/* Late */}
@@ -308,11 +310,11 @@ export default function ReportsView() {
             }`}
           >
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-semibold text-slate-500 uppercase">Late Arrivals</span>
+              <span className="text-xs font-semibold text-slate-500 uppercase">Late Arrivals</span>
               <Clock className="w-4 h-4 text-amber-600" />
             </div>
-            <p className="text-2xl font-black text-amber-600">{dailyReport?.summary?.late ?? 0}</p>
-            <span className="text-[10px] text-amber-700 font-medium">Exceeded Grace</span>
+            <p className="text-2xl font-bold text-amber-600">{dailyReport?.summary?.late ?? 0}</p>
+            <span className="text-xs text-amber-700 font-medium">Exceeded Grace</span>
           </button>
 
           {/* Absent */}
@@ -326,11 +328,11 @@ export default function ReportsView() {
             }`}
           >
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-semibold text-slate-500 uppercase">Absent</span>
+              <span className="text-xs font-semibold text-slate-500 uppercase">Absent</span>
               <XCircle className="w-4 h-4 text-rose-600" />
             </div>
-            <p className="text-2xl font-black text-rose-600">{dailyReport?.summary?.absent ?? 0}</p>
-            <span className="text-[10px] text-rose-700 font-medium">Unexcused</span>
+            <p className="text-2xl font-bold text-rose-600">{dailyReport?.summary?.absent ?? 0}</p>
+            <span className="text-xs text-rose-700 font-medium">Unexcused</span>
           </button>
 
           {/* On Leave */}
@@ -344,11 +346,11 @@ export default function ReportsView() {
             }`}
           >
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-semibold text-slate-500 uppercase">On Leave</span>
+              <span className="text-xs font-semibold text-slate-500 uppercase">On Leave</span>
               <CalendarDays className="w-4 h-4 text-indigo-600" />
             </div>
-            <p className="text-2xl font-black text-indigo-700">{dailyReport?.summary?.onLeave ?? 0}</p>
-            <span className="text-[10px] text-slate-500 font-medium">Approved Leaves</span>
+            <p className="text-2xl font-bold text-indigo-700">{dailyReport?.summary?.onLeave ?? 0}</p>
+            <span className="text-xs text-slate-500 font-medium">Approved Leaves</span>
           </button>
 
           {/* WFH */}
@@ -362,11 +364,11 @@ export default function ReportsView() {
             }`}
           >
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-semibold text-slate-500 uppercase">Remote WFH</span>
+              <span className="text-xs font-semibold text-slate-500 uppercase">Remote WFH</span>
               <Home className="w-4 h-4 text-sky-600" />
             </div>
-            <p className="text-2xl font-black text-sky-700">{dailyReport?.summary?.wfh ?? 0}</p>
-            <span className="text-[10px] text-sky-700 font-medium">Telecommute</span>
+            <p className="text-2xl font-bold text-sky-700">{dailyReport?.summary?.wfh ?? 0}</p>
+            <span className="text-xs text-sky-700 font-medium">Telecommute</span>
           </button>
 
           {/* Total Staff */}
@@ -380,42 +382,42 @@ export default function ReportsView() {
             }`}
           >
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-semibold text-slate-500 uppercase">Total Staff</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 font-mono">
+              <span className="text-xs font-semibold text-slate-500 uppercase">Total Staff</span>
+              <span className="text-xs px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 font-mono">
                 {dailyReport?.summary?.attendanceRate ?? 0}% rate
               </span>
             </div>
-            <p className="text-2xl font-black text-slate-900">{dailyReport?.summary?.totalEmployees ?? 0}</p>
-            <span className="text-[10px] text-indigo-700 font-medium">Show All Rows</span>
+            <p className="text-2xl font-bold text-slate-900">{dailyReport?.summary?.totalEmployees ?? 0}</p>
+            <span className="text-xs text-indigo-700 font-medium">Show All Rows</span>
           </button>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
-            <p className="text-[11px] font-semibold text-slate-500 uppercase mb-1">Total Active Workforce</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Total Active Workforce</p>
             <p className="text-2xl font-bold text-slate-900">{monthlyReport?.totalEmployees ?? 0}</p>
-            <span className="text-[10px] text-slate-500">Employees in payroll</span>
+            <span className="text-xs text-slate-500">Employees in payroll</span>
           </div>
 
           <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
-            <p className="text-[11px] font-semibold text-slate-500 uppercase mb-1">Standard Work Days</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Standard Work Days</p>
             <p className="text-2xl font-bold text-emerald-600">26 Days</p>
-            <span className="text-[10px] text-emerald-700">Indian Statutory Standard</span>
+            <span className="text-xs text-emerald-700">Indian Statutory Standard</span>
           </div>
 
           <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
-            <p className="text-[11px] font-semibold text-slate-500 uppercase mb-1">Total Overtime Hours</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Total Overtime Hours</p>
             <p className="text-2xl font-bold text-amber-600">
               {(monthlyReport?.report || [])
                 .reduce((sum: number, r: any) => sum + parseFloat(r.overtimeHours || 0), 0)
                 .toFixed(1)}{" "}
               hrs
             </p>
-            <span className="text-[10px] text-amber-700">Across all departments</span>
+            <span className="text-xs text-amber-700">Across all departments</span>
           </div>
 
           <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
-            <p className="text-[11px] font-semibold text-slate-500 uppercase mb-1">Approved Leaves Taken</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Approved Leaves Taken</p>
             <p className="text-2xl font-bold text-indigo-700">
               {(monthlyReport?.report || []).reduce(
                 (sum: number, r: any) => sum + Number(r.approvedLeaveDays || 0),
@@ -423,7 +425,7 @@ export default function ReportsView() {
               )}{" "}
               days
             </p>
-            <span className="text-[10px] text-slate-500">CL, SL, EL recorded</span>
+            <span className="text-xs text-slate-500">CL, SL, EL recorded</span>
           </div>
         </div>
       )}
@@ -432,13 +434,13 @@ export default function ReportsView() {
       <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
         <div className="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <h3 className="font-bold text-sm text-slate-900">
+            <h3 className="font-semibold text-sm text-slate-900">
               {activeTab === "DAILY"
                 ? `Daily Attendance Register (${formatDate(selectedDate)})`
                 : `Monthly Overall Muster Roll (${monthNames[selectedMonth - 1]} ${selectedYear})`}
             </h3>
             {activeTab === "DAILY" && dailyStatusFilter !== "ALL" && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200">
+              <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200">
                 Filtered: {dailyStatusFilter}
               </span>
             )}
@@ -450,8 +452,8 @@ export default function ReportsView() {
 
         <div className="overflow-x-auto">
           {activeTab === "DAILY" ? (
-            <table className="w-full text-left text-xs text-slate-700">
-              <thead className="bg-slate-50 text-slate-600 text-[11px] uppercase tracking-wider border-b border-slate-200 font-semibold">
+            <table className="w-full text-left text-[13px] text-slate-700">
+              <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider border-b border-slate-200 font-semibold">
                 <tr>
                   <th className="py-3.5 px-4">Code</th>
                   <th className="py-3.5 px-4">Employee</th>
@@ -505,17 +507,17 @@ export default function ReportsView() {
                           {a.workHours ? `${Number(a.workHours).toFixed(1)} hrs` : "-"}
                         </td>
                         <td className="py-3.5 px-4 font-mono text-amber-600">
-                          {a.lateMinutes && a.lateMinutes > 0 ? `${a.lateMinutes} mins` : "-"}
+                          {a.lateMinutes && a.lateMinutes > 0 ? formatDurationMinutes(a.lateMinutes) : "-"}
                         </td>
                         <td className="py-3.5 px-4 text-center">
                           <span
-                            className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                            className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold border ${
                               isPresent
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                 : isLate
                                 ? "bg-amber-50 text-amber-700 border-amber-200"
                                 : isAbsent
-                                ? "bg-rose-50 text-rose-700 border-rose-200 font-black"
+                                ? "bg-rose-50 text-rose-700 border-rose-200 font-bold"
                                 : isOnLeave
                                 ? "bg-indigo-50 text-indigo-700 border-indigo-200"
                                 : "bg-slate-100 text-slate-700 border-slate-200"
@@ -531,8 +533,8 @@ export default function ReportsView() {
               </tbody>
             </table>
           ) : (
-            <table className="w-full text-left text-xs text-slate-700">
-              <thead className="bg-slate-50 text-slate-600 text-[11px] uppercase tracking-wider border-b border-slate-200 font-semibold">
+            <table className="w-full text-left text-[13px] text-slate-700">
+              <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider border-b border-slate-200 font-semibold">
                 <tr>
                   <th className="py-3.5 px-4">Code</th>
                   <th className="py-3.5 px-4">Employee</th>

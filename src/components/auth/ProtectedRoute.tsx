@@ -7,6 +7,8 @@ import { UserRole } from "@/types";
 
 import AppSkeletonLoader from "@/components/ui/AppSkeletonLoader";
 import { BillingLocked } from "@/components/billing/WorkspaceBilling";
+import WorkspaceSuspended from "@/components/billing/WorkspaceSuspended";
+import { roleLabel } from "@/lib/utils";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -19,6 +21,13 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
   const { user, token, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+
+  const ownerOutsidePlatform =
+    user?.role === "SUPER_ADMIN" && !!pathname && !pathname.startsWith("/platform") && !pathname.startsWith("/change-password");
+
+  useEffect(() => {
+    if (!isLoading && ownerOutsidePlatform) router.replace("/platform/clients");
+  }, [isLoading, ownerOutsidePlatform, router]);
 
   useEffect(() => {
     if (!isLoading && !token) {
@@ -35,16 +44,18 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
     return null;
   }
 
+  if (ownerOutsidePlatform) return <AppSkeletonLoader />;
+
   if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#f8fafc] text-slate-800 p-6 text-center">
         <div className="w-16 h-16 rounded-full bg-red-50 border border-red-200 flex items-center justify-center text-red-600 mb-4 shadow-xs">
           <span className="text-2xl font-bold">!</span>
         </div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Access Restricted</h2>
+        <h2 className="text-xl font-semibold text-slate-900 mb-2">Access Restricted</h2>
         <p className="text-slate-600 max-w-md mb-6">
           This section requires elevated privileges. Your current role is{" "}
-          <span className="px-2 py-0.5 rounded bg-slate-100 text-indigo-700 font-semibold border border-slate-200">{user.role}</span>.
+          <span className="px-2 py-0.5 rounded bg-slate-100 text-indigo-700 font-semibold border border-slate-200">{roleLabel(user.role)}</span>.
         </p>
         <button
           onClick={() => router.replace("/dashboard")}
@@ -54,6 +65,11 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
         </button>
       </div>
     );
+  }
+
+  // A suspended workspace gets no billing escape hatch: only the owner can lift it.
+  if (user.entitlement?.code === "ACCOUNT_SUSPENDED" && user.role !== "SUPER_ADMIN") {
+    return <WorkspaceSuspended />;
   }
 
   const locked = user.entitlement && user.entitlement.allowApp === false;

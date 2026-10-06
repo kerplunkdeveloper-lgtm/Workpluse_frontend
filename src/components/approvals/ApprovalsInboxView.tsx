@@ -68,7 +68,7 @@ export default function ApprovalsInboxView() {
   const handleReviewCorrection = async (id: string, status: "APPROVED" | "REJECTED") => {
     toast.loading("Processing regularization decision...", { id: "corr-act" });
     try {
-      const res = await correctionsApi.review(id, { status, reviewNote: `Decision by Manager (${status})` });
+      const res = await correctionsApi.review(id, { status, reviewNote: `Decision by HR or admin (${status})` });
       toast.dismiss("corr-act");
       if (res?.success) {
         toast.success(`Attendance record updated and marked as ${status}!`);
@@ -86,7 +86,7 @@ export default function ApprovalsInboxView() {
   const handleReviewLeave = async (id: string, status: "APPROVED" | "REJECTED") => {
     toast.loading("Processing leave review...", { id: "leave-act" });
     try {
-      const res = await leavesApi.review(id, { status, reviewNote: `Decision by Manager (${status})` });
+      const res = await leavesApi.review(id, { status, reviewNote: `Decision by HR or admin (${status})` });
       toast.dismiss("leave-act");
       if (res?.success) {
         toast.success(`Leave request ${status}!`);
@@ -104,7 +104,7 @@ export default function ApprovalsInboxView() {
   const handleReviewOvertime = async (id: string, status: "APPROVED" | "REJECTED") => {
     toast.loading("Processing overtime approval...", { id: "ot-act" });
     try {
-      const res = await overtimeApi.review(id, { status, reviewNote: `Reviewed by Manager` });
+      const res = await overtimeApi.review(id, { status, reviewNote: `Reviewed by HR or admin` });
       toast.dismiss("ot-act");
       if (res?.success) {
         toast.success(`Overtime request ${status}!`);
@@ -144,7 +144,7 @@ export default function ApprovalsInboxView() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2.5">
             <ShieldCheck className="w-7 h-7 text-indigo-600" />
-            Unified Manager Approvals Inbox
+            Approvals inbox
           </h1>
           <p className="text-xs text-slate-500 mt-1">
             Centralized decision hub for employee regularization, leave, overtime, and reimbursement requests
@@ -152,7 +152,7 @@ export default function ApprovalsInboxView() {
         </div>
 
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 text-xs font-semibold text-indigo-700">
-          <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+          {/* <Sparkles className="w-3.5 h-3.5 text-indigo-600" /> */}
           <span>{totalPending} Total Requests Awaiting Review</span>
         </div>
       </div>
@@ -161,7 +161,7 @@ export default function ApprovalsInboxView() {
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2">
         <button
           onClick={() => setActiveTab("CORRECTIONS")}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-xl text-sm font-semibold transition flex items-center gap-2 ${
             activeTab === "CORRECTIONS"
               ? "bg-indigo-600 text-white shadow"
               : "bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50"
@@ -170,7 +170,7 @@ export default function ApprovalsInboxView() {
           <Clock className="w-4 h-4" />
           <span>Punch Regularization</span>
           {corrections.length > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold">
+            <span className="px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold">
               {corrections.length}
             </span>
           )}
@@ -178,7 +178,7 @@ export default function ApprovalsInboxView() {
 
         <button
           onClick={() => setActiveTab("LEAVES")}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-xl text-sm font-semibold transition flex items-center gap-2 ${
             activeTab === "LEAVES"
               ? "bg-indigo-600 text-white shadow"
               : "bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50"
@@ -187,7 +187,7 @@ export default function ApprovalsInboxView() {
           <CalendarDays className="w-4 h-4" />
           <span>Leave Requests</span>
           {leaves.length > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold">
+            <span className="px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold">
               {leaves.length}
             </span>
           )}
@@ -195,7 +195,7 @@ export default function ApprovalsInboxView() {
 
         <button
           onClick={() => setActiveTab("OVERTIME")}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-xl text-sm font-semibold transition flex items-center gap-2 ${
             activeTab === "OVERTIME"
               ? "bg-indigo-600 text-white shadow"
               : "bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50"
@@ -204,7 +204,7 @@ export default function ApprovalsInboxView() {
           <Layers className="w-4 h-4" />
           <span>Overtime Credits</span>
           {overtimes.length > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold">
+            <span className="px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold">
               {overtimes.length}
             </span>
           )}
@@ -212,7 +212,7 @@ export default function ApprovalsInboxView() {
 
         <button
           onClick={() => setActiveTab("EXPENSES")}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-xl text-sm font-semibold transition flex items-center gap-2 ${
             activeTab === "EXPENSES"
               ? "bg-indigo-600 text-white shadow"
               : "bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50"
@@ -221,7 +221,7 @@ export default function ApprovalsInboxView() {
           <Wallet className="w-4 h-4" />
           <span>Expense Claims</span>
           {expenses.length > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold">
+            <span className="px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold">
               {expenses.length}
             </span>
           )}
@@ -299,7 +299,7 @@ export default function ApprovalsInboxView() {
                       <span className="font-bold text-sm text-slate-900">
                         {leave.employee?.firstName} {leave.employee?.lastName}
                       </span>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 border border-indigo-200 text-indigo-700">
+                      <span className="px-2 py-0.5 rounded text-xs font-bold bg-indigo-50 border border-indigo-200 text-indigo-700">
                         {leave.leaveType?.name || "Leave"}
                       </span>
                     </div>
@@ -386,10 +386,10 @@ export default function ApprovalsInboxView() {
                       <span className="font-bold text-sm text-slate-900">
                         {exp.employee?.firstName} {exp.employee?.lastName}
                       </span>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 border border-amber-200 text-amber-800">
+                      <span className="px-2 py-0.5 rounded text-xs font-bold bg-amber-50 border border-amber-200 text-amber-800">
                         {exp.category}
                       </span>
-                      <span className="font-black text-emerald-700 text-xs">
+                      <span className="font-bold text-emerald-700 text-xs">
                         {formatCurrency(exp.amount)}
                       </span>
                     </div>

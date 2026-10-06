@@ -92,7 +92,7 @@ export default function RegularizationModal({
             <Clock className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-900">Request Attendance Regularization</h3>
+            <h3 className="text-base font-semibold text-slate-900">Request Attendance Regularization</h3>
             <p className="text-xs text-slate-500">
               For date: <span className="font-semibold text-slate-700">{formatDate(attendance.date)}</span>
             </p>
@@ -109,7 +109,7 @@ export default function RegularizationModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
                 Corrected Clock-In Time
               </label>
               <input
@@ -120,7 +120,7 @@ export default function RegularizationModal({
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
                 Corrected Clock-Out Time
               </label>
               <input
@@ -133,7 +133,7 @@ export default function RegularizationModal({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
               Reason for Adjustment <span className="text-rose-500">*</span>
             </label>
             <textarea
@@ -150,14 +150,14 @@ export default function RegularizationModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-900"
+              className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center gap-2 transition shadow-sm"
+              className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm flex items-center gap-2 transition shadow-sm"
             >
               {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               Submit Regularization

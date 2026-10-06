@@ -22,7 +22,7 @@ export function WorkPulseMark({ size = 36 }: { size?: number }) {
       style={{ width: size, height: size }}
     >
       <span
-        className="font-black leading-none tracking-tight"
+        className="font-bold leading-none tracking-tight"
         style={{ fontSize: Math.max(11, Math.round(size * 0.42)) }}
       >
         W
@@ -50,7 +50,7 @@ function DashboardPreview() {
         <aside className="hidden w-[118px] shrink-0 flex-col border-r border-slate-100 bg-[#0f172a] px-2.5 py-3 sm:flex">
           <div className="mb-3 flex items-center gap-1.5 px-1">
             <WorkPulseMark size={22} />
-            <span className="text-[10px] font-bold text-white">WorkPulse</span>
+            <span className="text-xs font-bold text-white">WorkPulse</span>
           </div>
           <nav className="space-y-0.5">
             {[
@@ -63,7 +63,7 @@ function DashboardPreview() {
             ].map((item) => (
               <div
                 key={item.label}
-                className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[9px] font-semibold ${
+                className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold ${
                   item.active ? "bg-indigo-600 text-white shadow-sm" : "text-white/50"
                 }`}
               >
@@ -77,10 +77,10 @@ function DashboardPreview() {
         <div className="min-w-0 flex-1 bg-[#f7f3ec] p-3">
           <div className="mb-2.5 flex items-start justify-between gap-2">
             <div>
-              <p className="text-[13px] font-black tracking-tight text-slate-900">Good morning!</p>
-              <p className="text-[9px] text-slate-400">Here&apos;s what&apos;s happening with your team today.</p>
+              <p className="text-[13px] font-bold tracking-tight text-slate-900">Good morning!</p>
+              <p className="text-xs text-slate-400">Here&apos;s what&apos;s happening with your team today.</p>
             </div>
-            <div className="rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-[9px] font-semibold text-slate-500">
+            <div className="rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-xs font-semibold text-slate-500">
               This week ▾
             </div>
           </div>
@@ -94,7 +94,7 @@ function DashboardPreview() {
               <div key={kpi.label} className="rounded-xl border border-slate-100 bg-white px-2 py-1.5 shadow-sm">
                 <div className="mb-0.5 flex items-center gap-1">
                   <kpi.icon className={`h-3 w-3 ${kpi.tone}`} />
-                  <span className="text-[10px] font-black text-slate-900">{kpi.label.split(" ")[0]}</span>
+                  <span className="text-xs font-bold text-slate-900">{kpi.label.split(" ")[0]}</span>
                   <span className="ml-auto text-[8px] font-bold text-emerald-500">{kpi.change}</span>
                 </div>
                 <p className="text-[8px] capitalize text-slate-400">{kpi.label.split(" ").slice(1).join(" ")}</p>
@@ -105,7 +105,7 @@ function DashboardPreview() {
           <div className="grid grid-cols-[1.1fr_0.95fr_0.7fr] gap-1.5">
             <div className="rounded-xl border border-slate-100 bg-white p-2 shadow-sm">
               <div className="mb-1.5 flex items-center justify-between">
-                <span className="text-[9px] font-bold text-slate-700">Attendance Overview</span>
+                <span className="text-xs font-bold text-slate-700">Attendance Overview</span>
                 <span className="text-[8px] text-slate-400">◀ April 2024 ▶</span>
               </div>
               <div className="grid grid-cols-7 gap-0.5">
@@ -149,7 +149,7 @@ function DashboardPreview() {
 
             <div className="rounded-xl border border-slate-100 bg-white p-2 shadow-sm">
               <div className="mb-1.5 flex items-center justify-between">
-                <span className="text-[9px] font-bold text-slate-700">Team Today</span>
+                <span className="text-xs font-bold text-slate-700">Team Today</span>
                 <span className="text-[8px] font-semibold text-indigo-500">View all</span>
               </div>
               {[
@@ -178,7 +178,7 @@ function DashboardPreview() {
             </div>
 
             <div className="rounded-xl border border-slate-100 bg-white p-2 shadow-sm">
-              <span className="mb-2 block text-[9px] font-bold text-slate-700">Payroll Trend</span>
+              <span className="mb-2 block text-xs font-bold text-slate-700">Payroll Trend</span>
               <div className="flex h-16 items-end gap-1">
                 {[38, 52, 44, 58, 48, 72].map((h, i) => (
                   <div
@@ -273,7 +273,7 @@ export default function MarketingAuthLayout({ children }: { children: ReactNode 
           <div className="relative px-5 pb-8 pt-4 sm:px-8 lg:pb-10 lg:pt-6">
             <div className="relative z-10 grid items-start gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,400px)] lg:gap-10">
               <section className="order-2 min-w-0 lg:order-1">
-                <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.22em] text-indigo-600">
+                <p className="mb-3 text-xs font-bold uppercase tracking-[0.22em] text-indigo-600">
                   Workforce, in rhythm
                 </p>
                 <h1 className="max-w-xl font-serif text-[40px] font-semibold leading-[1.08] tracking-tight text-slate-950 sm:text-[48px] xl:text-[56px]">
@@ -303,7 +303,7 @@ export default function MarketingAuthLayout({ children }: { children: ReactNode 
                         </div>
                         <div>
                           <p className="text-[13px] font-bold text-slate-900">{label}</p>
-                          <p className="text-[11px] text-slate-400">{sub}</p>
+                          <p className="text-xs text-slate-400">{sub}</p>
                         </div>
                       </div>
                     ))}

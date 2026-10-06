@@ -116,7 +116,7 @@ export default function CandidatePortalPage() {
         <div className="w-16 h-16 rounded-full bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 mb-4">
           <XCircle className="w-8 h-8" />
         </div>
-        <h2 className="text-xl font-bold text-slate-900 mb-2">Invitation Unavailable</h2>
+        <h2 className="text-xl font-semibold text-slate-900 mb-2">Invitation Unavailable</h2>
         <p className="text-xs text-slate-500 max-w-sm">{error || "Invalid candidate link."}</p>
       </div>
     );
@@ -135,7 +135,7 @@ export default function CandidatePortalPage() {
               W
             </div>
             <div>
-              <h1 className="font-serif text-xl font-semibold text-slate-900">WorkPulse onboarding</h1>
+              <h1 className="font-serif text-xl font-bold text-slate-900">WorkPulse onboarding</h1>
               <p className="text-xs text-slate-500">Digital Candidate Journey & Offer Acceptance</p>
             </div>
           </div>
@@ -146,7 +146,7 @@ export default function CandidatePortalPage() {
 
         {/* Welcome Card */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-4">
-          <h2 className="text-2xl font-bold text-slate-900">
+          <h2 className="text-xl font-semibold text-slate-900">
             Welcome, {candidate.firstName} {candidate.lastName}! 🎉
           </h2>
           <p className="text-xs text-slate-600 leading-relaxed">
@@ -156,13 +156,13 @@ export default function CandidatePortalPage() {
           {/* Offer Details Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-              <span className="text-[11px] font-semibold text-slate-500 uppercase block mb-1">
+              <span className="text-xs font-semibold text-slate-500 uppercase block mb-1">
                 Designation
               </span>
               <span className="text-base font-bold text-slate-900">{candidate.designation}</span>
             </div>
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-              <span className="text-[11px] font-semibold text-slate-500 uppercase block mb-1">
+              <span className="text-xs font-semibold text-slate-500 uppercase block mb-1">
                 Offered Annual CTC
               </span>
               <span className="text-base font-bold text-emerald-700">
@@ -170,7 +170,7 @@ export default function CandidatePortalPage() {
               </span>
             </div>
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-              <span className="text-[11px] font-semibold text-slate-500 uppercase block mb-1">
+              <span className="text-xs font-semibold text-slate-500 uppercase block mb-1">
                 Expected Joining Date
               </span>
               <span className="text-base font-bold text-indigo-700">
@@ -204,14 +204,14 @@ export default function CandidatePortalPage() {
                 <button
                   onClick={() => handleResponse("REJECTED")}
                   disabled={isResponding}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-sm font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition cursor-pointer"
                 >
                   Decline
                 </button>
                 <button
                   onClick={() => handleResponse("ACCEPTED")}
                   disabled={isResponding}
-                  className="px-6 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+                  className="px-6 py-2.5 rounded-xl text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition flex items-center gap-1.5 cursor-pointer"
                 >
                   <Check className="w-4 h-4 text-white" />
                   Accept Offer
@@ -224,7 +224,7 @@ export default function CandidatePortalPage() {
         {/* Document Submission Section */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
           <div>
-            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
               <FileText className="w-5 h-5 text-indigo-600" />
               Mandatory KYC & Onboarding Documents
             </h3>
@@ -236,7 +236,7 @@ export default function CandidatePortalPage() {
           <form onSubmit={handleDocumentUpload} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
                   Document Type
                 </label>
                 <select
@@ -253,7 +253,7 @@ export default function CandidatePortalPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
                   Choose File (PDF, PNG, JPG)
                 </label>
                 <input
@@ -269,7 +269,7 @@ export default function CandidatePortalPage() {
               <button
                 type="submit"
                 disabled={isUploading}
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center gap-2 shadow-sm transition"
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm flex items-center gap-2 shadow-sm transition"
               >
                 {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin text-white" /> : <Upload className="w-3.5 h-3.5 text-white" />}
                 Upload Document
@@ -296,7 +296,7 @@ export default function CandidatePortalPage() {
                     <span className="font-semibold text-slate-900">{doc.documentType.replace(/_/g, " ")}</span>
                   </div>
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                    className={`px-2 py-0.5 rounded-full text-xs font-bold border ${
                       doc.status === "VERIFIED"
                         ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                         : "bg-amber-50 text-amber-700 border-amber-200"

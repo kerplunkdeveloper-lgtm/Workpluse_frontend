@@ -29,7 +29,7 @@ export default function Brand({
             Work<span className={inverse ? "text-indigo-200" : "text-indigo-600"}>Pulse</span>
           </span>
           {subtitle && (
-            <span className={`mt-1.5 block truncate text-[10px] font-semibold uppercase tracking-[0.18em] ${inverse ? "text-white/50" : "text-slate-500"}`}>
+            <span className={`mt-1.5 block truncate text-xs font-semibold uppercase tracking-[0.18em] ${inverse ? "text-white/50" : "text-slate-500"}`}>
               {subtitle}
             </span>
           )}

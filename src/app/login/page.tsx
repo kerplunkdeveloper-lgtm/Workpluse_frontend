@@ -96,7 +96,7 @@ export default function LoginPage() {
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="login-email" className="mb-2 block text-[12px] font-bold text-slate-600">Work email or employee code</label>
+          <label htmlFor="login-email" className="mb-2 block text-[12px] font-medium text-slate-600">Work email or employee code</label>
           <div className={`flex items-center gap-3 rounded-full border bg-[#ffffff] px-4 py-3.5 transition-all ${authFieldRing(emailFocused)}`}>
             <Mail className="h-4 w-4 shrink-0 text-slate-400" />
             <input
@@ -118,7 +118,7 @@ export default function LoginPage() {
 
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <label htmlFor="login-password" className="text-[12px] font-bold text-slate-600">Password</label>
+            <label htmlFor="login-password" className="text-[12px] font-medium text-slate-600">Password</label>
             <Link href="/forgot-password" className="text-[12px] font-semibold text-indigo-600 hover:text-indigo-700">
               Forgot password?
             </Link>
@@ -151,7 +151,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="keep-white mt-1 flex w-full items-center justify-center gap-2 rounded-full bg-blue-600 py-3.5 text-sm font-bold text-white shadow-[0_10px_24px_-8px_rgba(37,99,235,0.7)] transition hover:bg-blue-500 active:scale-[0.99] disabled:opacity-60"
+          className="keep-white mt-1 flex w-full items-center justify-center gap-2 rounded-full bg-blue-600 py-3.5 text-sm font-semibold text-white shadow-[0_10px_24px_-8px_rgba(37,99,235,0.7)] transition hover:bg-blue-500 active:scale-[0.99] disabled:opacity-60"
         >
           {submitting ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -171,7 +171,7 @@ export default function LoginPage() {
               <div className="w-full border-t border-slate-200" />
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-[#ffffff] px-3 text-[11px] text-slate-400">Or</span>
+              <span className="bg-[#ffffff] px-3 text-xs text-slate-400">Or</span>
             </div>
           </div>
           <div id="google-signin" className="flex justify-center min-h-[40px]" />

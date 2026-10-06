@@ -96,7 +96,7 @@ export default function PolicyView() {
 
       <div className="bg-white rounded-3xl border border-slate-200 p-6 grid grid-cols-1 sm:grid-cols-2 gap-4 shadow-xs">
         <label className="space-y-1.5">
-          <span className="text-[11px] font-semibold text-slate-600 uppercase">Working days / month</span>
+          <span className="text-xs font-semibold text-slate-600 uppercase">Working days / month</span>
           <input
             type="number"
             min={1}
@@ -107,7 +107,7 @@ export default function PolicyView() {
           />
         </label>
         <label className="space-y-1.5">
-          <span className="text-[11px] font-semibold text-slate-600 uppercase">Half-day threshold (minutes)</span>
+          <span className="text-xs font-semibold text-slate-600 uppercase">Half-day threshold (minutes)</span>
           <input
             type="number"
             min={0}
@@ -117,7 +117,7 @@ export default function PolicyView() {
           />
         </label>
         <label className="space-y-1.5">
-          <span className="text-[11px] font-semibold text-slate-600 uppercase">Lates before deduction</span>
+          <span className="text-xs font-semibold text-slate-600 uppercase">Lates before deduction</span>
           <input
             type="number"
             min={0}
@@ -127,7 +127,7 @@ export default function PolicyView() {
           />
         </label>
         <label className="space-y-1.5">
-          <span className="text-[11px] font-semibold text-slate-600 uppercase">Late deduction (fraction of daily rate)</span>
+          <span className="text-xs font-semibold text-slate-600 uppercase">Late deduction (fraction of daily rate)</span>
           <input
             type="number"
             step="0.01"

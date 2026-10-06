@@ -23,7 +23,7 @@ import {
   Laptop,
   Box,
 } from "lucide-react";
-import { formatDate } from "@/lib/utils";
+import { formatDate, roleLabel } from "@/lib/utils";
 import { offboardingApi, assetsApi, employeesApi, branchesApi, authApi } from "@/lib/api";
 import ProfilePhotoPicker from "@/components/profile/ProfilePhotoPicker";
 import { toast } from "sonner";
@@ -138,7 +138,7 @@ export default function ProfilePage() {
       <div className="space-y-6 max-w-7xl mx-auto pb-12">
         {/* Header Profile Hero Card */}
         <div className="rounded-3xl p-6 sm:p-8 border border-slate-200 bg-white shadow-sm relative overflow-hidden">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
             <div className="flex items-center gap-5">
               <ProfilePhotoPicker
                 src={user?.avatarUrl || employee?.avatarUrl}
@@ -163,7 +163,7 @@ export default function ProfilePage() {
               />
               <div>
                 <div className="flex items-center gap-2.5 flex-wrap">
-                  <h1 className="font-serif text-2xl font-semibold text-slate-900">
+                  <h1 className="font-serif text-2xl font-bold text-slate-900">
                     {employee?.firstName
                       ? `${employee.firstName} ${employee.lastName || ""}`
                       : user?.email?.split("@")[0]}
@@ -173,8 +173,8 @@ export default function ProfilePage() {
                       {employee.employeeCode}
                     </span>
                   )}
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 uppercase tracking-wider">
-                    {user?.role}
+                  <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 uppercase tracking-wider">
+                    {roleLabel(user?.role)}
                   </span>
                 </div>
 
@@ -198,13 +198,14 @@ export default function ProfilePage() {
             </div>
 
             {/* Tab navigation pills */}
-            <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 overflow-x-auto">
+            <div role="tablist" aria-label="Profile sections" className="flex max-w-full flex-wrap items-center gap-1 rounded-2xl border border-slate-200 bg-slate-100/80 p-1 shadow-inner lg:flex-nowrap">
               <button
                 onClick={() => setActiveTab("DOCUMENTS")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+                aria-selected={activeTab === "DOCUMENTS"}
+                role="tab" className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 ${
                   activeTab === "DOCUMENTS"
                     ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
-                    : "text-slate-600 hover:text-slate-900"
+                    : "text-slate-600 hover:bg-white hover:text-slate-900"
                 }`}
               >
                 <FileCheck2 className="w-4 h-4" />
@@ -212,10 +213,11 @@ export default function ProfilePage() {
               </button>
               <button
                 onClick={() => setActiveTab("PROFILE")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+                aria-selected={activeTab === "PROFILE"}
+                role="tab" className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 ${
                   activeTab === "PROFILE"
                     ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
-                    : "text-slate-600 hover:text-slate-900"
+                    : "text-slate-600 hover:bg-white hover:text-slate-900"
                 }`}
               >
                 <User className="w-4 h-4" />
@@ -223,10 +225,11 @@ export default function ProfilePage() {
               </button>
               <button
                 onClick={() => setActiveTab("EXIT")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+                aria-selected={activeTab === "EXIT"}
+                role="tab" className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 ${
                   activeTab === "EXIT"
                     ? "bg-rose-600 text-white shadow-md shadow-rose-600/20"
-                    : "text-slate-600 hover:text-slate-900"
+                    : "text-slate-600 hover:bg-white hover:text-slate-900"
                 }`}
               >
                 <UserMinus className="w-4 h-4" />
@@ -234,10 +237,11 @@ export default function ProfilePage() {
               </button>
               <button
                 onClick={() => setActiveTab("ASSETS")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+                aria-selected={activeTab === "ASSETS"}
+                role="tab" className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 ${
                   activeTab === "ASSETS"
                     ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
-                    : "text-slate-600 hover:text-slate-900"
+                    : "text-slate-600 hover:bg-white hover:text-slate-900"
                 }`}
               >
                 <Laptop className="w-4 h-4" />
@@ -260,7 +264,7 @@ export default function ProfilePage() {
             ) : (
               <div className="text-center py-16 text-slate-500">
                 <FileCheck2 className="w-12 h-12 text-slate-400 mx-auto mb-3" />
-                <h3 className="text-base font-bold text-slate-900 mb-1">No Linked Employee Record Found</h3>
+                <h3 className="text-base font-semibold text-slate-900 mb-1">No Linked Employee Record Found</h3>
                 <p className="text-xs text-slate-500 max-w-md mx-auto">
                   Your administrator account is not linked to a specific staff record. Go to the{" "}
                   <a href="/employees" className="text-indigo-600 underline font-bold">
@@ -274,7 +278,7 @@ export default function ProfilePage() {
         ) : activeTab === "EXIT" ? (
           <div className="rounded-3xl p-6 sm:p-8 border border-slate-200 bg-white shadow-sm space-y-6">
             <div className="border-b border-slate-200 pb-4">
-              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
                 <UserMinus className="w-5 h-5 text-rose-500" />
                 Employee Separation & Resignation Lifecycle
               </h2>
@@ -293,10 +297,10 @@ export default function ProfilePage() {
                 {/* Active Exit Status Banner */}
                 <div className="rounded-2xl p-5 border border-amber-200 bg-amber-50/60 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 uppercase">
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 uppercase">
                       Current Stage: {myExit.status.replace(/_/g, " ")}
                     </span>
-                    <h3 className="text-base font-bold text-slate-900 mt-1.5">
+                    <h3 className="text-base font-semibold text-slate-900 mt-1.5">
                       Separation Request in Progress
                     </h3>
                     <p className="text-xs text-slate-700 mt-1">
@@ -315,7 +319,7 @@ export default function ProfilePage() {
 
                   <div className="text-right">
                     <p className="text-xs text-slate-500">Clearances Completed</p>
-                    <p className="text-2xl font-black text-slate-900 mt-0.5">
+                    <p className="text-2xl font-bold text-slate-900 mt-0.5">
                       {myExit.metrics?.clearedCount} / {myExit.metrics?.totalClearances}
                     </p>
                     <div className="w-32 bg-slate-200 rounded-full h-1.5 mt-1 overflow-hidden ml-auto">
@@ -338,10 +342,10 @@ export default function ProfilePage() {
                       >
                         <div>
                           <p className="font-bold text-slate-800">{c.itemName}</p>
-                          <p className="text-[10px] text-slate-500 uppercase">{c.department.replace(/_/g, " ")}</p>
+                          <p className="text-xs text-slate-500 uppercase">{c.department.replace(/_/g, " ")}</p>
                         </div>
                         <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          className={`px-2 py-0.5 rounded text-xs font-bold ${
                             c.status === "CLEARED" || c.status === "WAIVED"
                               ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                               : "bg-amber-50 text-amber-700 border border-amber-200"
@@ -364,10 +368,10 @@ export default function ProfilePage() {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-2xl font-black text-slate-900 font-mono">
+                      <p className="text-2xl font-bold text-slate-900 font-mono">
                         ₹{Number(myExit.finalSettlement.netPayable).toLocaleString("en-IN")}
                       </p>
-                      <p className="text-[10px] text-slate-500">Net Separation Amount</p>
+                      <p className="text-xs text-slate-500">Net Separation Amount</p>
                     </div>
                   </div>
                 )}
@@ -379,14 +383,14 @@ export default function ProfilePage() {
                     <AlertTriangle className="w-4 h-4" />
                     Voluntary Separation Notice
                   </div>
-                  <p className="text-slate-600 leading-relaxed text-[11px]">
+                  <p className="text-slate-600 leading-relaxed text-xs">
                     Submitting this form initiates standard organizational separation protocols. The mandatory notice
                     period is 30 days. You will be scheduled for an exit interview and handover checklist with your manager.
                   </p>
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Reason for Resignation *</label>
+                  <label className="block font-medium text-slate-700 mb-1">Reason for Resignation *</label>
                   <textarea
                     value={resignationReason}
                     onChange={(e) => setResignationReason(e.target.value)}
@@ -398,18 +402,18 @@ export default function ProfilePage() {
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Preferred Last Working Day</label>
+                  <label className="block font-medium text-slate-700 mb-1">Preferred Last Working Day</label>
                   <input
                     type="date"
                     value={preferredLwd}
                     onChange={(e) => setPreferredLwd(e.target.value)}
                     className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-rose-500"
                   />
-                  <p className="text-[10px] text-slate-500 mt-1">Subject to HR and management approval.</p>
+                  <p className="text-xs text-slate-500 mt-1">Subject to HR and management approval.</p>
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Feedback / Handover Notes</label>
+                  <label className="block font-medium text-slate-700 mb-1">Feedback / Handover Notes</label>
                   <textarea
                     value={employeeComments}
                     onChange={(e) => setEmployeeComments(e.target.value)}
@@ -422,7 +426,7 @@ export default function ProfilePage() {
                 <button
                   type="submit"
                   disabled={isSubmittingResignation}
-                  className="px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-md shadow-rose-600/20 flex items-center gap-2"
+                  className="px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-sm shadow-md shadow-rose-600/20 flex items-center gap-2"
                 >
                   {isSubmittingResignation && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   Submit Resignation Notice
@@ -433,14 +437,14 @@ export default function ProfilePage() {
         ) : activeTab === "PROFILE" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="rounded-3xl p-6 border border-slate-200 bg-white shadow-sm space-y-4">
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-3">
+              <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-3">
                 <Briefcase className="w-4 h-4 text-indigo-600" />
                 Employment & Role Details
               </h3>
               <div className="space-y-3 text-xs">
                 <div className="flex justify-between py-1 border-b border-slate-100">
                   <span className="text-slate-500">System User ID:</span>
-                  <span className="text-slate-700 font-mono text-[11px]">{user?.id}</span>
+                  <span className="text-slate-700 font-mono text-xs">{user?.id}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-100">
                   <span className="text-slate-500">Employee Code:</span>
@@ -490,13 +494,13 @@ export default function ProfilePage() {
                 </div>
                 <div className="flex justify-between py-1">
                   <span className="text-slate-500">Account Role:</span>
-                  <span className="text-indigo-600 font-semibold">{user?.role}</span>
+                  <span className="text-indigo-600 font-semibold">{roleLabel(user?.role)}</span>
                 </div>
               </div>
             </div>
 
             <div className="rounded-3xl p-6 border border-slate-200 bg-white shadow-sm space-y-4">
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-3">
+              <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-3">
                 <Shield className="w-4 h-4 text-emerald-600" />
                 Statutory Compliance & Security
               </h3>
@@ -544,14 +548,14 @@ export default function ProfilePage() {
                   <input name="bankName" defaultValue={(employee as any)?.bankName || ""} placeholder="Bank name" className="w-full px-3 py-2 rounded-xl border" />
                   <input name="bankAccountNumber" defaultValue={(employee as any)?.bankAccountNumber || ""} placeholder="Account number" className="w-full px-3 py-2 rounded-xl border" />
                   <input name="bankIfsc" defaultValue={(employee as any)?.bankIfsc || ""} placeholder="IFSC" className="w-full px-3 py-2 rounded-xl border" />
-                  <button type="submit" className="w-full py-2.5 rounded-xl bg-slate-900 text-white font-bold">
+                  <button type="submit" className="w-full py-2.5 rounded-xl bg-slate-900 text-white font-semibold">
                     Save my details
                   </button>
                 </form>
                 <div className="pt-2">
                   <button
                     onClick={() => setActiveTab("DOCUMENTS")}
-                    className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2"
+                    className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2"
                   >
                     <FileCheck2 className="w-4 h-4" />
                     Manage All My Documents
@@ -566,7 +570,7 @@ export default function ProfilePage() {
             <div className="rounded-3xl p-6 sm:p-8 border border-slate-200 bg-white shadow-sm">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5 mb-6">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
                     <Laptop className="w-5 h-5 text-indigo-600" />
                     Entrusted Company Assets & Equipment
                   </h2>
@@ -587,7 +591,7 @@ export default function ProfilePage() {
               ) : !myAssets?.assignedAssets || myAssets.assignedAssets.length === 0 ? (
                 <div className="py-16 text-center text-slate-500">
                   <Box className="w-12 h-12 text-slate-400 mx-auto mb-3" />
-                  <h3 className="text-base font-bold text-slate-900 mb-1">No Assets Assigned</h3>
+                  <h3 className="text-base font-semibold text-slate-900 mb-1">No Assets Assigned</h3>
                   <p className="text-xs text-slate-500 max-w-sm mx-auto">
                     You currently do not have any company hardware or office assets registered under your custody.
                   </p>
@@ -609,11 +613,11 @@ export default function ProfilePage() {
                               <span className="font-mono font-bold text-xs text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
                                 {asset.assetCode}
                               </span>
-                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <span className="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                 {asset.status}
                               </span>
                             </div>
-                            <h3 className="font-bold text-slate-900 text-sm mt-1">{asset.name}</h3>
+                            <h3 className="font-semibold text-slate-900 text-sm mt-1">{asset.name}</h3>
                             {asset.brand && (
                               <p className="text-xs text-slate-500">
                                 {asset.brand} {asset.modelNumber ? `• ${asset.modelNumber}` : ""}
@@ -625,35 +629,35 @@ export default function ProfilePage() {
 
                       <div className="grid grid-cols-2 gap-2 text-xs bg-white p-3 rounded-xl border border-slate-200">
                         <div>
-                          <span className="text-[10px] text-slate-500 uppercase">Serial Number</span>
+                          <span className="text-xs text-slate-500 uppercase">Serial Number</span>
                           <p className="font-mono text-slate-700 font-semibold truncate">
                             {asset.serialNumber || "—"}
                           </p>
                         </div>
                         <div>
-                          <span className="text-[10px] text-slate-500 uppercase">Handover Date</span>
+                          <span className="text-xs text-slate-500 uppercase">Handover Date</span>
                           <p className="text-slate-700 font-semibold">
                             {asset.assignedDate ? new Date(asset.assignedDate).toLocaleDateString() : "—"}
                           </p>
                         </div>
                         <div>
-                          <span className="text-[10px] text-slate-500 uppercase">Condition</span>
+                          <span className="text-xs text-slate-500 uppercase">Condition</span>
                           <p className="text-emerald-700 font-semibold">{asset.condition}</p>
                         </div>
                         <div>
-                          <span className="text-[10px] text-slate-500 uppercase">Category</span>
+                          <span className="text-xs text-slate-500 uppercase">Category</span>
                           <p className="text-slate-700 font-semibold">{asset.category.replace(/_/g, " ")}</p>
                         </div>
                       </div>
 
                       {asset.specifications && (
                         <div className="text-xs space-y-1">
-                          <span className="text-[10px] font-semibold text-slate-500 uppercase">Specifications</span>
+                          <span className="text-xs font-semibold text-slate-500 uppercase">Specifications</span>
                           <div className="flex flex-wrap gap-1.5">
                             {Object.entries(asset.specifications).map(([k, v]) => (
                               <span
                                 key={k}
-                                className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-mono border border-slate-200"
+                                className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-xs font-mono border border-slate-200"
                               >
                                 {k}: {String(v)}
                               </span>
@@ -670,13 +674,13 @@ export default function ProfilePage() {
             {/* Past Custody History */}
             {myAssets?.history && myAssets.history.length > 0 && (
               <div className="rounded-3xl p-6 sm:p-8 border border-slate-200 bg-white shadow-sm space-y-4">
-                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
                   <Box className="w-4 h-4 text-indigo-600" />
                   Asset Custody History Log
                 </h3>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs text-slate-600">
-                    <thead className="border-b border-slate-200 text-[11px] text-slate-500 uppercase bg-slate-50">
+                  <table className="w-full text-left text-[13px] text-slate-600">
+                    <thead className="border-b border-slate-200 text-xs text-slate-500 uppercase bg-slate-50">
                       <tr>
                         <th className="py-2.5 px-3">Asset</th>
                         <th className="py-2.5 px-3">Action</th>
@@ -693,7 +697,7 @@ export default function ProfilePage() {
                           </td>
                           <td className="py-2.5 px-3">
                             <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              className={`px-2 py-0.5 rounded text-xs font-bold ${
                                 h.type === "ASSIGNMENT"
                                   ? "bg-blue-50 text-blue-700 border border-blue-200"
                                   : h.type === "RETURN"

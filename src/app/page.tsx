@@ -88,11 +88,11 @@ export default function LandingPage() {
             <div>
               <span className="font-serif text-xl font-semibold tracking-tight text-slate-900 flex items-center gap-1.5">
                 WorkPulse
-                <span className="px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-bold border border-indigo-200 font-sans">
+                <span className="px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold border border-indigo-200 font-sans">
                   LIVE
                 </span>
               </span>
-              <span className="text-[10px] text-slate-500 tracking-[0.16em] block uppercase font-semibold">
+              <span className="text-xs text-slate-500 tracking-[0.16em] block uppercase font-semibold">
                 Workforce, in rhythm
               </span>
             </div>
@@ -105,7 +105,7 @@ export default function LandingPage() {
             </a>
             <a href="#offline" className="hover:text-slate-900 transition flex items-center gap-1.5">
               Offline Mode
-              <span className="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-200 text-[9px] font-bold">
+              <span className="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold">
                 NEW
               </span>
             </a>
@@ -237,7 +237,7 @@ export default function LandingPage() {
               <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                 Live Geofence Radar · HQ Branch
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold">
+              <span className="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
                 12m to Branch Center (Within 300m Radius)
               </span>
             </div>
@@ -271,7 +271,7 @@ export default function LandingPage() {
                       })
                     : "--:--:--"}
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1">
+                <p className="text-xs text-slate-500 mt-1">
                   Assigned Shift: General (09:00 - 18:00)
                 </p>
               </div>
@@ -291,7 +291,7 @@ export default function LandingPage() {
                   GPS Coordinate Lock
                 </div>
                 <div className="text-sm font-bold text-slate-900 mt-1">11.9344° N, 79.8358° E</div>
-                <p className="text-[11px] text-slate-500 mt-1">
+                <p className="text-xs text-slate-500 mt-1">
                   Hardware Accuracy: ±12m · Anti-spoofing verified
                 </p>
               </div>
@@ -309,7 +309,7 @@ export default function LandingPage() {
                   IndexedDB Queue Engine
                 </div>
                 <div className="text-sm font-bold text-slate-900 mt-1">0 Pending Punches</div>
-                <p className="text-[11px] text-slate-500 mt-1">
+                <p className="text-xs text-slate-500 mt-1">
                   Punches survive offline drops and sync with original time
                 </p>
               </div>
@@ -334,14 +334,14 @@ export default function LandingPage() {
         <div className="absolute inset-0 bg-gradient-to-r from-[#122d7f]/90 via-[#16399a]/45 to-transparent" aria-hidden="true" />
         <div className="relative z-10 flex min-h-[185px] max-w-[55%] flex-col justify-between p-5 text-white sm:min-h-[220px] sm:p-7">
           <div>
-            <span className="inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-slate-950/20 px-3 py-1 text-[10px] font-bold tracking-wide text-cyan-50 backdrop-blur-sm">
+            <span className="inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-slate-950/20 px-3 py-1 text-xs font-bold tracking-wide text-cyan-50 backdrop-blur-sm">
               <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
               Live attendance
             </span>
             <p className="mt-4 font-mono text-3xl font-semibold tracking-tight sm:text-5xl">04:10:04 <span className="align-middle rounded-md border border-white/25 bg-white/15 px-1.5 py-1 text-xs font-bold tracking-normal">PM</span></p>
-            <p className="mt-1 text-[10px] text-blue-100 sm:text-xs">Tuesday, September 23, 2026</p>
+            <p className="mt-1 text-xs text-blue-100 sm:text-xs">Tuesday, September 23, 2026</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold text-blue-50 sm:text-xs">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-blue-50 sm:text-xs">
             <span className="rounded-lg border border-white/20 bg-white/10 px-2.5 py-1.5 backdrop-blur-sm">Working from Thalapet, Oulgaret, Puducherry</span>
             <span className="rounded-full bg-emerald-400 px-2.5 py-1 text-emerald-950 shadow-lg shadow-emerald-950/20">On duty</span>
           </div>
@@ -475,20 +475,20 @@ export default function LandingPage() {
             <div className="rounded-2xl bg-white border border-slate-200 p-6 space-y-4 shadow-sm">
               <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                 <span className="text-xs font-bold text-slate-800">Offline Queue Visualizer</span>
-                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">Auto-Sync Active</span>
+                <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">Auto-Sync Active</span>
               </div>
               <div className="space-y-2 font-mono text-xs">
                 <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center justify-between">
                   <span>[OFFLINE PUNCH] CHECK_IN @ 09:02:14 AM</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-amber-100 font-bold">QUEUED</span>
+                  <span className="text-xs px-2 py-0.5 rounded bg-amber-100 font-bold">QUEUED</span>
                 </div>
                 <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center justify-between">
                   <span>[OFFLINE PUNCH] BREAK_START @ 01:15:30 PM</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-amber-100 font-bold">QUEUED</span>
+                  <span className="text-xs px-2 py-0.5 rounded bg-amber-100 font-bold">QUEUED</span>
                 </div>
                 <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-between">
                   <span>[ONLINE EVENT] Auto-sync dispatched 2 punches</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-100 font-bold">SYNCED ✅</span>
+                  <span className="text-xs px-2 py-0.5 rounded bg-emerald-100 font-bold">SYNCED ✅</span>
                 </div>
               </div>
             </div>
@@ -513,7 +513,7 @@ export default function LandingPage() {
           <div className="mt-6 inline-flex items-center p-1 rounded-2xl bg-slate-100 border border-slate-200">
             <button
               onClick={() => setBillingCycle("MONTHLY")}
-              className={`px-4 py-1.5 rounded-xl text-xs font-bold transition ${
+              className={`px-4 py-1.5 rounded-xl text-sm font-semibold transition ${
                 billingCycle === "MONTHLY"
                   ? "bg-indigo-600 text-white shadow"
                   : "text-slate-600 hover:text-slate-900"
@@ -523,14 +523,14 @@ export default function LandingPage() {
             </button>
             <button
               onClick={() => setBillingCycle("ANNUAL")}
-              className={`px-4 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+              className={`px-4 py-1.5 rounded-xl text-sm font-semibold transition flex items-center gap-1.5 ${
                 billingCycle === "ANNUAL"
                   ? "bg-indigo-600 text-white shadow"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
               Annual Billing
-              <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+              <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
                 Save 20%
               </span>
             </button>
@@ -554,7 +554,7 @@ export default function LandingPage() {
                 }`}
               >
                 {p.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-extrabold uppercase tracking-wider shadow">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-indigo-600 text-white text-xs font-bold uppercase tracking-wider shadow">
                     Most Popular
                   </div>
                 )}
@@ -562,7 +562,7 @@ export default function LandingPage() {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-lg font-bold text-slate-900">{p.name}</h3>
-                    <span className="text-[10px] font-semibold text-slate-500">{p.badge}</span>
+                    <span className="text-xs font-semibold text-slate-500">{p.badge}</span>
                   </div>
 
                   <div className="mb-4">

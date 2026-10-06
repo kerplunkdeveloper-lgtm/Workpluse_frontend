@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { unwrapList } from "@/lib/utils";
 import { trialDaysLabel, trialDaysRemaining } from "@/components/billing/WorkspaceBilling";
 import type { SubscriptionPlanOption } from "@/types";
+import { confirmDialog } from "@/components/ui/confirmDialog";
 
 export default function SubscriptionSettingsView() {
   const { user, refreshUser } = useAuth();
@@ -146,7 +147,7 @@ export default function SubscriptionSettingsView() {
   }, []);
 
   const handleCancel = async () => {
-    if (!confirm("Cancel at period end? The workspace stays usable until the current period expires.")) return;
+    if (!(await confirmDialog({ title: "Cancel at period end?", message: "The workspace stays usable until the current billing period expires.", confirmLabel: "Cancel subscription" }))) return;
     setCancelling(true);
     try {
       const res = await billingApi.cancel();
@@ -241,7 +242,7 @@ export default function SubscriptionSettingsView() {
         <div className="flex flex-wrap items-center justify-between gap-6 relative">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <span className="px-3 py-1 rounded-full text-xs font-black bg-indigo-50 text-indigo-700 border border-indigo-200 uppercase tracking-wide">
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 uppercase tracking-wide">
                 {currentPlan.replace(/_/g, " ")}
               </span>
               <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1.5 ${
@@ -255,7 +256,7 @@ export default function SubscriptionSettingsView() {
                 {statusLabel}
               </span>
             </div>
-            <h2 className="text-xl font-bold text-slate-900">
+            <h2 className="text-xl font-semibold text-slate-900">
               {user?.organization?.name || "WorkPulse Global Technologies"}
             </h2>
             <p className="text-xs text-slate-500 max-w-lg leading-relaxed">
@@ -287,7 +288,7 @@ export default function SubscriptionSettingsView() {
                 style={{ width: `${usagePercentage}%` }}
               />
             </div>
-            <div className="flex justify-between text-[10px] text-slate-500">
+            <div className="flex justify-between text-xs text-slate-500">
               <span>{activeEmployeesCount} Active Employees</span>
               <span>{Math.max(0, maxEmployees - activeEmployeesCount)} Seats Free</span>
             </div>
@@ -302,7 +303,7 @@ export default function SubscriptionSettingsView() {
             <Building className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900">Company & Organization Profile</h3>
+            <h3 className="text-base font-semibold text-slate-900">Company & Organization Profile</h3>
             <p className="text-xs text-slate-500">Update your official company name, billing contact email, and address</p>
           </div>
         </div>
@@ -310,7 +311,7 @@ export default function SubscriptionSettingsView() {
         <form onSubmit={handleOrgSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700">Organization Name</label>
+              <label className="text-[13px] font-medium text-slate-700">Organization Name</label>
               <input
                 type="text"
                 required
@@ -321,7 +322,7 @@ export default function SubscriptionSettingsView() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700">Billing Email Address</label>
+              <label className="text-[13px] font-medium text-slate-700">Billing Email Address</label>
               <input
                 type="email"
                 value={orgForm.email}
@@ -331,7 +332,7 @@ export default function SubscriptionSettingsView() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700">Phone Number</label>
+              <label className="text-[13px] font-medium text-slate-700">Phone Number</label>
               <input
                 type="text"
                 value={orgForm.phone}
@@ -341,7 +342,7 @@ export default function SubscriptionSettingsView() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700">Tax ID / VAT Number</label>
+              <label className="text-[13px] font-medium text-slate-700">Tax ID / VAT Number</label>
               <input
                 type="text"
                 value={orgForm.taxId}
@@ -351,7 +352,7 @@ export default function SubscriptionSettingsView() {
               />
             </div>
             <div className="md:col-span-2 space-y-1.5">
-              <label className="text-xs font-bold text-slate-700">Official Office Address</label>
+              <label className="text-[13px] font-medium text-slate-700">Official Office Address</label>
               <input
                 type="text"
                 value={orgForm.address}
@@ -366,7 +367,7 @@ export default function SubscriptionSettingsView() {
             <button
               type="submit"
               disabled={isSavingOrg}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-xs flex items-center gap-2 transition disabled:opacity-60"
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold shadow-xs flex items-center gap-2 transition disabled:opacity-60"
             >
               {isSavingOrg ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               {isSavingOrg ? "Saving..." : "Save Organization Profile"}
@@ -377,7 +378,7 @@ export default function SubscriptionSettingsView() {
 
       {/* Billing Cycle Switcher */}
       <div className="flex flex-col items-center text-center space-y-3 pt-4">
-        <h3 className="text-xl font-bold text-slate-900">Choose Your Subscription Tier</h3>
+        <h3 className="text-base font-semibold text-slate-900">Choose Your Subscription Tier</h3>
         <p className="text-xs text-slate-500 max-w-md">
           Scale effortlessly as your workforce grows. Save 20% with annual billing.
         </p>
@@ -409,7 +410,7 @@ export default function SubscriptionSettingsView() {
             className="w-52 px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
             aria-label="Offer code"
           />
-          <span className="text-[11px] text-slate-500">Try WELCOME20 or ANNUAL20</span>
+          <span className="text-xs text-slate-500">Try WELCOME20 or ANNUAL20</span>
         </div>
       </div>
 
@@ -435,19 +436,19 @@ export default function SubscriptionSettingsView() {
               }`}
             >
               {p.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-wider shadow">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-indigo-600 text-white text-xs font-bold uppercase tracking-wider shadow">
                   Most Popular
                 </div>
               )}
               {isSelected && (
-                <div className="absolute -top-3 right-4 px-3 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider shadow">
+                <div className="absolute -top-3 right-4 px-3 py-0.5 rounded-full bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider shadow">
                   Active
                 </div>
               )}
 
               <div className="space-y-4">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">
+                  <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">
                     {p.badge}
                   </span>
                   <h4 className="text-lg font-bold text-slate-900 mt-0.5">{p.name}</h4>
@@ -455,7 +456,7 @@ export default function SubscriptionSettingsView() {
                 </div>
 
                 <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-black text-slate-900">₹{Number(price || 0).toLocaleString("en-IN")}</span>
+                  <span className="text-3xl font-bold text-slate-900">₹{Number(price || 0).toLocaleString("en-IN")}</span>
                   <span className="text-xs text-slate-500">{billingCycle === "ANNUAL" ? "/ year" : "/ month"}</span>
                 </div>
 
@@ -463,7 +464,7 @@ export default function SubscriptionSettingsView() {
                   {p.features.map((f, i) => (
                     <div key={i} className="flex items-start gap-2 text-slate-600">
                       <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                      <span className="text-[11px] leading-relaxed">{f}</span>
+                      <span className="text-xs leading-relaxed">{f}</span>
                     </div>
                   ))}
                 </div>
@@ -473,11 +474,11 @@ export default function SubscriptionSettingsView() {
                 <button
                   disabled={isSelected || upgradingPlan !== null}
                   onClick={() => handleUpgrade(p.id)}
-                  className={`w-full py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
+                  className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-1.5 ${
                     isSelected
-                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-default font-bold"
+                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-default font-semibold"
                       : p.popular
-                      ? "bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white shadow-xs font-bold disabled:opacity-50"
+                      ? "bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white shadow-xs font-semibold disabled:opacity-50"
                       : "bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-800 font-semibold disabled:opacity-50"
                   }`}
                 >
@@ -501,15 +502,15 @@ export default function SubscriptionSettingsView() {
             <FileText className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900">Billing History & Invoices</h3>
+            <h3 className="text-base font-semibold text-slate-900">Billing History & Invoices</h3>
             <p className="text-xs text-slate-500">Download past invoices and review payment receipts</p>
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-[13px]">
             <thead>
-              <tr className="border-b border-slate-100 text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
+              <tr className="border-b border-slate-100 text-slate-400 font-semibold uppercase tracking-wider text-xs">
                 <th className="pb-3 px-3">Invoice ID</th>
                 <th className="pb-3 px-3">Date</th>
                 <th className="pb-3 px-3">Plan Tier</th>
@@ -530,7 +531,7 @@ export default function SubscriptionSettingsView() {
                   <td className="py-3 px-3 font-medium">{inv.plan}</td>
                   <td className="py-3 px-3 font-bold text-slate-900">{inv.amount}</td>
                   <td className="py-3 px-3">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-50 text-slate-700 border border-slate-200">
+                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-50 text-slate-700 border border-slate-200">
                       {inv.status}
                     </span>
                   </td>
@@ -548,7 +549,7 @@ export default function SubscriptionSettingsView() {
               <Shield className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900">Integration API keys</h3>
+              <h3 className="text-base font-semibold text-slate-900">Integration API keys</h3>
               <p className="text-xs text-slate-500">Scoped keys for attendance and employee read APIs. Shown once at creation.</p>
             </div>
           </div>
@@ -565,7 +566,7 @@ export default function SubscriptionSettingsView() {
               className="flex-1 px-3 py-2 rounded-xl text-xs border border-slate-200"
               placeholder="Key name"
             />
-            <button type="button" onClick={createApiKey} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold">
+            <button type="button" onClick={createApiKey} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold">
               Create key
             </button>
           </div>

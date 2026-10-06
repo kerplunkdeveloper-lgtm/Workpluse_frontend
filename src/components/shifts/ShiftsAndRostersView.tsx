@@ -187,7 +187,7 @@ export default function ShiftsAndRostersView() {
 
         <button
           onClick={() => setModalOpen(true)}
-          className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center gap-2 shadow-lg shadow-indigo-600/20 transition"
+          className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm flex items-center gap-2 shadow-lg shadow-indigo-600/20 transition"
         >
           <Plus className="w-4 h-4" />
           Create Shift Schedule
@@ -216,13 +216,13 @@ export default function ShiftsAndRostersView() {
                   <div className="p-3 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-200">
                     <Clock className="w-6 h-6" />
                   </div>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
                     Active Roster
                   </span>
                 </div>
 
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">{s.name}</h3>
+                  <h3 className="text-base font-semibold text-slate-900">{s.name}</h3>
                   <p className="text-xs text-slate-500 mt-1">
                     Working Days: <span className="text-slate-800 font-medium">{parseWorkingDays(s.workingDays)}</span>
                   </p>
@@ -249,7 +249,7 @@ export default function ShiftsAndRostersView() {
               </div>
 
               <div className="pt-4 mt-4 border-t border-slate-200 flex items-center justify-between">
-                <span className="text-[11px] text-slate-500">
+                <span className="text-xs text-slate-500">
                   {(s as any)._count?.employees ?? (s as any).employeeCount ?? 0} assigned
                 </span>
                 <button
@@ -268,7 +268,7 @@ export default function ShiftsAndRostersView() {
       </div>
 
       <div className="bg-white rounded-3xl border border-slate-200 p-5 space-y-4">
-        <h2 className="text-sm font-bold text-slate-900">Day shift overrides</h2>
+        <h2 className="text-sm font-semibold text-slate-900">Day shift overrides</h2>
         <form onSubmit={handleOverride} className="grid grid-cols-1 sm:grid-cols-5 gap-2">
           <select
             value={ovEmp}
@@ -313,8 +313,8 @@ export default function ShiftsAndRostersView() {
           </button>
         </form>
         <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead className="text-[11px] uppercase text-slate-500">
+          <table className="w-full text-[13px]">
+            <thead className="text-xs uppercase text-slate-500">
               <tr>
                 <th className="py-2 text-left">Date</th>
                 <th className="py-2 text-left">Employee</th>
@@ -354,10 +354,10 @@ export default function ShiftsAndRostersView() {
       {assignShift && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-white rounded-2xl p-5 space-y-3">
-            <h3 className="text-sm font-bold">Assign to {assignShift.name}</h3>
+            <h3 className="text-sm font-semibold">Assign to {assignShift.name}</h3>
             <div className="max-h-64 overflow-y-auto space-y-1">
               {employees.map((e) => (
-                <label key={e.id} className="flex items-center gap-2 text-xs py-1">
+                <label key={e.id} className="flex items-center gap-2 text-[13px] py-1">
                   <input
                     type="checkbox"
                     checked={selectedEmpIds.includes(e.id)}
@@ -391,14 +391,14 @@ export default function ShiftsAndRostersView() {
       {modalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl">
-            <h3 className="text-lg font-bold text-slate-900 mb-1">Create Shift Schedule</h3>
+            <h3 className="text-base font-semibold text-slate-900 mb-1">Create Shift Schedule</h3>
             <p className="text-xs text-slate-500 mb-4">
               Configure shift working hours, grace period, and working days bitmask
             </p>
 
             <form onSubmit={handleCreateShift} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Shift Name *</label>
+                <label className="block text-[13px] font-medium text-slate-700 mb-1">Shift Name *</label>
                 <input
                   type="text"
                   value={name}
@@ -411,7 +411,7 @@ export default function ShiftsAndRostersView() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Start Time *</label>
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1">Start Time *</label>
                   <input
                     type="time"
                     value={startTime}
@@ -421,7 +421,7 @@ export default function ShiftsAndRostersView() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">End Time *</label>
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1">End Time *</label>
                   <input
                     type="time"
                     value={endTime}
@@ -434,7 +434,7 @@ export default function ShiftsAndRostersView() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1">
                     Grace Minutes *
                   </label>
                   <input
@@ -448,7 +448,7 @@ export default function ShiftsAndRostersView() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1">
                     Working Days Bitmask
                   </label>
                   <input
@@ -466,14 +466,14 @@ export default function ShiftsAndRostersView() {
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-900"
+                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition flex items-center gap-2"
                 >
                   {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   Save Shift

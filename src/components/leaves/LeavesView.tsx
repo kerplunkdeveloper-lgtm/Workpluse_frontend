@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import DatePicker from "@/components/ui/DatePicker";
+import { confirmDialog } from "@/components/ui/confirmDialog";
 
 export default function LeavesView() {
   const { user, role } = useAuth();
@@ -162,7 +164,7 @@ export default function LeavesView() {
             }
             setApplyModalOpen(true);
           }}
-          className="px-4 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center gap-2 shadow-sm transition"
+          className="px-4 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm flex items-center gap-2 shadow-sm transition"
         >
           <Plus className="w-4 h-4" />
           Apply for Leave
@@ -176,48 +178,48 @@ export default function LeavesView() {
             <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold text-slate-500">Casual Leave (CL)</span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                <span className="px-2 py-0.5 rounded text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
                   Standard
                 </span>
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-black text-slate-900">12</span>
+                <span className="text-3xl font-bold text-slate-900">12</span>
                 <span className="text-xs text-slate-500">/ 12 days remaining</span>
               </div>
             </div>
             <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold text-slate-500">Sick Leave (SL)</span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span className="px-2 py-0.5 rounded text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                   Paid
                 </span>
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-black text-emerald-600">10</span>
+                <span className="text-3xl font-bold text-emerald-600">10</span>
                 <span className="text-xs text-slate-500">/ 10 days remaining</span>
               </div>
             </div>
             <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold text-slate-500">Privilege / Earned (EL)</span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
+                <span className="px-2 py-0.5 rounded text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200">
                   Accrued
                 </span>
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-black text-sky-600">15</span>
+                <span className="text-3xl font-bold text-sky-600">15</span>
                 <span className="text-xs text-slate-500">/ 15 days remaining</span>
               </div>
             </div>
             <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold text-slate-500">Comp-Off Credit</span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                <span className="px-2 py-0.5 rounded text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
                   Rest Day OT
                 </span>
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-black text-amber-600">2</span>
+                <span className="text-3xl font-bold text-amber-600">2</span>
                 <span className="text-xs text-slate-500">days accrued</span>
               </div>
             </div>
@@ -229,12 +231,12 @@ export default function LeavesView() {
                 <span className="text-xs font-semibold text-slate-500">
                   {b.leaveType?.name || "Leave Quota"}
                 </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                <span className="px-2 py-0.5 rounded text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
                   {b.leaveType?.code || "LEAVE"}
                 </span>
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-black text-slate-900">{b.remainingDays}</span>
+                <span className="text-3xl font-bold text-slate-900">{b.remainingDays}</span>
                 <span className="text-xs text-slate-500">/ {b.totalDays} days</span>
               </div>
             </div>
@@ -277,7 +279,7 @@ export default function LeavesView() {
             <button
               key={t.id}
               onClick={async () => {
-                if (!confirm(`Delete ${t.name}?`)) return;
+                if (!(await confirmDialog({ title: `Delete ${t.name}?`, message: "Existing requests keep their record, but this leave type can no longer be used.", confirmLabel: "Delete" }))) return;
                 await leavesApi.deleteType(t.id);
                 loadData();
               }}
@@ -293,7 +295,7 @@ export default function LeavesView() {
       <div className="flex items-center gap-2 border-b border-slate-200">
         <button
           onClick={() => setActiveTab("MY_LEAVES")}
-          className={`pb-3 px-4 text-xs font-semibold border-b-2 transition ${
+          className={`pb-3 px-4 text-sm font-semibold border-b-2 transition ${
             activeTab === "MY_LEAVES"
               ? "border-indigo-600 text-indigo-600"
               : "border-transparent text-slate-500 hover:text-slate-800"
@@ -305,7 +307,7 @@ export default function LeavesView() {
         {canApprove && (
           <button
             onClick={() => setActiveTab("APPROVALS")}
-            className={`pb-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-2 ${
+            className={`pb-3 px-4 text-sm font-semibold border-b-2 transition flex items-center gap-2 ${
               activeTab === "APPROVALS"
                 ? "border-indigo-600 text-indigo-600"
                 : "border-transparent text-slate-500 hover:text-slate-800"
@@ -313,7 +315,7 @@ export default function LeavesView() {
           >
             <span>Team Approvals</span>
             {pendingApprovals.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold border border-amber-200">
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-50 text-amber-700 text-xs font-bold border border-amber-200">
                 {pendingApprovals.length} Pending
               </span>
             )}
@@ -325,8 +327,8 @@ export default function LeavesView() {
       {activeTab === "MY_LEAVES" && (
         <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-700">
-              <thead className="bg-slate-50 text-slate-600 text-[11px] uppercase tracking-wider border-b border-slate-200 font-semibold">
+            <table className="w-full text-left text-[13px] text-slate-700">
+              <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider border-b border-slate-200 font-semibold">
                 <tr>
                   <th className="py-3.5 px-4">Leave Type</th>
                   <th className="py-3.5 px-4">Duration</th>
@@ -366,7 +368,7 @@ export default function LeavesView() {
                       </td>
                       <td className="py-3.5 px-4">
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${
                             req.status === "APPROVED"
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                               : req.status === "REJECTED"
@@ -393,8 +395,8 @@ export default function LeavesView() {
       {activeTab === "APPROVALS" && (
         <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-700">
-              <thead className="bg-slate-50 text-slate-600 text-[11px] uppercase tracking-wider border-b border-slate-200 font-semibold">
+            <table className="w-full text-left text-[13px] text-slate-700">
+              <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider border-b border-slate-200 font-semibold">
                 <tr>
                   <th className="py-3.5 px-4">Employee</th>
                   <th className="py-3.5 px-4">Leave Type</th>
@@ -419,7 +421,7 @@ export default function LeavesView() {
                         <div className="font-semibold text-slate-900">
                           {req.employee?.firstName} {req.employee?.lastName}
                         </div>
-                        <div className="text-[10px] text-slate-500">
+                        <div className="text-xs text-slate-500">
                           {req.employee?.department?.name || req.employee?.employeeCode}
                         </div>
                       </td>
@@ -437,7 +439,7 @@ export default function LeavesView() {
                       </td>
                       <td className="py-3.5 px-4">
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${
                             req.status === "APPROVED"
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                               : req.status === "REJECTED"
@@ -457,7 +459,7 @@ export default function LeavesView() {
                                 setReviewAction("APPROVED");
                                 setReviewModalOpen(true);
                               }}
-                              className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition"
+                              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition"
                             >
                               Approve
                             </button>
@@ -467,13 +469,13 @@ export default function LeavesView() {
                                 setReviewAction("REJECTED");
                                 setReviewModalOpen(true);
                               }}
-                              className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition"
+                              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition"
                             >
                               Reject
                             </button>
                           </div>
                         ) : (
-                          <span className="text-slate-400 text-[11px] italic">Reviewed</span>
+                          <span className="text-slate-400 text-xs italic">Reviewed</span>
                         )}
                       </td>
                     </tr>
@@ -494,7 +496,7 @@ export default function LeavesView() {
             className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl text-slate-900"
           >
             <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-4">
-              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-indigo-600" />
                 Apply for Leave
               </h3>
@@ -508,7 +510,7 @@ export default function LeavesView() {
 
             <form onSubmit={handleApplySubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
                   Select Leave Category <span className="text-rose-500">*</span>
                 </label>
                 <select
@@ -528,26 +530,30 @@ export default function LeavesView() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
                     Start Date <span className="text-rose-500">*</span>
                   </label>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900"
+                    onChange={(val) => {
+                      setStartDate(val);
+                      if (endDate && val && val > endDate) {
+                        setEndDate(val);
+                      }
+                    }}
+                    placeholder="Select start date"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
                     End Date <span className="text-rose-500">*</span>
                   </label>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900"
+                    onChange={(val) => setEndDate(val)}
+                    min={startDate}
+                    placeholder="Select end date"
                     required
                   />
                 </div>
@@ -561,13 +567,13 @@ export default function LeavesView() {
                   onChange={(e) => setIsHalfDay(e.target.checked)}
                   className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                 />
-                <label htmlFor="halfDay" className="text-xs text-slate-700 font-medium cursor-pointer">
+                <label htmlFor="halfDay" className="text-[13px] text-slate-700 font-medium cursor-pointer">
                   This is a Half-Day Leave (0.5 day)
                 </label>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
                   Reason for Time-Off <span className="text-rose-500">*</span>
                 </label>
                 <textarea
@@ -584,14 +590,14 @@ export default function LeavesView() {
                 <button
                   type="button"
                   onClick={() => setApplyModalOpen(false)}
-                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-900"
+                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submittingApply}
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition flex items-center gap-2 shadow-sm"
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition flex items-center gap-2 shadow-sm"
                 >
                   {submittingApply && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   Submit Application
@@ -606,7 +612,7 @@ export default function LeavesView() {
       {reviewModalOpen && selectedRequest && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl text-slate-900">
-            <h3 className="text-lg font-bold text-slate-900 mb-2">
+            <h3 className="text-base font-semibold text-slate-900 mb-2">
               {reviewAction === "APPROVED" ? "Approve Leave Request" : "Reject Leave Request"}
             </h3>
             <p className="text-xs text-slate-500 mb-4">
@@ -619,7 +625,7 @@ export default function LeavesView() {
 
             <form onSubmit={handleReviewSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
                   Reviewer Note / Feedback
                 </label>
                 <textarea
@@ -639,14 +645,14 @@ export default function LeavesView() {
                 <button
                   type="button"
                   onClick={() => setReviewModalOpen(false)}
-                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-900"
+                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submittingReview}
-                  className={`px-5 py-2 rounded-xl text-white font-semibold text-xs transition shadow-sm ${
+                  className={`px-5 py-2 rounded-xl text-white font-semibold text-sm transition shadow-sm ${
                     reviewAction === "APPROVED"
                       ? "bg-emerald-600 hover:bg-emerald-500"
                       : "bg-rose-600 hover:bg-rose-500"

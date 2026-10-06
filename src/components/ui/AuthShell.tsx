@@ -38,7 +38,7 @@ export default function AuthShell({
         <Brand inverse subtitle="Workforce, in rhythm" className="relative z-10 w-fit" />
 
         <div className="relative z-10 my-auto max-w-[34rem] py-16">
-          <p className="mb-5 text-[11px] font-bold uppercase tracking-[0.22em] text-indigo-200">
+          <p className="mb-5 text-xs font-bold uppercase tracking-[0.22em] text-indigo-200">
             WorkPulse workspace
           </p>
           <h1 className="font-serif text-balance text-4xl font-semibold leading-[1.12] tracking-tight xl:text-[46px]">
@@ -73,7 +73,7 @@ export default function AuthShell({
           <Brand subtitle="Workforce, in rhythm" className="mb-10 w-fit lg:hidden" />
 
           <div className="mb-7">
-            <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.2em] text-indigo-600">{eyebrow}</p>
+            <p className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-indigo-600">{eyebrow}</p>
             <h2 className="font-serif text-balance text-[32px] font-semibold leading-tight text-slate-950 sm:text-[36px]">
               {title}
             </h2>

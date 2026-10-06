@@ -2,6 +2,7 @@
 
 import React, { useRef, useState } from "react";
 import { Camera, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 const ACCEPT = "image/jpeg,image/jpg,image/png,image/webp,image/gif,image/heic,image/heif";
 const MAX_BYTES = 6 * 1024 * 1024;
@@ -31,7 +32,9 @@ export default function ProfilePhotoPicker({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const shown = preview || src || "";
+  // Auto-generated placeholder avatars (random colours) are replaced by a branded initials tile.
+  const isPlaceholder = !preview && /ui-avatars.com/i.test(src || "");
+  const shown = preview || (isPlaceholder ? "" : src) || "";
 
   const pick = () => {
     if (disabled || uploading) return;
@@ -52,7 +55,7 @@ export default function ProfilePhotoPicker({
           {shown ? (
             <img src={shown} alt="" className="absolute inset-0 w-full h-full object-cover" />
           ) : (
-            <span className="absolute inset-0 bg-indigo-600 text-white font-serif flex items-center justify-center">
+            <span className="keep-white absolute inset-0 bg-gradient-to-br from-indigo-500 to-indigo-700 font-serif font-semibold tracking-wide flex items-center justify-center">
               {initials}
             </span>
           )}
@@ -78,7 +81,7 @@ export default function ProfilePhotoPicker({
           event.target.value = "";
           if (!file) return;
           if (file.size > MAX_BYTES) {
-            window.alert("Choose a photo under 6 MB.");
+            toast.error("Choose a photo under 6 MB.");
             return;
           }
           const next = URL.createObjectURL(file);
@@ -86,7 +89,7 @@ export default function ProfilePhotoPicker({
           await onFile(file);
         }}
       />
-      <span className="text-[10px] text-slate-500 font-medium">{uploading ? "Uploading…" : hint}</span>
+      <span className="text-xs text-slate-500 font-medium">{uploading ? "Uploading…" : hint}</span>
     </div>
   );
 }

@@ -134,7 +134,7 @@ export default function ExpenseClaimsView() {
 
         <button
           onClick={() => setModalOpen(true)}
-          className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center gap-2 shadow-lg shadow-indigo-600/20 transition"
+          className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm flex items-center gap-2 shadow-lg shadow-indigo-600/20 transition"
         >
           <Plus className="w-4 h-4" />
           Submit Expense Claim
@@ -144,40 +144,40 @@ export default function ExpenseClaimsView() {
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="rounded-2xl p-5 border border-slate-200 bg-white shadow-xs">
-          <p className="text-[11px] font-semibold text-slate-500 uppercase mb-1 flex items-center gap-1.5">
+          <p className="text-xs font-semibold text-slate-500 uppercase mb-1 flex items-center gap-1.5">
             <DollarSign className="w-3.5 h-3.5 text-indigo-600" />
             Total Claims Value
           </p>
-          <p className="text-2xl font-black text-slate-900">{formatCurrency(totalClaimed)}</p>
-          <p className="text-[10px] text-slate-400 mt-1">{claims.length} claims submitted</p>
+          <p className="text-2xl font-bold text-slate-900">{formatCurrency(totalClaimed)}</p>
+          <p className="text-xs text-slate-400 mt-1">{claims.length} claims submitted</p>
         </div>
 
         <div className="rounded-2xl p-5 border border-slate-200 bg-white shadow-xs">
-          <p className="text-[11px] font-semibold text-slate-500 uppercase mb-1 flex items-center gap-1.5">
+          <p className="text-xs font-semibold text-slate-500 uppercase mb-1 flex items-center gap-1.5">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
             Approved & Reimbursed
           </p>
-          <p className="text-2xl font-black text-emerald-600">{formatCurrency(totalApproved)}</p>
-          <p className="text-[10px] text-slate-400 mt-1">Settled into payroll</p>
+          <p className="text-2xl font-bold text-emerald-600">{formatCurrency(totalApproved)}</p>
+          <p className="text-xs text-slate-400 mt-1">Settled into payroll</p>
         </div>
 
         <div className="rounded-2xl p-5 border border-slate-200 bg-white shadow-xs">
-          <p className="text-[11px] font-semibold text-slate-500 uppercase mb-1 flex items-center gap-1.5">
+          <p className="text-xs font-semibold text-slate-500 uppercase mb-1 flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5 text-amber-600" />
             Pending Finance Audit
           </p>
-          <p className="text-2xl font-black text-amber-600">
+          <p className="text-2xl font-bold text-amber-600">
             {claims.filter((c) => c.status === "SUBMITTED" || c.status === "UNDER_REVIEW").length}
           </p>
-          <p className="text-[10px] text-slate-400 mt-1">Awaiting approval</p>
+          <p className="text-xs text-slate-400 mt-1">Awaiting approval</p>
         </div>
       </div>
 
       {/* Claims Table */}
       <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-700">
-            <thead className="bg-slate-50 text-slate-500 text-[11px] uppercase tracking-wider border-b border-slate-200 font-semibold">
+          <table className="w-full text-left text-[13px] text-slate-700">
+            <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200 font-semibold">
               <tr>
                 <th className="py-3.5 px-4">Employee</th>
                 <th className="py-3.5 px-4">Category</th>
@@ -208,7 +208,7 @@ export default function ExpenseClaimsView() {
                       {claim.employee?.firstName ? `${claim.employee.firstName} ${claim.employee.lastName || ""}` : "Employee"}
                     </td>
                     <td className="py-3.5 px-4">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      <span className="px-2 py-0.5 rounded text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
                         {claim.category}
                       </span>
                     </td>
@@ -223,7 +223,7 @@ export default function ExpenseClaimsView() {
                     </td>
                     <td className="py-3.5 px-4">
                       <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${
                           claim.status === "APPROVED" || claim.status === "PAID"
                             ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                             : claim.status === "REJECTED"
@@ -254,7 +254,7 @@ export default function ExpenseClaimsView() {
                             </button>
                           </div>
                         ) : (
-                          <span className="text-[11px] text-slate-400">Processed</span>
+                          <span className="text-xs text-slate-400">Processed</span>
                         )}
                       </td>
                     )}
@@ -270,14 +270,14 @@ export default function ExpenseClaimsView() {
       {modalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl">
-            <h3 className="text-lg font-bold text-slate-900 mb-1">Submit Expense Claim</h3>
+            <h3 className="text-base font-semibold text-slate-900 mb-1">Submit Expense Claim</h3>
             <p className="text-xs text-slate-500 mb-4">
               Enter expense details and attach receipt proof for manager reimbursement
             </p>
 
             <form onSubmit={handleSubmitClaim} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Expense Category *</label>
+                <label className="block text-[13px] font-medium text-slate-700 mb-1">Expense Category *</label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
@@ -293,7 +293,7 @@ export default function ExpenseClaimsView() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Claim Amount (INR) *</label>
+                <label className="block text-[13px] font-medium text-slate-700 mb-1">Claim Amount (INR) *</label>
                 <input
                   type="number"
                   value={amount}
@@ -305,7 +305,7 @@ export default function ExpenseClaimsView() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Description / Business Purpose *</label>
+                <label className="block text-[13px] font-medium text-slate-700 mb-1">Description / Business Purpose *</label>
                 <textarea
                   rows={3}
                   value={description}
@@ -317,7 +317,7 @@ export default function ExpenseClaimsView() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Attach Receipt Bill (PDF, JPG, PNG)</label>
+                <label className="block text-[13px] font-medium text-slate-700 mb-1">Attach Receipt Bill (PDF, JPG, PNG)</label>
                 <input
                   type="file"
                   onChange={(e) => setFile(e.target.files?.[0] || null)}
@@ -329,14 +329,14 @@ export default function ExpenseClaimsView() {
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-900"
+                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition flex items-center gap-2"
                 >
                   {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   Submit Claim

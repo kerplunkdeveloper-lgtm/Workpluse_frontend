@@ -133,13 +133,30 @@ export function formatTime(timeValue?: string | Date | number | null): string {
   }
 }
 
+/** Customer-facing role names. The stored values (MANAGER etc.) never change. */
+export function roleLabel(role?: string | null): string {
+  switch (role) {
+    case "SUPER_ADMIN":
+      return "Platform owner";
+    case "COMPANY_ADMIN":
+      return "Company admin";
+    case "MANAGER":
+      return "HR";
+    case "EMPLOYEE":
+      return "Employee";
+    default:
+      return role ? String(role).replace(/_/g, " ").toLowerCase() : "";
+  }
+}
+
 export function formatDurationMinutes(minutes: number): string {
-  if (!minutes || minutes <= 0) return "0m";
-  const hrs = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  if (hrs > 0 && mins > 0) return `${hrs}h ${mins}m`;
-  if (hrs > 0) return `${hrs}h`;
-  return `${mins}m`;
+  const total = Math.round(Number(minutes) || 0);
+  if (total <= 0) return "0 min";
+  const hrs = Math.floor(total / 60);
+  const mins = total % 60;
+  if (hrs > 0 && mins > 0) return `${hrs} hr ${mins} min`;
+  if (hrs > 0) return `${hrs} hr`;
+  return `${mins} min`;
 }
 
 // Haversine formula to compute distance in meters between 2 GPS coordinates

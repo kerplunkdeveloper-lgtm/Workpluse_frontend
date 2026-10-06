@@ -90,7 +90,7 @@ export default function ForgotPasswordPage() {
                   <KeyRound className="w-4 h-4 text-indigo-600 shrink-0" />
                   <span>Security & Next Steps</span>
                 </div>
-                <ul className="list-disc pl-5 space-y-1 text-slate-500 text-[11px]">
+                <ul className="list-disc pl-5 space-y-1 text-slate-500 text-xs">
                   <li>The reset link is active for <strong>60 minutes</strong>.</li>
                   <li>Check your spam or junk folder if you don't see it within a minute.</li>
                   <li>Each link is single-use and invalidates previous links.</li>
@@ -104,7 +104,7 @@ export default function ForgotPasswordPage() {
                     <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
                     <span>Development Testing Link</span>
                   </div>
-                  <p className="text-[11px] text-indigo-700">
+                  <p className="text-xs text-indigo-700">
                     SMTP simulated dispatch detected. Click below to test password reset directly:
                   </p>
                   <a
@@ -141,7 +141,7 @@ export default function ForgotPasswordPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
                   Corporate Email Address
                 </label>
                 <div className="relative">
@@ -156,7 +156,7 @@ export default function ForgotPasswordPage() {
                     autoFocus
                   />
                 </div>
-                <p className="mt-1.5 text-[11px] text-slate-400">
+                <p className="mt-1.5 text-xs text-slate-400">
                   We'll send a secure one-time password recovery link to this address.
                 </p>
               </div>
@@ -164,7 +164,7 @@ export default function ForgotPasswordPage() {
               <button
                 type="submit"
                 disabled={submitting || !email.trim()}
-                className="w-full py-3 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm shadow-md shadow-indigo-600/20 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? (
                   <>

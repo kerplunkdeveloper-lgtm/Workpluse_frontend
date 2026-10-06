@@ -351,7 +351,7 @@ export default function PayslipTemplateCustomizer() {
             <Sparkles className="w-3.5 h-3.5" />
             <span>Company Branding Studio</span>
           </div>
-          <h1 className="text-xl font-black tracking-tight text-slate-900">
+          <h1 className="text-xl font-bold tracking-tight text-slate-900">
             Corporate Payslip Template Customizer
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
@@ -379,7 +379,7 @@ export default function PayslipTemplateCustomizer() {
           <button
             onClick={handleSaveTemplate}
             disabled={isSaving}
-            className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition flex items-center gap-2 shadow-md shadow-indigo-600/20 disabled:opacity-50"
+            className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 transition flex items-center gap-2 shadow-md shadow-indigo-600/20 disabled:opacity-50"
           >
             {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
             <span>Save & Publish</span>
@@ -395,7 +395,7 @@ export default function PayslipTemplateCustomizer() {
           <div className="flex rounded-2xl bg-slate-100 p-1 border border-slate-200">
             <button
               onClick={() => setActiveTab("VISUAL")}
-              className={`flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition ${
+              className={`flex-1 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition ${
                 activeTab === "VISUAL"
                   ? "bg-white text-indigo-600 shadow-xs"
                   : "text-slate-600 hover:text-slate-900"
@@ -406,7 +406,7 @@ export default function PayslipTemplateCustomizer() {
             </button>
             <button
               onClick={() => setActiveTab("CODE")}
-              className={`flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition ${
+              className={`flex-1 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition ${
                 activeTab === "CODE"
                   ? "bg-white text-indigo-600 shadow-xs"
                   : "text-slate-600 hover:text-slate-900"
@@ -421,7 +421,7 @@ export default function PayslipTemplateCustomizer() {
             <div className="space-y-5">
               {/* Presets Grid */}
               <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-3">
-                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                   <Layers className="w-4 h-4 text-indigo-600" />
                   <span>Choose Base Preset</span>
                 </h3>
@@ -442,7 +442,7 @@ export default function PayslipTemplateCustomizer() {
                           <span className="text-xs font-bold text-slate-900">{p.name}</span>
                           {active && <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />}
                         </div>
-                        <p className="text-[10px] text-slate-500 line-clamp-2 leading-relaxed">
+                        <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
                           {p.description}
                         </p>
                       </button>
@@ -453,14 +453,14 @@ export default function PayslipTemplateCustomizer() {
 
               {/* Company Branding & Letterhead */}
               <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                   <Building2 className="w-4 h-4 text-indigo-600" />
                   <span>Company Letterhead & Logo</span>
                 </h3>
 
                 {/* Logo Upload Box */}
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 mb-1.5">Company Logo</label>
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1.5">Company Logo</label>
                   <div className="flex items-center gap-4">
                     <div className="w-16 h-16 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
                       {logoUrl ? (
@@ -471,7 +471,7 @@ export default function PayslipTemplateCustomizer() {
                       )}
                     </div>
                     <div className="space-y-1.5 flex-1">
-                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 cursor-pointer transition">
+                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[13px] font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 cursor-pointer transition">
                         {isUploadingLogo ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
                         <span>Upload Logo</span>
                         <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
@@ -479,12 +479,12 @@ export default function PayslipTemplateCustomizer() {
                       {logoUrl && (
                         <button
                           onClick={() => setLogoUrl(null)}
-                          className="text-[11px] text-rose-600 hover:underline block font-semibold"
+                          className="text-xs text-rose-600 hover:underline block font-semibold"
                         >
                           Remove logo
                         </button>
                       )}
-                      <p className="text-[10px] text-slate-400">PNG or SVG with transparent background recommended</p>
+                      <p className="text-xs text-slate-400">PNG or SVG with transparent background recommended</p>
                     </div>
                   </div>
                 </div>
@@ -492,7 +492,7 @@ export default function PayslipTemplateCustomizer() {
                 {/* Company Name & Address */}
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">Company Legal Name *</label>
+                    <label className="block text-[13px] font-medium text-slate-700 mb-1">Company Legal Name *</label>
                     <input
                       type="text"
                       value={companyName}
@@ -503,7 +503,7 @@ export default function PayslipTemplateCustomizer() {
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">Address Line 1</label>
+                    <label className="block text-[13px] font-medium text-slate-700 mb-1">Address Line 1</label>
                     <input
                       type="text"
                       value={addressLine1}
@@ -514,7 +514,7 @@ export default function PayslipTemplateCustomizer() {
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">Address Line 2 / City / Pincode</label>
+                    <label className="block text-[13px] font-medium text-slate-700 mb-1">Address Line 2 / City / Pincode</label>
                     <input
                       type="text"
                       value={addressLine2}
@@ -526,7 +526,7 @@ export default function PayslipTemplateCustomizer() {
 
                   <div className="grid grid-cols-2 gap-2.5">
                     <div>
-                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">Tax Label</label>
+                      <label className="block text-[13px] font-medium text-slate-700 mb-1">Tax Label</label>
                       <input
                         type="text"
                         value={taxIdentifierLabel}
@@ -535,7 +535,7 @@ export default function PayslipTemplateCustomizer() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">Registration / CIN / GST</label>
+                      <label className="block text-[13px] font-medium text-slate-700 mb-1">Registration / CIN / GST</label>
                       <input
                         type="text"
                         value={taxIdentifierValue}
@@ -549,13 +549,13 @@ export default function PayslipTemplateCustomizer() {
 
               {/* Theme Palette & Header Style */}
               <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                   <Palette className="w-4 h-4 text-indigo-600" />
                   <span>Color Theme & Layout</span>
                 </h3>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 mb-1.5">Primary Accent Color</label>
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1.5">Primary Accent Color</label>
                   <div className="flex items-center gap-2">
                     {PRESET_COLORS.map((c) => (
                       <button
@@ -582,14 +582,14 @@ export default function PayslipTemplateCustomizer() {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 mb-1.5">Header Layout Style</label>
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1.5">Header Layout Style</label>
                   <div className="grid grid-cols-3 gap-2">
                     {(["SPLIT", "CENTERED", "BANNER"] as const).map((h) => (
                       <button
                         key={h}
                         type="button"
                         onClick={() => setHeaderLayout(h)}
-                        className={`py-2 px-2 text-center rounded-xl text-xs font-bold border transition ${
+                        className={`py-2 px-2 text-center rounded-xl text-xs font-semibold border transition ${
                           headerLayout === h
                             ? "bg-indigo-50 text-indigo-700 border-indigo-300 ring-2 ring-indigo-500/20"
                             : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
@@ -604,7 +604,7 @@ export default function PayslipTemplateCustomizer() {
 
               {/* Section Display Checkboxes */}
               <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-3">
-                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                   <Sliders className="w-4 h-4 text-indigo-600" />
                   <span>Visible Sections & Toggles</span>
                 </h3>
@@ -684,14 +684,14 @@ export default function PayslipTemplateCustomizer() {
 
               {/* Authorized Signatory & Official Stamp */}
               <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                   <Stamp className="w-4 h-4 text-indigo-600" />
                   <span>Authorized Signatory & Stamp</span>
                 </h3>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">Signatory Name</label>
+                    <label className="block text-[13px] font-medium text-slate-700 mb-1">Signatory Name</label>
                     <input
                       type="text"
                       value={signatoryName}
@@ -701,7 +701,7 @@ export default function PayslipTemplateCustomizer() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">Designation</label>
+                    <label className="block text-[13px] font-medium text-slate-700 mb-1">Designation</label>
                     <input
                       type="text"
                       value={signatoryTitle}
@@ -714,18 +714,18 @@ export default function PayslipTemplateCustomizer() {
 
                 {/* Signature Image Upload */}
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 mb-1.5">Digital Signature or Corporate Seal</label>
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1.5">Digital Signature or Corporate Seal</label>
                   <div className="flex items-center gap-4">
                     <div className="w-24 h-12 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
                       {signatureImageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={signatureImageUrl} alt="Signature Stamp" className="max-h-full object-contain p-1" />
                       ) : (
-                        <span className="text-[10px] text-slate-400 font-mono">No stamp</span>
+                        <span className="text-xs text-slate-400 font-mono">No stamp</span>
                       )}
                     </div>
                     <div className="space-y-1">
-                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 cursor-pointer transition">
+                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[13px] font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 cursor-pointer transition">
                         {isUploadingSig ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
                         <span>Upload Stamp</span>
                         <input type="file" accept="image/*" onChange={handleSignatureUpload} className="hidden" />
@@ -733,7 +733,7 @@ export default function PayslipTemplateCustomizer() {
                       {signatureImageUrl && (
                         <button
                           onClick={() => setSignatureImageUrl(null)}
-                          className="text-[11px] text-rose-600 hover:underline block font-semibold"
+                          className="text-xs text-rose-600 hover:underline block font-semibold"
                         >
                           Clear stamp
                         </button>
@@ -743,7 +743,7 @@ export default function PayslipTemplateCustomizer() {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">Declaration Statement</label>
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1">Declaration Statement</label>
                   <textarea
                     rows={2}
                     value={declarationText}
@@ -756,7 +756,7 @@ export default function PayslipTemplateCustomizer() {
           ) : (
             /* Custom HTML Upload Mode */
             <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+              <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                 <FileCode className="w-4 h-4 text-indigo-600" />
                 <span>Custom HTML Template Upload</span>
               </h3>
@@ -765,7 +765,7 @@ export default function PayslipTemplateCustomizer() {
                 Upload a custom HTML template or edit raw template markup. Dynamic fields use standard mustache syntax:
               </p>
 
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-[11px] text-slate-700 font-mono space-y-1">
+              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-700 font-mono space-y-1">
                 <p><span className="text-indigo-600 font-bold">{"{{companyName}}"}</span> - Organization Legal Name</p>
                 <p><span className="text-indigo-600 font-bold">{"{{employeeName}}"}</span> - Employee Full Name</p>
                 <p><span className="text-indigo-600 font-bold">{"{{periodLabel}}"}</span> - payroll period label</p>
@@ -774,7 +774,7 @@ export default function PayslipTemplateCustomizer() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-700 mb-1">Upload Template File (.html)</label>
+                <label className="block text-[13px] font-medium text-slate-700 mb-1">Upload Template File (.html)</label>
                 <input
                   type="file"
                   accept=".html,.htm,.hbs"
@@ -791,7 +791,7 @@ export default function PayslipTemplateCustomizer() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-700 mb-1">HTML Template Code</label>
+                <label className="block text-[13px] font-medium text-slate-700 mb-1">HTML Template Code</label>
                 <textarea
                   rows={12}
                   value={customHtml}
@@ -812,7 +812,7 @@ export default function PayslipTemplateCustomizer() {
                 <Eye className="w-3.5 h-3.5 text-indigo-600" />
                 <span>Live Interactive A4 Preview</span>
               </span>
-              <span className="text-[11px] text-slate-400 font-medium">Standard A4 Sheet Format</span>
+              <span className="text-xs text-slate-400 font-medium">Standard A4 Sheet Format</span>
             </div>
 
             {/* A4 Paper Frame */}
@@ -834,12 +834,12 @@ export default function PayslipTemplateCustomizer() {
                         <img src={logoUrl} alt="Logo" className="w-12 h-12 object-contain bg-white rounded-xl p-1 shrink-0" />
                       )}
                       <div>
-                        <h2 className="text-lg font-black tracking-tight">{companyName || "Acme Global Technologies"}</h2>
-                        <p className="text-[11px] text-white/80">{addressLine1 || "Corporate Headquarters, Cyber City, Phase II"}</p>
+                        <h2 className="text-lg font-semibold tracking-tight">{companyName || "Acme Global Technologies"}</h2>
+                        <p className="text-xs text-white/80">{addressLine1 || "Corporate Headquarters, Cyber City, Phase II"}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="px-2.5 py-1 rounded-md text-[10px] font-extrabold bg-white/20 uppercase tracking-wider block mb-1">
+                      <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-white/20 uppercase tracking-wider block mb-1">
                         Salary Slip
                       </span>
                       <span className="text-xs font-bold">{sampleData.period}</span>
@@ -851,13 +851,13 @@ export default function PayslipTemplateCustomizer() {
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={logoUrl} alt="Logo" className="w-12 h-12 object-contain mx-auto mb-2" />
                     )}
-                    <h2 className="text-xl font-black text-slate-900 tracking-tight">
+                    <h2 className="text-xl font-semibold text-slate-900 tracking-tight">
                       {companyName || "Acme Global Technologies"}
                     </h2>
                     <p className="text-xs text-slate-500 mt-0.5">
                       {addressLine1 || "100 Cyber Tower, Tech Hub"} {addressLine2 ? `• ${addressLine2}` : ""}
                     </p>
-                    <div className="inline-flex items-center gap-2 mt-2 px-3 py-0.5 rounded-full text-[11px] font-bold text-white" style={{ backgroundColor: primaryColor }}>
+                    <div className="inline-flex items-center gap-2 mt-2 px-3 py-0.5 rounded-full text-xs font-bold text-white" style={{ backgroundColor: primaryColor }}>
                       <span>Payslip for {sampleData.period}</span>
                     </div>
                   </div>
@@ -870,12 +870,12 @@ export default function PayslipTemplateCustomizer() {
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={logoUrl} alt="Logo" className="w-10 h-10 object-contain rounded-xl shrink-0" />
                         ) : (
-                          <div className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-white shrink-0 text-sm" style={{ backgroundColor: primaryColor }}>
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white shrink-0 text-sm" style={{ backgroundColor: primaryColor }}>
                             {companyName ? companyName.charAt(0) : "W"}
                           </div>
                         )}
                         <div>
-                          <h2 className="text-lg font-black tracking-tight text-slate-900">
+                          <h2 className="text-lg font-semibold tracking-tight text-slate-900">
                             {companyName || "Acme Global Technologies Pvt Ltd"}
                           </h2>
                           <p className="text-xs text-slate-500">
@@ -883,15 +883,15 @@ export default function PayslipTemplateCustomizer() {
                           </p>
                         </div>
                       </div>
-                      <p className="text-[10px] text-slate-400 mt-1">
+                      <p className="text-xs text-slate-400 mt-1">
                         {taxIdentifierLabel}: <span className="font-semibold text-slate-600">{taxIdentifierValue || "N/A"}</span>
                       </p>
                     </div>
 
                     <div className="text-right">
-                      <h3 className="text-sm font-black uppercase tracking-wider text-slate-900">Monthly Payslip</h3>
+                      <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-900">Monthly Payslip</h3>
                       <p className="text-xs font-bold" style={{ color: primaryColor }}>{sampleData.period}</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">{sampleData.payslipNo}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{sampleData.payslipNo}</p>
                     </div>
                   </div>
                 )}
@@ -899,30 +899,30 @@ export default function PayslipTemplateCustomizer() {
                 {/* 2. Employee Info Grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs">
                   <div>
-                    <span className="text-slate-400 block text-[9px] uppercase font-bold">Employee Name</span>
+                    <span className="text-slate-400 block text-xs uppercase font-bold">Employee Name</span>
                     <span className="font-bold text-slate-900">{sampleData.employee.name}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[9px] uppercase font-bold">Employee ID</span>
+                    <span className="text-slate-400 block text-xs uppercase font-bold">Employee ID</span>
                     <span className="font-bold text-slate-900">{sampleData.employee.code}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[9px] uppercase font-bold">Designation</span>
+                    <span className="text-slate-400 block text-xs uppercase font-bold">Designation</span>
                     <span className="font-bold text-slate-900">{sampleData.employee.designation}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[9px] uppercase font-bold">Department</span>
+                    <span className="text-slate-400 block text-xs uppercase font-bold">Department</span>
                     <span className="font-bold text-slate-900">{sampleData.employee.department}</span>
                   </div>
 
                   {showBankDetails && (
                     <>
                       <div>
-                        <span className="text-slate-400 block text-[9px] uppercase font-bold">Bank Name</span>
+                        <span className="text-slate-400 block text-xs uppercase font-bold">Bank Name</span>
                         <span className="font-bold text-slate-900">{sampleData.employee.bankName}</span>
                       </div>
                       <div>
-                        <span className="text-slate-400 block text-[9px] uppercase font-bold">Bank A/C No</span>
+                        <span className="text-slate-400 block text-xs uppercase font-bold">Bank A/C No</span>
                         <span className="font-bold text-slate-900">{sampleData.employee.accountNumber}</span>
                       </div>
                     </>
@@ -931,11 +931,11 @@ export default function PayslipTemplateCustomizer() {
                   {showPanUan && (
                     <>
                       <div>
-                        <span className="text-slate-400 block text-[9px] uppercase font-bold">PAN Number</span>
+                        <span className="text-slate-400 block text-xs uppercase font-bold">PAN Number</span>
                         <span className="font-bold text-slate-900">{sampleData.employee.panNumber}</span>
                       </div>
                       <div>
-                        <span className="text-slate-400 block text-[9px] uppercase font-bold">UAN / PF No</span>
+                        <span className="text-slate-400 block text-xs uppercase font-bold">UAN / PF No</span>
                         <span className="font-bold text-slate-900">{sampleData.employee.uanNumber}</span>
                       </div>
                     </>
@@ -946,25 +946,25 @@ export default function PayslipTemplateCustomizer() {
                 {showAttendanceSummary && (
                   <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 text-center p-3 rounded-xl border border-slate-200 text-xs bg-white">
                     <div>
-                      <span className="text-[10px] text-slate-400 block">Working Days</span>
-                      <span className="font-extrabold text-slate-900">{sampleData.attendance.workingDays}</span>
+                      <span className="text-xs text-slate-400 block">Working Days</span>
+                      <span className="font-bold text-slate-900">{sampleData.attendance.workingDays}</span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-400 block">Present</span>
-                      <span className="font-extrabold text-emerald-600">{sampleData.attendance.presentDays}</span>
+                      <span className="text-xs text-slate-400 block">Present</span>
+                      <span className="font-bold text-emerald-600">{sampleData.attendance.presentDays}</span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-400 block">Paid Leave</span>
-                      <span className="font-extrabold text-indigo-600">{sampleData.attendance.paidLeaveDays}</span>
+                      <span className="text-xs text-slate-400 block">Paid Leave</span>
+                      <span className="font-bold text-indigo-600">{sampleData.attendance.paidLeaveDays}</span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-400 block">Loss of Pay</span>
-                      <span className="font-extrabold text-slate-900">{sampleData.attendance.unpaidLeaveDays}</span>
+                      <span className="text-xs text-slate-400 block">Loss of Pay</span>
+                      <span className="font-bold text-slate-900">{sampleData.attendance.unpaidLeaveDays}</span>
                     </div>
                     {showOvertimeDetails && (
                       <div>
-                        <span className="text-[10px] text-slate-400 block">Overtime</span>
-                        <span className="font-extrabold" style={{ color: primaryColor }}>{sampleData.attendance.overtimeHours} hrs</span>
+                        <span className="text-xs text-slate-400 block">Overtime</span>
+                        <span className="font-bold" style={{ color: primaryColor }}>{sampleData.attendance.overtimeHours} hrs</span>
                       </div>
                     )}
                   </div>
@@ -986,7 +986,7 @@ export default function PayslipTemplateCustomizer() {
                         </div>
                       ))}
                     </div>
-                    <div className="bg-slate-50 px-4 py-2 border-t border-slate-200 flex justify-between font-extrabold text-slate-900">
+                    <div className="bg-slate-50 px-4 py-2 border-t border-slate-200 flex justify-between font-bold text-slate-900">
                       <span>Total Gross Earnings</span>
                       <span style={{ color: primaryColor }}>{formatCurrency(sampleData.grossSalary)}</span>
                     </div>
@@ -1006,7 +1006,7 @@ export default function PayslipTemplateCustomizer() {
                         </div>
                       ))}
                     </div>
-                    <div className="bg-slate-50 px-4 py-2 border-t border-slate-200 flex justify-between font-extrabold text-slate-900">
+                    <div className="bg-slate-50 px-4 py-2 border-t border-slate-200 flex justify-between font-bold text-slate-900">
                       <span>Total Deductions</span>
                       <span className="text-rose-600">{formatCurrency(sampleData.totalDeductions)}</span>
                     </div>
@@ -1022,14 +1022,14 @@ export default function PayslipTemplateCustomizer() {
                     <span className="text-xs font-semibold text-white/80 block uppercase tracking-wider">
                       Net Take-Home Pay
                     </span>
-                    <span className="text-2xl font-black">{formatCurrency(sampleData.netSalary)}</span>
+                    <span className="text-2xl font-bold">{formatCurrency(sampleData.netSalary)}</span>
                     {showNetSalaryInWords && (
-                      <p className="text-[11px] text-white/90 italic mt-0.5">{sampleData.netSalaryWords}</p>
+                      <p className="text-xs text-white/90 italic mt-0.5">{sampleData.netSalaryWords}</p>
                     )}
                   </div>
 
                   {showBarcodeOrQr && (
-                    <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl text-[10px] font-mono">
+                    <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl text-xs font-mono">
                       <QrCode className="w-5 h-5 text-white" />
                       <span>AUTHENTICATED • ID {sampleData.payslipNo.slice(-8)}</span>
                     </div>
@@ -1038,7 +1038,7 @@ export default function PayslipTemplateCustomizer() {
 
                 {/* 6. Leave Balance Ledger */}
                 {showLeaveBalances && (
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-[11px] flex items-center justify-between text-slate-600">
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs flex items-center justify-between text-slate-600">
                     <span className="font-bold text-slate-800">Leave Balance as of Period End:</span>
                     <span>Casual Leave (CL): <strong>{sampleData.attendance.casualLeaveBalance} days</strong></span>
                     <span>Sick Leave (SL): <strong>{sampleData.attendance.sickLeaveBalance} days</strong></span>
@@ -1049,7 +1049,7 @@ export default function PayslipTemplateCustomizer() {
               {/* 7. Signatory & Legal Footer */}
               <div className="pt-8 border-t border-slate-200 space-y-4">
                 <div className="flex items-end justify-between">
-                  <div className="max-w-xs text-[10px] text-slate-500 leading-relaxed">
+                  <div className="max-w-xs text-xs text-slate-500 leading-relaxed">
                     <p>{declarationText}</p>
                     <p className="mt-1 font-semibold">Support: {contactEmail || "payroll@company.com"}</p>
                   </div>
@@ -1061,7 +1061,7 @@ export default function PayslipTemplateCustomizer() {
                     )}
                     <div className="w-36 border-t border-slate-400 mt-2 pt-1">
                       <p className="text-xs font-bold text-slate-900">{signatoryName}</p>
-                      <p className="text-[10px] text-slate-500">{signatoryTitle}</p>
+                      <p className="text-xs text-slate-500">{signatoryTitle}</p>
                     </div>
                   </div>
                 </div>

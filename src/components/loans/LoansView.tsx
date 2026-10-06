@@ -86,7 +86,7 @@ export default function LoansView() {
         <div className="bg-white rounded-2xl border p-8 text-sm text-slate-500">No loans or advances yet.</div>
       )}
       <div className="bg-white rounded-2xl border overflow-hidden">
-        <table className="w-full text-xs">
+        <table className="w-full text-[13px]">
           <thead className="bg-slate-50 text-slate-500">
             <tr>
               <th className="text-left p-3">Employee</th>

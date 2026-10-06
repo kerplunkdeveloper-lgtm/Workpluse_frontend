@@ -143,7 +143,7 @@ export default function SalaryStructuresView() {
               <button
                 key={emp.id}
                 onClick={() => openEmployee(emp)}
-                className={`w-full text-left px-4 py-3 text-xs hover:bg-slate-50 ${
+                className={`w-full text-left px-4 py-3 text-sm hover:bg-slate-50 ${
                   selected?.id === emp.id ? "bg-indigo-50" : ""
                 }`}
               >
@@ -165,10 +165,10 @@ export default function SalaryStructuresView() {
         ) : (
           <form onSubmit={handleSave} className="space-y-4">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">
+              <h3 className="text-sm font-semibold text-slate-900">
                 {selected.firstName} {selected.lastName}
               </h3>
-              <p className="text-[11px] text-slate-500">{selected.employeeCode}</p>
+              <p className="text-xs text-slate-500">{selected.employeeCode}</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               {(
@@ -187,7 +187,7 @@ export default function SalaryStructuresView() {
                 ] as const
               ).map(([key, label]) => (
                 <label key={key} className="space-y-1">
-                  <span className="text-[10px] font-semibold uppercase text-slate-500">{label}</span>
+                  <span className="text-xs font-semibold uppercase text-slate-500">{label}</span>
                   <input
                     type="number"
                     step="0.01"
@@ -202,7 +202,7 @@ export default function SalaryStructuresView() {
               <button
                 type="submit"
                 disabled={saving}
-                className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold inline-flex items-center gap-1.5 disabled:opacity-50"
+                className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-50"
               >
                 {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                 Save structure
@@ -211,7 +211,7 @@ export default function SalaryStructuresView() {
                 type="button"
                 onClick={handlePreview}
                 disabled={previewing}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold inline-flex items-center gap-1.5"
+                className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold inline-flex items-center gap-1.5"
               >
                 {previewing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Calculator className="w-3.5 h-3.5" />}
                 Preview {month}/{year}

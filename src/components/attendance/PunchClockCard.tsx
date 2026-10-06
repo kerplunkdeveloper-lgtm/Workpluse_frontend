@@ -184,7 +184,7 @@ export default function PunchClockCard() {
           {/* Left Column: Digital Clock & Assigned Shift */}
           <div className="md:col-span-5 space-y-4">
             {/* Live Status Pill */}
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/30 border border-white/10 text-[11px] font-bold tracking-[0.16em] text-indigo-200">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/30 border border-white/10 text-xs font-bold tracking-[0.16em] text-indigo-200">
               <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
               <span>LIVE TIMEKEEPER</span>
             </div>
@@ -197,7 +197,7 @@ export default function PunchClockCard() {
                 <span className="text-white drop-shadow-md">{minutes}</span>
                 <span className="text-indigo-300 font-bold animate-pulse">:</span>
                 <span className="text-white drop-shadow-md">{seconds}</span>
-                <span className="text-base sm:text-lg font-extrabold text-indigo-100 ml-1.5 px-2.5 py-0.5 rounded-lg bg-indigo-950/70 border border-indigo-500/40 tracking-wider font-sans">{ampm}</span>
+                <span className="text-base sm:text-lg font-bold text-indigo-100 ml-1.5 px-2.5 py-0.5 rounded-lg bg-indigo-950/70 border border-indigo-500/40 tracking-wider font-sans">{ampm}</span>
               </div>
               <p className="text-xs text-slate-300 font-medium mt-2 flex items-center gap-1.5">
                 <span>{fullDateFormatted}</span>
@@ -208,7 +208,7 @@ export default function PunchClockCard() {
             <div className="p-3 rounded-2xl bg-black/30 border border-white/10 text-xs">
               <div className="flex items-center gap-2 text-slate-300 mb-0.5">
                 <Clock className="w-3.5 h-3.5 text-indigo-300" />
-                <span className="font-semibold text-[11px] text-slate-300">Assigned Shift</span>
+                <span className="font-semibold text-xs text-slate-300">Assigned Shift</span>
               </div>
               <p className="font-bold text-white drop-shadow-xs">
                 {shift ? `${shift.name} (${shift.startTime} - ${shift.endTime})` : "General Morning (09:00 - 18:00)"}
@@ -226,14 +226,14 @@ export default function PunchClockCard() {
               </div>
             </div>
 
-            <h3 className="text-sm font-bold text-white drop-shadow-xs">
+            <h3 className="text-sm font-semibold text-white drop-shadow-xs">
               {hasCheckedOut
                 ? "Shift Completed Today"
                 : isCheckedIn
                 ? "Currently Clocked In"
                 : "Ready to Clock In"}
             </h3>
-            <p className="text-[11px] text-slate-300 mt-1 max-w-[170px] leading-relaxed">
+            <p className="text-xs text-slate-300 mt-1 max-w-[170px] leading-relaxed">
               {hasCheckedOut
                 ? "You have clocked out for today. See you tomorrow!"
                 : isCheckedIn
@@ -248,7 +248,7 @@ export default function PunchClockCard() {
             <button
               onClick={() => handlePunchClick("CHECK_IN")}
               disabled={isCheckedIn || isActionLoading}
-              className={`w-full py-3 px-5 rounded-2xl font-bold text-xs flex items-center justify-center gap-2.5 transition-all shadow-md cursor-pointer ${
+              className={`w-full py-3 px-5 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2.5 transition-all shadow-md cursor-pointer ${
                 isCheckedIn
                   ? "bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/50"
                   : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30"
@@ -262,7 +262,7 @@ export default function PunchClockCard() {
             <button
               onClick={() => handlePunchClick("CHECK_OUT")}
               disabled={!isCheckedIn || isActionLoading}
-              className={`w-full py-3 px-5 rounded-2xl font-bold text-xs flex items-center justify-center gap-2.5 transition-all border cursor-pointer ${
+              className={`w-full py-3 px-5 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2.5 transition-all border cursor-pointer ${
                 !isCheckedIn
                   ? "bg-black/40 text-slate-500 border-white/10 cursor-not-allowed"
                   : "bg-slate-800/90 hover:bg-rose-600 hover:border-rose-500 text-slate-200 hover:text-white border-slate-700 hover:scale-[1.02]"
@@ -281,7 +281,7 @@ export default function PunchClockCard() {
                 <p className={`text-xs font-bold truncate ${currentLocation || punchedLocation ? "text-emerald-400" : "text-slate-200"}`}>
                   {punchedLocation || locationLabel || (currentLocation ? "Location ready" : "Detecting location…")}
                 </p>
-                <p className="text-[10px] text-slate-300">
+                <p className="text-xs text-slate-300">
                   {pendingPunchCount > 0
                     ? `${pendingPunchCount} punch${pendingPunchCount === 1 ? "" : "es"} waiting to sync.`
                     : punchedLocation
@@ -303,8 +303,8 @@ export default function PunchClockCard() {
       <div className="xl:col-span-4 rounded-3xl bg-white p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-4 flex flex-col justify-between min-w-0">
         <div className="min-w-0">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Today&apos;s Details</h3>
-            <span className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 cursor-pointer flex items-center gap-0.5">
+            <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Today&apos;s Details</h3>
+            <span className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 cursor-pointer flex items-center gap-0.5">
               <span>View Timeline</span>
               <ChevronRight className="w-3 h-3" />
             </span>
@@ -318,7 +318,7 @@ export default function PunchClockCard() {
                 </div>
                 <span className="font-medium text-slate-700">Punch In Time</span>
               </div>
-              <span className="font-mono text-xs font-extrabold text-slate-900 shrink-0 ml-auto">{punchInTimeString}</span>
+              <span className="font-mono text-xs font-bold text-slate-900 shrink-0 ml-auto">{punchInTimeString}</span>
             </div>
 
             <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/90 border border-slate-100 min-w-0">
@@ -328,7 +328,7 @@ export default function PunchClockCard() {
                 </div>
                 <span className="font-medium text-slate-700">Punch Out Time</span>
               </div>
-              <span className="font-mono text-xs font-extrabold text-slate-900 shrink-0 ml-auto">{punchOutTimeString}</span>
+              <span className="font-mono text-xs font-bold text-slate-900 shrink-0 ml-auto">{punchOutTimeString}</span>
             </div>
 
             <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/90 border border-slate-100 min-w-0">
@@ -338,7 +338,7 @@ export default function PunchClockCard() {
                 </div>
                 <span className="font-medium text-slate-700">Shift Hours</span>
               </div>
-              <span className="font-mono text-xs font-extrabold text-slate-900 shrink-0 ml-auto">{shiftHoursString}</span>
+              <span className="font-mono text-xs font-bold text-slate-900 shrink-0 ml-auto">{shiftHoursString}</span>
             </div>
 
             <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/90 border border-slate-100 min-w-0">
@@ -359,7 +359,7 @@ export default function PunchClockCard() {
         <div className="pt-3 border-t border-slate-100">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-slate-800">This Week</span>
-            <span className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 cursor-pointer flex items-center gap-0.5">
+            <span className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 cursor-pointer flex items-center gap-0.5">
               <span>View All</span>
               <ChevronRight className="w-3 h-3" />
             </span>
@@ -368,9 +368,9 @@ export default function PunchClockCard() {
           <div className="grid grid-cols-7 gap-1 text-center mb-2">
             {weekDays.map((d, i) => (
               <div key={i} className="flex flex-col items-center gap-1.5">
-                <span className="text-[10px] text-slate-400 font-semibold">{d.label}</span>
+                <span className="text-xs text-slate-400 font-semibold">{d.label}</span>
                 <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
                     d.status === "PRESENT"
                       ? "bg-emerald-500 text-white"
                       : d.status === "HALF_DAY"
@@ -387,7 +387,7 @@ export default function PunchClockCard() {
           </div>
 
           {/* Mini Legend */}
-          <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1">
+          <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
             <span className="flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-emerald-500" /> Present
             </span>
@@ -408,7 +408,7 @@ export default function PunchClockCard() {
       {confirmModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 border border-slate-200 shadow-2xl space-y-4">
-            <h3 className="text-base font-bold text-slate-900">
+            <h3 className="text-base font-semibold text-slate-900">
               Confirm {pendingAction === "CHECK_IN" ? "Clock In" : "Clock Out"}
             </h3>
             <p className="text-xs text-slate-500">
@@ -418,7 +418,7 @@ export default function PunchClockCard() {
             </p>
 
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-700 block">Work Mode</label>
+              <label className="text-[13px] font-medium text-slate-700 block">Work Mode</label>
               <select
                 value={selectedWorkMode}
                 onChange={(e) => setSelectedWorkMode(e.target.value as WorkMode)}
@@ -433,7 +433,7 @@ export default function PunchClockCard() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-700 block">Optional Note</label>
+              <label className="text-[13px] font-medium text-slate-700 block">Optional Note</label>
               <input
                 type="text"
                 value={punchNote}
@@ -446,14 +446,14 @@ export default function PunchClockCard() {
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 onClick={() => setConfirmModalOpen(false)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmPunch}
                 disabled={isActionLoading}
-                className="px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-sm transition"
+                className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-sm transition"
               >
                 {isActionLoading ? "Recording..." : "Confirm & Punch"}
               </button>
@@ -498,7 +498,7 @@ export default function PunchClockCard() {
               </div>
 
               <span
-                className={`px-3 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider mb-1 ${
+                className={`px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider mb-1 ${
                   punchAlertData.action === "CHECK_IN"
                     ? "bg-emerald-100 text-emerald-800"
                     : "bg-indigo-100 text-indigo-800"
@@ -525,7 +525,7 @@ export default function PunchClockCard() {
                   <Clock className="w-3.5 h-3.5 text-slate-400" />
                   Recorded Timestamp
                 </span>
-                <span className="font-extrabold text-slate-900 text-sm">{punchAlertData.time}</span>
+                <span className="font-bold text-slate-900 text-sm">{punchAlertData.time}</span>
               </div>
 
               <div className="flex items-center justify-between pb-2 border-b border-slate-200">
@@ -533,7 +533,7 @@ export default function PunchClockCard() {
                   <Briefcase className="w-3.5 h-3.5 text-slate-400" />
                   Work Mode
                 </span>
-                <span className="px-2.5 py-0.5 rounded-md font-bold text-[11px] bg-white border border-slate-200 text-slate-800">
+                <span className="px-2.5 py-0.5 rounded-md font-bold text-xs bg-white border border-slate-200 text-slate-800">
                   {punchAlertData.workMode === "OFFICE"
                     ? "Office HQ"
                     : punchAlertData.workMode === "WORK_FROM_HOME"
@@ -551,7 +551,7 @@ export default function PunchClockCard() {
                   <MapPin className="w-3.5 h-3.5 text-slate-400" />
                   Location
                 </span>
-                <span className="flex items-center gap-1 font-bold text-emerald-600 text-[11px] text-right max-w-[200px]">
+                <span className="flex items-center gap-1 font-bold text-emerald-600 text-xs text-right max-w-[200px]">
                   <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
                   <span className="truncate">{punchAlertData.locationLabel || "Location saved"}</span>
                 </span>
@@ -562,7 +562,7 @@ export default function PunchClockCard() {
                   <Sparkles className="w-3.5 h-3.5 text-slate-400" />
                   Schedule
                 </span>
-                <span className="font-semibold text-slate-700 text-[11px] truncate max-w-[200px]">
+                <span className="font-semibold text-slate-700 text-xs truncate max-w-[200px]">
                   {punchAlertData.shiftName}
                 </span>
               </div>
@@ -572,7 +572,7 @@ export default function PunchClockCard() {
             <div className="pt-1">
               <button
                 onClick={() => setPunchAlertData(null)}
-                className={`w-full py-3 rounded-2xl font-bold text-xs text-white shadow-lg transition flex items-center justify-center gap-2 ${
+                className={`w-full py-3 rounded-2xl font-semibold text-sm text-white shadow-lg transition flex items-center justify-center gap-2 ${
                   punchAlertData.action === "CHECK_IN"
                     ? "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/25"
                     : "bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/25"

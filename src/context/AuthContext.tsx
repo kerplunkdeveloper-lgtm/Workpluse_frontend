@@ -129,7 +129,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           toast.info("Please set a new secure password to activate your account.");
           go("/change-password");
         } else {
-          go("/dashboard");
+          go(loggedUser.role === "SUPER_ADMIN" ? "/platform/clients" : "/dashboard");
         }
         return true;
       } else {
@@ -159,7 +159,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           void registerWebDevice();
         }
         toast.success(`Welcome back, ${loggedUser.employee?.firstName || loggedUser.email}!`);
-        go("/dashboard");
+        go(loggedUser.role === "SUPER_ADMIN" ? "/platform/clients" : "/dashboard");
         return true;
       }
       toast.error(res?.message || "Google sign-in failed");

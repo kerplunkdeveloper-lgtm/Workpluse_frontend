@@ -205,7 +205,7 @@ export default function PayrollView() {
             <button
               onClick={handleGenerateBatch}
               disabled={isGenerating}
-              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm transition disabled:opacity-50"
+              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm flex items-center gap-1.5 shadow-sm transition disabled:opacity-50"
             >
               {isGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin text-white" /> : <Calculator className="w-3.5 h-3.5 text-white" />}
               Generate Batch
@@ -214,7 +214,7 @@ export default function PayrollView() {
             <button
               onClick={handleApproveBatch}
               disabled={isApproving || payslips.length === 0}
-              className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm transition disabled:opacity-50"
+              className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-sm flex items-center gap-1.5 shadow-sm transition disabled:opacity-50"
             >
               {isApproving ? <Loader2 className="w-3.5 h-3.5 animate-spin text-white" /> : <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
               Approve Batch
@@ -223,7 +223,7 @@ export default function PayrollView() {
             <button
               onClick={handleDisburseBatch}
               disabled={isDisbursing || payslips.length === 0}
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm transition disabled:opacity-50"
+              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm flex items-center gap-1.5 shadow-sm transition disabled:opacity-50"
             >
               {isDisbursing ? <Loader2 className="w-3.5 h-3.5 animate-spin text-white" /> : <Send className="w-3.5 h-3.5 text-white" />}
               Disburse & Send Alerts
@@ -232,7 +232,7 @@ export default function PayrollView() {
             <button
               onClick={handleExportCsv}
               disabled={payslips.length === 0}
-              className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-800 font-semibold text-xs flex items-center gap-1.5 border border-slate-200 transition disabled:opacity-50"
+              className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-800 font-semibold text-sm flex items-center gap-1.5 border border-slate-200 transition disabled:opacity-50"
             >
               <Download className="w-3.5 h-3.5" />
               Export CSV
@@ -246,7 +246,7 @@ export default function PayrollView() {
         <div className="flex rounded-2xl bg-slate-100 p-1 border border-slate-200 w-fit">
           <button
             onClick={() => setActiveSection("RECORDS")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition ${
+            className={`px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition ${
               activeSection === "RECORDS"
                 ? "bg-white text-indigo-600 shadow-xs"
                 : "text-slate-600 hover:text-slate-900"
@@ -257,7 +257,7 @@ export default function PayrollView() {
           </button>
           <button
             onClick={() => setActiveSection("SALARY")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition ${
+            className={`px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition ${
               activeSection === "SALARY"
                 ? "bg-white text-indigo-600 shadow-xs"
                 : "text-slate-600 hover:text-slate-900"
@@ -268,7 +268,7 @@ export default function PayrollView() {
           </button>
           <button
             onClick={() => setActiveSection("TEMPLATES")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition ${
+            className={`px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition ${
               activeSection === "TEMPLATES"
                 ? "bg-white text-indigo-600 shadow-xs"
                 : "text-slate-600 hover:text-slate-900"
@@ -289,38 +289,38 @@ export default function PayrollView() {
           {/* KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs overflow-hidden">
-          <p className="text-[11px] font-semibold text-slate-500 uppercase mb-1 flex items-center gap-1.5">
+          <p className="text-xs font-semibold text-slate-500 uppercase mb-1 flex items-center gap-1.5">
             <DollarSign className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
             Total Monthly Payout
           </p>
-          <p className="text-2xl font-black text-slate-900 truncate">{formatCurrency(totalDisbursement)}</p>
-          <p className="text-[10px] text-slate-500 mt-1">Across {payslips.length} employee records</p>
+          <p className="text-2xl font-bold text-slate-900 truncate">{formatCurrency(totalDisbursement)}</p>
+          <p className="text-xs text-slate-500 mt-1">Across {payslips.length} employee records</p>
         </div>
 
         <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs overflow-hidden">
-          <p className="text-[11px] font-semibold text-slate-500 uppercase mb-1 flex items-center gap-1.5">
+          <p className="text-xs font-semibold text-slate-500 uppercase mb-1 flex items-center gap-1.5">
             <TrendingUp className="w-3.5 h-3.5 text-rose-600 shrink-0" />
             LOP Deductions
           </p>
-          <p className="text-2xl font-black text-rose-600 truncate">{formatCurrency(totalLopDeductions)}</p>
-          <p className="text-[10px] text-slate-500 mt-1">Attendance-linked absence deduction</p>
+          <p className="text-2xl font-bold text-rose-600 truncate">{formatCurrency(totalLopDeductions)}</p>
+          <p className="text-xs text-slate-500 mt-1">Attendance-linked absence deduction</p>
         </div>
 
         <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs overflow-hidden">
-          <p className="text-[11px] font-semibold text-slate-500 uppercase mb-1 flex items-center gap-1.5">
+          <p className="text-xs font-semibold text-slate-500 uppercase mb-1 flex items-center gap-1.5">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
             Disbursement Mode
           </p>
           <p className="text-lg font-bold text-emerald-700 truncate">Automated Direct Bank & WhatsApp</p>
-          <p className="text-[10px] text-slate-500 mt-1">Complies with 26 days/month standard</p>
+          <p className="text-xs text-slate-500 mt-1">Complies with 26 days/month standard</p>
         </div>
       </div>
 
       {/* Payslips Table */}
       <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-700">
-            <thead className="bg-slate-50 text-slate-600 text-[11px] uppercase tracking-wider border-b border-slate-200 font-semibold">
+          <table className="w-full text-left text-[13px] text-slate-700">
+            <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider border-b border-slate-200 font-semibold">
               <tr>
                 <th className="py-3.5 px-4">Employee</th>
                 <th className="py-3.5 px-4">Period</th>
@@ -352,7 +352,7 @@ export default function PayrollView() {
                       <div>
                         {slip.employee?.firstName} {slip.employee?.lastName}
                       </div>
-                      <div className="text-[10px] text-slate-500">
+                      <div className="text-xs text-slate-500">
                         {slip.employee?.employeeCode || "WP-EMP"}
                       </div>
                     </td>
@@ -373,7 +373,7 @@ export default function PayrollView() {
                     </td>
                     <td className="py-3.5 px-4">
                       <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${
                           slip.status === "PAID" || slip.status === "DISBURSED"
                             ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                             : slip.status === "APPROVED"

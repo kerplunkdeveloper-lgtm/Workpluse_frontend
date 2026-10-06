@@ -459,6 +459,44 @@ export const billingApi = {
   },
 };
 
+export const platformApi = {
+  overview: async () => {
+    const res = await api.get("/admin/platform/overview");
+    return res.data;
+  },
+  attention: async () => {
+    const res = await api.get("/admin/platform/attention");
+    return res.data;
+  },
+  activity: async (params?: { action?: string; clientId?: string; page?: number; limit?: number }) => {
+    const res = await api.get("/admin/platform/activity", { params });
+    return res.data;
+  },
+  clients: async (params?: {
+    search?: string;
+    plan?: string;
+    status?: string;
+    expiring?: boolean;
+    sort?: string;
+    page?: number;
+    limit?: number;
+  }) => {
+    const res = await api.get("/admin/platform/clients", { params });
+    return res.data;
+  },
+  client: async (id: string) => {
+    const res = await api.get(`/admin/platform/clients/${id}`);
+    return res.data;
+  },
+  act: async (
+    id: string,
+    body: { action: "EXTEND" | "CHANGE_PLAN" | "SUSPEND" | "REACTIVATE"; days?: number; plan?: string; billingCycle?: string; reason?: string; confirmName?: string },
+  ) => {
+    const res = await api.post(`/admin/platform/clients/${id}/actions`, body);
+    return res.data;
+  },
+};
+
 export const billingAdminApi = {
   prices: async () => {
     const res = await api.get("/admin/billing/prices");
@@ -555,8 +593,8 @@ export const apiKeysApi = {
 };
 
 export const chatApi = {
-  teammates: async () => {
-    const res = await api.get("/chat/teammates");
+  teammates: async (params?: { search?: string; page?: number; limit?: number }) => {
+    const res = await api.get("/chat/teammates", { params });
     return res.data;
   },
   threads: async () => {
@@ -571,8 +609,8 @@ export const chatApi = {
     const res = await api.post("/chat/groups", payload);
     return res.data;
   },
-  messages: async (threadId: string) => {
-    const res = await api.get(`/chat/threads/${threadId}/messages`);
+  messages: async (threadId: string, params?: { page?: number; limit?: number }) => {
+    const res = await api.get(`/chat/threads/${threadId}/messages`, { params });
     return res.data;
   },
   send: async (threadId: string, body: string) => {
@@ -725,6 +763,10 @@ export const employeesApi = {
     const res = await api.delete(`/employees/${id}`);
     return res.data;
   },
+  bulkSetAccess: async (ids: string[], action: "DEACTIVATE" | "ACTIVATE") => {
+    const res = await api.post("/employees/bulk-access", { ids, action });
+    return res.data;
+  },
   invite: async (payload: any) => {
     const res = await api.post("/employees/invite", payload);
     return res.data;
@@ -762,6 +804,10 @@ export const employeesApi = {
   },
   sendExpiryReminder: async (employeeId: string, docId: string) => {
     const res = await api.post(`/employees/${employeeId}/documents/${docId}/remind-expiry`);
+    return res.data;
+  },
+  bulkImport: async (employees: any[]) => {
+    const res = await api.post("/employees/bulk-import", { employees });
     return res.data;
   },
 };

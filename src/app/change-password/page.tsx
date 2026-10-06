@@ -60,7 +60,7 @@ export default function ChangePasswordPage() {
         toast.success("Password set successfully! Redirecting to dashboard...");
         await refreshUser();
         setTimeout(() => {
-          router.push("/dashboard");
+          router.push(user?.role === "SUPER_ADMIN" ? "/platform/clients" : "/dashboard");
         }, 1500);
       } else {
         toast.error(res?.message || "Failed to update password");
@@ -111,7 +111,7 @@ export default function ChangePasswordPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Current / Temp Password */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-[13px] font-medium text-slate-700 mb-1">
                   Temporary / Current Password
                 </label>
                 <div className="relative">
@@ -138,7 +138,7 @@ export default function ChangePasswordPage() {
 
               {/* New Password */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-[13px] font-medium text-slate-700 mb-1">
                   New Password
                 </label>
                 <div className="relative">
@@ -163,7 +163,7 @@ export default function ChangePasswordPage() {
                 </div>
 
                 {/* Password strength checklist */}
-                <div className="mt-2 grid grid-cols-2 gap-1 text-[11px] text-slate-500">
+                <div className="mt-2 grid grid-cols-2 gap-1 text-xs text-slate-500">
                   <div className={`flex items-center gap-1.5 ${hasMinLength ? "text-emerald-600 font-semibold" : ""}`}>
                     <CheckCircle2 className="w-3 h-3" />
                     <span>8+ Characters</span>
@@ -185,7 +185,7 @@ export default function ChangePasswordPage() {
 
               {/* Confirm New Password */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-[13px] font-medium text-slate-700 mb-1">
                   Confirm New Password
                 </label>
                 <div className="relative">
@@ -211,7 +211,7 @@ export default function ChangePasswordPage() {
               <button
                 type="submit"
                 disabled={!isFormValid || submitting}
-                className="w-full mt-2 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold shadow-sm transition-all duration-200 flex items-center justify-center gap-2"
+                className="w-full mt-2 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold shadow-sm transition-all duration-200 flex items-center justify-center gap-2"
               >
                 {submitting ? (
                   <>

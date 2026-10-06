@@ -200,7 +200,7 @@ export default function OnboardingView() {
 
         <button
           onClick={() => setModalOpen(true)}
-          className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center gap-2 shadow-lg shadow-indigo-600/20 transition"
+          className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm flex items-center gap-2 shadow-lg shadow-indigo-600/20 transition"
         >
           <Plus className="w-4 h-4" />
           Invite New Joiner
@@ -221,7 +221,7 @@ export default function OnboardingView() {
                 <span className="font-bold text-xs text-slate-800 tracking-wide uppercase">
                   {stage.label}
                 </span>
-                <span className="w-5 h-5 rounded-full bg-white border border-slate-200 text-[11px] font-bold text-slate-700 flex items-center justify-center shadow-xs">
+                <span className="w-5 h-5 rounded-full bg-white border border-slate-200 text-xs font-bold text-slate-700 flex items-center justify-center shadow-xs">
                   {stageCandidates.length}
                 </span>
               </div>
@@ -229,7 +229,7 @@ export default function OnboardingView() {
               {/* Cards in this Stage */}
               <div className="flex-1 space-y-3 overflow-y-auto pr-1">
                 {stageCandidates.length === 0 ? (
-                  <div className="h-40 flex items-center justify-center text-[11px] text-slate-400 italic">
+                  <div className="h-40 flex items-center justify-center text-xs text-slate-400 italic">
                     No candidates
                   </div>
                 ) : (
@@ -245,7 +245,7 @@ export default function OnboardingView() {
                         <p className="text-xs text-indigo-600 font-medium">{cand.designation}</p>
                       </div>
 
-                      <div className="space-y-1 text-[11px] text-slate-600">
+                      <div className="space-y-1 text-xs text-slate-600">
                         <div className="flex items-center gap-1.5">
                           <Mail className="w-3.5 h-3.5 text-slate-400" />
                           <span className="truncate">{cand.email}</span>
@@ -268,7 +268,7 @@ export default function OnboardingView() {
                           <Link
                             href={`/onboarding/portal/${cand.token || cand.portalToken}`}
                             target="_blank"
-                            className="text-[10px] text-indigo-600 hover:text-indigo-700 font-semibold flex items-center gap-1"
+                            className="text-xs text-indigo-600 hover:text-indigo-700 font-semibold flex items-center gap-1"
                           >
                             <span>Candidate Portal</span>
                             <ExternalLink className="w-3 h-3" />
@@ -277,14 +277,14 @@ export default function OnboardingView() {
                           {VERIFY_STATUSES.includes(cand.status) ? (
                             <button
                               onClick={() => handleHrVerify(cand.id)}
-                              className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-[10px]"
+                              className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs"
                             >
                               Verify
                             </button>
                           ) : SEND_OFFER_STATUSES.includes(cand.status) ? (
                             <button
                               onClick={() => handleSendOffer(cand.id)}
-                              className="px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold text-[10px] flex items-center gap-1 shadow-xs"
+                              className="px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs flex items-center gap-1 shadow-xs"
                             >
                               <Send className="w-3 h-3" />
                               Send Offer
@@ -292,13 +292,13 @@ export default function OnboardingView() {
                           ) : ACTIVATE_STATUSES.includes(cand.status) ? (
                             <button
                               onClick={() => handleActivateAccount(cand.id)}
-                              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-[10px] flex items-center gap-1 shadow-xs"
+                              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center gap-1 shadow-xs"
                             >
                               <CheckCircle2 className="w-3 h-3" />
                               Activate
                             </button>
                           ) : cand.status === "ACTIVATED" || cand.status === "ONBOARDED" ? (
-                            <span className="text-[10px] text-teal-700 font-bold flex items-center gap-1">
+                            <span className="text-xs text-teal-700 font-bold flex items-center gap-1">
                               <ShieldCheck className="w-3 h-3" />
                               Active
                             </span>
@@ -318,7 +318,7 @@ export default function OnboardingView() {
       {modalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl">
-            <h3 className="text-lg font-bold text-slate-900 mb-1">Invite New Joiner to Pipeline</h3>
+            <h3 className="text-base font-semibold text-slate-900 mb-1">Invite New Joiner to Pipeline</h3>
             <p className="text-xs text-slate-500 mb-4">
               Send onboarding invite with candidate portal link for document collection
             </p>
@@ -326,7 +326,7 @@ export default function OnboardingView() {
             <form onSubmit={handleCreateJoiner} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">First Name *</label>
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1">First Name *</label>
                   <input
                     type="text"
                     value={firstName}
@@ -336,7 +336,7 @@ export default function OnboardingView() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Last Name</label>
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1">Last Name</label>
                   <input
                     type="text"
                     value={lastName}
@@ -348,7 +348,7 @@ export default function OnboardingView() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Email *</label>
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1">Email *</label>
                   <input
                     type="email"
                     value={email}
@@ -358,7 +358,7 @@ export default function OnboardingView() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Phone</label>
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1">Phone</label>
                   <input
                     type="tel"
                     value={phone}
@@ -371,7 +371,7 @@ export default function OnboardingView() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Designation *</label>
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1">Designation *</label>
                   <input
                     type="text"
                     value={designation}
@@ -382,7 +382,7 @@ export default function OnboardingView() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Annual CTC (INR) *</label>
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1">Annual CTC (INR) *</label>
                   <input
                     type="number"
                     value={offeredSalary}
@@ -396,7 +396,7 @@ export default function OnboardingView() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Branch</label>
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1">Branch</label>
                   <select
                     value={branchId}
                     onChange={(e) => setBranchId(e.target.value)}
@@ -411,7 +411,7 @@ export default function OnboardingView() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Department</label>
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1">Department</label>
                   <select
                     value={departmentId}
                     onChange={(e) => setDepartmentId(e.target.value)}
@@ -428,7 +428,7 @@ export default function OnboardingView() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Proposed Joining Date *</label>
+                <label className="block text-[13px] font-medium text-slate-700 mb-1">Proposed Joining Date *</label>
                 <input
                   type="date"
                   value={joiningDate}
@@ -442,14 +442,14 @@ export default function OnboardingView() {
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-900"
+                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition flex items-center gap-2"
                 >
                   {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   Generate Invitation

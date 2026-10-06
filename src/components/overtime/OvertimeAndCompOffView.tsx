@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
+import DatePicker from "@/components/ui/DatePicker";
 
 export default function OvertimeAndCompOffView() {
   const [balance, setBalance] = useState<number>(0);
@@ -106,7 +107,7 @@ export default function OvertimeAndCompOffView() {
 
         <button
           onClick={() => setModalOpen(true)}
-          className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center gap-2 shadow-lg shadow-indigo-600/20 transition"
+          className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm flex items-center gap-2 shadow-lg shadow-indigo-600/20 transition"
         >
           <Plus className="w-4 h-4" />
           Redeem Comp-Off
@@ -116,43 +117,43 @@ export default function OvertimeAndCompOffView() {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="rounded-2xl p-5 border border-slate-200 bg-white shadow-sm">
-          <p className="text-[11px] font-semibold text-slate-500 uppercase mb-1 flex items-center gap-1.5">
+          <p className="text-xs font-semibold text-slate-500 uppercase mb-1 flex items-center gap-1.5">
             <Layers className="w-3.5 h-3.5 text-emerald-600" />
             Available Comp-Off Credits
           </p>
-          <p className="text-3xl font-black text-emerald-600">{balance} Days</p>
-          <p className="text-[10px] text-slate-400 mt-1">Ready for redemption</p>
+          <p className="text-3xl font-bold text-emerald-600">{balance} Days</p>
+          <p className="text-xs text-slate-400 mt-1">Ready for redemption</p>
         </div>
 
         <div className="rounded-2xl p-5 border border-slate-200 bg-white shadow-sm">
-          <p className="text-[11px] font-semibold text-slate-500 uppercase mb-1 flex items-center gap-1.5">
+          <p className="text-xs font-semibold text-slate-500 uppercase mb-1 flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5 text-indigo-600" />
             Overtime Accrued
           </p>
-          <p className="text-3xl font-black text-indigo-600">
+          <p className="text-3xl font-bold text-indigo-600">
             {myOvertimes.reduce((acc, o) => acc + (Number(o.hours) || 0), 0)} Hours
           </p>
-          <p className="text-[10px] text-slate-400 mt-1">Beyond standard 9 hr shifts</p>
+          <p className="text-xs text-slate-400 mt-1">Beyond standard 9 hr shifts</p>
         </div>
 
         <div className="rounded-2xl p-5 border border-slate-200 bg-white shadow-sm">
-          <p className="text-[11px] font-semibold text-slate-500 uppercase mb-1 flex items-center gap-1.5">
+          <p className="text-xs font-semibold text-slate-500 uppercase mb-1 flex items-center gap-1.5">
             <CheckCircle2 className="w-3.5 h-3.5 text-sky-600" />
             Rest-Day Rule
           </p>
           <p className="text-xl font-bold text-slate-900">Sunday Punches Unblocked</p>
-          <p className="text-[10px] text-slate-500 mt-1">100% credited to Overtime & Comp-off</p>
+          <p className="text-xs text-slate-500 mt-1">100% credited to Overtime & Comp-off</p>
         </div>
       </div>
 
       {/* History Table */}
       <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-sm">
         <div className="p-4 border-b border-slate-200">
-          <h3 className="font-bold text-sm text-slate-900">Redemption & Accrual History</h3>
+          <h3 className="font-semibold text-sm text-slate-900">Redemption & Accrual History</h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-700">
-            <thead className="bg-slate-50 text-slate-500 text-[11px] uppercase tracking-wider border-b border-slate-200 font-semibold">
+          <table className="w-full text-left text-[13px] text-slate-700">
+            <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200 font-semibold">
               <tr>
                 <th className="py-3.5 px-4">Date</th>
                 <th className="py-3.5 px-4">Type</th>
@@ -181,7 +182,7 @@ export default function OvertimeAndCompOffView() {
                       {formatDate(item.requestedDate || item.date || item.createdAt)}
                     </td>
                     <td className="py-3.5 px-4">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      <span className="px-2 py-0.5 rounded text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
                         Comp-Off Leave
                       </span>
                     </td>
@@ -193,7 +194,7 @@ export default function OvertimeAndCompOffView() {
                     </td>
                     <td className="py-3.5 px-4">
                       <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${
                           item.status === "APPROVED"
                             ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                             : item.status === "REJECTED"
@@ -216,25 +217,24 @@ export default function OvertimeAndCompOffView() {
       {modalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl">
-            <h3 className="text-lg font-bold text-slate-900 mb-1">Redeem Comp-Off Leave</h3>
+            <h3 className="text-base font-semibold text-slate-900 mb-1">Redeem Comp-Off Leave</h3>
             <p className="text-xs text-slate-500 mb-4">
               Apply earned rest-day credits for a scheduled day off
             </p>
 
             <form onSubmit={handleRedeem} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Target Date *</label>
-                <input
-                  type="date"
+                <label className="block text-[13px] font-medium text-slate-700 mb-1">Target Date *</label>
+                <DatePicker
                   value={requestedDate}
-                  onChange={(e) => setRequestedDate(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                  onChange={(val) => setRequestedDate(val)}
+                  placeholder="Select target date"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Days to Deduct</label>
+                <label className="block text-[13px] font-medium text-slate-700 mb-1">Days to Deduct</label>
                 <input
                   type="number"
                   min={0.5}
@@ -245,13 +245,13 @@ export default function OvertimeAndCompOffView() {
                   className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
                   required
                 />
-                <span className="text-[10px] text-slate-500 mt-1 block">
+                <span className="text-xs text-slate-500 mt-1 block">
                   Available balance: {balance} days
                 </span>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Reason / Note</label>
+                <label className="block text-[13px] font-medium text-slate-700 mb-1">Reason / Note</label>
                 <textarea
                   rows={3}
                   value={reason}
@@ -265,14 +265,14 @@ export default function OvertimeAndCompOffView() {
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-900"
+                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition flex items-center gap-2"
                 >
                   {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   Submit Redemption

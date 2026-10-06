@@ -91,7 +91,7 @@ export default function UnlockPlanModal({
                 <Lock className="w-7 h-7 text-amber-600" />
               </motion.div>
 
-              <h2 className="text-xl font-bold text-slate-900 mb-2">Activate Your Plan</h2>
+              <h2 className="text-xl font-semibold text-slate-900 mb-2">Activate Your Plan</h2>
               <p className="text-sm text-slate-500 max-w-xs">
                 Enter the unlock code sent to your email when you registered{" "}
                 {organizationName && (
@@ -130,7 +130,7 @@ export default function UnlockPlanModal({
                   spellCheck={false}
                   autoFocus
                 />
-                <p className="mt-1.5 text-[11px] text-slate-500">
+                <p className="mt-1.5 text-xs text-slate-500">
                   Use the unlock code emailed to the workspace owner.
                 </p>
               </div>

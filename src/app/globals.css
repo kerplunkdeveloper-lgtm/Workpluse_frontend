@@ -179,110 +179,155 @@ button, a { transition: color 160ms ease, background-color 160ms ease, border-co
 }
 .wp-btn:hover { background: var(--primary-strong); }
 
-/* Premium workspace shell */
+.wp-btn:hover { background: var(--primary-strong); }
+
+/* Premium enterprise workspace shell */
 .wp-app-shell {
-  background: #f4f7fb;
+  background: #f8fafc;
 }
 
 .wp-sidebar {
   background:
-    radial-gradient(500px 260px at -20% -10%, rgba(99, 102, 241, 0.22), transparent 60%),
-    linear-gradient(180deg, #111827 0%, #0b1220 100%);
-  box-shadow: 18px 0 46px -38px rgba(15, 23, 42, 0.7);
+    radial-gradient(600px 320px at -10% -5%, rgba(99, 102, 241, 0.28), transparent 65%),
+    radial-gradient(400px 240px at 100% 40%, rgba(14, 165, 233, 0.12), transparent 60%),
+    linear-gradient(180deg, #090e1a 0%, #060913 100%);
+  box-shadow: 20px 0 50px -30px rgba(2, 6, 23, 0.95);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .wp-sidebar::before {
   content: "";
   position: absolute;
   inset: 0 0 auto;
-  height: 11rem;
+  height: 14rem;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(99, 102, 241, 0.12), transparent);
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.14), transparent);
 }
 
 .wp-sidebar > * { position: relative; }
 
 .wp-workspace-switcher {
-  min-height: 3.5rem;
+  min-height: 3.6rem;
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 1rem;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.035));
-  transition: border-color 180ms ease, background-color 180ms ease, transform 180ms ease;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.025));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 4px 12px -4px rgba(0, 0, 0, 0.5);
+  transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .wp-workspace-switcher:hover {
-  border-color: rgba(129, 140, 248, 0.6);
-  background: rgba(99, 102, 241, 0.14);
+  border-color: rgba(129, 140, 248, 0.7);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(255, 255, 255, 0.05));
   transform: translateY(-1px);
+  box-shadow: 0 8px 20px -8px rgba(99, 102, 241, 0.4);
 }
 
 .wp-workspace-icon {
   display: inline-flex;
-  width: 2rem;
-  height: 2rem;
+  width: 2.2rem;
+  height: 2.2rem;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  color: #c7d2fe;
-  border: 1px solid rgba(165, 180, 252, 0.22);
-  border-radius: 0.7rem;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.65), rgba(14, 165, 233, 0.32));
+  color: #e0e7ff;
+  border: 1px solid rgba(165, 180, 252, 0.35);
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.8), rgba(14, 165, 233, 0.45));
+  box-shadow: 0 4px 12px -2px rgba(99, 102, 241, 0.5);
 }
 
 .wp-sidebar-search {
-  min-height: 2.4rem;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  min-height: 2.5rem;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: all 180ms ease;
 }
 
 .wp-nav-section {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.55);
+  transition: all 180ms ease;
 }
 
 .wp-nav-section:hover {
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .wp-nav-link {
-  min-height: 2.55rem;
+  min-height: 2.65rem;
   border: 1px solid transparent;
+  transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .wp-nav-link:not([aria-current="page"]):hover {
-  border-color: rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.07) !important;
+  border-color: rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.08) !important;
+  transform: translateX(2px);
+  color: #ffffff !important;
 }
 
 .wp-nav-link[aria-current="page"] {
   position: relative;
-  background: linear-gradient(135deg, #6366f1, #4f46e5) !important;
-  box-shadow: 0 14px 26px -18px rgba(99, 102, 241, 0.9);
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+  color: #ffffff !important;
+  border-color: rgba(165, 180, 252, 0.3) !important;
+  box-shadow: 0 10px 24px -10px rgba(99, 102, 241, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
 }
 
 .wp-nav-link[aria-current="page"]::before {
   content: "";
   position: absolute;
-  left: -0.2rem;
-  width: 0.2rem;
-  height: 1.35rem;
+  left: -0.25rem;
+  width: 0.25rem;
+  height: 1.5rem;
   border-radius: 0 999px 999px 0;
-  background: #a5b4fc;
+  background: #38bdf8;
+  box-shadow: 0 0 10px #38bdf8;
+}
+
+.wp-tooltip-flyout {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 60;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 160ms ease, visibility 160ms ease, transform 160ms ease;
+}
+
+.group:hover .wp-tooltip-flyout {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(-50%) translateX(2px);
 }
 
 .wp-sidebar-footer {
-  background: linear-gradient(180deg, rgba(2, 6, 23, 0.15), rgba(2, 6, 23, 0.42));
+  background: linear-gradient(180deg, rgba(2, 6, 23, 0.35), rgba(2, 6, 23, 0.8));
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .wp-mobile-drawer {
   background:
-    radial-gradient(560px 260px at 0% 0%, rgba(99, 102, 241, 0.24), transparent 62%),
-    linear-gradient(180deg, #111827 0%, #0b1220 100%) !important;
+    radial-gradient(560px 280px at 0% 0%, rgba(99, 102, 241, 0.3), transparent 65%),
+    radial-gradient(400px 200px at 100% 50%, rgba(14, 165, 233, 0.15), transparent 60%),
+    linear-gradient(180deg, #090e1a 0%, #060913 100%) !important;
+  box-shadow: 24px 0 60px -20px rgba(0, 0, 0, 0.85);
 }
 
 .wp-mobile-drawer .wp-nav-link[aria-current="page"] {
-  box-shadow: 0 16px 30px -18px rgba(99, 102, 241, 0.95);
+  box-shadow: 0 14px 28px -14px rgba(99, 102, 241, 0.85);
 }
 
 /* Shared SaaS product surface: these selectors intentionally target the
@@ -379,9 +424,63 @@ button, a { transition: color 160ms ease, background-color 160ms ease, border-co
   background: rgba(238, 242, 255, 0.52);
 }
 
+/* Shared responsive product polish. Feature modules can keep their existing
+   markup while inheriting the same premium surfaces and small-screen rules. */
+.wp-main-canvas > div > * {
+  min-width: 0;
+}
+
+.wp-main-canvas .overflow-x-auto {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+  border-radius: 1rem;
+}
+
+.wp-main-canvas table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.wp-main-canvas table th {
+  white-space: nowrap;
+  padding-top: 0.85rem;
+  padding-bottom: 0.85rem;
+}
+
+.wp-main-canvas table td {
+  padding-top: 0.8rem;
+  padding-bottom: 0.8rem;
+  vertical-align: middle;
+}
+
+.wp-main-canvas .rounded-3xl,
+.wp-main-canvas .rounded-2xl {
+  min-width: 0;
+}
+
+.wp-main-canvas button,
+.wp-main-canvas a {
+  max-width: 100%;
+}
+
+.wp-main-canvas input,
+.wp-main-canvas select,
+.wp-main-canvas textarea {
+  min-height: 2.65rem;
+}
+
+.wp-main-canvas input[type="checkbox"],
+.wp-main-canvas input[type="radio"] {
+  min-height: auto;
+}
+
 @media (max-width: 640px) {
   .wp-page-header h1 { font-size: 1.75rem; }
   .wp-page-header { align-items: flex-start; }
+  .wp-page-header .wp-page-icon { height: 2.65rem; width: 2.65rem; }
+  .wp-page-header button,
+  .wp-page-header a { min-height: 2.65rem; }
+  .wp-main-canvas .overflow-x-auto { margin-inline: -0.25rem; padding-inline: 0.25rem; }
 }
 
 .wp-sidebar a[aria-current="page"],
@@ -473,3 +572,32 @@ button, a { transition: color 160ms ease, background-color 160ms ease, border-co
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+/* ── Type scale ───────────────────────────────────────────────────────────────
+   Page title 24–28/700 · Section 18–20/600 · Card title 16/600 · Body 14–16/400
+   Buttons 14/500–600 · Labels 13–14/500 · Tables 13–14/400–500
+   Helper 12/400 · KPI numbers 24–32/600–700
+   Use these tokens or classes for new UI so the scale stays consistent. */
+:root {
+  --type-page-title: clamp(1.5rem, 1.35rem + 0.5vw, 1.75rem);
+  --type-section: 1.25rem;
+  --type-card-title: 1rem;
+  --type-body: 0.875rem;
+  --type-button: 0.875rem;
+  --type-label: 0.8125rem;
+  --type-table: 0.8125rem;
+  --type-helper: 0.75rem;
+  --type-kpi: clamp(1.5rem, 1.25rem + 0.9vw, 2rem);
+}
+
+.type-page-title { font-size: var(--type-page-title); font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; }
+.type-section { font-size: var(--type-section); font-weight: 600; line-height: 1.3; }
+.type-card-title { font-size: var(--type-card-title); font-weight: 600; line-height: 1.4; }
+.type-body { font-size: var(--type-body); font-weight: 400; line-height: 1.55; }
+.type-label { font-size: var(--type-label); font-weight: 500; line-height: 1.4; }
+.type-table { font-size: var(--type-table); font-weight: 400; line-height: 1.45; }
+.type-helper { font-size: var(--type-helper); font-weight: 400; line-height: 1.4; }
+.type-kpi { font-size: var(--type-kpi); font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+
+/* Numbers in tables and KPIs should not jitter as values change. */
+table, .type-kpi { font-variant-numeric: tabular-nums; }

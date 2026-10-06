@@ -7,6 +7,8 @@ import { useAuth } from "@/context/AuthContext";
 import { Calendar, Plus, Trash2, Loader2, Building2, Upload, Download } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
+import DatePicker from "@/components/ui/DatePicker";
+import { confirmDialog } from "@/components/ui/confirmDialog";
 
 export default function HolidaysView() {
   const { role } = useAuth();
@@ -176,7 +178,7 @@ export default function HolidaysView() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Remove this holiday?")) return;
+    if (!(await confirmDialog({ title: "Remove this holiday?", message: "It will no longer count in attendance or payroll calculations.", confirmLabel: "Remove" }))) return;
     try {
       const res = await holidaysApi.remove(id);
       if (res?.success !== false) {
@@ -229,7 +231,7 @@ export default function HolidaysView() {
               )}
               <button
                 onClick={() => setModalOpen(true)}
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-2"
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 Add holiday
@@ -240,8 +242,8 @@ export default function HolidaysView() {
       </div>
 
       <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
-        <table className="w-full text-left text-xs text-slate-700">
-          <thead className="bg-slate-50 text-slate-600 text-[11px] uppercase tracking-wider border-b border-slate-200 font-semibold">
+        <table className="w-full text-left text-[13px] text-slate-700">
+          <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider border-b border-slate-200 font-semibold">
             <tr>
               <th className="py-3.5 px-4">Date</th>
               <th className="py-3.5 px-4">Name</th>
@@ -268,7 +270,7 @@ export default function HolidaysView() {
                   <td className="py-3.5 px-4 font-semibold text-slate-900">{formatDate(h.date)}</td>
                   <td className="py-3.5 px-4">
                     <div className="font-medium text-slate-900">{h.name}</div>
-                    {h.description && <div className="text-[10px] text-slate-500">{h.description}</div>}
+                    {h.description && <div className="text-xs text-slate-500">{h.description}</div>}
                   </td>
                   <td className="py-3.5 px-4">{h.type}</td>
                   <td className="py-3.5 px-4">
@@ -302,18 +304,18 @@ export default function HolidaysView() {
             onSubmit={handleCreate}
             className="w-full max-w-md bg-white rounded-2xl border border-slate-200 p-6 space-y-4"
           >
-            <h2 className="text-sm font-bold text-slate-900">Add holiday</h2>
+            <h2 className="text-sm font-semibold text-slate-900">Add holiday</h2>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Holiday name"
               className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs"
             />
-            <input
-              type="date"
+            <DatePicker
               value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs"
+              onChange={(val) => setDate(val)}
+              placeholder="Holiday date"
+              required
             />
             <select
               value={type}
@@ -341,7 +343,7 @@ export default function HolidaysView() {
               className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs"
               rows={2}
             />
-            <label className="flex items-center gap-2 text-xs text-slate-700">
+            <label className="flex items-center gap-2 text-[13px] text-slate-700">
               <input type="checkbox" checked={isOptional} onChange={(e) => setIsOptional(e.target.checked)} />
               Optional holiday
             </label>

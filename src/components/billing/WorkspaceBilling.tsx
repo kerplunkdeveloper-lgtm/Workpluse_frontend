@@ -91,7 +91,7 @@ export function BillingLocked() {
       <div className="w-16 h-16 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 mb-4">
         <CreditCard className="w-7 h-7" />
       </div>
-      <h2 className="text-2xl font-bold text-slate-900 mb-2">Subscription required</h2>
+      <h2 className="text-xl font-semibold text-slate-900 mb-2">Subscription required</h2>
       <p className="text-slate-600 max-w-md mb-6 text-sm leading-relaxed">{message}</p>
       {isAdmin ? (
         <Link
