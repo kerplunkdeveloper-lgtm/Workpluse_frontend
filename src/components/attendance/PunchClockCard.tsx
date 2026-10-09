@@ -1,590 +1,301 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
-import { useAttendance, PunchOptions } from "@/context/AttendanceContext";
-import { useAuth } from "@/context/AuthContext";
+import React, { useEffect, useState } from "react";
 import {
-  Clock,
-  MapPin,
-  CheckCircle2,
-  Briefcase,
   Building2,
+  Coffee,
+  Globe,
+  LockKeyhole,
+  MapPin,
+  Navigation,
   Play,
+  RefreshCw,
   Square,
-  Sparkles,
-  ShieldCheck,
-  ChevronRight,
   Wifi,
   WifiOff,
-  Navigation,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { formatTime, formatDurationMinutes } from "@/lib/utils";
+import { useAttendance, PunchOptions } from "@/context/AttendanceContext";
+import { useAuth } from "@/context/AuthContext";
+import { formatTime } from "@/lib/utils";
+import type { Attendance, CheckInLocationPolicy } from "@/types";
+import PunchConfirmDialog from "./PunchConfirmDialog";
+import { breakMinutesOf, formatClock, formatDistance, formatHm, formatShiftTime, liveWorkedMs, shiftLengthMinutes } from "./attendanceUtils";
 
-export type WorkMode = "OFFICE" | "SHOOT" | "WORK_FROM_HOME" | "CLIENT_VISIT" | "TRAVEL";
+type PunchAction = "CHECK_IN" | "CHECK_OUT";
 
+/** Container: wires the attendance context into the presentational panels. */
 export default function PunchClockCard() {
   const { user } = useAuth();
-  const {
-    todayStatus,
-    currentLocation,
-    locationLabel,
-    distanceToBranch,
-    checkIn,
-    checkOut,
-    isActionLoading,
-    isOnline,
-    pendingPunchCount,
-    isWithinGeofence,
-  } = useAttendance();
+  const ctx = useAttendance();
+  const [action, setAction] = useState<PunchAction | null>(null);
 
-  const [currentTime, setCurrentTime] = useState<Date>(new Date());
-  const [selectedWorkMode, setSelectedWorkMode] = useState<WorkMode>("OFFICE");
-  const [punchNote, setPunchNote] = useState("");
-  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
-  const [pendingAction, setPendingAction] = useState<"CHECK_IN" | "CHECK_OUT">("CHECK_IN");
-
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const isCheckedIn = Boolean(
-    todayStatus?.hasCheckedIn ||
-    todayStatus?.attendance?.checkIn ||
-    (todayStatus as any)?.clockedIn
-  ) && !Boolean(
-    todayStatus?.hasCheckedOut ||
-    todayStatus?.attendance?.checkOut
-  );
-
-  const hasCheckedOut = Boolean(
-    todayStatus?.hasCheckedOut ||
-    todayStatus?.attendance?.checkOut
-  );
-
-  const isOnBreak = todayStatus?.isOnBreak;
-  const shift = user?.employee?.shift;
-
-  const punchInTimeString = todayStatus?.attendance?.checkIn
-    ? formatTime(todayStatus.attendance.checkIn)
-    : "-- : --";
-
-  const punchOutTimeString = todayStatus?.attendance?.checkOut
-    ? formatTime(todayStatus.attendance.checkOut)
-    : "-- : --";
-
-  const shiftHoursString = todayStatus?.attendance?.workMinutes
-    ? formatDurationMinutes(todayStatus.attendance.workMinutes)
-    : isCheckedIn
-    ? "Active"
-    : "0 hrs";
-
-  const punchedLocation =
-    todayStatus?.attendance?.checkInLocation ||
-    todayStatus?.attendance?.checkOutLocation ||
-    locationLabel ||
-    null;
-
-  const handlePunchClick = (action: "CHECK_IN" | "CHECK_OUT") => {
-    setPendingAction(action);
-    setConfirmModalOpen(true);
-  };
-
-  const handleConfirmPunch = async () => {
+  const confirmPunch = async (chosen?: PunchOptions) => {
+    if (!action) return;
     const options: PunchOptions = {
-      workMode: selectedWorkMode as any,
-      note: punchNote.trim() || undefined,
-      locationLabel: locationLabel || undefined,
+      workMode: chosen?.workMode || (ctx.todayStatus?.isWorkFromHome ? "WORK_FROM_HOME" : "OFFICE"),
+      locationLabel: ctx.locationLabel || undefined,
     };
-
-    let ok = false;
-    if (pendingAction === "CHECK_IN") {
-      ok = await checkIn(options);
-    } else {
-      ok = await checkOut(options);
-    }
-
-    if (ok) {
-      setConfirmModalOpen(false);
-      setPunchNote("");
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
-      const dateStr = now.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "short", year: "numeric" });
-      setPunchAlertData({
-        action: pendingAction,
-        time: timeStr,
-        date: dateStr,
-        workMode: selectedWorkMode,
-        isWithinGeofence: isWithinGeofence,
-        distanceMeters: distanceToBranch,
-        locationLabel: locationLabel || punchedLocation,
-        shiftName: shift ? `${shift.name} (${shift.startTime} - ${shift.endTime})` : "Standard General Shift (09:00 - 18:00)",
-      });
-    }
+    const ok = action === "CHECK_IN" ? await ctx.checkIn(options) : await ctx.checkOut(options);
+    if (ok) setAction(null);
   };
 
-  // State for post-punch confirmation alert modal
-  const [punchAlertData, setPunchAlertData] = useState<{
-    action: "CHECK_IN" | "CHECK_OUT";
-    time: string;
-    date: string;
-    workMode: WorkMode;
-    isWithinGeofence: boolean;
-    distanceMeters: number | null;
-    locationLabel?: string | null;
-    shiftName: string;
-  } | null>(null);
+  if (ctx.isLoading && !ctx.todayStatus) {
+    return (
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]" aria-busy="true">
+        <div className="skeleton-shimmer h-[340px] rounded-2xl" />
+        <div className="skeleton-shimmer h-[340px] rounded-2xl" />
+      </div>
+    );
+  }
 
-  // Format digital clock
-  const hours = currentTime.getHours();
-  const minutes = String(currentTime.getMinutes()).padStart(2, "0");
-  const seconds = String(currentTime.getSeconds()).padStart(2, "0");
-  const ampm = hours >= 12 ? "PM" : "AM";
-  const displayHours = String(hours % 12 || 12).padStart(2, "0");
+  const status = ctx.todayStatus;
+  return (
+    <>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]">
+        <TodayPanel
+          firstName={user?.employee?.firstName || ""}
+          attendance={status?.attendance}
+          shift={status?.shift || user?.employee?.shift || null}
+          hasCheckedIn={Boolean(status?.hasCheckedIn || status?.attendance?.checkIn)}
+          hasCheckedOut={Boolean(status?.hasCheckedOut || status?.attendance?.checkOut)}
+          isOnBreak={Boolean(status?.isOnBreak)}
+          isOnline={ctx.isOnline}
+          busy={ctx.isActionLoading}
+          onPunch={(a) => setAction(a)}
+          onToggleBreak={() => void (status?.isOnBreak ? ctx.endBreak() : ctx.startBreak())}
+        />
+        <LocationPanel
+          policy={status?.locationPolicy}
+          showRule={!status?.hasCheckedIn}
+          label={ctx.locationLabel || status?.attendance?.checkInLocation || null}
+          gpsReady={Boolean(ctx.currentLocation)}
+          distance={ctx.distanceToBranch}
+          error={ctx.locationError}
+          pendingPunches={ctx.pendingPunchCount}
+          onSync={() => void ctx.triggerSync()}
+        />
+      </div>
+      <PunchConfirmDialog action={action} loading={ctx.isActionLoading} locationLabel={ctx.locationLabel} onCancel={() => setAction(null)} onConfirm={(o) => void confirmPunch(o)} />
+    </>
+  );
+}
 
-  const fullDateFormatted = currentTime.toLocaleDateString("en-US", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+const CARD = "rounded-2xl bg-white ring-1 ring-slate-900/[0.06] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_32px_-20px_rgba(15,23,42,0.18)]";
 
-  const weekDays = useMemo(() => {
-    const today = new Date();
-    const currentDayIndex = (today.getDay() + 6) % 7; // Mon = 0, Sun = 6
-    const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+export interface TodayPanelProps {
+  firstName: string;
+  attendance?: Partial<Attendance>;
+  shift: { name?: string; startTime?: string; endTime?: string } | null;
+  hasCheckedIn: boolean;
+  hasCheckedOut: boolean;
+  isOnBreak: boolean;
+  isOnline: boolean;
+  busy: boolean;
+  onPunch: (action: PunchAction) => void;
+  onToggleBreak: () => void;
+  /** Fixed clock for previews/tests; omitted in the app so the timer ticks. */
+  now?: number;
+}
 
-    type DayStatus = "PRESENT" | "HALF_DAY" | "TODAY" | "WEEK_OFF" | "UPCOMING";
+export function TodayPanel({ firstName, attendance, shift, hasCheckedIn, hasCheckedOut, isOnBreak, isOnline, busy, onPunch, onToggleBreak, now: fixedNow }: TodayPanelProps) {
+  const [tick, setTick] = useState(() => fixedNow ?? Date.now());
+  const working = hasCheckedIn && !hasCheckedOut;
+  useEffect(() => {
+    if (fixedNow !== undefined || !working) return;
+    const id = window.setInterval(() => setTick(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [fixedNow, working]);
+  const now = fixedNow ?? tick;
 
-    return dayLabels.map((label, idx): { label: string; status: DayStatus } => {
-      let status: DayStatus = "UPCOMING";
-      if (idx === currentDayIndex) {
-        status = "TODAY";
-      } else if (idx === 5 || idx === 6) {
-        status = "WEEK_OFF";
-      } else if (idx < currentDayIndex) {
-        status = "PRESENT";
-      }
-      return { label, status };
-    });
-  }, []);
+  const workedMs = liveWorkedMs(attendance, isOnBreak, now);
+  const shiftMinutes = shiftLengthMinutes(shift?.startTime, shift?.endTime);
+  const progress = shiftMinutes ? Math.min(100, (workedMs / 60000 / shiftMinutes) * 100) : null;
+  const remaining = shiftMinutes ? Math.max(0, shiftMinutes - workedMs / 60000) : null;
+  const late = Number(attendance?.lateMinutes || 0);
+
+  const state = hasCheckedOut
+    ? { label: "Day complete", dot: "bg-slate-400", tone: "text-slate-600 bg-slate-100" }
+    : isOnBreak
+      ? { label: "On break", dot: "bg-amber-500 animate-pulse", tone: "text-amber-800 bg-amber-50" }
+      : working
+        ? { label: "Working", dot: "bg-emerald-500 animate-pulse", tone: "text-emerald-700 bg-emerald-50" }
+        : { label: "Not checked in", dot: "bg-slate-300", tone: "text-slate-600 bg-slate-100" };
+
+  const hour = new Date(now).getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const headline = hasCheckedOut
+    ? "You're done for today."
+    : working
+      ? isOnBreak
+        ? "Enjoy your break."
+        : "Your shift is running."
+      : `${greeting}${firstName ? `, ${firstName}` : ""}.`;
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          1. Hero Timekeeper Card (Deep Dark Navy with Glowing Radar) - 8 cols
-      ───────────────────────────────────────────────────────────────────────────── */}
-      <div className="hero-timekeeper keep-white xl:col-span-8 rounded-3xl bg-gradient-to-br from-slate-900 via-blue-900 to-blue-600 p-6 sm:p-7 text-white shadow-2xl border border-blue-800 relative overflow-hidden flex flex-col justify-between">
-        {/* Subtle radial light effect */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+    <section className={`${CARD} relative overflow-hidden`} aria-labelledby="today-title">
+      <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-indigo-100/60 blur-3xl" />
+      <div className="relative p-5 sm:p-7">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-semibold ${state.tone}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${state.dot}`} />
+            {state.label}
+          </span>
+          <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${isOnline ? "text-slate-500" : "text-amber-700"}`}>
+            {isOnline ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
+            {isOnline ? "Online" : "Offline — punches save on this device"}
+          </span>
+        </div>
 
-        <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-          {/* Left Column: Digital Clock & Assigned Shift */}
-          <div className="md:col-span-5 space-y-4">
-            {/* Live Status Pill */}
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/30 border border-white/10 text-xs font-bold tracking-[0.16em] text-indigo-200">
-              <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
-              <span>LIVE TIMEKEEPER</span>
-            </div>
-
-            {/* Huge Monospace Digital Clock */}
-            <div>
-              <div className="text-3xl sm:text-4xl lg:text-5xl font-serif font-semibold tracking-tight flex items-baseline gap-2">
-                <span className="text-white drop-shadow-md">{displayHours}</span>
-                <span className="text-indigo-300 font-bold animate-pulse">:</span>
-                <span className="text-white drop-shadow-md">{minutes}</span>
-                <span className="text-indigo-300 font-bold animate-pulse">:</span>
-                <span className="text-white drop-shadow-md">{seconds}</span>
-                <span className="text-base sm:text-lg font-bold text-indigo-100 ml-1.5 px-2.5 py-0.5 rounded-lg bg-indigo-950/70 border border-indigo-500/40 tracking-wider font-sans">{ampm}</span>
-              </div>
-              <p className="text-xs text-slate-300 font-medium mt-2 flex items-center gap-1.5">
-                <span>{fullDateFormatted}</span>
-              </p>
-            </div>
-
-            {/* Assigned Shift Card */}
-            <div className="p-3 rounded-2xl bg-black/30 border border-white/10 text-xs">
-              <div className="flex items-center gap-2 text-slate-300 mb-0.5">
-                <Clock className="w-3.5 h-3.5 text-indigo-300" />
-                <span className="font-semibold text-xs text-slate-300">Assigned Shift</span>
-              </div>
-              <p className="font-bold text-white drop-shadow-xs">
-                {shift ? `${shift.name} (${shift.startTime} - ${shift.endTime})` : "General Morning (09:00 - 18:00)"}
-              </p>
-            </div>
-          </div>
-
-          {/* Center Column: Status Ring Badge */}
-          <div className="md:col-span-3 flex flex-col items-center justify-center text-center py-2">
-            {/* Pulsing Glowing Ring */}
-            <div className="relative w-24 h-24 rounded-full flex items-center justify-center mb-3">
-              <div className="absolute inset-0 rounded-full border-4 border-emerald-500/30 animate-ping opacity-25" />
-              <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/30 ring-4 ring-emerald-500/20">
-                <CheckCircle2 className="w-10 h-10 text-white stroke-[2.5]" />
-              </div>
-            </div>
-
-            <h3 className="text-sm font-semibold text-white drop-shadow-xs">
-              {hasCheckedOut
-                ? "Shift Completed Today"
-                : isCheckedIn
-                ? "Currently Clocked In"
-                : "Ready to Clock In"}
-            </h3>
-            <p className="text-xs text-slate-300 mt-1 max-w-[170px] leading-relaxed">
-              {hasCheckedOut
-                ? "You have clocked out for today. See you tomorrow!"
-                : isCheckedIn
-                ? "Shift active • Punch from any location."
-                : "Tap Punch In to record your daily attendance."}
+        <div className="mt-6 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
+            <h2 id="today-title" className="text-sm font-medium text-slate-500">{headline}</h2>
+            <p className="mt-1 text-5xl font-semibold tabular-nums tracking-[-0.03em] text-slate-950 sm:text-6xl" aria-live="off">
+              {formatClock(workedMs)}
             </p>
+            <p className="mt-1.5 text-xs text-slate-500">Worked today{breakMinutesOf(attendance || {}) > 0 ? ` · ${formatHm(breakMinutesOf(attendance || {}))} on breaks` : ""}</p>
           </div>
 
-          {/* Right Column: Action Buttons & GPS Radar Status */}
-          <div className="md:col-span-4 space-y-3">
-            {/* Primary Punch In Button */}
+          <div className="flex flex-col gap-2 sm:items-end">
             <button
-              onClick={() => handlePunchClick("CHECK_IN")}
-              disabled={isCheckedIn || isActionLoading}
-              className={`w-full py-3 px-5 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2.5 transition-all shadow-md cursor-pointer ${
-                isCheckedIn
-                  ? "bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/50"
-                  : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30"
+              type="button"
+              onClick={() => onPunch(hasCheckedIn ? "CHECK_OUT" : "CHECK_IN")}
+              disabled={busy || hasCheckedOut}
+              className={`inline-flex h-12 min-w-[11rem] items-center justify-center gap-2 rounded-xl px-6 text-sm font-semibold shadow-sm transition active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none ${
+                hasCheckedIn ? "bg-white text-rose-600 ring-1 ring-rose-200 hover:bg-rose-50" : "keep-white bg-indigo-600 shadow-indigo-600/25 hover:bg-indigo-500"
               }`}
             >
-              <Play className="w-4 h-4 fill-current" />
-              <span>Punch In</span>
+              {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : hasCheckedOut ? <LockKeyhole className="h-4 w-4" /> : hasCheckedIn ? <Square className="h-3.5 w-3.5 fill-current" /> : <Play className="h-4 w-4 fill-current" />}
+              {hasCheckedOut ? "Shift completed" : hasCheckedIn ? "Punch out" : "Punch in"}
             </button>
-
-            {/* Secondary Punch Out Button */}
-            <button
-              onClick={() => handlePunchClick("CHECK_OUT")}
-              disabled={!isCheckedIn || isActionLoading}
-              className={`w-full py-3 px-5 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2.5 transition-all border cursor-pointer ${
-                !isCheckedIn
-                  ? "bg-black/40 text-slate-500 border-white/10 cursor-not-allowed"
-                  : "bg-slate-800/90 hover:bg-rose-600 hover:border-rose-500 text-slate-200 hover:text-white border-slate-700 hover:scale-[1.02]"
-              }`}
-            >
-              <Square className="w-4 h-4 fill-current" />
-              <span>Punch Out</span>
-            </button>
-
-            {/* GPS Verified Status Badge */}
-            <div className="p-2.5 rounded-2xl bg-black/30 border border-white/10 flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                <Navigation className="w-4 h-4" />
-              </div>
-              <div className="leading-tight min-w-0 flex-1">
-                <p className={`text-xs font-bold truncate ${currentLocation || punchedLocation ? "text-emerald-400" : "text-slate-200"}`}>
-                  {punchedLocation || locationLabel || (currentLocation ? "Location ready" : "Detecting location…")}
-                </p>
-                <p className="text-xs text-slate-300">
-                  {pendingPunchCount > 0
-                    ? `${pendingPunchCount} punch${pendingPunchCount === 1 ? "" : "es"} waiting to sync.`
-                    : punchedLocation
-                      ? "Saved on your punch and visible to the team."
-                      : "Clock in from anywhere. Your place name is shared with the team."}
-                </p>
-              </div>
-              <span className={`shrink-0 ${isOnline ? "text-emerald-400" : "text-amber-300"}`} title={isOnline ? "Online" : "Offline"}>
-                {isOnline ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
-              </span>
-            </div>
+            {working && (
+              <button
+                type="button"
+                onClick={onToggleBreak}
+                disabled={busy}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-medium text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50 disabled:opacity-50"
+              >
+                <Coffee className="h-4 w-4" />
+                {isOnBreak ? "End break" : "Start break"}
+              </button>
+            )}
           </div>
         </div>
+
+        {progress !== null && (
+          <div className="mt-7">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium text-slate-700">
+                {shift?.name || "Shift"} <span className="font-normal text-slate-400">· {formatShiftTime(shift?.startTime)} – {formatShiftTime(shift?.endTime)}</span>
+              </span>
+              <span className="tabular-nums text-slate-500">
+                {hasCheckedIn ? (remaining && remaining > 0 ? `${formatHm(remaining)} left` : "Shift hours met") : `${formatHm(shiftMinutes || 0)} shift`}
+              </span>
+            </div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100} aria-label="Shift progress">
+              <div className={`h-full rounded-full transition-[width] duration-700 ${progress >= 100 ? "bg-emerald-500" : "bg-indigo-500"}`} style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+        )}
+
+        <dl className="mt-7 grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-100 sm:grid-cols-4">
+          <Fact label="Punch in" value={attendance?.checkIn ? formatTime(attendance.checkIn) : "—"} />
+          <Fact label="Punch out" value={attendance?.checkOut ? formatTime(attendance.checkOut) : "—"} />
+          <Fact label="Breaks" value={formatHm(breakMinutesOf(attendance || {}))} />
+          <Fact
+            label="Arrival"
+            value={!attendance?.checkIn ? "—" : late > 0 ? `${formatHm(late)} late` : "On time"}
+            tone={!attendance?.checkIn ? undefined : late > 0 ? "text-amber-700" : "text-emerald-700"}
+          />
+        </dl>
+      </div>
+    </section>
+  );
+}
+
+function Fact({ label, value, tone }: { label: string; value: string; tone?: string }) {
+  return (
+    <div className="bg-white px-4 py-3">
+      <dt className="text-[11px] font-medium text-slate-500">{label}</dt>
+      <dd className={`mt-0.5 truncate text-sm font-semibold tabular-nums ${tone || "text-slate-900"}`}>{value}</dd>
+    </div>
+  );
+}
+
+export interface LocationPanelProps {
+  policy?: CheckInLocationPolicy;
+  showRule: boolean;
+  label: string | null;
+  gpsReady: boolean;
+  distance: number | null;
+  error: string | null;
+  pendingPunches: number;
+  onSync: () => void;
+}
+
+export function LocationPanel({ policy, showRule, label, gpsReady, distance, error, pendingPunches, onSync }: LocationPanelProps) {
+  return (
+    <aside className={`${CARD} flex flex-col p-5 sm:p-7`} aria-labelledby="location-title">
+      <div className="flex items-center justify-between">
+        <h2 id="location-title" className="text-sm font-semibold text-slate-900">Location</h2>
+        <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${gpsReady ? "text-emerald-700" : "text-slate-500"}`}>
+          <Navigation className="h-3.5 w-3.5" />
+          {gpsReady ? "GPS ready" : "Finding you…"}
+        </span>
       </div>
 
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          2. Today's Details & Mini Heatmap (Right Column) - 4 cols
-      ───────────────────────────────────────────────────────────────────────────── */}
-      <div className="xl:col-span-4 rounded-3xl bg-white p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-4 flex flex-col justify-between min-w-0">
+      <div className="mt-5 flex items-start gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+          <MapPin className="h-[18px] w-[18px]" />
+        </span>
         <div className="min-w-0">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Today&apos;s Details</h3>
-            <span className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 cursor-pointer flex items-center gap-0.5">
-              <span>View Timeline</span>
-              <ChevronRight className="w-3 h-3" />
-            </span>
-          </div>
-
-          <div className="space-y-2.5 min-w-0">
-            <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/90 border border-slate-100 min-w-0">
-              <div className="flex items-center gap-2.5 text-xs text-slate-700 truncate mr-2">
-                <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-                  <Clock className="w-4 h-4" />
-                </div>
-                <span className="font-medium text-slate-700">Punch In Time</span>
-              </div>
-              <span className="font-mono text-xs font-bold text-slate-900 shrink-0 ml-auto">{punchInTimeString}</span>
-            </div>
-
-            <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/90 border border-slate-100 min-w-0">
-              <div className="flex items-center gap-2.5 text-xs text-slate-700 truncate mr-2">
-                <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-                  <Clock className="w-4 h-4" />
-                </div>
-                <span className="font-medium text-slate-700">Punch Out Time</span>
-              </div>
-              <span className="font-mono text-xs font-bold text-slate-900 shrink-0 ml-auto">{punchOutTimeString}</span>
-            </div>
-
-            <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/90 border border-slate-100 min-w-0">
-              <div className="flex items-center gap-2.5 text-xs text-slate-700 truncate mr-2">
-                <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="w-4 h-4" />
-                </div>
-                <span className="font-medium text-slate-700">Shift Hours</span>
-              </div>
-              <span className="font-mono text-xs font-bold text-slate-900 shrink-0 ml-auto">{shiftHoursString}</span>
-            </div>
-
-            <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/90 border border-slate-100 min-w-0">
-              <div className="flex items-center gap-2.5 text-xs text-slate-700 truncate mr-2">
-                <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                  <Building2 className="w-4 h-4" />
-                </div>
-                <span className="font-medium text-slate-700">Work Mode</span>
-              </div>
-              <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100/80 px-2.5 py-1 rounded-lg shrink-0 ml-auto">
-                {todayStatus?.attendance?.isWorkFromHome ? "Work From Home" : "Office HQ"}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* This Week Mini Heatmap Tracker */}
-        <div className="pt-3 border-t border-slate-100">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-800">This Week</span>
-            <span className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 cursor-pointer flex items-center gap-0.5">
-              <span>View All</span>
-              <ChevronRight className="w-3 h-3" />
-            </span>
-          </div>
-
-          <div className="grid grid-cols-7 gap-1 text-center mb-2">
-            {weekDays.map((d, i) => (
-              <div key={i} className="flex flex-col items-center gap-1.5">
-                <span className="text-xs text-slate-400 font-semibold">{d.label}</span>
-                <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                    d.status === "PRESENT"
-                      ? "bg-emerald-500 text-white"
-                      : d.status === "HALF_DAY"
-                      ? "bg-amber-400 text-white"
-                      : d.status === "TODAY"
-                      ? "bg-indigo-600 text-white ring-2 ring-indigo-300"
-                      : "bg-slate-100 text-slate-400"
-                  }`}
-                >
-                  {d.status === "TODAY" ? "●" : "✓"}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Mini Legend */}
-          <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" /> Present
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-amber-400" /> Half Day
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-rose-500" /> Absent
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-indigo-600" /> Today
-            </span>
-          </div>
+          <p className="truncate text-sm font-semibold text-slate-900" title={label || undefined}>{label || "Location not available yet"}</p>
+          <p className="mt-0.5 text-xs leading-5 text-slate-500">
+            {distance !== null ? `${formatDistance(distance)} from your branch` : "Your team sees a place name, never exact coordinates."}
+          </p>
         </div>
       </div>
 
-      {/* Confirmation Modal */}
-      {confirmModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 border border-slate-200 shadow-2xl space-y-4">
-            <h3 className="text-base font-semibold text-slate-900">
-              Confirm {pendingAction === "CHECK_IN" ? "Clock In" : "Clock Out"}
-            </h3>
-            <p className="text-xs text-slate-500">
-              {pendingAction === "CHECK_IN"
-                ? `Your punch will record this time and place${locationLabel ? `: ${locationLabel}` : ""}. The team can see where you clocked in.`
-                : "Ending your work shift. Total hours will be automatically saved to your payroll timesheet."}
-            </p>
+      {showRule && <CheckInRule policy={policy} distance={distance} />}
 
-            <div className="space-y-2">
-              <label className="text-[13px] font-medium text-slate-700 block">Work Mode</label>
-              <select
-                value={selectedWorkMode}
-                onChange={(e) => setSelectedWorkMode(e.target.value as WorkMode)}
-                className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 outline-none focus:border-indigo-500"
-              >
-                <option value="OFFICE">Office HQ</option>
-                <option value="WORK_FROM_HOME">Work From Home (Remote)</option>
-                <option value="SHOOT">On-Site Shoot</option>
-                <option value="CLIENT_VISIT">Client Visit</option>
-                <option value="TRAVEL">Travel / Transit</option>
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[13px] font-medium text-slate-700 block">Optional Note</label>
-              <input
-                type="text"
-                value={punchNote}
-                onChange={(e) => setPunchNote(e.target.value)}
-                placeholder="e.g. Regular punch or client meeting..."
-                className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 outline-none focus:border-indigo-500"
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                onClick={() => setConfirmModalOpen(false)}
-                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmPunch}
-                disabled={isActionLoading}
-                className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-sm transition"
-              >
-                {isActionLoading ? "Recording..." : "Confirm & Punch"}
-              </button>
-            </div>
+      <div className="mt-auto space-y-2 pt-5">
+        {error && <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">{error}</p>}
+        {pendingPunches > 0 && (
+          <div className="flex items-center justify-between gap-3 rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-900">
+            <span>{pendingPunches} offline punch{pendingPunches === 1 ? "" : "es"} waiting to sync</span>
+            <button type="button" onClick={onSync} className="font-semibold text-indigo-700 hover:text-indigo-900">Sync now</button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+    </aside>
+  );
+}
 
-      {/* High-Visibility Confirmation Alert Modal (Check-in & Check-out) */}
-      {punchAlertData && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.92, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 border border-slate-200 shadow-2xl space-y-5 text-slate-900 relative overflow-hidden"
-          >
-            {/* Ambient top decoration */}
-            <div
-              className={`absolute top-0 left-0 right-0 h-2.5 ${
-                punchAlertData.action === "CHECK_IN"
-                  ? "bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500"
-                  : "bg-gradient-to-r from-indigo-500 via-sky-500 to-blue-600"
-              }`}
-            />
+/** Tells the employee where they're allowed to check in before they tap Punch in. */
+function CheckInRule({ policy, distance }: { policy?: CheckInLocationPolicy; distance: number | null }) {
+  if (!policy) return null;
 
-            {/* Center Animated Icon Badge */}
-            <div className="flex flex-col items-center text-center pt-2">
-              <div
-                className={`relative w-20 h-20 rounded-3xl flex items-center justify-center mb-3 shadow-lg ${
-                  punchAlertData.action === "CHECK_IN"
-                    ? "bg-emerald-50 text-emerald-600 border border-emerald-200 shadow-emerald-500/20"
-                    : "bg-indigo-50 text-indigo-600 border border-indigo-200 shadow-indigo-500/20"
-                }`}
-              >
-                <div
-                  className={`absolute inset-0 rounded-3xl animate-ping opacity-20 ${
-                    punchAlertData.action === "CHECK_IN" ? "bg-emerald-400" : "bg-indigo-400"
-                  }`}
-                />
-                <CheckCircle2 className="w-10 h-10 stroke-[2.5]" />
-              </div>
+  if (policy.mode === "ANYWHERE" || policy.radiusMeters === null) {
+    return (
+      <div className="mt-5 flex items-start gap-2.5 rounded-xl bg-emerald-50 px-3.5 py-3 text-emerald-900">
+        <Globe className="mt-0.5 h-4 w-4 shrink-0" />
+        <p className="text-xs leading-5"><span className="font-semibold">Check in from anywhere.</span> Your location is still recorded with the punch.</p>
+      </div>
+    );
+  }
 
-              <span
-                className={`px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider mb-1 ${
-                  punchAlertData.action === "CHECK_IN"
-                    ? "bg-emerald-100 text-emerald-800"
-                    : "bg-indigo-100 text-indigo-800"
-                }`}
-              >
-                {punchAlertData.action === "CHECK_IN" ? "Shift Activated" : "Shift Completed"}
-              </span>
-
-              <h3 className="font-serif text-2xl font-semibold tracking-tight text-slate-900">
-                {punchAlertData.action === "CHECK_IN" ? "Check-In Confirmed!" : "Check-Out Confirmed!"}
-              </h3>
-
-              <p className="text-xs text-slate-500 mt-1 max-w-xs leading-relaxed">
-                {punchAlertData.action === "CHECK_IN"
-                  ? "Your daily attendance timestamp and geofenced coordinates have been securely locked into the enterprise timesheet."
-                  : "Shift concluded successfully! Working hours have been compiled and credited to your payroll ledger."}
-              </p>
-            </div>
-
-            {/* Punch Details Card */}
-            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/80 space-y-3 text-xs">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                <span className="text-slate-500 font-semibold flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-slate-400" />
-                  Recorded Timestamp
-                </span>
-                <span className="font-bold text-slate-900 text-sm">{punchAlertData.time}</span>
-              </div>
-
-              <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                <span className="text-slate-500 font-semibold flex items-center gap-1.5">
-                  <Briefcase className="w-3.5 h-3.5 text-slate-400" />
-                  Work Mode
-                </span>
-                <span className="px-2.5 py-0.5 rounded-md font-bold text-xs bg-white border border-slate-200 text-slate-800">
-                  {punchAlertData.workMode === "OFFICE"
-                    ? "Office HQ"
-                    : punchAlertData.workMode === "WORK_FROM_HOME"
-                    ? "Work From Home (Remote)"
-                    : punchAlertData.workMode === "SHOOT"
-                    ? "On-Site Shoot"
-                    : punchAlertData.workMode === "CLIENT_VISIT"
-                    ? "Client Visit"
-                    : "Field Travel"}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                <span className="text-slate-500 font-semibold flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                  Location
-                </span>
-                <span className="flex items-center gap-1 font-bold text-emerald-600 text-xs text-right max-w-[200px]">
-                  <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate">{punchAlertData.locationLabel || "Location saved"}</span>
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500 font-semibold flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-slate-400" />
-                  Schedule
-                </span>
-                <span className="font-semibold text-slate-700 text-xs truncate max-w-[200px]">
-                  {punchAlertData.shiftName}
-                </span>
-              </div>
-            </div>
-
-            {/* Bottom Dismiss Button */}
-            <div className="pt-1">
-              <button
-                onClick={() => setPunchAlertData(null)}
-                className={`w-full py-3 rounded-2xl font-semibold text-sm text-white shadow-lg transition flex items-center justify-center gap-2 ${
-                  punchAlertData.action === "CHECK_IN"
-                    ? "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/25"
-                    : "bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/25"
-                }`}
-              >
-                <span>Awesome, Got It!</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+  const where = policy.branchName ? `of ${policy.branchName}` : "of your office";
+  const inside = distance !== null && distance <= policy.radiusMeters;
+  const outside = distance !== null && !inside;
+  return (
+    <div className={`mt-5 flex items-start gap-2.5 rounded-xl px-3.5 py-3 ${outside ? "bg-amber-50 text-amber-900" : "bg-indigo-50 text-indigo-900"}`}>
+      <Building2 className="mt-0.5 h-4 w-4 shrink-0" />
+      <p className="text-xs leading-5">
+        <span className="font-semibold">Office check-in only</span>, within {formatDistance(policy.radiusMeters)} {where}.
+        {inside && " You're inside the area."}
+        {outside && ` You're about ${formatDistance(distance)} away, so move closer to check in.`}
+        {distance === null && " We'll confirm your location when you punch in."}
+        {outside && ` Working elsewhere today? Pick${policy.allowWfh ? " Work from home," : ""} Client visit or Travel when you punch in.`}
+      </p>
     </div>
   );
 }

@@ -17,6 +17,7 @@ import { unwrapList } from "@/lib/utils";
 import { trialDaysLabel, trialDaysRemaining } from "@/components/billing/WorkspaceBilling";
 import type { SubscriptionPlanOption } from "@/types";
 import { confirmDialog } from "@/components/ui/confirmDialog";
+import CompanyLogoSetting from "@/components/settings/CompanyLogoSetting";
 
 export default function SubscriptionSettingsView() {
   const { user, refreshUser } = useAuth();
@@ -307,6 +308,8 @@ export default function SubscriptionSettingsView() {
             <p className="text-xs text-slate-500">Update your official company name, billing contact email, and address</p>
           </div>
         </div>
+
+        <CompanyLogoSetting />
 
         <form onSubmit={handleOrgSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

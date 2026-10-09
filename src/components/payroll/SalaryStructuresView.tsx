@@ -6,6 +6,7 @@ import { formatCurrency, unwrapList, unwrapItem } from "@/lib/utils";
 import { Employee } from "@/types";
 import { Calculator, Loader2, Save, Wallet } from "lucide-react";
 import { toast } from "sonner";
+import BulkSalaryPanel from "./BulkSalaryPanel";
 
 const emptyForm = {
   annualCtc: "",
@@ -21,7 +22,7 @@ const emptyForm = {
   overtimeRate: "1.5",
 };
 
-export default function SalaryStructuresView() {
+function IndividualSalaryView() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Employee | null>(null);
@@ -228,6 +229,36 @@ export default function SalaryStructuresView() {
           </form>
         )}
       </div>
+    </div>
+  );
+}
+
+export default function SalaryStructuresView() {
+  const [mode, setMode] = useState<"INDIVIDUAL" | "BULK">("INDIVIDUAL");
+
+  return (
+    <div className="space-y-4">
+      <div className="flex rounded-2xl bg-slate-100 p-1 border border-slate-200 w-fit">
+        {(
+          [
+            ["INDIVIDUAL", "One employee"],
+            ["BULK", "All employees"],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setMode(value)}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${
+              mode === value ? "bg-indigo-600 text-white shadow-xs" : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {mode === "BULK" ? <BulkSalaryPanel /> : <IndividualSalaryView />}
     </div>
   );
 }

@@ -11,9 +11,9 @@ const TABS = [
 ] as const;
 
 /** Segmented navigation shared by the platform-owner screens. */
-export default function PlatformNav({ active }: { active: "clients" | "billing" | "activity" }) {
+export default function PlatformNav({ active }: { active: "clients" | "billing" | "activity" | "security" }) {
   return (
-    <nav aria-label="Platform sections" className="inline-flex rounded-2xl border border-slate-200 bg-slate-100/80 p-1 shadow-inner">
+    <nav aria-label="Platform sections" className="flex max-w-full overflow-x-auto rounded-2xl border border-slate-200 bg-slate-100/80 p-1 shadow-inner [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {TABS.map((tab) => {
         const isActive = tab.href.endsWith(active);
         return (
@@ -22,7 +22,7 @@ export default function PlatformNav({ active }: { active: "clients" | "billing" 
             href={tab.href}
             aria-current={isActive ? "page" : undefined}
             title={tab.hint}
-            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 ${
+            className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 ${
               isActive ? "keep-white bg-indigo-600 shadow-md shadow-indigo-600/20" : "text-slate-600 hover:bg-white hover:text-slate-900"
             }`}
           >

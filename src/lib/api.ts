@@ -1,6 +1,6 @@
 import axios from "axios";
-import { getSessionAccessToken, setSessionAccessToken } from "./sessionToken";
-export { getSessionAccessToken, setSessionAccessToken } from "./sessionToken";
+import { getSessionAccessToken, isSessionHydrated, setSessionAccessToken } from "./sessionToken";
+export { getSessionAccessToken, markSessionHydrated, setSessionAccessToken } from "./sessionToken";
 
 function normalizeApiUrl(url: string): string {
   let next = url.trim();
@@ -55,6 +55,10 @@ export function getWebDeviceId(): string | null {
 
 function forceSessionLogout() {
   if (typeof window === "undefined") return;
+  // During the first render, page-level data requests can receive a 401
+  // before AuthProvider has restored the saved token. Never destroy a valid
+  // persisted session during that hydration window.
+  if (!isSessionHydrated()) return;
   setSessionAccessToken(null);
   delete api.defaults.headers.common.Authorization;
   // Remove credentials left by older WorkPulse releases.
@@ -123,7 +127,7 @@ api.interceptors.response.use(
 
     if (!originalRequest) return Promise.reject(error);
 
-    if (error.response?.status === 401 && !originalRequest.url?.includes("/auth/login")) {
+    if (error.response?.status === 401 && !originalRequest.url?.includes("/auth/login") && !originalRequest.url?.includes("/auth/refresh") && !originalRequest.url?.includes("/auth/me")) {
       forceSessionLogout();
     }
 
@@ -164,7 +168,8 @@ export const authApi = {
     return res.data;
   },
   refreshSession: async () => {
-    throw new Error("Refresh tokens are disabled. Please sign in again.");
+    const res = await api.post("/auth/refresh", { client: "web" });
+    return res.data;
   },
   getPlans: async () => {
     const res = await api.get("/auth/plans");
@@ -261,6 +266,18 @@ export const attendanceApi = {
     const res = await api.get("/attendance/all", { params });
     return res.data;
   },
+  /** Date-range history. Admins and managers get the team; everyone else gets their own records. */
+  getHistory: async (params: {
+    from?: string;
+    to?: string;
+    status?: string;
+    employeeId?: string;
+    page?: number;
+    limit?: number;
+  }) => {
+    const res = await api.get("/attendance/history", { params });
+    return res.data;
+  },
   getSummary: async (date?: string, branchId?: string) => {
     const res = await api.get("/attendance/summary", { params: { date, branchId } });
     return res.data;
@@ -339,6 +356,10 @@ export const leavesApi = {
     const res = await api.get("/leaves/balances");
     return res.data;
   },
+  getEligibility: async () => {
+    const res = await api.get("/leaves/eligibility");
+    return res.data;
+  },
   apply: async (payload: {
     leaveTypeId: string;
     startDate: string;
@@ -363,7 +384,57 @@ export const leavesApi = {
   },
 };
 
+export const companyLeavesApi = {
+  list: async (params?: { from?: string; to?: string }) => {
+    const res = await api.get("/company-leaves", { params });
+    return res.data;
+  },
+  create: async (payload: {
+    title: string;
+    reason?: string;
+    startDate: string;
+    endDate: string;
+    isPaid: boolean;
+    branchId?: string;
+    notify?: boolean;
+  }) => {
+    const res = await api.post("/company-leaves", payload);
+    return res.data;
+  },
+  remove: async (id: string) => {
+    const res = await api.delete(`/company-leaves/${id}`);
+    return res.data;
+  },
+};
+
+export const permissionsApi = {
+  my: async () => {
+    const res = await api.get("/permissions/my");
+    return res.data;
+  },
+  apply: async (payload: { date: string; hours: number; reason: string }) => {
+    const res = await api.post("/permissions", payload);
+    return res.data;
+  },
+  cancel: async (id: string) => {
+    const res = await api.delete(`/permissions/${id}`);
+    return res.data;
+  },
+  list: async (params?: { status?: string; employeeId?: string }) => {
+    const res = await api.get("/permissions", { params });
+    return res.data;
+  },
+  review: async (id: string, payload: { status: "APPROVED" | "REJECTED"; note?: string }) => {
+    const res = await api.put(`/permissions/${id}/review`, payload);
+    return res.data;
+  },
+};
+
 export const payrollApi = {
+  getCycle: async (month: number, year: number) => {
+    const res = await api.get("/payroll/cycle", { params: { month, year } });
+    return res.data;
+  },
   getMyPayslips: async () => {
     const res = await api.get("/payroll/my-payslips");
     return res.data;
@@ -382,6 +453,14 @@ export const payrollApi = {
   },
   upsertSalaryStructure: async (payload: any) => {
     const res = await api.post("/payroll/salary-structure", payload);
+    return res.data;
+  },
+  bulkUpsertSalaryStructures: async (payload: {
+    entries: { employeeId: string; annualCtc: number }[];
+    split?: { basic: number; hra: number; special: number; other: number };
+    notify?: boolean;
+  }) => {
+    const res = await api.post("/payroll/salary-structure/bulk", payload);
     return res.data;
   },
   calculatePreview: async (params: { month: number; year: number; employeeId?: string }) => {
@@ -531,6 +610,16 @@ export const orgApi = {
   },
   update: async (payload: any) => {
     const res = await api.put("/organization", payload);
+    return res.data;
+  },
+  uploadLogo: async (file: File) => {
+    const form = new FormData();
+    form.append("logo", file);
+    const res = await api.post("/organization/logo", form);
+    return res.data;
+  },
+  removeLogo: async () => {
+    const res = await api.delete("/organization/logo");
     return res.data;
   },
 };
@@ -969,6 +1058,10 @@ export const notificationsApi = {
     const res = await api.get("/notifications");
     return res.data;
   },
+  broadcast: async (payload: { title: string; message: string }) => {
+    const res = await api.post("/notifications/broadcast", payload);
+    return res.data;
+  },
   markRead: async (id: string) => {
     const res = await api.put(`/notifications/${id}/read`);
     return res.data;
@@ -1096,6 +1189,14 @@ export const offboardingApi = {
   },
   getById: async (id: string) => {
     const res = await api.get(`/offboarding/${id}`);
+    return res.data;
+  },
+  noticeSummary: async () => {
+    const res = await api.get("/offboarding/notice-summary");
+    return res.data;
+  },
+  withdraw: async (id: string) => {
+    const res = await api.post(`/offboarding/${id}/withdraw`);
     return res.data;
   },
   getMyExit: async () => {

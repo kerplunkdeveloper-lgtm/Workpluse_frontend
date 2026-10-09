@@ -20,15 +20,18 @@ import {
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import DatePicker from "@/components/ui/DatePicker";
+import PermissionRequestsPanel from "./PermissionRequestsPanel";
+import CompanyLeavePanel from "./CompanyLeavePanel";
 import { confirmDialog } from "@/components/ui/confirmDialog";
 
 export default function LeavesView() {
   const { user, role } = useAuth();
-  const [activeTab, setActiveTab] = useState<"MY_LEAVES" | "APPROVALS">("MY_LEAVES");
+  const [activeTab, setActiveTab] = useState<"MY_LEAVES" | "PERMISSIONS" | "COMPANY_LEAVE" | "APPROVALS">("MY_LEAVES");
   const [balances, setBalances] = useState<LeaveBalance[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
   const [myRequests, setMyRequests] = useState<LeaveRequest[]>([]);
   const [teamRequests, setTeamRequests] = useState<LeaveRequest[]>([]);
+  const [eligibility, setEligibility] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   // Apply Modal state
@@ -52,10 +55,11 @@ export default function LeavesView() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [typesRes, balRes, myRes] = await Promise.allSettled([
+      const [typesRes, balRes, myRes, eligibilityRes] = await Promise.allSettled([
         leavesApi.getTypes(),
         leavesApi.getBalances(),
         leavesApi.getMyLeaves(),
+        leavesApi.getEligibility(),
       ]);
 
       if (typesRes.status === "fulfilled") {
@@ -66,6 +70,9 @@ export default function LeavesView() {
       }
       if (myRes.status === "fulfilled") {
         setMyRequests(unwrapList(myRes.value));
+      }
+      if (eligibilityRes.status === "fulfilled") {
+        setEligibility(eligibilityRes.value?.data || eligibilityRes.value);
       }
 
       if (canApprove) {
@@ -158,18 +165,22 @@ export default function LeavesView() {
         </div>
 
         <button
+          disabled={eligibility && !eligibility.eligible}
           onClick={() => {
             if (leaveTypes.length > 0 && !selectedTypeId) {
               setSelectedTypeId(leaveTypes[0].id);
             }
             setApplyModalOpen(true);
           }}
-          className="px-4 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm flex items-center gap-2 shadow-sm transition"
+          className="px-4 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm flex items-center gap-2 shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Plus className="w-4 h-4" />
           Apply for Leave
         </button>
       </div>
+
+      {eligibility && !eligibility.eligible && <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950"><AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" /><div><p className="text-sm font-bold">Leave eligibility is in progress</p><p className="mt-1 text-xs leading-5 text-amber-800">Paid leave and monthly permissions unlock after your {eligibility.probationMonths}-month company eligibility period. {eligibility.remainingDays} day(s) remain. Unpaid leave can still be requested for exceptional cases.</p></div></div>}
+      {eligibility && <div className="grid grid-cols-1 gap-3 sm:grid-cols-3"><div className="rounded-2xl border border-indigo-100 bg-indigo-50/70 p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">Monthly permission</p><p className="mt-1 text-2xl font-bold text-indigo-950">{eligibility.monthlyPermissionHours} hrs</p><p className="mt-1 text-xs text-indigo-700">Company allowance</p></div><div className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Eligibility status</p><p className="mt-1 text-sm font-bold text-slate-900">{eligibility.eligible ? "Active" : "Waiting period"}</p><p className="mt-1 text-xs text-slate-500">{eligibility.eligible ? "Leave and permission access is open" : `Unlocks in ${eligibility.remainingDays} days`}</p></div><div className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Policy window</p><p className="mt-1 text-sm font-bold text-slate-900">{eligibility.probationMonths} months</p><p className="mt-1 text-xs text-slate-500">Configured by your company</p></div></div>}
 
       {/* Leave Quota Balance Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -304,6 +315,28 @@ export default function LeavesView() {
           My Leave Applications ({myRequests.length})
         </button>
 
+        <button
+          onClick={() => setActiveTab("PERMISSIONS")}
+          className={`pb-3 px-4 text-sm font-semibold border-b-2 transition ${
+            activeTab === "PERMISSIONS"
+              ? "border-indigo-600 text-indigo-600"
+              : "border-transparent text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          Permissions
+        </button>
+
+        <button
+          onClick={() => setActiveTab("COMPANY_LEAVE")}
+          className={`pb-3 px-4 text-sm font-semibold border-b-2 transition ${
+            activeTab === "COMPANY_LEAVE"
+              ? "border-indigo-600 text-indigo-600"
+              : "border-transparent text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          Company leave
+        </button>
+
         {canApprove && (
           <button
             onClick={() => setActiveTab("APPROVALS")}
@@ -322,6 +355,12 @@ export default function LeavesView() {
           </button>
         )}
       </div>
+
+      {/* Tab Content: Permissions */}
+      {activeTab === "PERMISSIONS" && <PermissionRequestsPanel canReview={canApprove} />}
+
+      {/* Tab Content: Company leave */}
+      {activeTab === "COMPANY_LEAVE" && <CompanyLeavePanel canManage={canApprove} />}
 
       {/* Tab Content: My Leaves */}
       {activeTab === "MY_LEAVES" && (

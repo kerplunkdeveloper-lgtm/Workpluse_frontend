@@ -53,6 +53,7 @@ export interface Organization {
   phone?: string;
   address?: string;
   taxId?: string;
+  logoUrl?: string | null;
   subscriptionPlan?: SubscriptionPlan;
   subscriptionStatus?: string;
   subscriptionExpiresAt?: string | Date | null;
@@ -112,6 +113,8 @@ export interface Employee {
   departmentId?: string;
   shiftId?: string;
   ctc?: number;
+  gender?: "MALE" | "FEMALE" | null;
+  salaryStructure?: { annualCtc?: number | string | null; monthlyCtc?: number | string | null } | null;
   panNumber?: string;
   uanNumber?: string;
   esiNumber?: string;
@@ -126,6 +129,7 @@ export interface Employee {
     email: string;
     role: UserRole;
     avatarUrl?: string;
+    isActive?: boolean;
   };
   createdAt?: string;
 }
@@ -159,6 +163,10 @@ export interface Attendance {
   checkIn?: string;
   checkOut?: string;
   status: AttendanceStatus;
+  /** Minutes worked, as stored by the API. Prefer this over the legacy fields below. */
+  workingMinutes?: number;
+  /** Total break minutes, as stored by the API. */
+  breakMinutes?: number;
   workHours?: number;
   workMinutes?: number;
   overtimeHours?: number;
@@ -166,6 +174,8 @@ export interface Attendance {
   isWorkFromHome?: boolean;
   wfhNote?: string;
   totalBreakMinutes?: number;
+  shift?: Pick<Shift, "id" | "name" | "startTime" | "endTime"> | null;
+  events?: { id: string; type: string; timestamp: string }[];
   breaks?: BreakRecord[];
   checkInLatitude?: number;
   checkInLongitude?: number;
@@ -187,6 +197,16 @@ export interface AttendanceTodayStatus {
   shift?: Shift;
   totalBreakMinutes?: number;
   workedMinutesToday?: number;
+  locationPolicy?: CheckInLocationPolicy;
+}
+
+/** Where the organization lets employees check in (Policy → "Where can employees check in?"). */
+export interface CheckInLocationPolicy {
+  mode: "ANYWHERE" | "OFFICE_ONLY";
+  allowWfh: boolean;
+  branchName: string | null;
+  /** Null when the employee's branch has no location set, so it doesn't restrict check-in. */
+  radiusMeters: number | null;
 }
 
 export interface AttendanceCorrection {

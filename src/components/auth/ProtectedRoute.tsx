@@ -22,13 +22,6 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
   const router = useRouter();
   const pathname = usePathname();
 
-  const ownerOutsidePlatform =
-    user?.role === "SUPER_ADMIN" && !!pathname && !pathname.startsWith("/platform") && !pathname.startsWith("/change-password");
-
-  useEffect(() => {
-    if (!isLoading && ownerOutsidePlatform) router.replace("/platform/clients");
-  }, [isLoading, ownerOutsidePlatform, router]);
-
   useEffect(() => {
     if (!isLoading && !token) {
       const id = window.setTimeout(() => router.replace("/login"), 0);
@@ -43,8 +36,6 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
   if (!token || !user) {
     return null;
   }
-
-  if (ownerOutsidePlatform) return <AppSkeletonLoader />;
 
   if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
     return (

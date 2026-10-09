@@ -103,7 +103,7 @@ export default function ProfilePage() {
       });
 
       if (res?.success) {
-        toast.success("Resignation submitted to HR. Clearances initiated.");
+        toast.success("Resignation submitted. HR will review it, then an admin approves it.");
         setResignationReason("");
         setPreferredLwd("");
         setEmployeeComments("");
@@ -115,6 +115,36 @@ export default function ProfilePage() {
       setIsSubmittingResignation(false);
     }
   };
+
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const handleWithdraw = async () => {
+    if (!myExit || !window.confirm("Withdraw your resignation? You can submit a new one later.")) return;
+    setIsWithdrawing(true);
+    try {
+      const res = await offboardingApi.withdraw(myExit.id);
+      if (res?.success) {
+        toast.success("Resignation withdrawn");
+        loadMyExit();
+      } else {
+        toast.error(res?.message || "Could not withdraw the resignation");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Could not withdraw the resignation");
+    } finally {
+      setIsWithdrawing(false);
+    }
+  };
+
+  // A rejected or withdrawn resignation is history; the employee can submit a new one.
+  const closedExit = myExit && ["REJECTED", "WITHDRAWN"].includes(myExit.status) ? myExit : null;
+  const activeExit = closedExit ? null : myExit;
+  const pendingReview = activeExit && ["RESIGNED", "UNDER_HR_REVIEW"].includes(activeExit.status);
+  const stageLabel = (status: string) =>
+    status === "RESIGNED"
+      ? "Waiting for HR review"
+      : status === "UNDER_HR_REVIEW"
+        ? "Waiting for admin approval"
+        : status.replace(/_/g, " ");
 
   if (isLoading) {
     return (
@@ -292,14 +322,24 @@ export default function ProfilePage() {
                 <Loader2 className="w-6 h-6 animate-spin text-rose-500 mx-auto mb-2" />
                 <p className="text-xs">Loading separation records...</p>
               </div>
-            ) : myExit ? (
+            ) : activeExit ? (
               <div className="space-y-6">
                 {/* Active Exit Status Banner */}
                 <div className="rounded-2xl p-5 border border-amber-200 bg-amber-50/60 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
                     <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 uppercase">
-                      Current Stage: {myExit.status.replace(/_/g, " ")}
+                      Current Stage: {stageLabel(myExit.status)}
                     </span>
+                    {pendingReview && (
+                      <button
+                        type="button"
+                        onClick={handleWithdraw}
+                        disabled={isWithdrawing}
+                        className="ml-2 px-2.5 py-0.5 rounded-full text-xs font-bold border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-50"
+                      >
+                        {isWithdrawing ? "Withdrawing…" : "Withdraw resignation"}
+                      </button>
+                    )}
                     <h3 className="text-base font-semibold text-slate-900 mt-1.5">
                       Separation Request in Progress
                     </h3>
@@ -312,7 +352,7 @@ export default function ProfilePage() {
                       <strong>
                         {myExit.approvedLastWorkingDate
                           ? formatDate(myExit.approvedLastWorkingDate)
-                          : "Awaiting HR Review"}
+                          : "Set when an admin approves"}
                       </strong>
                     </p>
                   </div>
@@ -378,6 +418,13 @@ export default function ProfilePage() {
               </div>
             ) : (
               <form onSubmit={handleResignSubmit} className="max-w-xl space-y-4 text-xs">
+                {closedExit && (
+                  <p className="p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-600">
+                    Your resignation from {formatDate(closedExit.resignationDate)} was{" "}
+                    {closedExit.status === "WITHDRAWN" ? "withdrawn" : "not accepted"}.
+                    {closedExit.hrNotes ? ` Notes: ${closedExit.hrNotes}` : ""}
+                  </p>
+                )}
                 <div className="bg-amber-50/60 p-4 rounded-2xl border border-amber-200 space-y-2">
                   <div className="flex items-center gap-2 text-amber-800 font-bold">
                     <AlertTriangle className="w-4 h-4" />

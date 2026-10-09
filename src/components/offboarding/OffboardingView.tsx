@@ -3,6 +3,11 @@
 import React, { useState, useEffect } from "react";
 import { EmployeeExit, Employee } from "@/types";
 import { offboardingApi, employeesApi } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+
+/** Readable pipeline status: who has to act next while a resignation is pending. */
+const exitStatusLabel = (status: string) =>
+  status === "RESIGNED" ? "AWAITING HR" : status === "UNDER_HR_REVIEW" ? "AWAITING ADMIN" : status.replace(/_/g, " ");
 import { formatCurrency, formatDate } from "@/lib/utils";
 import ExitDocumentsModal from "./ExitDocumentsModal";
 import {
@@ -33,6 +38,9 @@ import {
 import { toast } from "sonner";
 
 export default function OffboardingView() {
+  const { role } = useAuth();
+  const isAdmin = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN";
+  const [noticeSummary, setNoticeSummary] = useState<any>(null);
   const [exits, setExits] = useState<EmployeeExit[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
@@ -108,6 +116,12 @@ export default function OffboardingView() {
       toast.error(err.response?.data?.message || "Failed to load exit pipeline");
     } finally {
       setLoading(false);
+    }
+    try {
+      const summary = await offboardingApi.noticeSummary();
+      setNoticeSummary(summary?.data || null);
+    } catch {
+      setNoticeSummary(null);
     }
   };
 
@@ -214,8 +228,10 @@ export default function OffboardingView() {
     if (!selectedExit) return;
     setIsReviewing(true);
     try {
+      // HR forwards to an admin; only an admin approves or rejects.
+      const action = isAdmin ? reviewAction : "FORWARD";
       const res = await offboardingApi.review(selectedExit.id, {
-        action: reviewAction,
+        action,
         approvedLastWorkingDate: approvedLwdInput || undefined,
         noticePeriodDays: Number(noticeDaysInput) || 30,
         isNoticeWaived: isNoticeWaivedInput,
@@ -223,7 +239,14 @@ export default function OffboardingView() {
       });
 
       if (res?.success) {
-        toast.success(reviewAction === "APPROVE" ? "Resignation approved & notice active" : "Resignation rejected");
+        toast.success(
+          action === "FORWARD"
+            ? "Forwarded to admin for approval"
+            : action === "APPROVE"
+              ? "Resignation approved & notice active"
+              : "Resignation rejected",
+        );
+        setHrNotesInput("");
         openExitDetails(selectedExit.id);
         loadExits();
       }
@@ -386,21 +409,27 @@ export default function OffboardingView() {
         </div>
 
         <div className="rounded-2xl p-4 border border-slate-200 bg-white shadow-xs">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Pending HR Review</p>
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Pending Resignations</p>
           <p className="text-2xl font-bold text-amber-600 mt-1 flex items-center gap-1.5">
             <Clock className="w-5 h-5 text-amber-600" />
-            {underReviewCount}
+            {noticeSummary ? noticeSummary.awaitingHrReview + noticeSummary.awaitingAdminApproval : underReviewCount}
           </p>
-          <p className="text-xs text-slate-400 mt-0.5">New resignations</p>
+          <p className="text-xs text-slate-400 mt-0.5">
+            {noticeSummary
+              ? `${noticeSummary.awaitingHrReview} with HR · ${noticeSummary.awaitingAdminApproval} with admin`
+              : "New resignations"}
+          </p>
         </div>
 
         <div className="rounded-2xl p-4 border border-slate-200 bg-white shadow-xs">
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">In Notice Period</p>
           <p className="text-2xl font-bold text-indigo-600 mt-1 flex items-center gap-1.5">
             <Calendar className="w-5 h-5 text-indigo-600" />
-            {inNoticeCount}
+            {noticeSummary?.inNoticeCount ?? inNoticeCount}
           </p>
-          <p className="text-xs text-slate-400 mt-0.5">Serving notice</p>
+          <p className="text-xs text-slate-400 mt-0.5">
+            {noticeSummary ? `${noticeSummary.endingWithin7Days} leaving within 7 days` : "Serving notice"}
+          </p>
         </div>
 
         <div className="rounded-2xl p-4 border border-slate-200 bg-white shadow-xs">
@@ -422,13 +451,65 @@ export default function OffboardingView() {
         </div>
       </div>
 
+      {/* Who is serving notice right now */}
+      {noticeSummary?.employees?.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+            <p className="text-xs font-bold text-slate-700">
+              Serving notice ({noticeSummary.inNoticeCount})
+            </p>
+            {noticeSummary.pastLastWorkingDay > 0 && (
+              <span className="text-[11px] font-semibold text-rose-600">
+                {noticeSummary.pastLastWorkingDay} past last working day: complete their exit
+              </span>
+            )}
+          </div>
+          <ul className="divide-y divide-slate-100 max-h-64 overflow-y-auto">
+            {noticeSummary.employees.map((row: any) => (
+              <li key={row.employeeId} className="px-4 py-2.5 flex items-center justify-between gap-3 text-xs">
+                <div className="min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => row.exitId && openExitDetails(row.exitId)}
+                    className="font-semibold text-slate-900 hover:text-indigo-600 text-left"
+                  >
+                    {row.name}
+                  </button>
+                  <span className="ml-2 font-mono text-indigo-700">{row.employeeCode}</span>
+                  {row.department && <span className="ml-2 text-slate-400">{row.department}</span>}
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className="text-slate-500">
+                    LWD {row.lastWorkingDate ? formatDate(row.lastWorkingDate) : "not set"}
+                  </span>
+                  {row.daysLeft !== null && (
+                    <span
+                      className={`px-2 py-0.5 rounded-full font-bold border ${
+                        row.daysLeft < 0
+                          ? "bg-rose-50 text-rose-700 border-rose-200"
+                          : row.daysLeft <= 7
+                            ? "bg-amber-50 text-amber-700 border-amber-200"
+                            : "bg-slate-50 text-slate-600 border-slate-200"
+                      }`}
+                    >
+                      {row.daysLeft < 0 ? `${-row.daysLeft}d overdue` : row.daysLeft === 0 ? "Leaves today" : `${row.daysLeft}d left`}
+                    </span>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Pipeline Filter Bar & Search */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-xs overflow-x-auto w-full sm:w-auto">
           {(
             [
               { key: "ALL", label: "All Pipeline" },
-              { key: "RESIGNED", label: "New Resignations" },
+              { key: "RESIGNED", label: "Awaiting HR" },
+              { key: "UNDER_HR_REVIEW", label: "Awaiting Admin" },
               { key: "NOTICE_PERIOD", label: "Notice Period" },
               { key: "CLEARANCE_IN_PROGRESS", label: "Clearances" },
               { key: "SETTLEMENT_CALCULATED", label: "Settlement Ready" },
@@ -562,7 +643,7 @@ export default function OffboardingView() {
                             : "bg-rose-50 text-rose-700 border-rose-200"
                         }`}
                       >
-                        {exit.status.replace(/_/g, " ")}
+                        {exitStatusLabel(exit.status)}
                       </span>
                     </td>
 
@@ -731,7 +812,7 @@ export default function OffboardingView() {
                         {selectedExit.employee?.employeeCode}
                       </span>
                       <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                        {selectedExit.status.replace(/_/g, " ")}
+                        {exitStatusLabel(selectedExit.status)}
                       </span>
                     </div>
                     <p className="text-xs text-slate-500 mt-1">
@@ -847,10 +928,38 @@ export default function OffboardingView() {
                   <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-4">
                     <h3 className="text-sm font-semibold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
                       <UserCheck className="w-4 h-4 text-indigo-600" />
-                      HR Review & Last Working Day Determination
+                      {isAdmin ? "Admin Decision & Last Working Day" : "HR Review"}
                     </h3>
 
+                    {!["RESIGNED", "UNDER_HR_REVIEW"].includes(selectedExit.status) ? (
+                      <div className="text-xs text-slate-600 space-y-2">
+                        <p>
+                          Decision recorded: <span className="font-semibold text-slate-900">{exitStatusLabel(selectedExit.status)}</span>
+                        </p>
+                        {selectedExit.hrNotes && (
+                          <p className="whitespace-pre-line bg-slate-50 p-3 rounded-xl border border-slate-200">{selectedExit.hrNotes}</p>
+                        )}
+                      </div>
+                    ) : !isAdmin && selectedExit.status === "UNDER_HR_REVIEW" ? (
+                      <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                        HR has forwarded this resignation. It is waiting for an admin to approve or reject it.
+                      </p>
+                    ) : (
                     <div className="space-y-3 text-xs">
+                      {isAdmin && selectedExit.hrNotes && (
+                        <div>
+                          <p className="text-slate-700 font-medium mb-1">HR notes</p>
+                          <p className="whitespace-pre-line bg-slate-50 p-3 rounded-xl border border-slate-200 text-slate-700">
+                            {selectedExit.hrNotes}
+                          </p>
+                        </div>
+                      )}
+                      {!isAdmin && (
+                        <p className="text-slate-500">
+                          Review the request and forward it with your notes. An admin gives the final approval.
+                        </p>
+                      )}
+                      {isAdmin && (
                       <div>
                         <label className="block text-slate-700 font-medium mb-1">Review Decision</label>
                         <div className="grid grid-cols-2 gap-2">
@@ -878,8 +987,9 @@ export default function OffboardingView() {
                           </button>
                         </div>
                       </div>
+                      )}
 
-                      {reviewAction === "APPROVE" && (
+                      {isAdmin && reviewAction === "APPROVE" && (
                         <>
                           <div>
                             <label className="block text-slate-700 font-medium mb-1">Approved Last Working Date (LWD)</label>
@@ -907,7 +1017,9 @@ export default function OffboardingView() {
                       )}
 
                       <div>
-                        <label className="block text-slate-700 font-medium mb-1">HR Review Notes & Instructions</label>
+                        <label className="block text-slate-700 font-medium mb-1">
+                          {isAdmin ? "Decision notes" : "HR notes for the admin"}
+                        </label>
                         <textarea
                           value={hrNotesInput}
                           onChange={(e) => setHrNotesInput(e.target.value)}
@@ -923,9 +1035,10 @@ export default function OffboardingView() {
                         className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm shadow-sm flex items-center justify-center gap-2 transition cursor-pointer"
                       >
                         {isReviewing && <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />}
-                        Save HR Decision & Transition State
+                        {isAdmin ? "Save Decision" : "Forward to Admin for Approval"}
                       </button>
                     </div>
+                    )}
                   </div>
                 </div>
               )}

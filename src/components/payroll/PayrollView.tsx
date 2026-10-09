@@ -5,6 +5,7 @@ import { Payslip } from "@/types";
 import { payrollApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { formatCurrency, unwrapList } from "@/lib/utils";
+import { formatCycleDate } from "@/lib/payrollCycle";
 import {
   Receipt,
   Sparkles,
@@ -42,6 +43,17 @@ export default function PayrollView() {
   const [activeSection, setActiveSection] = useState<"RECORDS" | "SALARY" | "TEMPLATES">("RECORDS");
 
   const isAdminOrManager = role === "COMPANY_ADMIN" || role === "SUPER_ADMIN" || role === "MANAGER";
+  const [cycle, setCycle] = useState<any>(null);
+
+  useEffect(() => {
+    if (!isAdminOrManager) return;
+    payrollApi
+      .getCycle(Number(selectedMonth), Number(selectedYear))
+      .then((res) => setCycle(res?.data || null))
+      .catch(() => setCycle(null));
+  }, [selectedMonth, selectedYear, isAdminOrManager]);
+
+  const generateLocked = Boolean(cycle && !cycle.canGenerate);
 
   const loadPayslips = async () => {
     setLoading(true);
@@ -202,9 +214,19 @@ export default function PayrollView() {
               </select>
             </div>
 
+            {cycle && (
+              <span className={`text-xs ${generateLocked ? "text-amber-700" : "text-slate-500"}`}>
+                Cycle {formatCycleDate(new Date(`${cycle.start}T00:00:00Z`))} to {formatCycleDate(new Date(`${cycle.end}T00:00:00Z`))}
+                {" · "}
+                {cycle.days} days, {cycle.dayBasis === "FIXED_30" ? "fixed 30-day" : cycle.dayBasis === "WORKING_DAYS" ? "working-day" : "actual-day"} basis
+                {generateLocked && ` · generate after ${formatCycleDate(new Date(`${cycle.generateAfter}T00:00:00Z`))} ends`}
+              </span>
+            )}
+
             <button
               onClick={handleGenerateBatch}
-              disabled={isGenerating}
+              disabled={isGenerating || generateLocked}
+              title={generateLocked ? `Available after the cycle ends on ${cycle.generateAfter}` : undefined}
               className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm flex items-center gap-1.5 shadow-sm transition disabled:opacity-50"
             >
               {isGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin text-white" /> : <Calculator className="w-3.5 h-3.5 text-white" />}

@@ -84,7 +84,6 @@ function ConfirmView({ options, onSettle }: { options: ConfirmOptions; onSettle:
   );
 }
 
-/** Accessible replacement for window.confirm(). Resolves true when confirmed. */
 export function confirmDialog(options: ConfirmOptions): Promise<boolean> {
   return new Promise((resolve) => {
     const host = document.createElement("div");

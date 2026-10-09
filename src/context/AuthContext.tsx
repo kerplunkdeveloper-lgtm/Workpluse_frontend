@@ -8,6 +8,7 @@ import {
   getSessionAccessToken,
   registerWebDevice,
   setSessionAccessToken,
+  markSessionHydrated,
 } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -64,17 +65,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const loadUser = async (authToken?: string) => {
     try {
-      const activeToken = authToken || getSessionAccessToken();
+      let activeToken = authToken || getSessionAccessToken();
+      if (!activeToken) {
+        const refreshed = await authApi.refreshSession();
+        activeToken = refreshed?.data?.accessToken || refreshed?.data?.token || null;
+      }
       if (!activeToken) return;
       setSessionAccessToken(activeToken);
       setToken(activeToken);
-      const res = await authApi.getMe();
+      let res;
+      try {
+        res = await authApi.getMe();
+      } catch (firstError) {
+        // An access token may expire between visits. Re-issue it from the
+        // HTTP-only refresh cookie before treating the session as invalid.
+        const refreshed = await authApi.refreshSession();
+        const refreshedToken = refreshed?.data?.accessToken || refreshed?.data?.token || null;
+        if (!refreshedToken) throw firstError;
+        activeToken = refreshedToken;
+        setSessionAccessToken(activeToken);
+        setToken(activeToken);
+        res = await authApi.getMe();
+      }
       const userData = res?.user || res?.data;
-      if (res?.success && userData) {
-        setUser(userData);
-        if (userData.employee?.id) {
-          void registerWebDevice();
-        }
+      if (!res?.success || !userData) throw new Error("Session user could not be restored");
+      setUser(userData);
+      if (userData.employee?.id) {
+        void registerWebDevice();
       }
     } catch {
       setSessionAccessToken(null);
@@ -85,6 +102,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(null);
       setToken(null);
     } finally {
+      markSessionHydrated();
       setIsLoading(false);
     }
   };
@@ -109,28 +127,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
+  /** Everything that happens once credentials (and any second factor) are accepted. */
+  const finishLogin = (loggedUser: User, receivedToken: string) => {
+    setSessionAccessToken(receivedToken);
+    setToken(receivedToken);
+    setUser(loggedUser);
+    if (loggedUser.employee?.id) {
+      void registerWebDevice();
+    }
+    toast.success(`Welcome back, ${loggedUser.employee?.firstName || loggedUser.email}!`);
+
+    if (loggedUser.mustChangePassword) {
+      toast.info("Please set a new secure password to activate your account.");
+      go("/change-password");
+    } else {
+      go(loggedUser.role === "SUPER_ADMIN" ? "/platform/clients" : "/dashboard");
+    }
+  };
+
   const login = async (email: string, pass: string): Promise<boolean> => {
     setIsLoading(true);
     try {
       const res = await authApi.login(email, pass);
       if (res?.success && (res?.data?.accessToken || res?.data?.token)) {
-        const receivedToken = res.data.accessToken || res.data.token;
-        const loggedUser = res.data.user;
-
-        setSessionAccessToken(receivedToken);
-        setToken(receivedToken);
-        setUser(loggedUser);
-        if (loggedUser.employee?.id) {
-          void registerWebDevice();
-        }
-        toast.success(`Welcome back, ${loggedUser.employee?.firstName || loggedUser.email}!`);
-
-        if (loggedUser.mustChangePassword) {
-          toast.info("Please set a new secure password to activate your account.");
-          go("/change-password");
-        } else {
-          go(loggedUser.role === "SUPER_ADMIN" ? "/platform/clients" : "/dashboard");
-        }
+        finishLogin(res.data.user, res.data.accessToken || res.data.token);
         return true;
       } else {
         toast.error(res?.message || "Login failed");

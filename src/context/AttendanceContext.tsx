@@ -211,7 +211,14 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
         (error) => {
           setDistanceToBranch(null);
           setIsWithinGeofence(true);
-          setLocationError(error.message || "Location unavailable. You can still punch from here.");
+          // Browser messages ("User denied Geolocation") aren't written for employees.
+          setLocationError(
+            error.code === error.PERMISSION_DENIED
+              ? "Location is turned off for this site. Allow location in your browser settings so your check-in can be verified."
+              : error.code === error.TIMEOUT
+                ? "Finding your location is taking too long. Move near a window or turn on GPS, then try again."
+                : "We couldn't find your location right now. Check that location services are on."
+          );
           resolve(null);
         },
         { enableHighAccuracy: true, timeout: 8000, maximumAge: 15000 }
@@ -255,6 +262,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
           totalBreakMinutes: raw.totalBreakMinutes || raw.attendance?.breakMinutes || 0,
           workedMinutesToday: raw.attendance?.workingMinutes || 0,
           shift: raw.employee?.shift || raw.shift,
+          locationPolicy: raw.locationPolicy,
         });
         if (raw.attendance?.checkInLocation) {
           setLocationLabel(raw.attendance.checkInLocation);
@@ -379,7 +387,17 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
           toast.warning(`📴 Network offline — ${successMessage} saved locally.`, { duration: 5000 });
           return true;
         }
-        toast.error(err.response?.data?.message || err.message || `${type} failed`);
+        const data = err.response?.data;
+        const locationTitle: Record<string, string> = {
+          LOCATION_REQUIRED: "Turn on location to check in",
+          LOCATION_IMPRECISE: "Your location isn't precise enough",
+          OUTSIDE_OFFICE: "You're outside the office area",
+        };
+        if (data?.code && locationTitle[data.code]) {
+          toast.error(locationTitle[data.code], { description: data.message, duration: 9000 });
+        } else {
+          toast.error(data?.message || err.message || `${type} failed`);
+        }
         return false;
       } finally {
         setIsActionLoading(false);

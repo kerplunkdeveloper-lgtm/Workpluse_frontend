@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Employee } from "@/types";
-import { employeesApi, branchesApi, departmentsApi, shiftsApi } from "@/lib/api";
+import { employeesApi, branchesApi, departmentsApi, shiftsApi, notificationsApi } from "@/lib/api";
 import { formatCurrency, formatDate, roleLabel, unwrapList } from "@/lib/utils";
 import {
   Users,
@@ -23,6 +23,7 @@ import {
   Send,
   FileCheck2,
   FileSpreadsheet,
+  Megaphone,
 } from "lucide-react";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
@@ -45,7 +46,7 @@ export default function EmployeeDirectory() {
   const selectAllRef = useRef<HTMLInputElement>(null);
   const cancelDeleteRef = useRef<HTMLButtonElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filters, setFilters] = useState({ departmentId: "", branchId: "", shiftId: "", role: "", status: "" });
+  const [filters, setFilters] = useState({ departmentId: "", branchId: "", shiftId: "", role: "", status: "", loginAccess: "" });
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
   const setFilter = (key: keyof typeof filters, value: string) => {
     setFilters((current) => ({ ...current, [key]: value }));
@@ -80,6 +81,11 @@ export default function EmployeeDirectory() {
   const [creatingDepartment, setCreatingDepartment] = useState(false);
   const [shiftId, setShiftId] = useState("");
   const [ctc, setCtc] = useState("");
+  const [gender, setGender] = useState("");
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
+  const [broadcastTitle, setBroadcastTitle] = useState("");
+  const [broadcastMessage, setBroadcastMessage] = useState("");
+  const [sendingBroadcast, setSendingBroadcast] = useState(false);
   const [panNumber, setPanNumber] = useState("");
   const [uanNumber, setUanNumber] = useState("");
   const [esiNumber, setEsiNumber] = useState("");
@@ -99,6 +105,7 @@ export default function EmployeeDirectory() {
           shiftId: filters.shiftId || undefined,
           role: filters.role || undefined,
           status: filters.status || undefined,
+          loginAccess: filters.loginAccess || undefined,
         }),
         branchesApi.list(),
         departmentsApi.list(),
@@ -139,6 +146,33 @@ export default function EmployeeDirectory() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
 
+  const handleBroadcast = async () => {
+    const title = broadcastTitle.trim();
+    const message = broadcastMessage.trim();
+    if (!title || !message) {
+      toast.error("Title and message are required");
+      return;
+    }
+    if (!window.confirm(`Send "${title}" to every active user in your organization?`)) return;
+
+    setSendingBroadcast(true);
+    try {
+      const res = await notificationsApi.broadcast({ title, message });
+      if (res?.success) {
+        toast.success(res.message);
+        setBroadcastOpen(false);
+        setBroadcastTitle("");
+        setBroadcastMessage("");
+      } else {
+        toast.error(res?.message || "Could not send notification");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || "Could not send notification");
+    } finally {
+      setSendingBroadcast(false);
+    }
+  };
+
   const handleCreateEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -157,6 +191,7 @@ export default function EmployeeDirectory() {
           departmentId: departmentId || undefined,
           shiftId: shiftId || undefined,
           ctc: ctc ? Number(ctc) : undefined,
+          gender: gender || undefined,
           panNumber: panNumber || undefined,
           uanNumber: uanNumber || undefined,
           esiNumber: esiNumber || undefined,
@@ -175,6 +210,7 @@ export default function EmployeeDirectory() {
           departmentId: departmentId || undefined,
           shiftId: shiftId || undefined,
           ctc: ctc ? Number(ctc) : undefined,
+          gender: gender || undefined,
           panNumber: panNumber || undefined,
           uanNumber: uanNumber || undefined,
           esiNumber: esiNumber || undefined,
@@ -205,6 +241,7 @@ export default function EmployeeDirectory() {
         setEmployeeCode("");
         setDesignation("");
         setCtc("");
+        setGender("");
         setPanNumber("");
         setUanNumber("");
         setEsiNumber("");
@@ -332,6 +369,13 @@ export default function EmployeeDirectory() {
 
         <div className="flex items-center gap-2.5">
           <button
+            onClick={() => setBroadcastOpen(true)}
+            className="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-sm flex items-center gap-2 transition"
+          >
+            <Megaphone className="w-4 h-4" />
+            Notify all
+          </button>
+          <button
             onClick={() => setImportModalOpen(true)}
             className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm flex items-center gap-2 shadow-sm shadow-emerald-600/25 transition"
           >
@@ -386,7 +430,7 @@ export default function EmployeeDirectory() {
               type="button"
               onClick={() => {
                 setSearchQuery("");
-                setFilters({ departmentId: "", branchId: "", shiftId: "", role: "", status: "" });
+                setFilters({ departmentId: "", branchId: "", shiftId: "", role: "", status: "", loginAccess: "" });
                 setPage(1);
               }}
               className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-bold text-indigo-600 transition hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500"
@@ -419,6 +463,14 @@ export default function EmployeeDirectory() {
                   { value: "NOTICE_PERIOD", text: "Notice period" },
                   { value: "INACTIVE", text: "Inactive (login off)" },
                   { value: "TERMINATED", text: "Terminated" },
+                ],
+              },
+              {
+                key: "loginAccess",
+                label: "Login access",
+                options: [
+                  { value: "ON", text: "Login on" },
+                  { value: "OFF", text: "Login off (deactivated)" },
                 ],
               },
             ] as const
@@ -515,6 +567,7 @@ export default function EmployeeDirectory() {
                 <th className="py-3.5 px-4">Department</th>
                 <th className="py-3.5 px-4">Branch</th>
                 <th className="py-3.5 px-4">Shift</th>
+                <th className="py-3.5 px-4">Salary (Annual)</th>
                 <th className="py-3.5 px-4">Role</th>
                 <th className="py-3.5 px-4">Status</th>
                 <th className="py-3.5 px-4 text-right">Actions</th>
@@ -560,7 +613,7 @@ export default function EmployeeDirectory() {
                 </>
               ) : filteredEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan={canManageAccess ? 10 : 9} className="text-center py-12 text-slate-500">
+                  <td colSpan={canManageAccess ? 11 : 10} className="text-center py-12 text-slate-500">
                     No employees matching search criteria.
                   </td>
                 </tr>
@@ -647,6 +700,20 @@ export default function EmployeeDirectory() {
                     <td className="py-3.5 px-4 text-slate-500">
                       {emp.shift?.name || "General Shift"}
                     </td>
+                    <td className="py-3.5 px-4 text-slate-700">
+                      {emp.salaryStructure?.annualCtc ? (
+                        <>
+                          <span className="font-semibold tabular-nums">{formatCurrency(emp.salaryStructure.annualCtc)}</span>
+                          {emp.salaryStructure.monthlyCtc && (
+                            <span className="block text-[11px] text-slate-400 tabular-nums">
+                              {formatCurrency(emp.salaryStructure.monthlyCtc)} / month
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-slate-400">Not set</span>
+                      )}
+                    </td>
                     <td className="py-3.5 px-4">
                       <span className="px-2 py-0.5 rounded text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
                         {roleLabel(emp.user?.role || "EMPLOYEE")}
@@ -664,6 +731,11 @@ export default function EmployeeDirectory() {
                       >
                         {emp.status}
                       </span>
+                      {emp.user?.isActive === false && (
+                        <span className="ml-1.5 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border bg-rose-50 text-rose-700 border-rose-200">
+                          Login off
+                        </span>
+                      )}
                     </td>
                     <td className="py-3.5 px-4 text-right">
                       <button
@@ -697,6 +769,58 @@ export default function EmployeeDirectory() {
           }}
         />
       </div>
+
+      {/* Notify all employees */}
+      {broadcastOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <h3 className="text-base font-semibold text-slate-900 mb-1">Notify all employees</h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Sends an in-app notification to every active user in your organization.
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[13px] font-medium text-slate-700 mb-1">Title *</label>
+                <input
+                  type="text"
+                  value={broadcastTitle}
+                  onChange={(e) => setBroadcastTitle(e.target.value)}
+                  maxLength={120}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-[13px] font-medium text-slate-700 mb-1">Message *</label>
+                <textarea
+                  value={broadcastMessage}
+                  onChange={(e) => setBroadcastMessage(e.target.value)}
+                  maxLength={1000}
+                  rows={4}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setBroadcastOpen(false)}
+                className="px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={sendingBroadcast}
+                onClick={handleBroadcast}
+                className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold inline-flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {sendingBroadcast ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Megaphone className="w-3.5 h-3.5" />}
+                Send to everyone
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Employee Modal */}
       {modalOpen && (
@@ -741,7 +865,7 @@ export default function EmployeeDirectory() {
 
             {inviteMode === "INVITE" && (
               <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200 mb-4 flex items-start gap-2.5">
-                <Sparkles className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                {/* <Sparkles className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" /> */}
                 <p className="text-xs text-indigo-900 leading-relaxed">
                   WorkPulse will generate a secure temporary password and email it to the employee with their company sign-in link. They must change password upon first login.
                 </p>
@@ -925,15 +1049,29 @@ export default function EmployeeDirectory() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[13px] font-medium text-slate-700 mb-1">Annual CTC (INR)</label>
-                  <input
-                    type="number"
-                    value={ctc}
-                    onChange={(e) => setCtc(e.target.value)}
-                    placeholder="e.g. 900000"
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1">Gender</label>
+                  <select
+                    value={gender}
+                    onChange={(e) => setGender(e.target.value)}
                     className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
-                  />
+                  >
+                    <option value="">Select...</option>
+                    <option value="MALE">Male</option>
+                    <option value="FEMALE">Female</option>
+                    <option value="NOT_SPECIFIED">Not specified</option>
+                  </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-[13px] font-medium text-slate-700 mb-1">Annual CTC (INR)</label>
+                <input
+                  type="number"
+                  value={ctc}
+                  onChange={(e) => setCtc(e.target.value)}
+                  placeholder="e.g. 900000"
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                />
               </div>
 
               <div className="grid grid-cols-3 gap-3">

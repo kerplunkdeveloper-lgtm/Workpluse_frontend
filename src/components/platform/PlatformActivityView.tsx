@@ -84,7 +84,7 @@ export default function PlatformActivityView() {
   }, [load]);
 
   return (
-    <div className="mx-auto max-w-[1100px] space-y-6">
+    <div className="mx-auto w-full max-w-[1400px] space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-rose-600">Platform owner</p>

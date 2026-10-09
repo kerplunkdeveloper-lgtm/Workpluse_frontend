@@ -1,104 +1,78 @@
 "use client";
 
-import React, { Suspense, useState, useEffect } from "react";
+import React, { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
+import { BarChart3, CalendarPlus } from "lucide-react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
+import { useAuth } from "@/context/AuthContext";
 import PunchClockCard from "@/components/attendance/PunchClockCard";
 import AttendanceHistoryView from "@/components/attendance/AttendanceHistoryView";
-import TeamPunchBoard from "@/components/attendance/TeamPunchBoard";
-import { ChevronRight, Calendar, Clock } from "lucide-react";
-import Link from "next/link";
+import { MyAttendanceInsights, TeamToday } from "@/components/attendance/AttendanceInsights";
+
+const TEAM_ROLES = ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"];
 
 export default function AttendancePage() {
-  const [currentDateStr, setCurrentDateStr] = useState("");
-  const [currentTimeStr, setCurrentTimeStr] = useState("");
-
-  useEffect(() => {
-    const updateTime = () => {
-      const d = new Date();
-      setCurrentDateStr(
-        d.toLocaleDateString("en-US", {
-          weekday: "short",
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        })
-      );
-      setCurrentTimeStr(
-        d.toLocaleTimeString("en-US", {
-          hour12: true,
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        })
-      );
-    };
-
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
     <ProtectedRoute>
       <AppLayout>
-        <div className="space-y-6 max-w-[1680px] mx-auto">
-          {/* Breadcrumb & Header Section matching dashboard_design_2.png */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="space-y-1.5">
-              {/* Breadcrumb */}
-              <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-                <Link href="/dashboard" className="hover:text-slate-800 transition">
-                  WorkPulse
-                </Link>
-                <ChevronRight className="w-3 h-3 text-slate-400" />
-                <span className="text-slate-800 font-semibold">Smart Punch & Clock</span>
-              </div>
-
-              {/* Title & Subtitle */}
-              <h1 className="text-2xl sm:text-[28px] font-bold text-slate-900 tracking-tight">
-                Smart Punch & Timesheet
-              </h1>
-              <p className="text-xs text-slate-500 font-medium max-w-2xl">
-                Punch from anywhere. Your location is saved and shown to everyone on the team.
-              </p>
-            </div>
-
-            {/* Right Banner & Date/Time Badge */}
-            <div className="flex items-center gap-4 shrink-0">
-              <div className="hidden lg:block text-right">
-                <p className="text-xs font-serif italic font-bold text-indigo-700 leading-tight">
-                  Accurate Attendance
-                </p>
-                <p className="text-xs text-slate-500 font-medium">Stronger Teams • Brighter Tomorrow</p>
-              </div>
-
-              {/* Live Clock & Date Pill */}
-              <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 shadow-2xs">
-                <div className="flex items-center gap-1.5 text-indigo-600">
-                  <Clock className="w-3.5 h-3.5 animate-pulse" />
-                  <span className="font-mono font-bold text-slate-900">{currentTimeStr || "--:--:--"}</span>
-                </div>
-                <span className="text-slate-300">•</span>
-                <div className="flex items-center gap-1.5 text-slate-600">
-                  <Calendar className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>{currentDateStr || "Today"}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Master Punch & Clock Widget + Today's Details Panel */}
-          <PunchClockCard />
-
-          <TeamPunchBoard />
-
-          {/* Attendance Log Table & 4 Metric Cards */}
-          <Suspense fallback={<div className="p-8 text-center text-slate-500">Loading attendance view...</div>}>
-            <AttendanceHistoryView />
-          </Suspense>
-        </div>
+        <AttendanceWorkspace />
       </AppLayout>
     </ProtectedRoute>
+  );
+}
+
+function AttendanceWorkspace() {
+  const { role } = useAuth();
+  const isTeam = TEAM_ROLES.includes(String(role));
+
+  return (
+    <main className="mx-auto w-full max-w-[1320px] space-y-6 pb-10">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <LiveDate />
+          <h1 className="mt-1 text-2xl font-semibold tracking-[-0.02em] text-slate-950 sm:text-[28px]">Attendance</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            {isTeam ? "Punch in for yourself, see who's in today, and keep the team's records accurate." : "Punch in and out, take breaks, and keep an eye on your hours."}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link href="/leaves" className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-white px-3 text-sm font-medium text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50 hover:ring-slate-300">
+            <CalendarPlus className="h-4 w-4 text-slate-500" /> Apply leave
+          </Link>
+          {isTeam && (
+            <Link href="/reports" className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-white px-3 text-sm font-medium text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50 hover:ring-slate-300">
+              <BarChart3 className="h-4 w-4 text-slate-500" /> Reports
+            </Link>
+          )}
+        </div>
+      </header>
+
+      <PunchClockCard />
+      {isTeam && <TeamToday />}
+      <MyAttendanceInsights />
+
+      <Suspense fallback={<div className="skeleton-shimmer h-96 rounded-2xl" />}>
+        <AttendanceHistoryView />
+      </Suspense>
+    </main>
+  );
+}
+
+/** "Friday, 9 October · 10:42 AM" — updates each minute, not each second, to avoid needless renders. */
+function LiveDate() {
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => {
+    const update = () => setNow(new Date());
+    update();
+    const id = window.setInterval(update, 30000);
+    return () => window.clearInterval(id);
+  }, []);
+  return (
+    <p className="text-xs font-medium text-slate-500" suppressHydrationWarning>
+      {now
+        ? `${now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })} · ${now.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}`
+        : " "}
+    </p>
   );
 }

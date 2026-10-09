@@ -17,6 +17,8 @@ export interface TeamPunchPerson {
   status?: string | null;
   checkIn?: string | null;
   checkOut?: string | null;
+  checkInLocation?: string | null;
+  checkOutLocation?: string | null;
   location?: string | null;
   clockedIn?: boolean;
 }
@@ -198,8 +200,9 @@ export default function TeamPunchBoard() {
                     <p className="mt-1 text-xs text-slate-400">Not clocked in</p>
                   )}
                 </div>
-                <span className="text-xs font-mono font-semibold text-slate-600 shrink-0">
+                <span className="shrink-0 text-right text-[10px] font-mono font-semibold text-slate-600">
                   {person.checkIn ? formatTime(person.checkIn) : "—"}
+                  {person.checkOut && <span className="mt-0.5 block text-emerald-700">OUT {formatTime(person.checkOut)}</span>}
                 </span>
               </div>
             );

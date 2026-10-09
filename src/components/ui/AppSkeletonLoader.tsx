@@ -18,6 +18,7 @@ export default function AppSkeletonLoader() {
 
         {/* Navigation Items Skeleton */}
         <div className="space-y-2.5 flex-1 pt-2">
+          
           {[...Array(7)].map((_, i) => (
             <div
               key={i}

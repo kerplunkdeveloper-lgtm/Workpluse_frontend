@@ -5,10 +5,11 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Activity,
+  Award,
   ArrowRight,
   Building2,
   CalendarDays,
-  Check,
+  Cake,
   CheckCircle2,
   Clock,
   FileText,
@@ -26,6 +27,7 @@ import {
   Lock,
   UserPlus,
   BarChart3,
+  BellRing,
   Wallet,
   Sparkles,
   RefreshCw,
@@ -36,11 +38,10 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useAttendance } from "@/context/AttendanceContext";
-import { attendanceApi, leavesApi, employeesApi, branchesApi, departmentsApi } from "@/lib/api";
+import { attendanceApi, leavesApi, employeesApi, branchesApi, departmentsApi, offboardingApi } from "@/lib/api";
 import UnlockPlanModal from "@/components/auth/UnlockPlanModal";
-import SetupChecklist from "@/components/onboarding/SetupChecklist";
+import CompanyLogo from "@/components/ui/CompanyLogo";
 import PunchConfirmDialog, { PunchConfirmAction } from "@/components/attendance/PunchConfirmDialog";
-import TeamPunchBoard from "@/components/attendance/TeamPunchBoard";
 import { formatTime, formatDurationMinutes, unwrapList, unwrapItem } from "@/lib/utils";
 
 type RosterStatus = "PRESENT" | "REMOTE" | "ON_LEAVE" | "LATE" | "ABSENT";
@@ -170,7 +171,6 @@ export default function DashboardOverview() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [employeeTotal, setEmployeeTotal] = useState(0);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
-  const [showDismissAlert, setShowDismissAlert] = useState(false);
   const [activeBreakdownTab, setActiveBreakdownTab] = useState<Exclude<RosterStatus, "ABSENT"> | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [allAttendance, setAllAttendance] = useState<any[]>([]);
@@ -190,35 +190,39 @@ export default function DashboardOverview() {
   const isPlanLocked = Boolean(user?.planLocked || user?.organization?.planLocked);
   const isAdmin = role === "COMPANY_ADMIN" || role === "SUPER_ADMIN";
   const canManage = isAdmin || role === "MANAGER";
+  const [noticeSummary, setNoticeSummary] = useState<any>(null);
 
   const loadDashboardData = async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const [summaryRes, historyRes, allAttendanceRes, leavesRes, employeesRes, branchesRes, departmentsRes] =
-        await Promise.allSettled([
-          attendanceApi.getSummary(),
-          attendanceApi.getMyAttendance({ limit: 5, page: 1 }),
-          attendanceApi.getAllAttendance({ page: 1, limit: 200 }),
-          leavesApi.getAllLeaves(),
-          employeesApi.list({ page: 1, limit: 200 }),
-          branchesApi.list(),
-          departmentsApi.list(),
-        ]);
-
-      // Real totals from the source lists. The login payload carries no branch
-      // list and the employee page is capped at 200, so neither can be counted from them.
-      setOrgCounts((current) => ({
-        branches: branchesRes.status === "fulfilled" ? unwrapList(branchesRes.value).length : current.branches,
-        departments: departmentsRes.status === "fulfilled" ? unwrapList(departmentsRes.value).length : current.departments,
-      }));
-
+      // Render the shell from the small, high-value requests first.
+      const [summaryRes, historyRes] = await Promise.allSettled([
+        attendanceApi.getSummary(),
+        attendanceApi.getMyAttendance({ limit: 5, page: 1 }),
+      ]);
       if (summaryRes.status === "fulfilled" && summaryRes.value) {
         setSummary(unwrapItem(summaryRes.value) || summaryRes.value);
       }
       if (historyRes.status === "fulfilled" && historyRes.value) {
         setRecentAttendance(unwrapList(historyRes.value).slice(0, 5));
       }
+
+      // Do not block first paint on large workforce lists. These hydrate charts,
+      // rosters, and people moments after the dashboard is already usable.
+      setLoading(false);
+      const [allAttendanceRes, leavesRes, employeesRes, branchesRes, departmentsRes] = await Promise.allSettled([
+        attendanceApi.getAllAttendance({ page: 1, limit: 200 }),
+        leavesApi.getAllLeaves(),
+        employeesApi.list({ page: 1, limit: 200 }),
+        branchesApi.list(),
+        departmentsApi.list(),
+      ]);
+
+      setOrgCounts((current) => ({
+        branches: branchesRes.status === "fulfilled" ? unwrapList(branchesRes.value).length : current.branches,
+        departments: departmentsRes.status === "fulfilled" ? unwrapList(departmentsRes.value).length : current.departments,
+      }));
       if (allAttendanceRes.status === "fulfilled" && allAttendanceRes.value) {
         setAllAttendance(unwrapList(allAttendanceRes.value));
       }
@@ -229,6 +233,14 @@ export default function DashboardOverview() {
         const empList = unwrapList(employeesRes.value);
         setAllEmployees(empList);
         setEmployeeTotal((employeesRes.value as any)?.total || empList.length);
+      }
+      if (canManage) {
+        try {
+          const noticeRes = await offboardingApi.noticeSummary();
+          setNoticeSummary(noticeRes?.data || null);
+        } catch {
+          // The notice-period card is optional; the rest of the dashboard still renders.
+        }
       }
     } catch (err: any) {
       console.error("Dashboard data load error:", err);
@@ -351,13 +363,32 @@ export default function DashboardOverview() {
     return names.size || 1;
   }, [allEmployees]);
 
+  const genderAnalytics = useMemo(() => {
+    const counts = { male: 0, female: 0, unspecified: 0 };
+    allEmployees.forEach((employee: any) => {
+      const gender = String(employee.gender || employee.profile?.gender || "").trim().toLowerCase();
+      if (gender === "male" || gender === "m") counts.male += 1;
+      else if (gender === "female" || gender === "f") counts.female += 1;
+      else counts.unspecified += 1;
+    });
+    const total = counts.male + counts.female + counts.unspecified;
+    return {
+      ...counts,
+      total,
+      malePercent: total ? Math.round((counts.male / total) * 100) : 0,
+      femalePercent: total ? Math.round((counts.female / total) * 100) : 0,
+      unspecifiedPercent: total ? Math.round((counts.unspecified / total) * 100) : 0,
+    };
+  }, [allEmployees]);
+
   const hasCheckedInToday = Boolean(todayStatus?.hasCheckedIn || todayStatus?.attendance?.checkIn);
   const hasCheckedOutToday = Boolean(todayStatus?.hasCheckedOut || todayStatus?.attendance?.checkOut);
   const isCheckedIn = hasCheckedInToday && !hasCheckedOutToday;
   const todayCheckInTime = todayStatus?.attendance?.checkIn ? formatTime(todayStatus.attendance.checkIn) : null;
   const todayCheckOutTime = todayStatus?.attendance?.checkOut ? formatTime(todayStatus.attendance.checkOut) : null;
-  const todayShiftHours = todayStatus?.attendance?.workMinutes
-    ? formatDurationMinutes(todayStatus.attendance.workMinutes)
+  const todayWorkingMinutes = (todayStatus?.attendance as any)?.workingMinutes ?? todayStatus?.attendance?.workMinutes;
+  const todayShiftHours = todayWorkingMinutes !== null && todayWorkingMinutes !== undefined
+    ? formatDurationMinutes(Number(todayWorkingMinutes))
     : isCheckedIn
     ? "Active"
     : "0 hrs";
@@ -405,6 +436,58 @@ export default function DashboardOverview() {
     { key: "ON_LEAVE" as const, count: leaveCount, percent: leavePercentage },
     { key: "LATE" as const, count: lateCount, percent: latePercentage },
   ];
+
+  const absentCount = Math.max(0, totalEmployees - presentCount - wfhCount - leaveCount - lateCount);
+  const chartTotal = Math.max(1, presentCount + wfhCount + leaveCount + lateCount + absentCount);
+  const pieStops = (() => {
+    const colors = ["#10b981", "#8b5cf6", "#38bdf8", "#f59e0b", "#cbd5e1"];
+    const values = [presentCount, wfhCount, leaveCount, lateCount, absentCount];
+    let cursor = 0;
+    return values.map((value, index) => {
+      const start = cursor;
+      cursor += (value / chartTotal) * 360;
+      return `${colors[index]} ${start}deg ${cursor}deg`;
+    }).join(", ");
+  })();
+
+  const trendPoints = hourlyData.map((item, index) => {
+    const max = Math.max(...hourlyData.map((entry) => entry.count), 1);
+    const x = (index / Math.max(hourlyData.length - 1, 1)) * 560 + 20;
+    const y = 142 - (item.count / max) * 106;
+    return `${x},${y}`;
+  }).join(" ");
+
+  const peopleMoments = useMemo(() => {
+    const year = currentTime.getFullYear();
+    const now = new Date(year, currentTime.getMonth(), currentTime.getDate());
+    const getNextDate = (value: string | Date | undefined) => {
+      if (!value) return null;
+      const source = new Date(value);
+      if (Number.isNaN(source.getTime())) return null;
+      let date = new Date(year, source.getMonth(), source.getDate());
+      if (date < now) date = new Date(year + 1, source.getMonth(), source.getDate());
+      return date;
+    };
+    const moments: Array<{ id: string; name: string; type: "Birthday" | "Work anniversary"; date: Date; month: string; day: number }> = [];
+    allEmployees.forEach((employee: any, index) => {
+      const name = personName(employee);
+      const birthday = getNextDate(employee.dateOfBirth || employee.dob);
+      const joining = getNextDate(employee.dateOfJoining || employee.joiningDate || employee.hireDate);
+      if (birthday) moments.push({ id: `${employee.id || index}-birthday`, name, type: "Birthday", date: birthday, month: birthday.toLocaleDateString("en-IN", { month: "long" }), day: birthday.getDate() });
+      if (joining) moments.push({ id: `${employee.id || index}-anniversary`, name, type: "Work anniversary", date: joining, month: joining.toLocaleDateString("en-IN", { month: "long" }), day: joining.getDate() });
+    });
+    return moments.sort((a, b) => a.date.getTime() - b.date.getTime());
+  }, [allEmployees, currentTime]);
+
+  const momentMonths = useMemo(() => Array.from(new Set(peopleMoments.map((moment) => moment.month))), [peopleMoments]);
+  const nextPeopleMoments = peopleMoments.slice(0, 6);
+  const canSeePeopleNotifications = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER";
+  const tomorrowBirthdays = peopleMoments.filter((moment) => {
+    if (moment.type !== "Birthday") return false;
+    const today = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate());
+    const daysUntil = Math.round((moment.date.getTime() - today.getTime()) / 86400000);
+    return daysUntil === 1;
+  });
 
   const quickActions: QuickAction[] = [
     {
@@ -603,17 +686,7 @@ export default function DashboardOverview() {
         </div>
       )}
 
-      {isAdmin && (
-        <SetupChecklist
-          organizationId={user?.organizationId}
-          isPlanLocked={isPlanLocked}
-          onUnlock={() => setShowUnlockModal(true)}
-        />
-      )}
-
-      {/* ======================================================== */}
-      {/* 1. HERO COMMAND CENTER: Executive Workspace Overview    */}
-      {/* ======================================================== */}
+   
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white p-6 sm:p-8 shadow-2xl border border-slate-800">
         {/* Subtle decorative background glow patterns */}
         <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
@@ -657,10 +730,10 @@ export default function DashboardOverview() {
               </h1>
               <p className="text-xs sm:text-sm text-slate-300 mt-2 max-w-xl leading-relaxed">
                 Workforce operations, real-time presence, and team payroll — active for{" "}
-                <span className="text-white font-semibold underline decoration-indigo-400 underline-offset-2">
-                  {user?.organization?.name || "Your Workspace"}
+                <span className="inline-flex translate-y-[3px] items-center gap-2 rounded-full bg-white/10 py-0.5 pl-0.5 pr-3 ring-1 ring-white/15">
+                  <CompanyLogo name={user?.organization?.name || "Workspace"} logoUrl={user?.organization?.logoUrl} size="xs" className="!rounded-full" />
+                  <span className="font-semibold text-white">{user?.organization?.name || "Your Workspace"}</span>
                 </span>
-                .
               </p>
             </div>
 
@@ -690,16 +763,16 @@ export default function DashboardOverview() {
 
           {/* Right Column: Personal Attendance & Punch Action Widget */}
           <div className="rounded-3xl bg-white/10 backdrop-blur-xl border border-white/15 p-5 sm:p-6 space-y-4 shadow-xl">
-            <div className="flex items-center justify-between text-xs">
-              <span className="flex items-center gap-1.5 font-semibold text-slate-200">
+            <div className="flex min-w-0 items-center justify-between gap-3 text-xs">
+              <span className="flex min-w-0 flex-1 items-center gap-1.5 font-semibold text-slate-200">
                 <MapPin className={`w-4 h-4 ${isWithinGeofence ? "text-emerald-400" : "text-amber-400"}`} />
-                <span className="truncate max-w-[180px]">
+                <span className="min-w-0 truncate">
                   {todayStatus?.attendance?.checkInLocation || locationLabel || (currentLocation ? "GPS Verified" : "Anywhere Punch")}
                 </span>
               </span>
 
               <span
-                className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                className={`flex min-h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-2xl px-3 py-2 text-[11px] font-bold uppercase leading-none tracking-wider ${
                   isCheckedIn
                     ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
                     : hasCheckedOutToday
@@ -717,12 +790,10 @@ export default function DashboardOverview() {
                 <p className="text-xs uppercase font-bold tracking-wider text-slate-400">Shift Elapsed</p>
                 <p className="text-sm font-bold text-white font-mono mt-0.5">{todayShiftHours}</p>
               </div>
-              {todayCheckInTime && (
-                <div className="text-right">
-                  <p className="text-xs uppercase font-bold tracking-wider text-slate-400">Clocked In</p>
-                  <p className="text-xs font-semibold text-slate-200 font-mono mt-0.5">{todayCheckInTime}</p>
-                </div>
-              )}
+              {todayCheckInTime && <div className="grid grid-cols-2 gap-4 text-right">
+                <div><p className="text-xs uppercase font-bold tracking-wider text-slate-400">Clocked In</p><p className="text-xs font-semibold text-slate-200 font-mono mt-0.5">{todayCheckInTime}</p></div>
+                {todayCheckOutTime && <div><p className="text-xs uppercase font-bold tracking-wider text-slate-400">Clocked Out</p><p className="text-xs font-semibold text-slate-200 font-mono mt-0.5">{todayCheckOutTime}</p></div>}
+              </div>}
             </div>
 
             {/* Primary Action Button */}
@@ -766,32 +837,6 @@ export default function DashboardOverview() {
           </div>
         </div>
       </section>
-
-      {/* Confirmation banner after punch */}
-      {showDismissAlert && (isCheckedIn || hasCheckedOutToday) && (
-        <div className="p-4 rounded-3xl bg-emerald-50 border border-emerald-200 flex items-center justify-between gap-3 shadow-sm animate-in fade-in">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0">
-              <Check className="w-4 h-4" />
-            </div>
-            <p className="text-xs text-slate-800">
-              <span className="font-bold text-emerald-950">
-                {isCheckedIn ? "Clock-in verified." : "Clock-out registered."}
-              </span>{" "}
-              {isCheckedIn
-                ? `You successfully punched in at ${todayCheckInTime || "just now"}.`
-                : `You clocked out at ${todayCheckOutTime || "just now"}. Hours recorded to timesheet.`}
-            </p>
-          </div>
-          <button
-            onClick={() => setShowDismissAlert(false)}
-            className="p-1.5 rounded-lg text-slate-400 hover:bg-emerald-100"
-            aria-label="Dismiss"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
 
       {/* ======================================================== */}
       {/* 2. EXECUTIVE METRIC KPI CARDS (4 Interactive Tiles)     */}
@@ -867,16 +912,122 @@ export default function DashboardOverview() {
         })}
       </section>
 
-      {/* ======================================================== */}
-      {/* 3. EXPANDING LIVE STAFF BREAKDOWN (When KPI is clicked)  */}
-      {/* ======================================================== */}
+      <AnimatePresence>
+        {activeBreakdownTab && <motion.section
+          initial={{ opacity: 0, height: 0, y: -8 }}
+          animate={{ opacity: 1, height: "auto", y: 0 }}
+          exit={{ opacity: 0, height: 0, y: -8 }}
+          className="overflow-hidden rounded-3xl border border-indigo-200 bg-white p-5 shadow-[0_18px_50px_-36px_rgba(79,70,229,0.5)] sm:p-6"
+        >
+          <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
+            <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">Selected workforce view</p><h2 className="mt-1 text-lg font-semibold text-slate-950">{KPI_META[activeBreakdownTab].label} staff</h2><p className="mt-1 text-xs text-slate-500">{filteredRoster.length} people match this status.</p></div>
+            <div className="relative w-full sm:max-w-xs"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search staff" className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-xs outline-none focus:border-indigo-500 focus:bg-white" /></div>
+          </div>
+          {filteredRoster.length === 0 ? <p className="py-8 text-center text-xs text-slate-400">No staff members match this status.</p> : <div className="mt-4 grid max-h-80 grid-cols-1 gap-2.5 overflow-y-auto pr-1 md:grid-cols-2 xl:grid-cols-3">{filteredRoster.map((person) => <div key={person.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3"><div className="flex min-w-0 items-center gap-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-xs font-bold text-indigo-700">{person.name.slice(0, 2).toUpperCase()}</span><div className="min-w-0"><p className="truncate text-xs font-bold text-slate-800">{person.name}</p><p className="truncate text-xs text-slate-500">{person.designation} · {person.department}</p></div></div><div className="shrink-0 text-right"><p className="font-mono text-xs font-bold text-slate-700">{person.checkInTime || "Not in"}</p>{person.employeeCode && <p className="font-mono text-[10px] text-slate-400">{person.employeeCode}</p>}</div></div>)}</div>}
+        </motion.section>}
+      </AnimatePresence>
+
+      <section className="grid gap-4 xl:grid-cols-[0.78fr_1.42fr]" aria-label="Workforce analytics">
+        <article className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-[0_18px_50px_-36px_rgba(15,23,42,0.35)] sm:p-6">
+          <div className="flex items-start justify-between gap-3">
+            <div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">Today at a glance</p><h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">Attendance mix</h2></div>
+            <span className="rounded-lg bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-500">LIVE</span>
+          </div>
+          <div className="mt-6 flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:gap-6">
+            <div className="relative flex h-36 w-36 shrink-0 items-center justify-center rounded-full" style={{ background: `conic-gradient(${pieStops})` }}>
+              <div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-white shadow-inner"><span className="text-2xl font-bold tabular-nums text-slate-950">{completionPercent}%</span><span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">turnout</span></div>
+            </div>
+            <div className="w-full min-w-0 flex-1 space-y-2.5 sm:w-auto">
+              {[{ label: "Present", value: presentCount, color: "bg-emerald-500" }, { label: "Remote", value: wfhCount, color: "bg-violet-500" }, { label: "On leave", value: leaveCount, color: "bg-sky-400" }, { label: "Late", value: lateCount, color: "bg-amber-400" }, { label: "Not started", value: absentCount, color: "bg-slate-300" }].map((item) => <div key={item.label} className="flex items-center justify-between gap-3 text-xs"><span className="flex min-w-0 items-center gap-2 text-slate-600"><span className={`h-2 w-2 shrink-0 rounded-full ${item.color}`} />{item.label}</span><span className="font-bold tabular-nums text-slate-900">{item.value}</span></div>)}
+            </div>
+          </div>
+        </article>
+
+        <article className="min-w-0 rounded-3xl border border-slate-200/90 bg-white p-5 shadow-[0_18px_50px_-36px_rgba(15,23,42,0.35)] sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">Punch activity</p><h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">When your team clocks in</h2></div><Link href="/reports" className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700">Full reports <ArrowUpRight className="h-3.5 w-3.5" /></Link></div>
+          <div className="mt-5 overflow-x-auto rounded-2xl bg-slate-50/80 p-2 sm:p-3"><svg viewBox="0 0 600 180" role="img" aria-label="Punch activity by time of day" className="h-44 w-full min-w-[520px]"><defs><linearGradient id="attendance-area" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#6366f1" stopOpacity=".25" /><stop offset="1" stopColor="#6366f1" stopOpacity="0" /></linearGradient></defs>{[35, 70, 105, 140].map((y) => <line key={y} x1="20" x2="580" y1={y} y2={y} stroke="#e2e8f0" strokeDasharray="3 5" />)}<polyline points={`20,142 ${trendPoints} 580,142`} fill="url(#attendance-area)" stroke="none" /><polyline points={trendPoints} fill="none" stroke="#4f46e5" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />{hourlyData.map((item, index) => { const max = Math.max(...hourlyData.map((entry) => entry.count), 1); const x = (index / Math.max(hourlyData.length - 1, 1)) * 560 + 20; const y = 142 - (item.count / max) * 106; return <circle key={item.time} cx={x} cy={y} r={item.peak ? 5 : 3.5} fill={item.peak ? "#10b981" : "#4f46e5"} stroke="white" strokeWidth="2" />; })}</svg><div className="flex min-w-[520px] justify-between px-2 text-[10px] font-semibold text-slate-400">{hourlyData.map((item) => <span key={item.time}>{item.time}</span>)}</div></div>
+          <div className="mt-4 grid grid-cols-3 gap-2"><div className="rounded-xl bg-emerald-50 p-3"><p className="text-[10px] font-semibold text-emerald-700">Peak window</p><p className="mt-1 text-sm font-bold text-emerald-900">{hourlyData.find((item) => item.peak)?.time || "—"}</p></div><div className="rounded-xl bg-indigo-50 p-3"><p className="text-[10px] font-semibold text-indigo-700">Total punches</p><p className="mt-1 text-sm font-bold text-indigo-900">{allAttendance.length}</p></div><div className="rounded-xl bg-amber-50 p-3"><p className="text-[10px] font-semibold text-amber-700">Pending leave</p><p className="mt-1 text-sm font-bold text-amber-900">{pendingLeaves}</p></div></div>
+        </article>
+
+        <article className="min-w-0 rounded-3xl border border-slate-200/90 bg-white p-5 shadow-[0_18px_50px_-36px_rgba(15,23,42,0.35)] sm:col-span-2 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">People analytics</p><h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">Team gender distribution</h2></div>
+            <span className="rounded-lg bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-500">{genderAnalytics.total} PEOPLE</span>
+          </div>
+          <div className="mt-6 grid gap-6 lg:grid-cols-[220px_1fr] lg:items-center">
+            <div className="relative mx-auto flex h-40 w-40 items-center justify-center rounded-full" style={{ background: `conic-gradient(#6366f1 0 ${genderAnalytics.malePercent}%, #ec4899 ${genderAnalytics.malePercent}% ${genderAnalytics.malePercent + genderAnalytics.femalePercent}%, #cbd5e1 ${genderAnalytics.malePercent + genderAnalytics.femalePercent}% 100%)` }}>
+              <div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-white shadow-inner"><span className="text-2xl font-bold tabular-nums text-slate-950">{genderAnalytics.malePercent + genderAnalytics.femalePercent}%</span><span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">specified</span></div>
+            </div>
+            <div className="space-y-4">
+              {[{ label: "Male", value: genderAnalytics.male, percent: genderAnalytics.malePercent, color: "bg-indigo-500", track: "bg-indigo-100" }, { label: "Female", value: genderAnalytics.female, percent: genderAnalytics.femalePercent, color: "bg-pink-500", track: "bg-pink-100" }, { label: "Not specified", value: genderAnalytics.unspecified, percent: genderAnalytics.unspecifiedPercent, color: "bg-slate-400", track: "bg-slate-100" }].map((item) => <div key={item.label}><div className="mb-1.5 flex items-center justify-between gap-3 text-sm"><span className="flex items-center gap-2 font-medium text-slate-700"><span className={`h-2.5 w-2.5 rounded-full ${item.color}`} />{item.label}</span><span className="font-bold tabular-nums text-slate-900">{item.value} <span className="font-medium text-slate-400">({item.percent}%)</span></span></div><div className={`h-2 overflow-hidden rounded-full ${item.track}`}><div className={`h-full rounded-full ${item.color}`} style={{ width: `${item.percent}%` }} /></div></div>)}
+              <p className="pt-1 text-xs leading-5 text-slate-400">Based on employee profile data. Missing values remain visible as not specified.</p>
+            </div>
+          </div>
+        </article>
+
+        {canManage && noticeSummary && (
+          <article className="min-w-0 rounded-3xl border border-slate-200/90 bg-white p-5 shadow-[0_18px_50px_-36px_rgba(15,23,42,0.35)] sm:col-span-2 sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-rose-600">Exits</p>
+                <h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">Employees in notice period</h2>
+              </div>
+              <Link href="/offboarding" className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700">
+                Open offboarding <ArrowUpRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="rounded-xl bg-rose-50 p-3">
+                <p className="text-[10px] font-semibold text-rose-700">Serving notice</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-rose-900">{noticeSummary.inNoticeCount}</p>
+              </div>
+              <div className="rounded-xl bg-amber-50 p-3">
+                <p className="text-[10px] font-semibold text-amber-700">Leaving in 7 days</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-amber-900">{noticeSummary.endingWithin7Days}</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-3">
+                <p className="text-[10px] font-semibold text-slate-600">Waiting for HR</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{noticeSummary.awaitingHrReview}</p>
+              </div>
+              <div className="rounded-xl bg-indigo-50 p-3">
+                <p className="text-[10px] font-semibold text-indigo-700">Waiting for admin</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-indigo-900">{noticeSummary.awaitingAdminApproval}</p>
+              </div>
+            </div>
+            {noticeSummary.employees?.length > 0 ? (
+              <ul className="mt-4 divide-y divide-slate-100 rounded-2xl border border-slate-100">
+                {noticeSummary.employees.slice(0, 5).map((row: any) => (
+                  <li key={row.employeeId} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                    <span className="min-w-0 truncate font-medium text-slate-800">
+                      {row.name} <span className="font-mono text-xs text-indigo-700">{row.employeeCode}</span>
+                    </span>
+                    <span className="shrink-0 text-xs font-semibold tabular-nums text-slate-500">
+                      {row.lastWorkingDate
+                        ? row.daysLeft < 0
+                          ? `${-row.daysLeft}d past LWD`
+                          : row.daysLeft === 0
+                            ? "Leaves today"
+                            : `${row.daysLeft}d left · LWD ${row.lastWorkingDate}`
+                        : "LWD not set"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-4 text-xs text-slate-400">No one is serving notice right now.</p>
+            )}
+          </article>
+        )}
+      </section>
+
+ 
       <AnimatePresence>
         {activeBreakdownTab && (
           <motion.section
             initial={{ opacity: 0, height: 0, y: -8 }}
             animate={{ opacity: 1, height: "auto", y: 0 }}
             exit={{ opacity: 0, height: 0, y: -8 }}
-            className="rounded-3xl bg-white border border-slate-200 p-5 sm:p-6 shadow-md overflow-hidden"
+            className="hidden rounded-3xl bg-white border border-slate-200 p-5 sm:p-6 shadow-md overflow-hidden"
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
               <div className="min-w-0">
@@ -940,101 +1091,59 @@ export default function DashboardOverview() {
         )}
       </AnimatePresence>
 
-      {/* ======================================================== */}
-      {/* 4. TEAM PUNCH BOARD (Live Attendance Strip)              */}
-      {/* ======================================================== */}
-      <TeamPunchBoard />
-
-      {/* ======================================================== */}
-      {/* 5. WORKFORCE ANALYTICS & QUICK LAUNCH TOOLS              */}
-      {/* ======================================================== */}
-      <section className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+  
+      <section className="grid grid-cols-1 gap-5">
         {/* Left Column (8 cols): Hourly Attendance Rhythm & Functions */}
-        <div className="lg:col-span-8 space-y-5">
-          {/* Hourly Punch Rhythm Bar Visualizer */}
-          <div className="p-5 sm:p-6 rounded-3xl bg-white border border-slate-200/90 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-indigo-600" />
-                  Today&apos;s Clock-In Rush Pattern
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Hourly distribution of employee check-ins across the workforce
-                </p>
+        <div className="space-y-5">
+          {/* Premium hourly punch rhythm */}
+          <div className="relative overflow-hidden rounded-[28px] border border-slate-200/90 bg-white shadow-[0_20px_60px_-42px_rgba(15,23,42,0.5)]">
+            <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-indigo-100/50 blur-3xl" />
+            <div className="relative border-b border-slate-100 p-5 sm:p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/20"><Activity className="h-5 w-5" /></span>
+                  <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">Live workforce pulse</p><h3 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">Clock-in rhythm</h3><p className="mt-1 text-sm text-slate-500">When your team starts the workday today.</p></div>
+                </div>
+                <div className="flex items-center gap-2 self-start rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />Live distribution</div>
               </div>
-              <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-3 py-1 rounded-xl">
-                Live Distribution
-              </span>
+              <div className="mt-5 grid grid-cols-3 gap-2 sm:max-w-md"><div className="rounded-2xl bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Total punches</p><p className="mt-1 text-lg font-bold tabular-nums text-slate-900">{allAttendance.length}</p></div><div className="rounded-2xl bg-indigo-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-500">Peak hour</p><p className="mt-1 text-lg font-bold text-indigo-900">{hourlyData.find((item) => item.peak)?.time || "No peak"}</p></div><div className="rounded-2xl bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Coverage</p><p className="mt-1 text-lg font-bold tabular-nums text-slate-900">{completionPercent}%</p></div></div>
             </div>
-
-            <div className="h-44 sm:h-52 flex items-end gap-2 sm:gap-4 px-2">
-              {hourlyData.map((item) => {
-                const maxVal = Math.max(...hourlyData.map((d) => d.count), 4);
-                const height = Math.max(item.count > 0 ? 14 : 6, Math.round((item.count / maxVal) * 100));
-
-                return (
-                  <div key={item.time} className="flex-1 h-full flex flex-col items-center justify-end group">
-                    <span className="text-xs font-bold text-indigo-600 mb-1 opacity-0 group-hover:opacity-100 transition">
-                      {item.count}
-                    </span>
-                    <div
-                      className={`w-full max-w-[44px] rounded-t-xl transition-all duration-300 ${
-                        item.peak
-                          ? "bg-gradient-to-t from-indigo-700 to-indigo-500 shadow-md shadow-indigo-500/20"
-                          : "bg-slate-200 hover:bg-indigo-300"
-                      }`}
-                      style={{ height: `${height}%` }}
-                    />
-                    <span className="text-xs text-slate-500 font-semibold mt-2.5">{item.time}</span>
-                  </div>
-                );
-              })}
+            <div className="relative p-5 sm:p-6">
+              <div className="pointer-events-none absolute inset-x-5 top-8 bottom-12 flex flex-col justify-between sm:inset-x-6"><span className="border-t border-dashed border-slate-100" /><span className="border-t border-dashed border-slate-100" /><span className="border-t border-dashed border-slate-100" /><span className="border-t border-dashed border-slate-100" /></div>
+              <div className="relative flex h-56 items-end gap-2 sm:h-64 sm:gap-4">
+                {hourlyData.map((item) => {
+                  const maxVal = Math.max(...hourlyData.map((d) => d.count), 4);
+                  const height = Math.max(item.count > 0 ? 12 : 5, Math.round((item.count / maxVal) * 100));
+                  return <div key={item.time} className="group flex h-full min-w-0 flex-1 flex-col items-center justify-end"><div className="mb-2 flex h-5 items-end"><span className={`text-[11px] font-bold tabular-nums transition ${item.peak ? "text-indigo-600" : "text-slate-400 opacity-0 group-hover:opacity-100"}`}>{item.count}</span></div><div className={`relative w-full max-w-[52px] rounded-t-2xl transition-all duration-500 group-hover:-translate-y-1 ${item.peak ? "bg-indigo-600 shadow-[0_12px_24px_-10px_rgba(79,70,229,0.8)]" : "bg-slate-200 group-hover:bg-indigo-200"}`} style={{ height: `${height}%` }}><span className={`absolute inset-x-1 top-1 h-1 rounded-full ${item.peak ? "bg-white/35" : "bg-white/70"}`} /></div><span className={`mt-3 text-[11px] font-semibold ${item.peak ? "text-indigo-700" : "text-slate-500"}`}>{item.time}</span></div>;
+                })}
+              </div>
             </div>
           </div>
 
-          {/* Quick Launchpad ("Open a Function") */}
-          <div>
-            <div className="flex items-center justify-between px-1 mb-3">
-              <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
-                  <Compass className="w-4 h-4 text-indigo-600" />
-                  Workspace Launchpad
-                </h3>
-                <p className="text-xs text-slate-400">Direct access to daily operational tools</p>
+          {/* People moments: birthdays and work anniversaries */}
+          <section className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm">
+            <div className="border-b border-slate-100 bg-gradient-to-r from-indigo-50 via-white to-pink-50 p-5 sm:p-6">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600"><BellRing className="h-3.5 w-3.5" /> People moments</p>
+                  <h3 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">Celebrate your team</h3>
+                  <p className="mt-1 text-sm text-slate-500">Upcoming birthdays and work anniversaries, organised month by month.</p>
+                </div>
+                <div className="rounded-2xl bg-white/80 px-3 py-2 text-right shadow-sm ring-1 ring-slate-200/70"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Next 12 months</p><p className="mt-0.5 text-lg font-bold text-slate-900">{peopleMoments.length} moments</p></div>
               </div>
+              {canSeePeopleNotifications && tomorrowBirthdays.length > 0 && <div className="mt-5 flex items-start gap-3 rounded-2xl border border-pink-200 bg-pink-50 p-3.5 text-pink-950"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-pink-500 text-white"><BellRing className="h-4 w-4" /></div><div className="min-w-0"><p className="text-sm font-bold">Birthday reminder for tomorrow</p><p className="mt-0.5 text-xs leading-5 text-pink-800">{tomorrowBirthdays.map((moment) => moment.name).join(", ")} {tomorrowBirthdays.length === 1 ? "has" : "have"} a birthday tomorrow. This reminder is visible to HR and admins only.</p></div></div>}
             </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
-              {quickActions.map((action) => {
-                const Icon = action.icon;
-                return (
-                  <button
-                    key={action.href}
-                    type="button"
-                    onClick={() => setSelectedQuickAction(action)}
-                    className="group rounded-3xl bg-white border border-slate-200/90 p-4 text-left hover:border-indigo-400 hover:shadow-lg transition-all duration-200"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className={`w-9 h-9 rounded-2xl flex items-center justify-center ${action.tone}`}>
-                        <Icon className="w-4 h-4" />
-                      </span>
-                      <ArrowUpRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition" />
-                    </div>
-
-                    <p className="mt-3 text-xs font-bold text-slate-800 group-hover:text-indigo-600 transition">
-                      {action.label}
-                    </p>
-                    <p className="text-xs text-slate-500 truncate mt-0.5">{action.hint}</p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+            {nextPeopleMoments.length > 0 ? <div className="p-5 sm:p-6">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {nextPeopleMoments.map((moment) => <div key={moment.id} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-3"><div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${moment.type === "Birthday" ? "bg-pink-100 text-pink-600" : "bg-indigo-100 text-indigo-600"}`}>{moment.type === "Birthday" ? <Cake className="h-5 w-5" /> : <Award className="h-5 w-5" />}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-slate-800">{moment.name}</p><p className="text-xs text-slate-500">{moment.type} · {moment.month} {moment.day}</p></div></div>)}
+              </div>
+              {momentMonths.length > 0 && <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-4">{momentMonths.slice(0, 6).map((month) => <span key={month} className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">{month} · {peopleMoments.filter((moment) => moment.month === month).length}</span>)}</div>}
+            </div> : <div className="p-8 text-center"><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400"><Cake className="h-6 w-6" /></div><p className="mt-3 text-sm font-semibold text-slate-700">No upcoming people moments yet</p><p className="mt-1 text-xs text-slate-400">Add date of birth or date of joining to employee profiles to see notifications here.</p></div>}
+          </section>
         </div>
 
         {/* Right Column (4 cols): Shift Completion Donut & Summary */}
-        <div className="lg:col-span-4 space-y-5">
+        <div className="grid gap-5 md:grid-cols-2">
           {/* Shift completion gauge */}
           <div className="p-5 sm:p-6 rounded-3xl bg-white border border-slate-200/90 shadow-sm space-y-5">
             <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
@@ -1123,74 +1232,6 @@ export default function DashboardOverview() {
       </section>
 
       {/* ======================================================== */}
-      {/* 6. QUICK ACTION PREVIEW MODAL                            */}
-      {/* ======================================================== */}
-      <AnimatePresence>
-        {selectedQuickAction && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl border border-slate-200"
-            >
-              <div className="bg-gradient-to-r from-slate-900 to-indigo-950 p-6 text-white relative">
-                <button
-                  type="button"
-                  onClick={() => setSelectedQuickAction(null)}
-                  className="absolute top-4 right-4 p-1.5 rounded-xl text-white/60 hover:text-white hover:bg-white/10 transition"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-                <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center mb-2">
-                  <selectedQuickAction.icon className="w-5 h-5 text-indigo-300" />
-                </div>
-                <h3 className="text-base font-semibold">{selectedQuickAction.label}</h3>
-                <p className="text-xs text-indigo-200 mt-0.5">{selectedQuickAction.hint}</p>
-              </div>
-
-              <div className="p-6 space-y-4">
-                <div className="space-y-2">
-                  <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">Features Included</p>
-                  <div className="space-y-2">
-                    {selectedQuickAction.details.map((item, idx) => (
-                      <div key={idx} className="flex items-start gap-2.5 text-xs text-slate-600">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <span>{item}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedQuickAction(null)}
-                    className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
-                  >
-                    Close
-                  </button>
-                  <Link
-                    href={selectedQuickAction.href}
-                    onClick={() => setSelectedQuickAction(null)}
-                    className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold text-center transition shadow-md shadow-indigo-600/20 flex items-center justify-center gap-1.5"
-                  >
-                    Open Page
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ======================================================== */}
       {/* 7. PUNCH CONFIRM DIALOG & UNLOCK PLAN MODAL              */}
       {/* ======================================================== */}
       <PunchConfirmDialog
@@ -1198,11 +1239,10 @@ export default function DashboardOverview() {
         loading={isActionLoading}
         locationLabel={locationLabel}
         onCancel={() => setPendingPunch(null)}
-        onConfirm={async () => {
-          const ok = pendingPunch === "CHECK_OUT" ? await checkOut() : await checkIn();
+        onConfirm={async (options) => {
+          const ok = pendingPunch === "CHECK_OUT" ? await checkOut() : await checkIn(options);
           if (ok) {
             setPendingPunch(null);
-            setShowDismissAlert(true);
             loadDashboardData();
           }
         }}
