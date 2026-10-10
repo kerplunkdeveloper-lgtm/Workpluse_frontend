@@ -806,10 +806,16 @@ export const onboardingApi = {
     });
     return res.data;
   },
-  respondOffer: async (token: string, response: "ACCEPTED" | "REJECTED", note?: string) => {
+  respondOffer: async (
+    token: string,
+    action: "ACCEPT" | "REJECT",
+    signature?: string,
+    reason?: string,
+  ) => {
     const res = await api.post(`/onboarding/portal/${token}/respond-offer`, {
-      response,
-      note,
+      action,
+      signature,
+      reason,
     });
     return res.data;
   },
