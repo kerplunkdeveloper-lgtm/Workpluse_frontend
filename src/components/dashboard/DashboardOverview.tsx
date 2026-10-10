@@ -153,6 +153,26 @@ function isSameDay(value?: string | Date | null) {
   );
 }
 
+// Only this small component re-renders every second; the dashboard itself
+// ticks once a minute so its derived lists are not rebuilt 60 times a minute.
+function LiveClock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  return (
+    <>
+      {now.toLocaleTimeString("en-IN", {
+        hour12: true,
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      })}
+    </>
+  );
+}
+
 export default function DashboardOverview() {
   const { user, role, refreshUser } = useAuth();
   const {
@@ -183,7 +203,7 @@ export default function DashboardOverview() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
 
@@ -345,12 +365,6 @@ export default function DashboardOverview() {
     day: "numeric",
     month: "long",
     year: "numeric",
-  });
-  const formattedTime = currentTime.toLocaleTimeString("en-IN", {
-    hour12: true,
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
   });
 
   const totalBranches = orgCounts.branches ?? ((user?.organization as any)?.branches?.length || 1);
@@ -710,7 +724,7 @@ export default function DashboardOverview() {
               <span className="hidden sm:inline text-slate-500">•</span>
               <span className="text-slate-400 text-xs">{formattedDate}</span>
               <span className="font-mono font-bold text-indigo-300 bg-indigo-950/80 px-2.5 py-0.5 rounded-lg border border-indigo-700/50 text-xs">
-                {formattedTime}
+                <LiveClock />
               </span>
 
               <button

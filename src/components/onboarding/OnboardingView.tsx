@@ -8,19 +8,18 @@ import {
   UserPlus,
   Send,
   CheckCircle2,
-  FileText,
   Clock,
   ExternalLink,
   Plus,
   Loader2,
   Mail,
-  Building,
   DollarSign,
   ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import Link from "next/link";
+import PhoneInput, { toE164India, validateIndianPhone } from "@/components/ui/PhoneInput";
 
 const STAGES = [
   { id: "INVITED", label: "Invited", statuses: ["INVITED"], color: "border-slate-200 bg-slate-50/70" },
@@ -98,13 +97,18 @@ export default function OnboardingView() {
 
   const handleCreateJoiner = async (e: React.FormEvent) => {
     e.preventDefault();
+    const phoneError = validateIndianPhone(phone);
+    if (phoneError) {
+      toast.error(phoneError);
+      return;
+    }
     setIsSubmitting(true);
     try {
       const res = await onboardingApi.createJoiner({
         firstName,
         lastName,
         email,
-        phone,
+        phone: toE164India(phone),
         designation,
         offeredSalary: Number(offeredSalary),
         proposedSalary: Number(offeredSalary),
@@ -187,24 +191,39 @@ export default function OnboardingView() {
   return (
     <div className="space-y-6">
       {/* Top Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-5">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2.5">
-            <UserPlus className="w-7 h-7 text-indigo-600" />
-            Digital Candidate Onboarding Pipeline
+          <p className="mb-2 text-[11px] font-bold uppercase tracking-[.18em] text-indigo-600">People operations</p>
+          <h1 className="flex items-center gap-2.5 text-3xl font-semibold tracking-[-.035em] text-slate-950">
+            <UserPlus className="h-7 w-7 text-indigo-600" />
+            Onboarding workspace
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Track hiring stages, dispatch digital offer letters with one-click portal links, and activate employee accounts
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+            Move candidates from invitation to active employee with one clear, auditable workflow.
           </p>
         </div>
 
         <button
           onClick={() => setModalOpen(true)}
-          className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm flex items-center gap-2 shadow-lg shadow-indigo-600/20 transition"
+          className="flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 transition hover:bg-slate-800 active:scale-[.98]"
         >
           <Plus className="w-4 h-4" />
           Invite New Joiner
         </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          ["Total candidates", candidates.length, "All active records"],
+          ["Needs review", candidates.filter((c) => VERIFY_STATUSES.includes(c.status)).length, "HR action required"],
+          ["Offers in motion", candidates.filter((c) => SEND_OFFER_STATUSES.includes(c.status) || c.status === "OFFER_SENT").length, "Ready to progress"],
+          ["Activated", candidates.filter((c) => c.status === "ACTIVATED" || c.status === "ONBOARDED").length, "Ready for day one"],
+        ].map(([label, value, detail]) => (
+          <div key={String(label)} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+            <div className="mt-2 flex items-end justify-between gap-2"><span className="text-2xl font-semibold tracking-tight text-slate-950">{value}</span><span className="text-right text-[10px] font-medium text-slate-400">{detail}</span></div>
+          </div>
+        ))}
       </div>
 
       {/* Kanban Board */}
@@ -359,13 +378,7 @@ export default function OnboardingView() {
                 </div>
                 <div>
                   <label className="block text-[13px] font-medium text-slate-700 mb-1">Phone</label>
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+91 98765 43210"
-                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
-                  />
+                  <PhoneInput value={phone} onChange={setPhone} />
                 </div>
               </div>
 

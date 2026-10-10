@@ -75,7 +75,7 @@ export default function ChangePasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center relative z-10">
         <div className="inline-flex items-center justify-center mb-4">
           <Brand subtitle="Workforce, in rhythm" />

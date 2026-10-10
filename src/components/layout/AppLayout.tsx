@@ -118,7 +118,7 @@ const NAV_SECTIONS: NavSection[] = [
     glow: "rgba(139, 92, 246, 0.4)",
     items: [
       { label: "Approvals", href: "/approvals", icon: ShieldCheck, hint: "HR clearance inbox for leaves and expenses", keywords: ["inbox", "requests"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"], badge: "Inbox", badgeColor: "bg-amber-500/20 text-amber-300 border border-amber-500/30" },
-      { label: "People", href: "/employees", icon: Users, hint: "Full employee directory and staff directory", keywords: ["employee", "staff", "directory"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"] },
+      { label: "Employees", href: "/employees", icon: Users, hint: "Full employee directory and staff directory", keywords: ["employee", "staff", "directory"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"] },
       { label: "Departments", href: "/departments", icon: FolderTree, hint: "Organizational structure and teams", keywords: ["team", "org"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN"] },
       { label: "Onboarding", href: "/onboarding", icon: UserPlus, hint: "New hire workflows and document collection", keywords: ["hire", "joining"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"] },
       { label: "Offboarding", href: "/offboarding", icon: UserMinus, hint: "Exit clearance, checklist, and resignation handover", keywords: ["exit", "resign"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"] },
@@ -394,7 +394,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   });
 
   return (
-    <div className="wp-app-shell fixed inset-0 w-full h-full bg-[#f8fafc] text-slate-900 flex overflow-hidden antialiased font-sans">
+    <div className="wp-app-shell fixed inset-0 w-full h-full bg-slate-50 text-slate-900 flex overflow-hidden antialiased font-sans">
       {/* ─────────────────────────────────────────────────────────────────────────────
           1. Sleek Modern Enterprise Left Sidebar
       ───────────────────────────────────────────────────────────────────────────── */}
@@ -1067,7 +1067,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -50 }}
               transition={{ duration: 0.2 }}
-              className="wp-mobile-drawer lg:hidden fixed inset-0 z-50 bg-[#090e1a] text-slate-200 p-5 flex flex-col"
+              className="wp-mobile-drawer lg:hidden fixed inset-0 z-50 bg-slate-950 text-slate-200 p-5 flex flex-col"
             >
               <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
                 <Brand href="/dashboard" inverse subtitle="Enterprise" />
@@ -1220,7 +1220,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </AnimatePresence>
 
         {/* Main Application Canvas */}
-        <main className="wp-main-canvas min-w-0 flex-1 h-full overflow-y-auto p-3 sm:p-6 lg:p-8 bg-[#f8fafc] pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <main className="wp-main-canvas min-w-0 flex-1 h-full overflow-y-auto p-3 sm:p-6 lg:p-8 bg-slate-50 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <motion.div
             key={pathname}
             initial={{ opacity: 0, y: 6 }}

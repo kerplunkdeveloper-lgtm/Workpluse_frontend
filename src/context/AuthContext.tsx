@@ -44,6 +44,7 @@ interface AuthContextType {
   login: (email: string, pass: string) => Promise<boolean>;
   loginWithGoogle: (idToken: string) => Promise<boolean>;
   register: (payload: RegistrationPayload) => Promise<boolean>;
+  verifyEmail: (email: string, code: string, checkoutPlan?: string | null) => Promise<boolean>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -157,7 +158,46 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
     } catch (error: unknown) {
+      if (axios.isAxiosError<{ code?: string }>(error) && error.response?.data?.code === "EMAIL_NOT_VERIFIED") {
+        toast.info("Please verify your email to continue. Enter the code we sent you.");
+        go(`/verify-email?email=${encodeURIComponent(email.trim().toLowerCase())}&resend=1`);
+        return false;
+      }
       toast.error(getErrorMessage(error, "Failed to log in"));
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const verifyEmail = async (email: string, code: string, checkoutPlan?: string | null): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      const res = await authApi.verifyEmail(email, code);
+      const receivedToken = res?.data?.accessToken || res?.data?.token;
+      if (res?.success && receivedToken) {
+        setSessionAccessToken(receivedToken);
+        setToken(receivedToken);
+        setUser(res.data.user);
+        if (res.data.user?.employee?.id) {
+          void registerWebDevice();
+        }
+        if (checkoutPlan && checkoutPlan !== "FREE_TRIAL") {
+          toast.success("Email verified! Complete checkout to activate the paid plan.");
+          go(`/settings?checkout=${encodeURIComponent(checkoutPlan)}`);
+        } else if (res.data.user?.planLocked) {
+          toast.success("Email verified! Check your email for your Plan Unlock Code.", { duration: 6000 });
+          go("/dashboard");
+        } else {
+          toast.success("Email verified! Welcome to WorkPulse.");
+          go("/dashboard");
+        }
+        return true;
+      }
+      toast.error(res?.message || "Verification failed");
+      return false;
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Verification failed"));
       return false;
     } finally {
       setIsLoading(false);
@@ -196,6 +236,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     try {
       const res = await authApi.register(payload);
+      if (res?.success && res.data?.requiresVerification) {
+        toast.success("Account created! Enter the verification code we emailed you.", { duration: 6000 });
+        const checkout =
+          res.data.requiresCheckout && res.data.selectedPlan && res.data.selectedPlan !== "FREE_TRIAL"
+            ? `&checkout=${encodeURIComponent(res.data.selectedPlan)}`
+            : "";
+        go(`/verify-email?email=${encodeURIComponent(res.data.email)}${checkout}`);
+        return true;
+      }
       if (res?.success) {
         const receivedToken = res.data?.accessToken || res.data?.token;
         const newUser = res.data?.user;
@@ -254,6 +303,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         login,
         loginWithGoogle,
         register,
+        verifyEmail,
         logout,
         refreshUser: () => loadUser(),
       }}

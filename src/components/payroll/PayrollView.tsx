@@ -22,7 +22,9 @@ import {
   Layers,
 } from "lucide-react";
 import PayslipModal from "./PayslipModal";
-import PayslipTemplateCustomizer from "./PayslipTemplateCustomizer";
+import dynamic from "next/dynamic";
+
+const PayslipTemplateCustomizer = dynamic(() => import("./PayslipTemplateCustomizer"), { ssr: false });
 import SalaryStructuresView from "./SalaryStructuresView";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";

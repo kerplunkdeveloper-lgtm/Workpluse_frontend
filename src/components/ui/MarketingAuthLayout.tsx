@@ -47,7 +47,7 @@ function DashboardPreview() {
   return (
     <div className="w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-[#ffffff] shadow-[0_24px_50px_-28px_rgba(22,19,16,0.35)]">
       <div className="flex min-h-[260px]">
-        <aside className="hidden w-[118px] shrink-0 flex-col border-r border-slate-100 bg-[#0f172a] px-2.5 py-3 sm:flex">
+        <aside className="hidden w-[118px] shrink-0 flex-col border-r border-slate-100 bg-slate-950 px-2.5 py-3 sm:flex">
           <div className="mb-3 flex items-center gap-1.5 px-1">
             <WorkPulseMark size={22} />
             <span className="text-xs font-bold text-white">WorkPulse</span>
@@ -226,7 +226,7 @@ export function authFieldRing(focused: boolean) {
 
 export default function MarketingAuthLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#f8fafc] text-slate-900">
+    <div className="relative min-h-screen overflow-hidden bg-slate-50 text-slate-900">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0">
         <div className="absolute -left-24 top-10 h-[420px] w-[520px] rounded-full bg-blue-200/55 blur-[90px]" />
         <div className="absolute right-[-80px] top-24 h-[380px] w-[420px] rounded-full bg-sky-200/50 blur-[100px]" />

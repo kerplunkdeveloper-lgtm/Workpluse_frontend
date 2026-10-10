@@ -4,9 +4,9 @@ import React from "react";
 
 export default function AppSkeletonLoader() {
   return (
-    <div className="min-h-screen bg-[#f8fafc] flex">
+    <div className="min-h-screen bg-slate-50 flex">
       {/* Left Sidebar Skeleton (Desktop) */}
-      <aside className="hidden lg:flex flex-col w-[260px] bg-[#0f172a] border-r border-slate-800 p-5 space-y-6 shrink-0">
+      <aside className="hidden lg:flex flex-col w-[260px] bg-slate-950 border-r border-slate-800 p-5 space-y-6 shrink-0">
         {/* Brand Logo Skeleton */}
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-slate-800 animate-pulse shrink-0" />

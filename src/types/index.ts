@@ -153,6 +153,7 @@ export interface BreakRecord {
   start: string;
   end?: string | null;
   durationMinutes?: number;
+  durationSeconds?: number;
 }
 
 export interface Attendance {

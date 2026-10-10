@@ -87,7 +87,7 @@ export function BillingLocked() {
     "This workspace subscription is inactive. Update billing to restore access.";
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#f8fafc] p-6 text-center">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center">
       <div className="w-16 h-16 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 mb-4">
         <CreditCard className="w-7 h-7" />
       </div>

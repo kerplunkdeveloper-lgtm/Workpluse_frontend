@@ -28,7 +28,10 @@ import {
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import EmployeeProfileModal from "./EmployeeProfileModal";
-import BulkImportModal from "./BulkImportModal";
+import dynamic from "next/dynamic";
+
+// Loaded on demand: pulls in the xlsx parser, which most visits never need.
+const BulkImportModal = dynamic(() => import("./BulkImportModal"), { ssr: false });
 import ProfilePhotoPicker from "@/components/profile/ProfilePhotoPicker";
 import Pagination from "@/components/ui/Pagination";
 
@@ -370,7 +373,7 @@ export default function EmployeeDirectory() {
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => setBroadcastOpen(true)}
-            className="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-sm flex items-center gap-2 transition"
+            className="px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm font-semibold text-sm flex items-center gap-2 transition"
           >
             <Megaphone className="w-4 h-4" />
             Notify all
@@ -405,7 +408,7 @@ export default function EmployeeDirectory() {
               if (shifts.length > 0 && !shiftId) setShiftId(shifts[0].id);
               setModalOpen(true);
             }}
-            className="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-sm flex items-center gap-2 transition"
+            className="px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm font-semibold text-sm flex items-center gap-2 transition"
           >
             <Plus className="w-4 h-4" />
             Manual Add
@@ -1134,16 +1137,18 @@ export default function EmployeeDirectory() {
       )}
 
             {/* Bulk Import Modal */}
-      <BulkImportModal
-        isOpen={importModalOpen}
-        onClose={() => setImportModalOpen(false)}
-        onSuccess={() => {
-          loadData();
-        }}
-        branches={branches}
-        departments={departments}
-        shifts={shifts}
-      />
+      {importModalOpen && (
+        <BulkImportModal
+          isOpen={importModalOpen}
+          onClose={() => setImportModalOpen(false)}
+          onSuccess={() => {
+            loadData();
+          }}
+          branches={branches}
+          departments={departments}
+          shifts={shifts}
+        />
+      )}
 
       {/* Employee Profile & Documents Modal */}
       {pendingAction && (
