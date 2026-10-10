@@ -96,7 +96,7 @@ export default function CandidatePortalPage() {
     }
   };
 
-  const accepted = candidate?.status === "ACCEPTED" || candidate?.status === "ONBOARDED";
+  const accepted = candidate?.status === "ACCEPTED" || candidate?.status === "ONBOARDED" || candidate?.status === "ACTIVATED";
   const rejected = candidate?.status === "REJECTED" || candidate?.status === "OFFER_REJECTED";
   const progress = accepted ? 4 : candidate?.documents?.length ? 3 : candidate?.status === "OFFER_SENT" ? 2 : 1;
   const documentCount = candidate?.documents?.length || 0;
@@ -164,7 +164,7 @@ export default function CandidatePortalPage() {
             <div className="rounded-2xl bg-slate-50 p-4"><p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Email</p><p className="mt-2 truncate text-sm font-semibold text-slate-950">{candidate.email}</p></div>
           </div>
           <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4">
-            <div className="flex items-center gap-3">{accepted ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : rejected ? <XCircle className="h-5 w-5 text-rose-600" /> : <Clock3 className="h-5 w-5 text-indigo-600" />}<p className="text-sm font-medium text-slate-700">{accepted ? "Offer accepted. Welcome aboard." : rejected ? "This offer was declined." : "Please review and respond to your offer."}</p></div>
+            <div className="flex items-center gap-3">{accepted ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : rejected ? <XCircle className="h-5 w-5 text-rose-600" /> : <Clock3 className="h-5 w-5 text-indigo-600" />}<p className="text-sm font-medium text-slate-700">{accepted ? (candidate.status === "ACTIVATED" ? "Your employee account is active. Check your welcome email to sign in." : "Offer accepted. Welcome aboard.") : rejected ? "This offer was declined." : "Please review and respond to your offer."}</p></div>
             {!accepted && !rejected && <div className="w-full space-y-3 sm:w-auto sm:min-w-[23rem]"><label className="block text-xs font-semibold text-slate-600">Digital signature <span className="font-normal text-slate-400">(type your full name to accept)</span><input value={signature} onChange={(event) => setSignature(event.target.value)} placeholder={`${candidate.firstName} ${candidate.lastName || ""}`.trim()} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10" /></label><div className="flex justify-end gap-2"><button onClick={() => respond("REJECT")} disabled={isResponding} className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-white disabled:opacity-50">Decline</button><button onClick={() => respond("ACCEPT")} disabled={isResponding || !signature.trim()} className="inline-flex items-center gap-2 rounded-xl bg-indigo-700 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-900/15 transition hover:bg-[#123276] active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-50">{isResponding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Accept offer</button></div></div>}
           </div>
         </section>
