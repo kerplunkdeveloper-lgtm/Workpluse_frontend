@@ -16,7 +16,7 @@ function normalizeApiUrl(url: string): string {
 
 function getApiBaseUrl(): string {
   if (process.env.NEXT_PUBLIC_API_PROXY !== "false") {
-    return "/backend-api";
+    return "/api";
   }
 
   const remoteOverride = process.env.NEXT_PUBLIC_USE_REMOTE_API === "true";
