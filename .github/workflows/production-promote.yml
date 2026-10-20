@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   validate-and-build:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.actor == 'kerplunkdeveloper-lgtm'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -51,7 +51,7 @@ jobs:
           npm run build
 
   deploy-production:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.actor == 'kerplunkdeveloper-lgtm'
     needs: validate-and-build
     runs-on: ubuntu-latest
     environment: production
