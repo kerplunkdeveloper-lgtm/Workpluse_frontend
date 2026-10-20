@@ -37,6 +37,10 @@ export default function ShiftsAndRostersView() {
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("18:00");
   const [graceMinutes, setGraceMinutes] = useState(15);
+  const [breakMinutes, setBreakMinutes] = useState(15);
+  const [lunchMinutes, setLunchMinutes] = useState(45);
+  const [breakIncluded, setBreakIncluded] = useState(true);
+  const [lunchIncluded, setLunchIncluded] = useState(true);
   const [workingDays, setWorkingDays] = useState("1,2,3,4,5,6"); // Monday to Saturday
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -76,6 +80,10 @@ export default function ShiftsAndRostersView() {
         startTime,
         endTime,
         graceMinutes: Number(graceMinutes),
+        breakMinutes: Number(breakMinutes),
+        lunchMinutes: Number(lunchMinutes),
+        breakIncluded,
+        lunchIncluded,
         workingDays,
       });
 
@@ -178,7 +186,7 @@ export default function ShiftsAndRostersView() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2.5">
             <CalendarRange className="w-7 h-7 text-indigo-600" />
-            Shift Management & Rosters
+            Shifts & rosters
           </h1>
           <p className="text-xs text-slate-500 mt-1">
             Define work hours, grace arrival periods, 6-day week schedules, and automated overtime rules
@@ -435,6 +443,22 @@ export default function ShiftsAndRostersView() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[13px] font-medium text-slate-700 mb-1">
+<div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4">
+                <p className="text-xs font-semibold text-indigo-900">Included pause allowances</p>
+                <p className="mt-1 text-[11px] text-indigo-700">For a 09:00–18:00 shift, 15m break + 45m lunch means an 8h productive target.</p>
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <label className="text-[11px] font-medium text-slate-700">Break minutes
+                    <input type="number" min={0} max={240} value={breakMinutes} onChange={(e) => setBreakMinutes(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-900" />
+                  </label>
+                  <label className="text-[11px] font-medium text-slate-700">Lunch minutes
+                    <input type="number" min={0} max={240} value={lunchMinutes} onChange={(e) => setLunchMinutes(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-900" />
+                  </label>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-700">
+                  <label className="inline-flex items-center gap-2"><input type="checkbox" checked={breakIncluded} onChange={(e) => setBreakIncluded(e.target.checked)} /> Break included in shift window</label>
+                  <label className="inline-flex items-center gap-2"><input type="checkbox" checked={lunchIncluded} onChange={(e) => setLunchIncluded(e.target.checked)} /> Lunch included in shift window</label>
+                </div>
+              </div>
                     Grace Minutes *
                   </label>
                   <input

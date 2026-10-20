@@ -9,6 +9,7 @@ import PlatformNav from "@/components/platform/PlatformNav";
 
 type Cycle = "MONTHLY" | "ANNUAL";
 type Price = { id: string | null; plan: string; billingCycle: Cycle; priceInr: number; isActive: boolean };
+type Limit = { id: string | null; plan: string; maxEmployees: number; maxBranches: number; hasGeofence: boolean; hasPayroll: boolean; hasShiftPlanner: boolean; hasApiAccess: boolean };
 type Offer = {
   id: string;
   code: string;
@@ -51,6 +52,9 @@ export default function PlatformBillingView() {
   const [saved, setSaved] = useState<Price[]>([]);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [offers, setOffers] = useState<Offer[]>([]);
+  const [limits, setLimits] = useState<Limit[]>([]);
+  const [limitDraft, setLimitDraft] = useState<Record<string, Limit>>({});
+  const [savingLimit, setSavingLimit] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [offer, setOffer] = useState(emptyOffer);
@@ -61,11 +65,14 @@ export default function PlatformBillingView() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [priceResult, offerResult] = await Promise.all([billingAdminApi.prices(), billingAdminApi.offers()]);
+      const [priceResult, offerResult, limitResult] = await Promise.all([billingAdminApi.prices(), billingAdminApi.offers(), billingAdminApi.limits()]);
       const prices: Price[] = priceResult?.data || [];
       setSaved(prices);
       setDraft(Object.fromEntries(prices.map((p) => [keyOf(p.plan, p.billingCycle), String(p.priceInr)])));
       setOffers(offerResult?.data || []);
+      const nextLimits: Limit[] = limitResult?.data || [];
+      setLimits(nextLimits);
+      setLimitDraft(Object.fromEntries(nextLimits.map((item) => [item.plan, item])));
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Pricing could not be loaded.");
     } finally {
@@ -80,6 +87,20 @@ export default function PlatformBillingView() {
   const savedPrice = (plan: string, cycle: Cycle) => saved.find((p) => p.plan === plan && p.billingCycle === cycle);
   const draftValue = (plan: string, cycle: Cycle) => draft[keyOf(plan, cycle)] ?? "";
   const isDirty = (plan: string, cycle: Cycle) => draftValue(plan, cycle) !== String(savedPrice(plan, cycle)?.priceInr ?? "");
+  const saveLimit = async (plan: string) => {
+    const value = limitDraft[plan];
+    if (!value || !Number.isInteger(Number(value.maxEmployees)) || Number(value.maxEmployees) < 1 || !Number.isInteger(Number(value.maxBranches)) || Number(value.maxBranches) < 1) {
+      toast.error("Employee and branch limits must be whole numbers greater than zero."); return;
+    }
+    setSavingLimit(plan);
+    try {
+      const result = await billingAdminApi.updateLimit(plan, { ...value, maxEmployees: Number(value.maxEmployees), maxBranches: Number(value.maxBranches) });
+      setLimits((all) => all.map((item) => item.plan === plan ? result.data : item));
+      setLimitDraft((all) => ({ ...all, [plan]: result.data }));
+      toast.success(`${planName(plan)} limits updated`);
+    } catch (error: any) { toast.error(error?.response?.data?.message || "The plan limits could not be saved."); }
+    finally { setSavingLimit(null); }
+  };
 
   const savePrice = async (plan: string, cycle: Cycle) => {
     const value = Number(draftValue(plan, cycle));
@@ -261,6 +282,22 @@ export default function PlatformBillingView() {
                   </article>
                 );
               })}
+            </div>
+          </section>
+
+          <section aria-labelledby="limits-title">
+            <div className="flex items-end justify-between gap-3">
+              <div><h2 id="limits-title" className="text-sm font-bold uppercase tracking-wider text-slate-500">Plan limits &amp; entitlements</h2><p className="mt-1 text-xs text-slate-500">New subscriptions and plan changes use these values. Existing subscriptions keep their recorded entitlements.</p></div>
+            </div>
+            <div className="mt-3 grid gap-4 md:grid-cols-3">
+              {PLANS.map((plan) => { const value = limitDraft[plan.key]; if (!value) return null; return <article key={plan.key} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="font-serif text-xl font-semibold text-slate-950">{plan.name}</h3>
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  {([['maxEmployees', 'Employees'], ['maxBranches', 'Branches']] as const).map(([field, label]) => <label key={field} className="text-xs font-bold text-slate-700">{label}<input className={`${inputClass} mt-1`} type="number" min={1} value={value[field]} onChange={(e) => setLimitDraft((all) => ({ ...all, [plan.key]: { ...all[plan.key], [field]: Number(e.target.value) } }))} /></label>)}
+                </div>
+                <div className="mt-4 space-y-2 text-sm">{([['hasGeofence', 'GPS geofencing'], ['hasPayroll', 'Payroll'], ['hasShiftPlanner', 'Shift planner'], ['hasApiAccess', 'API access']] as const).map(([field, label]) => <label key={field} className="flex items-center gap-2 text-slate-700"><input type="checkbox" checked={Boolean(value[field])} onChange={(e) => setLimitDraft((all) => ({ ...all, [plan.key]: { ...all[plan.key], [field]: e.target.checked } }))} />{label}</label>)}</div>
+                <button type="button" className="mt-5 inline-flex items-center gap-2 rounded-xl bg-slate-950 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50" disabled={savingLimit === plan.key} onClick={() => void saveLimit(plan.key)}>{savingLimit === plan.key && <Loader2 className="h-4 w-4 animate-spin" />}<Save className="h-4 w-4" />Save limits</button>
+              </article>; })}
             </div>
           </section>
 

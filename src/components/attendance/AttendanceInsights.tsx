@@ -153,7 +153,17 @@ export function TeamToday() {
     const load = () =>
       attendanceApi
         .getSummary()
-        .then((res) => active && (setSummary((res?.data || res) as TeamSummary), setFailed(false)))
+        .then((res) => {
+          if (!active) return;
+          const data = (res?.data || res) as TeamSummary | null;
+          // A reply without the counters is treated as a failure, never rendered as "undefined".
+          if (data && typeof data.attendanceRate === "number" && typeof data.currentlyClockedIn === "number") {
+            setSummary(data);
+            setFailed(false);
+          } else {
+            setFailed(true);
+          }
+        })
         .catch(() => active && setFailed(true));
     void load();
     // Keep the board current while the page is open.

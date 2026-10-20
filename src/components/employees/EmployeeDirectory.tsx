@@ -24,13 +24,14 @@ import {
   FileCheck2,
   FileSpreadsheet,
   Megaphone,
+  KeyRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import EmployeeProfileModal from "./EmployeeProfileModal";
 import dynamic from "next/dynamic";
 
-// Loaded on demand: pulls in the xlsx parser, which most visits never need.
+// Loaded on demand: pulls in the Excel parser, which most visits never need.
 const BulkImportModal = dynamic(() => import("./BulkImportModal"), { ssr: false });
 import ProfilePhotoPicker from "@/components/profile/ProfilePhotoPicker";
 import Pagination from "@/components/ui/Pagination";
@@ -41,6 +42,7 @@ export default function EmployeeDirectory() {
   const [departments, setDepartments] = useState<any[]>([]);
   const [shifts, setShifts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [resendingInviteId, setResendingInviteId] = useState<string | null>(null);
   const { user, role: viewerRole } = useAuth();
   const canManageAccess = viewerRole === "SUPER_ADMIN" || viewerRole === "COMPANY_ADMIN";
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -187,7 +189,7 @@ export default function EmployeeDirectory() {
           lastName,
           email,
           phone,
-          employeeCode: employeeCode || `WP-EMP-${Date.now().toString().slice(-4)}`,
+          employeeCode: employeeCode || undefined,
           designation: designation || undefined,
           role,
           branchId: branchId || undefined,
@@ -206,7 +208,7 @@ export default function EmployeeDirectory() {
           email,
           password,
           phone,
-          employeeCode: employeeCode || `WP-EMP-${Date.now().toString().slice(-4)}`,
+          employeeCode: employeeCode || undefined,
           designation: designation || undefined,
           role,
           branchId: branchId || undefined,
@@ -363,14 +365,14 @@ export default function EmployeeDirectory() {
         <div>
           <h1 className="font-serif text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2.5">
             <Users className="w-7 h-7 text-indigo-600" />
-            Workforce Employee Directory
+            Employees
           </h1>
           <p className="text-xs text-slate-500 mt-1">
             Manage organization members, assign branches, departments, shifts, and configure compensation
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
             onClick={() => setBroadcastOpen(true)}
             className="px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm font-semibold text-sm flex items-center gap-2 transition"
@@ -380,9 +382,9 @@ export default function EmployeeDirectory() {
           </button>
           <button
             onClick={() => setImportModalOpen(true)}
-            className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm flex items-center gap-2 shadow-sm shadow-emerald-600/25 transition"
+            className="px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm font-semibold text-sm flex items-center gap-2 transition"
           >
-            <FileSpreadsheet className="w-4 h-4" />
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
             Import Excel
           </button>
 
@@ -394,10 +396,10 @@ export default function EmployeeDirectory() {
               if (shifts.length > 0 && !shiftId) setShiftId(shifts[0].id);
               setModalOpen(true);
             }}
-            className="px-4 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm flex items-center gap-2 shadow-lg shadow-indigo-600/25 transition"
+            className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm flex items-center gap-2 shadow-sm shadow-indigo-600/25 transition"
           >
             <Mail className="w-4 h-4" />
-            Invite Employee
+            Invite employee
           </button>
 
           <button
@@ -411,7 +413,7 @@ export default function EmployeeDirectory() {
             className="px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm font-semibold text-sm flex items-center gap-2 transition"
           >
             <Plus className="w-4 h-4" />
-            Manual Add
+            Add manually
           </button>
         </div>
       </div>
@@ -445,12 +447,13 @@ export default function EmployeeDirectory() {
         <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-slate-100 px-1 pt-3">
           {(
             [
-              { key: "departmentId", label: "Department", options: departments.map((d: any) => ({ value: d.id, text: d.name })) },
-              { key: "branchId", label: "Branch", options: branches.map((b: any) => ({ value: b.id, text: b.name })) },
-              { key: "shiftId", label: "Shift", options: shifts.map((sh: any) => ({ value: sh.id, text: sh.name })) },
+              { key: "departmentId", label: "Department", all: "All departments", options: departments.map((d: any) => ({ value: d.id, text: d.name })) },
+              { key: "branchId", label: "Branch", all: "All branches", options: branches.map((b: any) => ({ value: b.id, text: b.name })) },
+              { key: "shiftId", label: "Shift", all: "All shifts", options: shifts.map((sh: any) => ({ value: sh.id, text: sh.name })) },
               {
                 key: "role",
                 label: "Role",
+                all: "All roles",
                 options: [
                   { value: "EMPLOYEE", text: "Employee" },
                   { value: "MANAGER", text: "HR" },
@@ -460,6 +463,7 @@ export default function EmployeeDirectory() {
               {
                 key: "status",
                 label: "Status",
+                all: "All statuses",
                 options: [
                   { value: "ACTIVE", text: "Active" },
                   { value: "PROBATION", text: "Probation" },
@@ -471,6 +475,7 @@ export default function EmployeeDirectory() {
               {
                 key: "loginAccess",
                 label: "Login access",
+                all: "Any login access",
                 options: [
                   { value: "ON", text: "Login on" },
                   { value: "OFF", text: "Login off (deactivated)" },
@@ -489,7 +494,7 @@ export default function EmployeeDirectory() {
                   : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
               }`}
             >
-              <option value="">All {f.label.toLowerCase()}s</option>
+              <option value="">{f.all}</option>
               {f.options.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.text}
@@ -666,7 +671,7 @@ export default function EmployeeDirectory() {
                         </div>
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 font-mono font-semibold text-indigo-700">
+                    <td className="whitespace-nowrap py-3.5 px-4 font-mono text-[13px] font-medium text-indigo-700">
                       {emp.employeeCode}
                     </td>
                     <td className="py-3.5 px-4 text-slate-700">
@@ -741,17 +746,41 @@ export default function EmployeeDirectory() {
                       )}
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => {
-                          setSelectedEmployeeForProfile(emp);
-                          setProfileModalOpen(true);
-                        }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 text-xs font-semibold transition shadow-xs cursor-pointer"
-                        title="View Employee Profile & Manage Documents"
-                      >
-                        <FileCheck2 className="w-3.5 h-3.5" />
-                        Profile & Docs
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => {
+                            setSelectedEmployeeForProfile(emp);
+                            setProfileModalOpen(true);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 text-xs font-semibold transition shadow-xs cursor-pointer"
+                          title="View Employee Profile & Manage Documents"
+                        >
+                          <FileCheck2 className="w-3.5 h-3.5" />
+                          Profile & Docs
+                        </button>
+                        {canManageAccess && (emp.user as any)?.mustChangePassword && (
+                          <button
+                            type="button"
+                            disabled={resendingInviteId === emp.id}
+                            onClick={async () => {
+                              setResendingInviteId(emp.id);
+                              try {
+                                await employeesApi.resendInvite(emp.id);
+                                toast.success(`Credentials resent to ${emp.user?.email || "the employee"}.`);
+                              } catch (error: any) {
+                                toast.error(error?.response?.data?.message || "Credentials could not be resent.");
+                              } finally {
+                                setResendingInviteId(null);
+                              }
+                            }}
+                            className="inline-flex items-center gap-1 rounded-xl border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-800 disabled:opacity-50"
+                            title="Resend temporary credentials"
+                          >
+                            {resendingInviteId === emp.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />}
+                            Resend
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -932,12 +961,12 @@ export default function EmployeeDirectory() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[13px] font-medium text-slate-700 mb-1">Employee Code</label>
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1">Employee / HR ID</label>
                   <input
                     type="text"
                     value={employeeCode}
                     onChange={(e) => setEmployeeCode(e.target.value)}
-                    placeholder="e.g. WP-EMP-009 (optional)"
+                    placeholder="Auto: KM001"
                     className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
                   />
                 </div>

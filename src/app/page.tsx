@@ -1,15 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import { Hero, ProofBar, Features, Workflow, Offline, Security, FAQ, CtaBand, SiteFooter } from "@/components/landing/LandingSections";
 import { PricingClient } from "@/components/landing/PricingClient";
 import { SiteHeader } from "@/components/landing/SiteHeader";
 import type { SubscriptionPlanOption } from "@/types";
 
 export const revalidate = 300;
-
-const sans = Geist({ subsets: ["latin"], variable: "--wp-font-sans", display: "swap" });
-const serif = Instrument_Serif({ subsets: ["latin"], weight: "400", style: ["normal", "italic"], variable: "--wp-font-serif", display: "swap" });
-const mono = Geist_Mono({ subsets: ["latin"], variable: "--wp-font-mono", display: "swap" });
 
 export const metadata: Metadata = {
   title: "Workforce attendance, leave and payroll",
@@ -44,7 +39,7 @@ export default async function LandingPage() {
 
   return (
     // overflow-x-clip (not hidden) so the sticky header and sticky FAQ column keep working.
-    <div className={`${sans.variable} ${serif.variable} ${mono.variable} lp-grain relative isolate min-h-screen overflow-x-clip bg-[#f6f7f9] font-landing text-slate-900 antialiased selection:bg-indigo-100 selection:text-indigo-900`}>
+    <div className="lp-grain relative isolate min-h-screen overflow-x-clip bg-[#f6f7f9] font-landing text-slate-900 antialiased selection:bg-indigo-100 selection:text-indigo-900">
       <a href="#main" className="sr-only z-[70] rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
         Skip to content
       </a>

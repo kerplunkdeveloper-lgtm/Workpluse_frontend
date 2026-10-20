@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import {
   FileSpreadsheet,
   Upload,
@@ -70,7 +70,7 @@ export default function BulkImportModal({
   if (!isOpen) return null;
 
   // Generate and download a sample Excel template
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = async () => {
     try {
       const sampleBranch = branches[0]?.name || "Headquarters";
       const sampleDept = departments[0]?.name || "Engineering";
@@ -115,25 +115,18 @@ export default function BulkImportModal({
         },
       ];
 
-      const worksheet = XLSX.utils.json_to_sheet(templateData);
-
-      // Set column widths for readability
-      worksheet["!cols"] = [
-        { wch: 16 }, // First Name
-        { wch: 16 }, // Last Name
-        { wch: 28 }, // Email
-        { wch: 18 }, // Phone
-        { wch: 16 }, // Employee Code
-        { wch: 26 }, // Designation
-        { wch: 20 }, // Department
-        { wch: 20 }, // Branch
-        { wch: 18 }, // Shift
-        { wch: 14 }, // Role
-      ];
-
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Employees");
-      XLSX.writeFile(workbook, "WorkPulse_Employee_Import_Template.xlsx");
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Employees");
+      const headers = Object.keys(templateData[0]);
+      worksheet.columns = headers.map((header) => ({ header, key: header, width: Math.max(14, header.length + 4) }));
+      worksheet.addRows(templateData);
+      const output = await workbook.xlsx.writeBuffer();
+      const url = URL.createObjectURL(new Blob([output], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "WorkPulse_Employee_Import_Template.xlsx";
+      anchor.click();
+      URL.revokeObjectURL(url);
 
       toast.success("Excel template downloaded! Fill in your data and upload.");
     } catch (err: any) {
@@ -142,13 +135,15 @@ export default function BulkImportModal({
     }
   };
 
-  // Parse incoming file (.xlsx, .xls, .csv)
+  // Parse incoming file (.xlsx, .csv). Legacy .xls is intentionally rejected:
+  // ExcelJS does not support the old binary format and accepting it would
+  // require reintroducing the unmaintained parser this import flow replaced.
   const processFile = async (selectedFile: File) => {
-    const validExtensions = [".xlsx", ".xls", ".csv"];
+    const validExtensions = [".xlsx", ".csv"];
     const extension = selectedFile.name.substring(selectedFile.name.lastIndexOf(".")).toLowerCase();
 
     if (!validExtensions.includes(extension)) {
-      toast.error("Please select a valid Excel (.xlsx, .xls) or CSV file.");
+      toast.error("Please select a valid Excel (.xlsx) or CSV file.");
       return;
     }
 
@@ -157,16 +152,43 @@ export default function BulkImportModal({
     setImportSummary(null);
 
     try {
-      const buffer = await selectedFile.arrayBuffer();
-      const workbook = XLSX.read(buffer, { type: "array" });
-      const firstSheetName = workbook.SheetNames[0];
-
-      if (!firstSheetName) {
-        throw new Error("No sheet found in uploaded file.");
+      const textOf = (value: unknown) => {
+        if (value == null) return "";
+        if (typeof value === "object" && value !== null) {
+          const item = value as { text?: unknown; result?: unknown; richText?: Array<{ text?: unknown }> };
+          if (item.text != null) return String(item.text);
+          if (item.result != null) return String(item.result);
+          if (item.richText) return item.richText.map((part) => String(part.text || "")).join("");
+        }
+        return String(value);
+      };
+      const rawRows: any[] = [];
+      if (extension === ".csv") {
+        const csvRows: string[][] = [];
+        let row: string[] = [], cell = "", quoted = false;
+        for (const character of await selectedFile.text()) {
+          if (character === '"') quoted = !quoted;
+          else if (character === "," && !quoted) { row.push(cell); cell = ""; }
+          else if ((character === "\n" || character === "\r") && !quoted) { if (character === "\n" || cell || row.length) { row.push(cell); csvRows.push(row); row = []; cell = ""; } }
+          else cell += character;
+        }
+        if (cell || row.length) { row.push(cell); csvRows.push(row); }
+        const headers = (csvRows.shift() || []).map((header) => header.trim());
+        csvRows.forEach((values) => { const raw: Record<string, string> = {}; headers.forEach((header, index) => { if (header) raw[header] = String(values[index] || "").trim(); }); if (Object.values(raw).some(Boolean)) rawRows.push(raw); });
+      } else {
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(await selectedFile.arrayBuffer());
+        const worksheet = workbook.worksheets[0];
+        if (!worksheet) throw new Error("No sheet found in uploaded file.");
+        const headerRow = worksheet.getRow(1);
+        const headers = Array.from({ length: worksheet.columnCount }, (_, index) => textOf(headerRow.getCell(index + 1).value).trim());
+        worksheet.eachRow((row, rowNumber) => {
+          if (rowNumber === 1) return;
+          const raw: Record<string, string> = {};
+          headers.forEach((header, index) => { if (header) raw[header] = textOf(row.getCell(index + 1).value).trim(); });
+          if (Object.values(raw).some(Boolean)) rawRows.push(raw);
+        });
       }
-
-      const worksheet = workbook.Sheets[firstSheetName];
-      const rawRows: any[] = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
       if (rawRows.length === 0) {
         toast.warning("The selected sheet contains no employee rows.");
@@ -518,7 +540,7 @@ export default function BulkImportModal({
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".xlsx, .xls, .csv"
+                    accept=".xlsx, .csv"
                     className="hidden"
                     onChange={(e) => {
                       if (e.target.files && e.target.files[0]) {
@@ -533,7 +555,7 @@ export default function BulkImportModal({
                     Click to select file or drag & drop here
                   </h4>
                   <p className="text-xs text-slate-500 mt-1">
-                    Supports Microsoft Excel (<span className="font-mono">.xlsx</span>, <span className="font-mono">.xls</span>) and Comma-Separated Values (<span className="font-mono">.csv</span>)
+                    Supports Microsoft Excel (<span className="font-mono">.xlsx</span>) and Comma-Separated Values (<span className="font-mono">.csv</span>)
                   </p>
                   <span className="inline-block mt-3 text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
                     Max 500 employees per import

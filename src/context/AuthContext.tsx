@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import { User, UserRole } from "@/types";
 import {
   authApi,
@@ -42,6 +42,7 @@ interface AuthContextType {
   role: UserRole | null;
   isLoading: boolean;
   login: (email: string, pass: string) => Promise<boolean>;
+  completeTwoFactorLogin: (code: string) => Promise<boolean>;
   loginWithGoogle: (idToken: string) => Promise<boolean>;
   register: (payload: RegistrationPayload) => Promise<boolean>;
   verifyEmail: (email: string, code: string, checkoutPlan?: string | null) => Promise<boolean>;
@@ -56,6 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const router = useRouter();
+  const authOperationRef = useRef(0);
 
   const go = (path: string) => {
     if (typeof window === "undefined") return;
@@ -64,7 +66,53 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, 0);
   };
 
+  // A session is absolute: refresh-token rotation cannot extend this 30-day window.
+  // Browsers cap setTimeout at roughly 24.8 days, so schedule the expiry in
+  // safe chunks instead of passing the full 30-day duration at once.
+  useEffect(() => {
+    if (!user) return;
+
+    const key = "workpulse_session_started_at";
+    const maxAge = 30 * 24 * 60 * 60 * 1000;
+    const maxTimerDelay = 2_000_000_000;
+    const saved = Number(localStorage.getItem(key));
+    const startedAt = Number.isFinite(saved) && saved > 0 ? saved : Date.now();
+    localStorage.setItem(key, String(startedAt));
+
+    let timer: number | undefined;
+    let expired = false;
+
+    const expireSession = async () => {
+      if (expired) return;
+      expired = true;
+      try { await authApi.logout(); } catch { /* session expiry is local even if the API is offline */ }
+      localStorage.removeItem(key);
+      localStorage.removeItem("workpulse_access_token");
+      localStorage.removeItem("workpulse_refresh_token");
+      localStorage.removeItem("workpulse_user");
+      setSessionAccessToken(null);
+      setUser(null);
+      setToken(null);
+      toast.info("Your 30-day session has expired. Please log in again.");
+      go("/login");
+    };
+
+    const scheduleExpiryCheck = () => {
+      const remaining = maxAge - (Date.now() - startedAt);
+      if (remaining <= 0) {
+        void expireSession();
+        return;
+      }
+      timer = window.setTimeout(scheduleExpiryCheck, Math.min(remaining, maxTimerDelay));
+    };
+
+    scheduleExpiryCheck();
+    return () => {
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [user]);
   const loadUser = async (authToken?: string) => {
+    const operation = authOperationRef.current;
     try {
       let activeToken = authToken || getSessionAccessToken();
       if (!activeToken) {
@@ -95,15 +143,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         void registerWebDevice();
       }
     } catch {
+      if (operation !== authOperationRef.current) return;
       setSessionAccessToken(null);
       delete api.defaults.headers.common.Authorization;
       localStorage.removeItem("workpulse_access_token");
       localStorage.removeItem("workpulse_refresh_token");
       localStorage.removeItem("workpulse_user");
+      localStorage.removeItem("workpulse_session_started_at");
       setUser(null);
       setToken(null);
     } finally {
+      // Hydration is a one-time lifecycle flag. Even if a login/logout
+      // superseded this request, the app must not remain in pre-hydration mode.
       markSessionHydrated();
+      if (operation !== authOperationRef.current) return;
       setIsLoading(false);
     }
   };
@@ -132,6 +185,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const finishLogin = (loggedUser: User, receivedToken: string) => {
     setSessionAccessToken(receivedToken);
     setToken(receivedToken);
+    localStorage.setItem("workpulse_session_started_at", String(Date.now()));
     setUser(loggedUser);
     if (loggedUser.employee?.id) {
       void registerWebDevice();
@@ -147,9 +201,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const login = async (email: string, pass: string): Promise<boolean> => {
+    authOperationRef.current += 1;
     setIsLoading(true);
     try {
       const res = await authApi.login(email, pass);
+      if (res?.success && res?.data?.twoFactorRequired && res?.data?.challengeToken) {
+        sessionStorage.setItem("workpulse_2fa_challenge", res.data.challengeToken);
+        go("/two-factor");
+        return false;
+      }
       if (res?.success && (res?.data?.accessToken || res?.data?.token)) {
         finishLogin(res.data.user, res.data.accessToken || res.data.token);
         return true;
@@ -164,6 +224,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
       toast.error(getErrorMessage(error, "Failed to log in"));
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const completeTwoFactorLogin = async (code: string): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      const challengeToken = sessionStorage.getItem("workpulse_2fa_challenge");
+      if (!challengeToken) throw new Error("Your sign-in challenge has expired. Please sign in again.");
+      const res = await authApi.verifyTwoFactorLogin(challengeToken, code);
+      const receivedToken = res?.data?.accessToken || res?.data?.token;
+      if (!res?.success || !receivedToken) throw new Error(res?.message || "Two-step verification failed");
+      sessionStorage.removeItem("workpulse_2fa_challenge");
+      finishLogin(res.data.user, receivedToken);
+      return true;
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Two-step verification failed"));
       return false;
     } finally {
       setIsLoading(false);
@@ -277,6 +356,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async () => {
+    authOperationRef.current += 1;
     try {
       await authApi.logout();
     } catch {
@@ -285,6 +365,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.removeItem("workpulse_access_token");
       localStorage.removeItem("workpulse_refresh_token");
       localStorage.removeItem("workpulse_user");
+      localStorage.removeItem("workpulse_session_started_at");
       setSessionAccessToken(null);
       setUser(null);
       setToken(null);
@@ -301,6 +382,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         role: user?.role || null,
         isLoading,
         login,
+        completeTwoFactorLogin,
         loginWithGoogle,
         register,
         verifyEmail,

@@ -52,3 +52,6 @@ GEMINI.md
 .gemini/
 .gsd/
 .codex/
+
+# UI audit screenshots
+/.ui-audit/

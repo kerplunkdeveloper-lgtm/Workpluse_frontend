@@ -30,6 +30,7 @@ export const workedMinutes = (record: Partial<Attendance>) =>
   Number(record.workingMinutes ?? record.workMinutes ?? (record.workHours != null ? Number(record.workHours) * 60 : 0)) || 0;
 
 export const breakMinutesOf = (record: Partial<Attendance>) => Number(record.breakMinutes ?? record.totalBreakMinutes ?? 0) || 0;
+export const lunchMinutesOf = (record: Partial<Attendance>) => Number(record.lunchMinutes ?? record.totalLunchMinutes ?? 0) || 0;
 
 /** "7h 42m" — compact, for tight table cells and KPIs. */
 export const formatHm = (minutes: number) => {
@@ -79,9 +80,9 @@ export const formatShiftTime = (value?: string) => {
 export const liveWorkedMs = (attendance: Partial<Attendance> | undefined, isOnBreak: boolean, now: number) => {
   if (!attendance?.checkIn) return 0;
   if (attendance.checkOut) return workedMinutes(attendance) * 60000;
-  let ms = now - new Date(attendance.checkIn).getTime() - breakMinutesOf(attendance) * 60000;
+  let ms = now - new Date(attendance.checkIn).getTime() - (breakMinutesOf(attendance) + lunchMinutesOf(attendance)) * 60000;
   if (isOnBreak) {
-    const breakStart = attendance.events?.find((e) => e.type === "BREAK_START")?.timestamp;
+    const breakStart = attendance.events?.find((e) => e.type === "BREAK_START" || e.type === "LUNCH_START")?.timestamp;
     if (breakStart) ms -= now - new Date(breakStart).getTime();
   }
   return Math.max(0, ms);
