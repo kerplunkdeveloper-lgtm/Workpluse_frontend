@@ -12,6 +12,7 @@ HEALTH_URL=http://127.0.0.1:3000/
 
 [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'Invalid commit SHA'; exit 2; }
 [[ "$API_URL" =~ ^https://[^[:space:]]+$ ]] || { echo 'Production API URL must be HTTPS'; exit 3; }
+[[ ! -e "$CURRENT" || -L "$CURRENT" ]] || { echo 'Current release path exists and is not a symlink; refusing deployment'; exit 3; }
 mkdir -p "$RELEASES"
 PREVIOUS=""
 if [[ -L "$CURRENT" ]]; then PREVIOUS=$(readlink -f "$CURRENT"); fi
