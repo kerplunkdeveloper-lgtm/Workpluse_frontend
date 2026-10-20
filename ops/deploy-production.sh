@@ -34,16 +34,38 @@ restart_from() {
   pm2 delete "$PM2_NAME" >/dev/null 2>&1 || true
   (cd "$dir" && NEXT_PUBLIC_API_URL="$API_URL" pm2 start npm --name "$PM2_NAME" -- start)
 }
+SWITCHED=1
+rollback_on_error() {
+  local rc=$?
+  trap - ERR
+  if [[ "${SWITCHED:-0}" == 1 ]]; then
+    echo 'Deployment step failed; restoring previous application release' >&2
+    pm2 delete "$PM2_NAME" >/dev/null 2>&1 || true
+    if [[ -n "$PREVIOUS" && -d "$PREVIOUS" ]]; then
+      ln -sfn "$PREVIOUS" "$CURRENT.next"; mv -Tf "$CURRENT.next" "$CURRENT"
+      restart_from "$PREVIOUS" || true
+    else
+      rm -f "$CURRENT"
+      restart_from "$APP_ROOT" || true
+    fi
+    pm2 save >/dev/null 2>&1 || true
+  fi
+  exit "$rc"
+}
+trap rollback_on_error ERR
 restart_from "$RELEASE"
 for _ in $(seq 1 30); do
   if curl --fail --silent --show-error "$HEALTH_URL" >/dev/null 2>&1; then
     pm2 save
+    SWITCHED=0
+    trap - ERR
     echo "Frontend release $SHA healthy"
     exit 0
   fi
   sleep 2
 done
 echo 'Frontend health check failed; restoring previous application release'
+trap - ERR
 pm2 delete "$PM2_NAME" >/dev/null 2>&1 || true
 if [[ -n "$PREVIOUS" && -d "$PREVIOUS" ]]; then
   ln -sfn "$PREVIOUS" "$CURRENT.next"; mv -Tf "$CURRENT.next" "$CURRENT"
@@ -53,4 +75,5 @@ else
   restart_from "$APP_ROOT"
 fi
 pm2 save
+SWITCHED=0
 exit 7
