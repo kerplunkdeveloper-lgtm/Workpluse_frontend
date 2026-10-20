@@ -196,7 +196,7 @@ export default function OnboardingView() {
           <p className="mb-2 text-[11px] font-bold uppercase tracking-[.18em] text-indigo-600">People operations</p>
           <h1 className="flex items-center gap-2.5 text-3xl font-semibold tracking-[-.035em] text-slate-950">
             <UserPlus className="h-7 w-7 text-indigo-600" />
-            Onboarding workspace
+            Onboarding
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
             Move candidates from invitation to active employee with one clear, auditable workflow.

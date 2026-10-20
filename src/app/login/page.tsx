@@ -6,6 +6,8 @@ import Link from "next/link";
 import { Lock, Mail, ArrowRight, Loader2, Eye, EyeOff } from "lucide-react";
 import AuthShell from "@/components/ui/AuthShell";
 import { authFieldRing } from "@/components/ui/MarketingAuthLayout";
+import { authApi } from "@/lib/api";
+import { toast } from "sonner";
 
 declare global {
   interface Window {
@@ -34,6 +36,7 @@ export default function LoginPage() {
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [ssoLoading, setSsoLoading] = useState(false);
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
   const loginWithGoogleRef = useRef(loginWithGoogle);
 
@@ -78,6 +81,27 @@ export default function LoginPage() {
     setSubmitting(true);
     await login(email, password);
     setSubmitting(false);
+  };
+
+  const handleSso = async () => {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes("@")) {
+      toast.error("Enter your work email first to continue with company SSO.");
+      return;
+    }
+    setSsoLoading(true);
+    try {
+      const result = await authApi.discoverSso(cleanEmail);
+      if (!result?.enabled || !result.startUrl) {
+        toast.error("Company SSO is not enabled for this account.");
+        return;
+      }
+      window.location.assign(result.startUrl);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Company SSO is temporarily unavailable.");
+    } finally {
+      setSsoLoading(false);
+    }
   };
 
   return (
@@ -177,6 +201,15 @@ export default function LoginPage() {
           <div id="google-signin" className="flex justify-center min-h-[40px]" />
         </>
       ) : null}
+      <button
+        type="button"
+        onClick={handleSso}
+        disabled={ssoLoading}
+        className="mt-4 flex w-full items-center justify-center gap-2 rounded-full border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700 disabled:opacity-60"
+      >
+        {ssoLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+        Continue with company SSO
+      </button>
     </AuthShell>
   );
 }

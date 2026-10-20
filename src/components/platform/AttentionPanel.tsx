@@ -38,7 +38,17 @@ export default function AttentionPanel({ onOpen, refreshKey }: { onOpen: (id: st
       .attention()
       .then((res) => {
         if (cancelled) return;
-        const next: Attention = res?.data;
+        // Every group is filled in, so a partial reply shows empty tabs instead of crashing the console.
+        const raw = (res?.data || {}) as Partial<Attention>;
+        const group = (key: Key): Group => ({ count: Number(raw[key]?.count) || 0, items: raw[key]?.items || [] });
+        const next: Attention = {
+          total: Number(raw.total) || 0,
+          pastDue: group("pastDue"),
+          seatLimit: group("seatLimit"),
+          inactive: group("inactive"),
+          awaitingUnlock: group("awaitingUnlock"),
+          suspended: group("suspended"),
+        };
         setData(next);
         setFailed(false);
         // Open on the first group that has something in it.

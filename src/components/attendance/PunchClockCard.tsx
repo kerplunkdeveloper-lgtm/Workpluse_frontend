@@ -19,7 +19,7 @@ import { useAuth } from "@/context/AuthContext";
 import { formatTime } from "@/lib/utils";
 import type { Attendance, CheckInLocationPolicy } from "@/types";
 import PunchConfirmDialog from "./PunchConfirmDialog";
-import { breakMinutesOf, formatClock, formatDistance, formatHm, formatShiftTime, liveWorkedMs, shiftLengthMinutes } from "./attendanceUtils";
+import { breakMinutesOf, lunchMinutesOf, formatClock, formatDistance, formatHm, formatShiftTime, liveWorkedMs, shiftLengthMinutes } from "./attendanceUtils";
 
 type PunchAction = "CHECK_IN" | "CHECK_OUT";
 
@@ -59,10 +59,13 @@ export default function PunchClockCard() {
           hasCheckedIn={Boolean(status?.hasCheckedIn || status?.attendance?.checkIn)}
           hasCheckedOut={Boolean(status?.hasCheckedOut || status?.attendance?.checkOut)}
           isOnBreak={Boolean(status?.isOnBreak)}
+          activePauseType={status?.activePauseType || null}
           isOnline={ctx.isOnline}
           busy={ctx.isActionLoading}
           onPunch={(a) => setAction(a)}
-          onToggleBreak={() => void (status?.isOnBreak ? ctx.endBreak() : ctx.startBreak())}
+          onToggleBreak={() => void (status?.isOnBreak ? (status.activePauseType === "LUNCH" ? ctx.endLunch() : ctx.endBreak()) : ctx.startBreak())}
+          onStartLunch={() => void ctx.startLunch()}
+          onEndLunch={() => void ctx.endLunch()}
         />
         <LocationPanel
           policy={status?.locationPolicy}
@@ -95,15 +98,18 @@ export interface TodayPanelProps {
   hasCheckedIn: boolean;
   hasCheckedOut: boolean;
   isOnBreak: boolean;
+  activePauseType?: "BREAK" | "LUNCH" | null;
   isOnline: boolean;
   busy: boolean;
   onPunch: (action: PunchAction) => void;
   onToggleBreak: () => void;
+  onStartLunch: () => void;
+  onEndLunch: () => void;
   /** Fixed clock for previews/tests; omitted in the app so the timer ticks. */
   now?: number;
 }
 
-export function TodayPanel({ firstName, attendance, shift, hasCheckedIn, hasCheckedOut, isOnBreak, isOnline, busy, onPunch, onToggleBreak, now: fixedNow }: TodayPanelProps) {
+export function TodayPanel({ firstName, attendance, shift, hasCheckedIn, hasCheckedOut, isOnBreak, activePauseType, isOnline, busy, onPunch, onToggleBreak, onStartLunch, onEndLunch, now: fixedNow }: TodayPanelProps) {
   const [tick, setTick] = useState(() => fixedNow ?? Date.now());
   const working = hasCheckedIn && !hasCheckedOut;
   useEffect(() => {
@@ -119,6 +125,7 @@ export function TodayPanel({ firstName, attendance, shift, hasCheckedIn, hasChec
   const remaining = shiftMinutes ? Math.max(0, shiftMinutes - workedMs / 60000) : null;
   const late = Number(attendance?.lateMinutes || 0);
   const breakMinutes = breakMinutesOf(attendance || {});
+  const lunchMinutes = lunchMinutesOf(attendance || {});
 
   const state = hasCheckedOut
     ? { label: "Day complete", dot: "bg-slate-400" }
@@ -190,6 +197,11 @@ export function TodayPanel({ firstName, attendance, shift, hasCheckedIn, hasChec
                 {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : hasCheckedOut ? <LockKeyhole className="h-4 w-4" /> : hasCheckedIn ? <Square className="h-3.5 w-3.5 fill-current" /> : <Play className="h-4 w-4 fill-current" />}
                 {hasCheckedOut ? "Shift completed" : hasCheckedIn ? "Punch out" : "Punch in"}
               </button>
+              {working && !isOnBreak && (
+                <button type="button" onClick={onStartLunch} disabled={busy} className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl sm:w-auto bg-indigo-400/15 px-5 text-sm font-medium text-indigo-100 ring-1 ring-indigo-300/30 hover:bg-indigo-400/25 disabled:opacity-50">
+                  <Coffee className="h-4 w-4 text-indigo-200" /> Start lunch
+                </button>
+              )}
               {working && (
                 <button
                   type="button"
@@ -198,7 +210,7 @@ export function TodayPanel({ firstName, attendance, shift, hasCheckedIn, hasChec
                   className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl sm:w-auto bg-white/[0.06] px-5 text-sm font-medium text-slate-100 ring-1 ring-white/15 backdrop-blur transition duration-200 hover:bg-white/10 hover:ring-white/25 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:opacity-50"
                 >
                   <Coffee className="h-4 w-4 text-amber-300" />
-                  {isOnBreak ? "End break" : "Start break"}
+                  {isOnBreak ? (activePauseType === "LUNCH" ? "End lunch" : "End break") : "Start break"}
                 </button>
               )}
             </div>
@@ -217,7 +229,8 @@ export function TodayPanel({ firstName, attendance, shift, hasCheckedIn, hasChec
         <dl className="mt-9 grid grid-cols-2 divide-white/10 overflow-hidden rounded-2xl bg-white/[0.04] ring-1 ring-white/10 backdrop-blur sm:grid-cols-4 sm:divide-x">
           <Fact label="Punch in" value={attendance?.checkIn ? formatTime(attendance.checkIn) : "—"} />
           <Fact label="Punch out" value={attendance?.checkOut ? formatTime(attendance.checkOut) : "—"} />
-          <Fact label="Breaks" value={formatHm(breakMinutes)} />
+          <Fact label="Break" value={formatHm(breakMinutes)} />
+          <Fact label="Lunch" value={formatHm(lunchMinutes)} />
           <Fact
             label="Arrival"
             value={!attendance?.checkIn ? "—" : late > 0 ? `${formatHm(late)} late` : "On time"}

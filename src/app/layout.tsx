@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 import { AuthProvider } from "@/context/AuthContext";
 import { AttendanceProvider } from "@/context/AttendanceContext";
-import { Toaster } from "sonner";
+import ThemedToaster from "@/components/ui/ThemedToaster";
+import SystemStatusOverlay from "@/components/ui/SystemStatusOverlay";
 
 export const metadata: Metadata = {
   title: {
@@ -45,23 +47,16 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning className="h-full antialiased">
+      <head>
+        {/* Static, first-party script: sets data-theme before paint so dark mode never flashes white. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+      </head>
       <body suppressHydrationWarning className="min-h-full bg-slate-50 font-sans text-slate-900 antialiased">
         <AuthProvider>
           <AttendanceProvider>
             {children}
-            <Toaster
-              theme="light"
-              position="top-right"
-              richColors
-              closeButton
-              toastOptions={{
-                style: {
-                  background: "#ffffff",
-                  border: "1px solid #e2e8f0",
-                  color: "#0f172a",
-                },
-              }}
-            />
+            <ThemedToaster />
+            <SystemStatusOverlay />
           </AttendanceProvider>
         </AuthProvider>
       </body>

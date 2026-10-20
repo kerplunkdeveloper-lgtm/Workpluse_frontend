@@ -42,6 +42,7 @@ import { attendanceApi, leavesApi, employeesApi, branchesApi, departmentsApi, of
 import UnlockPlanModal from "@/components/auth/UnlockPlanModal";
 import CompanyLogo from "@/components/ui/CompanyLogo";
 import PunchConfirmDialog, { PunchConfirmAction } from "@/components/attendance/PunchConfirmDialog";
+import { formatHm, liveWorkedMs } from "@/components/attendance/attendanceUtils";
 import { formatTime, formatDurationMinutes, unwrapList, unwrapItem } from "@/lib/utils";
 
 type RosterStatus = "PRESENT" | "REMOTE" | "ON_LEAVE" | "LATE" | "ABSENT";
@@ -401,11 +402,13 @@ export default function DashboardOverview() {
   const todayCheckInTime = todayStatus?.attendance?.checkIn ? formatTime(todayStatus.attendance.checkIn) : null;
   const todayCheckOutTime = todayStatus?.attendance?.checkOut ? formatTime(todayStatus.attendance.checkOut) : null;
   const todayWorkingMinutes = (todayStatus?.attendance as any)?.workingMinutes ?? todayStatus?.attendance?.workMinutes;
-  const todayShiftHours = todayWorkingMinutes !== null && todayWorkingMinutes !== undefined
+  // Worked minutes are only stored at check-out, so while the shift runs the
+  // figure is derived live from the check-in time (minus breaks).
+  const todayShiftHours = isCheckedIn
+    ? formatHm(liveWorkedMs(todayStatus?.attendance, Boolean(todayStatus?.isOnBreak), currentTime.getTime()) / 60000)
+    : todayWorkingMinutes !== null && todayWorkingMinutes !== undefined
     ? formatDurationMinutes(Number(todayWorkingMinutes))
-    : isCheckedIn
-    ? "Active"
-    : "0 hrs";
+    : "0m";
 
   const filteredRoster = useMemo(() => {
     if (!activeBreakdownTab) return [];
@@ -454,7 +457,7 @@ export default function DashboardOverview() {
   const absentCount = Math.max(0, totalEmployees - presentCount - wfhCount - leaveCount - lateCount);
   const chartTotal = Math.max(1, presentCount + wfhCount + leaveCount + lateCount + absentCount);
   const pieStops = (() => {
-    const colors = ["#10b981", "#8b5cf6", "#38bdf8", "#f59e0b", "#cbd5e1"];
+    const colors = ["#10b981", "#8b5cf6", "#38bdf8", "#f59e0b", "var(--color-slate-300)"];
     const values = [presentCount, wfhCount, leaveCount, lateCount, absentCount];
     let cursor = 0;
     return values.map((value, index) => {
@@ -482,11 +485,24 @@ export default function DashboardOverview() {
       if (date < now) date = new Date(year + 1, source.getMonth(), source.getDate());
       return date;
     };
+    const getNextAnniversary = (value: string | Date | undefined) => {
+      if (!value) return null;
+      const source = new Date(value);
+      if (Number.isNaN(source.getTime())) return null;
+
+      // Do not show an anniversary until the employee has completed one full year.
+      const firstAnniversary = new Date(source.getFullYear() + 1, source.getMonth(), source.getDate());
+      if (firstAnniversary > now) return null;
+
+      let date = new Date(year, source.getMonth(), source.getDate());
+      if (date < now) date = new Date(year + 1, source.getMonth(), source.getDate());
+      return date;
+    };
     const moments: Array<{ id: string; name: string; type: "Birthday" | "Work anniversary"; date: Date; month: string; day: number }> = [];
     allEmployees.forEach((employee: any, index) => {
       const name = personName(employee);
       const birthday = getNextDate(employee.dateOfBirth || employee.dob);
-      const joining = getNextDate(employee.dateOfJoining || employee.joiningDate || employee.hireDate);
+      const joining = getNextAnniversary(employee.dateOfJoining || employee.joiningDate || employee.hireDate);
       if (birthday) moments.push({ id: `${employee.id || index}-birthday`, name, type: "Birthday", date: birthday, month: birthday.toLocaleDateString("en-IN", { month: "long" }), day: birthday.getDate() });
       if (joining) moments.push({ id: `${employee.id || index}-anniversary`, name, type: "Work anniversary", date: joining, month: joining.toLocaleDateString("en-IN", { month: "long" }), day: joining.getDate() });
     });
@@ -713,7 +729,7 @@ export default function DashboardOverview() {
             <div className="flex flex-wrap items-center gap-2.5 text-xs">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-slate-200 text-xs font-medium">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                Live Workspace
+                Live workspace
               </span>
 
               <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${timeBadge.color}`}>
@@ -723,7 +739,7 @@ export default function DashboardOverview() {
 
               <span className="hidden sm:inline text-slate-500">•</span>
               <span className="text-slate-400 text-xs">{formattedDate}</span>
-              <span className="font-mono font-bold text-indigo-300 bg-indigo-950/80 px-2.5 py-0.5 rounded-lg border border-indigo-700/50 text-xs">
+              <span className="font-semibold tabular-nums text-indigo-200 bg-white/[0.06] px-2.5 py-0.5 rounded-lg ring-1 ring-white/10 text-xs">
                 <LiveClock />
               </span>
 
@@ -739,8 +755,8 @@ export default function DashboardOverview() {
 
             {/* Title & Organization Subtitle */}
             <div>
-              <h1 className="font-serif text-2xl sm:text-[28px] font-bold tracking-tight text-white flex items-center gap-3">
-                {greetingFor(currentTime)}, {displayName}!
+              <h1 className="text-[26px] sm:text-[32px] font-semibold tracking-[-0.035em] text-white flex items-center gap-3">
+                {greetingFor(currentTime)}, {displayName}
               </h1>
               <p className="text-xs sm:text-sm text-slate-300 mt-2 max-w-xl leading-relaxed">
                 Workforce operations, real-time presence, and team payroll — active for{" "}
@@ -767,7 +783,7 @@ export default function DashboardOverview() {
                     <chip.icon className={`w-4 h-4 ${chip.color}`} />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm sm:text-base font-bold text-white leading-tight">{chip.value}</p>
+                    <p className="text-base sm:text-lg font-semibold tabular-nums tracking-[-0.02em] text-white leading-tight">{chip.value}</p>
                     <p className="text-xs text-slate-400 font-medium truncate">{chip.label}</p>
                   </div>
                 </div>
@@ -786,7 +802,7 @@ export default function DashboardOverview() {
               </span>
 
               <span
-                className={`flex min-h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-2xl px-3 py-2 text-[11px] font-bold uppercase leading-none tracking-wider ${
+                className={`flex min-h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold leading-none ${
                   isCheckedIn
                     ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
                     : hasCheckedOutToday
@@ -794,21 +810,25 @@ export default function DashboardOverview() {
                     : "bg-amber-500/20 text-amber-300 border border-amber-500/40"
                 }`}
               >
-                {isCheckedIn ? "On Shift" : hasCheckedOutToday ? "Shift Ended" : "Not In"}
+                {isCheckedIn ? "On shift" : hasCheckedOutToday ? "Shift ended" : "Not in"}
               </span>
             </div>
 
             {/* Active shift hours tracker */}
-            <div className="p-3 rounded-2xl bg-black/20 border border-white/10 flex items-center justify-between">
-              <div>
-                <p className="text-xs uppercase font-bold tracking-wider text-slate-400">Shift Elapsed</p>
-                <p className="text-sm font-bold text-white font-mono mt-0.5">{todayShiftHours}</p>
+            <dl className="grid grid-cols-3 divide-x divide-white/10 rounded-2xl bg-black/20 ring-1 ring-white/10">
+              <div className="min-w-0 px-2.5 py-3">
+                <dt className="whitespace-nowrap text-[11px] font-medium text-slate-400">Worked</dt>
+                <dd className="mt-0.5 truncate text-sm font-semibold tabular-nums text-white">{todayShiftHours}</dd>
               </div>
-              {todayCheckInTime && <div className="grid grid-cols-2 gap-4 text-right">
-                <div><p className="text-xs uppercase font-bold tracking-wider text-slate-400">Clocked In</p><p className="text-xs font-semibold text-slate-200 font-mono mt-0.5">{todayCheckInTime}</p></div>
-                {todayCheckOutTime && <div><p className="text-xs uppercase font-bold tracking-wider text-slate-400">Clocked Out</p><p className="text-xs font-semibold text-slate-200 font-mono mt-0.5">{todayCheckOutTime}</p></div>}
-              </div>}
-            </div>
+              <div className="min-w-0 px-2.5 py-3">
+                <dt className="whitespace-nowrap text-[11px] font-medium text-slate-400">Clocked in</dt>
+                <dd className="mt-0.5 truncate text-sm font-semibold tabular-nums text-white">{todayCheckInTime || "—"}</dd>
+              </div>
+              <div className="min-w-0 px-2.5 py-3">
+                <dt className="whitespace-nowrap text-[11px] font-medium text-slate-400">Clocked out</dt>
+                <dd className="mt-0.5 truncate text-sm font-semibold tabular-nums text-white">{todayCheckOutTime || "—"}</dd>
+              </div>
+            </dl>
 
             {/* Primary Action Button */}
             {!isCheckedIn ? (
@@ -816,20 +836,20 @@ export default function DashboardOverview() {
                 type="button"
                 onClick={() => setPendingPunch("CHECK_IN")}
                 disabled={isActionLoading || hasCheckedOutToday}
-                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 text-white font-semibold text-sm uppercase tracking-wider shadow-lg shadow-indigo-600/30 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 text-white font-semibold text-sm shadow-lg shadow-indigo-600/30 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <Clock className="w-4 h-4" />
-                {hasCheckedOutToday ? "Shift Already Completed" : "Clock In to Shift"}
+                {hasCheckedOutToday ? "Shift completed" : "Clock in"}
               </button>
             ) : (
               <button
                 type="button"
                 onClick={() => setPendingPunch("CHECK_OUT")}
                 disabled={isActionLoading}
-                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-400 hover:to-rose-500 text-white font-semibold text-sm uppercase tracking-wider shadow-lg shadow-rose-600/30 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-400 hover:to-rose-500 text-white font-semibold text-sm shadow-lg shadow-rose-600/30 transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 <Clock className="w-4 h-4" />
-                Clock Out of Shift
+                Clock out
               </button>
             )}
 
@@ -837,15 +857,15 @@ export default function DashboardOverview() {
             <div className="grid grid-cols-2 gap-2 text-xs pt-1">
               <Link
                 href="/leaves"
-                className="rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 px-3 py-2 text-center font-bold text-slate-200 transition"
+                className="rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 px-3 py-2 text-center font-semibold text-slate-100 transition"
               >
-                Apply Leave {pendingLeaves > 0 && `(${pendingLeaves})`}
+                Apply leave {pendingLeaves > 0 && `(${pendingLeaves})`}
               </Link>
               <Link
                 href="/payroll"
-                className="rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 px-3 py-2 text-center font-bold text-slate-200 transition"
+                className="rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 px-3 py-2 text-center font-semibold text-slate-100 transition"
               >
-                My Payslips
+                My payslips
               </Link>
             </div>
           </div>
@@ -959,7 +979,7 @@ export default function DashboardOverview() {
 
         <article className="min-w-0 rounded-3xl border border-slate-200/90 bg-white p-5 shadow-[0_18px_50px_-36px_rgba(15,23,42,0.35)] sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">Punch activity</p><h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">When your team clocks in</h2></div><Link href="/reports" className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700">Full reports <ArrowUpRight className="h-3.5 w-3.5" /></Link></div>
-          <div className="mt-5 overflow-x-auto rounded-2xl bg-slate-50/80 p-2 sm:p-3"><svg viewBox="0 0 600 180" role="img" aria-label="Punch activity by time of day" className="h-44 w-full min-w-[520px]"><defs><linearGradient id="attendance-area" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#6366f1" stopOpacity=".25" /><stop offset="1" stopColor="#6366f1" stopOpacity="0" /></linearGradient></defs>{[35, 70, 105, 140].map((y) => <line key={y} x1="20" x2="580" y1={y} y2={y} stroke="#e2e8f0" strokeDasharray="3 5" />)}<polyline points={`20,142 ${trendPoints} 580,142`} fill="url(#attendance-area)" stroke="none" /><polyline points={trendPoints} fill="none" stroke="#4f46e5" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />{hourlyData.map((item, index) => { const max = Math.max(...hourlyData.map((entry) => entry.count), 1); const x = (index / Math.max(hourlyData.length - 1, 1)) * 560 + 20; const y = 142 - (item.count / max) * 106; return <circle key={item.time} cx={x} cy={y} r={item.peak ? 5 : 3.5} fill={item.peak ? "#10b981" : "#4f46e5"} stroke="white" strokeWidth="2" />; })}</svg><div className="flex min-w-[520px] justify-between px-2 text-[10px] font-semibold text-slate-400">{hourlyData.map((item) => <span key={item.time}>{item.time}</span>)}</div></div>
+          <div className="mt-5 overflow-x-auto rounded-2xl bg-slate-50/80 p-2 sm:p-3"><svg viewBox="0 0 600 180" role="img" aria-label="Punch activity by time of day" className="h-44 w-full min-w-[520px]"><defs><linearGradient id="attendance-area" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#6366f1" stopOpacity=".25" /><stop offset="1" stopColor="#6366f1" stopOpacity="0" /></linearGradient></defs>{[35, 70, 105, 140].map((y) => <line key={y} x1="20" x2="580" y1={y} y2={y} style={{ stroke: "var(--color-slate-200)" }} strokeDasharray="3 5" />)}<polyline points={`20,142 ${trendPoints} 580,142`} fill="url(#attendance-area)" stroke="none" /><polyline points={trendPoints} fill="none" stroke="#4f46e5" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />{hourlyData.map((item, index) => { const max = Math.max(...hourlyData.map((entry) => entry.count), 1); const x = (index / Math.max(hourlyData.length - 1, 1)) * 560 + 20; const y = 142 - (item.count / max) * 106; return <circle key={item.time} cx={x} cy={y} r={item.peak ? 5 : 3.5} fill={item.peak ? "#10b981" : "#4f46e5"} stroke="white" strokeWidth="2" />; })}</svg><div className="flex min-w-[520px] justify-between px-2 text-[10px] font-semibold text-slate-400">{hourlyData.map((item) => <span key={item.time}>{item.time}</span>)}</div></div>
           <div className="mt-4 grid grid-cols-3 gap-2"><div className="rounded-xl bg-emerald-50 p-3"><p className="text-[10px] font-semibold text-emerald-700">Peak window</p><p className="mt-1 text-sm font-bold text-emerald-900">{hourlyData.find((item) => item.peak)?.time || "—"}</p></div><div className="rounded-xl bg-indigo-50 p-3"><p className="text-[10px] font-semibold text-indigo-700">Total punches</p><p className="mt-1 text-sm font-bold text-indigo-900">{allAttendance.length}</p></div><div className="rounded-xl bg-amber-50 p-3"><p className="text-[10px] font-semibold text-amber-700">Pending leave</p><p className="mt-1 text-sm font-bold text-amber-900">{pendingLeaves}</p></div></div>
         </article>
 
@@ -969,7 +989,7 @@ export default function DashboardOverview() {
             <span className="rounded-lg bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-500">{genderAnalytics.total} PEOPLE</span>
           </div>
           <div className="mt-6 grid gap-6 lg:grid-cols-[220px_1fr] lg:items-center">
-            <div className="relative mx-auto flex h-40 w-40 items-center justify-center rounded-full" style={{ background: `conic-gradient(#6366f1 0 ${genderAnalytics.malePercent}%, #ec4899 ${genderAnalytics.malePercent}% ${genderAnalytics.malePercent + genderAnalytics.femalePercent}%, #cbd5e1 ${genderAnalytics.malePercent + genderAnalytics.femalePercent}% 100%)` }}>
+            <div className="relative mx-auto flex h-40 w-40 items-center justify-center rounded-full" style={{ background: `conic-gradient(#6366f1 0 ${genderAnalytics.malePercent}%, #ec4899 ${genderAnalytics.malePercent}% ${genderAnalytics.malePercent + genderAnalytics.femalePercent}%, var(--color-slate-300) ${genderAnalytics.malePercent + genderAnalytics.femalePercent}% 100%)` }}>
               <div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-white shadow-inner"><span className="text-2xl font-bold tabular-nums text-slate-950">{genderAnalytics.malePercent + genderAnalytics.femalePercent}%</span><span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">specified</span></div>
             </div>
             <div className="space-y-4">
@@ -1116,7 +1136,7 @@ export default function DashboardOverview() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex items-start gap-3">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/20"><Activity className="h-5 w-5" /></span>
-                  <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">Live workforce pulse</p><h3 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">Clock-in rhythm</h3><p className="mt-1 text-sm text-slate-500">When your team starts the workday today.</p></div>
+                  <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">Live workforce pulse</p><h3 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">Clock-in</h3><p className="mt-1 text-sm text-slate-500">When your team starts the workday today.</p></div>
                 </div>
                 <div className="flex items-center gap-2 self-start rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />Live distribution</div>
               </div>
@@ -1143,7 +1163,7 @@ export default function DashboardOverview() {
                   <h3 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">Celebrate your team</h3>
                   <p className="mt-1 text-sm text-slate-500">Upcoming birthdays and work anniversaries, organised month by month.</p>
                 </div>
-                <div className="rounded-2xl bg-white/80 px-3 py-2 text-right shadow-sm ring-1 ring-slate-200/70"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Next 12 months</p><p className="mt-0.5 text-lg font-bold text-slate-900">{peopleMoments.length} moments</p></div>
+                <div className="rounded-2xl bg-white/80 px-3 py-2 text-right shadow-sm ring-1 ring-slate-200/70"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Next 12 months</p><p className="mt-0.5 text-lg font-bold text-slate-900">{peopleMoments.length} {peopleMoments.length === 1 ? "moment" : "moments"}</p></div>
               </div>
               {canSeePeopleNotifications && tomorrowBirthdays.length > 0 && <div className="mt-5 flex items-start gap-3 rounded-2xl border border-pink-200 bg-pink-50 p-3.5 text-pink-950"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-pink-500 text-white"><BellRing className="h-4 w-4" /></div><div className="min-w-0"><p className="text-sm font-bold">Birthday reminder for tomorrow</p><p className="mt-0.5 text-xs leading-5 text-pink-800">{tomorrowBirthdays.map((moment) => moment.name).join(", ")} {tomorrowBirthdays.length === 1 ? "has" : "have"} a birthday tomorrow. This reminder is visible to HR and admins only.</p></div></div>}
             </div>

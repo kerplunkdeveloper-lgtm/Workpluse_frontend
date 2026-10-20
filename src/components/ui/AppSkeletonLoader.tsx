@@ -4,7 +4,7 @@ import React from "react";
 
 export default function AppSkeletonLoader() {
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="wp-app-skeleton min-h-screen bg-slate-50 flex">
       {/* Left Sidebar Skeleton (Desktop) */}
       <aside className="hidden lg:flex flex-col w-[260px] bg-slate-950 border-r border-slate-800 p-5 space-y-6 shrink-0">
         {/* Brand Logo Skeleton */}

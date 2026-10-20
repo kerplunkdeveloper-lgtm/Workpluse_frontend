@@ -1,0 +1,426 @@
+/* ── Dark theme ─────────────────────────────────────────────────────────────
+   Generated token layer. Dark mode applies only inside the signed-in app
+   (anything that renders .wp-app-shell), so marketing and auth pages stay light.
+   Strategy: re-point Tailwind's palette variables instead of editing components.
+     · slate is mirrored (50 ↔ 950) so text, borders and muted surfaces flip;
+     · white surfaces become #121829;
+     · pale tints (50–200) become translucent dark tints of the same hue, and
+       deep text shades (700–900) become light ones, so status badges keep meaning;
+     · "dark islands" (sidebar, hero cards, dark buttons, overlays) restore the
+       original palette, because they were already designed for dark.
+   Originals are captured once on :root as --wp-o-* (custom properties inherit
+   their computed value, so they keep the light-theme colour). */
+:root {
+  --wp-o-slate-50: var(--color-slate-50);
+  --wp-o-slate-100: var(--color-slate-100);
+  --wp-o-slate-200: var(--color-slate-200);
+  --wp-o-slate-300: var(--color-slate-300);
+  --wp-o-slate-400: var(--color-slate-400);
+  --wp-o-slate-500: var(--color-slate-500);
+  --wp-o-slate-600: var(--color-slate-600);
+  --wp-o-slate-700: var(--color-slate-700);
+  --wp-o-slate-800: var(--color-slate-800);
+  --wp-o-slate-900: var(--color-slate-900);
+  --wp-o-slate-950: var(--color-slate-950);
+  --wp-o-indigo-50: var(--color-indigo-50);
+  --wp-o-indigo-100: var(--color-indigo-100);
+  --wp-o-indigo-200: var(--color-indigo-200);
+  --wp-o-indigo-700: var(--color-indigo-700);
+  --wp-o-indigo-800: var(--color-indigo-800);
+  --wp-o-indigo-900: var(--color-indigo-900);
+  --wp-o-blue-50: var(--color-blue-50);
+  --wp-o-blue-100: var(--color-blue-100);
+  --wp-o-blue-200: var(--color-blue-200);
+  --wp-o-blue-700: var(--color-blue-700);
+  --wp-o-blue-800: var(--color-blue-800);
+  --wp-o-blue-900: var(--color-blue-900);
+  --wp-o-emerald-50: var(--color-emerald-50);
+  --wp-o-emerald-100: var(--color-emerald-100);
+  --wp-o-emerald-200: var(--color-emerald-200);
+  --wp-o-emerald-700: var(--color-emerald-700);
+  --wp-o-emerald-800: var(--color-emerald-800);
+  --wp-o-emerald-900: var(--color-emerald-900);
+  --wp-o-green-50: var(--color-green-50);
+  --wp-o-green-100: var(--color-green-100);
+  --wp-o-green-200: var(--color-green-200);
+  --wp-o-green-700: var(--color-green-700);
+  --wp-o-green-800: var(--color-green-800);
+  --wp-o-green-900: var(--color-green-900);
+  --wp-o-rose-50: var(--color-rose-50);
+  --wp-o-rose-100: var(--color-rose-100);
+  --wp-o-rose-200: var(--color-rose-200);
+  --wp-o-rose-700: var(--color-rose-700);
+  --wp-o-rose-800: var(--color-rose-800);
+  --wp-o-rose-900: var(--color-rose-900);
+  --wp-o-red-50: var(--color-red-50);
+  --wp-o-red-100: var(--color-red-100);
+  --wp-o-red-200: var(--color-red-200);
+  --wp-o-red-700: var(--color-red-700);
+  --wp-o-red-800: var(--color-red-800);
+  --wp-o-red-900: var(--color-red-900);
+  --wp-o-amber-50: var(--color-amber-50);
+  --wp-o-amber-100: var(--color-amber-100);
+  --wp-o-amber-200: var(--color-amber-200);
+  --wp-o-amber-700: var(--color-amber-700);
+  --wp-o-amber-800: var(--color-amber-800);
+  --wp-o-amber-900: var(--color-amber-900);
+  --wp-o-orange-50: var(--color-orange-50);
+  --wp-o-orange-100: var(--color-orange-100);
+  --wp-o-orange-200: var(--color-orange-200);
+  --wp-o-orange-700: var(--color-orange-700);
+  --wp-o-orange-800: var(--color-orange-800);
+  --wp-o-orange-900: var(--color-orange-900);
+  --wp-o-yellow-50: var(--color-yellow-50);
+  --wp-o-yellow-100: var(--color-yellow-100);
+  --wp-o-yellow-200: var(--color-yellow-200);
+  --wp-o-yellow-700: var(--color-yellow-700);
+  --wp-o-yellow-800: var(--color-yellow-800);
+  --wp-o-yellow-900: var(--color-yellow-900);
+  --wp-o-sky-50: var(--color-sky-50);
+  --wp-o-sky-100: var(--color-sky-100);
+  --wp-o-sky-200: var(--color-sky-200);
+  --wp-o-sky-700: var(--color-sky-700);
+  --wp-o-sky-800: var(--color-sky-800);
+  --wp-o-sky-900: var(--color-sky-900);
+  --wp-o-cyan-50: var(--color-cyan-50);
+  --wp-o-cyan-100: var(--color-cyan-100);
+  --wp-o-cyan-200: var(--color-cyan-200);
+  --wp-o-cyan-700: var(--color-cyan-700);
+  --wp-o-cyan-800: var(--color-cyan-800);
+  --wp-o-cyan-900: var(--color-cyan-900);
+  --wp-o-teal-50: var(--color-teal-50);
+  --wp-o-teal-100: var(--color-teal-100);
+  --wp-o-teal-200: var(--color-teal-200);
+  --wp-o-teal-700: var(--color-teal-700);
+  --wp-o-teal-800: var(--color-teal-800);
+  --wp-o-teal-900: var(--color-teal-900);
+  --wp-o-violet-50: var(--color-violet-50);
+  --wp-o-violet-100: var(--color-violet-100);
+  --wp-o-violet-200: var(--color-violet-200);
+  --wp-o-violet-700: var(--color-violet-700);
+  --wp-o-violet-800: var(--color-violet-800);
+  --wp-o-violet-900: var(--color-violet-900);
+  --wp-o-purple-50: var(--color-purple-50);
+  --wp-o-purple-100: var(--color-purple-100);
+  --wp-o-purple-200: var(--color-purple-200);
+  --wp-o-purple-700: var(--color-purple-700);
+  --wp-o-purple-800: var(--color-purple-800);
+  --wp-o-purple-900: var(--color-purple-900);
+  --wp-o-fuchsia-50: var(--color-fuchsia-50);
+  --wp-o-fuchsia-100: var(--color-fuchsia-100);
+  --wp-o-fuchsia-200: var(--color-fuchsia-200);
+  --wp-o-fuchsia-700: var(--color-fuchsia-700);
+  --wp-o-fuchsia-800: var(--color-fuchsia-800);
+  --wp-o-fuchsia-900: var(--color-fuchsia-900);
+  --wp-o-pink-50: var(--color-pink-50);
+  --wp-o-pink-100: var(--color-pink-100);
+  --wp-o-pink-200: var(--color-pink-200);
+  --wp-o-pink-700: var(--color-pink-700);
+  --wp-o-pink-800: var(--color-pink-800);
+  --wp-o-pink-900: var(--color-pink-900);
+  --wp-o-lime-50: var(--color-lime-50);
+  --wp-o-lime-100: var(--color-lime-100);
+  --wp-o-lime-200: var(--color-lime-200);
+  --wp-o-lime-700: var(--color-lime-700);
+  --wp-o-lime-800: var(--color-lime-800);
+  --wp-o-lime-900: var(--color-lime-900);
+  --wp-o-white: #ffffff;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) {
+  color-scheme: dark;
+  --color-slate-50: #0b1020;
+  --color-slate-100: #151b2f;
+  --color-slate-200: #242b42;
+  --color-slate-300: #353e58;
+  --color-slate-400: #717b96;
+  --color-slate-500: #9098ae;
+  --color-slate-600: #abb2c5;
+  --color-slate-700: #c6ccda;
+  --color-slate-800: #dee2eb;
+  --color-slate-900: #eef0f6;
+  --color-slate-950: #f7f8fb;
+  --color-indigo-50: color-mix(in oklab, var(--color-indigo-500) 13%, #121829);
+  --color-indigo-100: color-mix(in oklab, var(--color-indigo-500) 20%, #121829);
+  --color-indigo-200: color-mix(in oklab, var(--color-indigo-500) 34%, #121829);
+  --color-indigo-700: var(--color-indigo-300);
+  --color-indigo-800: var(--wp-o-indigo-200);
+  --color-indigo-900: var(--wp-o-indigo-100);
+  --color-blue-50: color-mix(in oklab, var(--color-blue-500) 13%, #121829);
+  --color-blue-100: color-mix(in oklab, var(--color-blue-500) 20%, #121829);
+  --color-blue-200: color-mix(in oklab, var(--color-blue-500) 34%, #121829);
+  --color-blue-700: var(--color-blue-300);
+  --color-blue-800: var(--wp-o-blue-200);
+  --color-blue-900: var(--wp-o-blue-100);
+  --color-emerald-50: color-mix(in oklab, var(--color-emerald-500) 13%, #121829);
+  --color-emerald-100: color-mix(in oklab, var(--color-emerald-500) 20%, #121829);
+  --color-emerald-200: color-mix(in oklab, var(--color-emerald-500) 34%, #121829);
+  --color-emerald-700: var(--color-emerald-300);
+  --color-emerald-800: var(--wp-o-emerald-200);
+  --color-emerald-900: var(--wp-o-emerald-100);
+  --color-green-50: color-mix(in oklab, var(--color-green-500) 13%, #121829);
+  --color-green-100: color-mix(in oklab, var(--color-green-500) 20%, #121829);
+  --color-green-200: color-mix(in oklab, var(--color-green-500) 34%, #121829);
+  --color-green-700: var(--color-green-300);
+  --color-green-800: var(--wp-o-green-200);
+  --color-green-900: var(--wp-o-green-100);
+  --color-rose-50: color-mix(in oklab, var(--color-rose-500) 13%, #121829);
+  --color-rose-100: color-mix(in oklab, var(--color-rose-500) 20%, #121829);
+  --color-rose-200: color-mix(in oklab, var(--color-rose-500) 34%, #121829);
+  --color-rose-700: var(--color-rose-300);
+  --color-rose-800: var(--wp-o-rose-200);
+  --color-rose-900: var(--wp-o-rose-100);
+  --color-red-50: color-mix(in oklab, var(--color-red-500) 13%, #121829);
+  --color-red-100: color-mix(in oklab, var(--color-red-500) 20%, #121829);
+  --color-red-200: color-mix(in oklab, var(--color-red-500) 34%, #121829);
+  --color-red-700: var(--color-red-300);
+  --color-red-800: var(--wp-o-red-200);
+  --color-red-900: var(--wp-o-red-100);
+  --color-amber-50: color-mix(in oklab, var(--color-amber-500) 13%, #121829);
+  --color-amber-100: color-mix(in oklab, var(--color-amber-500) 20%, #121829);
+  --color-amber-200: color-mix(in oklab, var(--color-amber-500) 34%, #121829);
+  --color-amber-700: var(--color-amber-300);
+  --color-amber-800: var(--wp-o-amber-200);
+  --color-amber-900: var(--wp-o-amber-100);
+  --color-orange-50: color-mix(in oklab, var(--color-orange-500) 13%, #121829);
+  --color-orange-100: color-mix(in oklab, var(--color-orange-500) 20%, #121829);
+  --color-orange-200: color-mix(in oklab, var(--color-orange-500) 34%, #121829);
+  --color-orange-700: var(--color-orange-300);
+  --color-orange-800: var(--wp-o-orange-200);
+  --color-orange-900: var(--wp-o-orange-100);
+  --color-yellow-50: color-mix(in oklab, var(--color-yellow-500) 13%, #121829);
+  --color-yellow-100: color-mix(in oklab, var(--color-yellow-500) 20%, #121829);
+  --color-yellow-200: color-mix(in oklab, var(--color-yellow-500) 34%, #121829);
+  --color-yellow-700: var(--color-yellow-300);
+  --color-yellow-800: var(--wp-o-yellow-200);
+  --color-yellow-900: var(--wp-o-yellow-100);
+  --color-sky-50: color-mix(in oklab, var(--color-sky-500) 13%, #121829);
+  --color-sky-100: color-mix(in oklab, var(--color-sky-500) 20%, #121829);
+  --color-sky-200: color-mix(in oklab, var(--color-sky-500) 34%, #121829);
+  --color-sky-700: var(--color-sky-300);
+  --color-sky-800: var(--wp-o-sky-200);
+  --color-sky-900: var(--wp-o-sky-100);
+  --color-cyan-50: color-mix(in oklab, var(--color-cyan-500) 13%, #121829);
+  --color-cyan-100: color-mix(in oklab, var(--color-cyan-500) 20%, #121829);
+  --color-cyan-200: color-mix(in oklab, var(--color-cyan-500) 34%, #121829);
+  --color-cyan-700: var(--color-cyan-300);
+  --color-cyan-800: var(--wp-o-cyan-200);
+  --color-cyan-900: var(--wp-o-cyan-100);
+  --color-teal-50: color-mix(in oklab, var(--color-teal-500) 13%, #121829);
+  --color-teal-100: color-mix(in oklab, var(--color-teal-500) 20%, #121829);
+  --color-teal-200: color-mix(in oklab, var(--color-teal-500) 34%, #121829);
+  --color-teal-700: var(--color-teal-300);
+  --color-teal-800: var(--wp-o-teal-200);
+  --color-teal-900: var(--wp-o-teal-100);
+  --color-violet-50: color-mix(in oklab, var(--color-violet-500) 13%, #121829);
+  --color-violet-100: color-mix(in oklab, var(--color-violet-500) 20%, #121829);
+  --color-violet-200: color-mix(in oklab, var(--color-violet-500) 34%, #121829);
+  --color-violet-700: var(--color-violet-300);
+  --color-violet-800: var(--wp-o-violet-200);
+  --color-violet-900: var(--wp-o-violet-100);
+  --color-purple-50: color-mix(in oklab, var(--color-purple-500) 13%, #121829);
+  --color-purple-100: color-mix(in oklab, var(--color-purple-500) 20%, #121829);
+  --color-purple-200: color-mix(in oklab, var(--color-purple-500) 34%, #121829);
+  --color-purple-700: var(--color-purple-300);
+  --color-purple-800: var(--wp-o-purple-200);
+  --color-purple-900: var(--wp-o-purple-100);
+  --color-fuchsia-50: color-mix(in oklab, var(--color-fuchsia-500) 13%, #121829);
+  --color-fuchsia-100: color-mix(in oklab, var(--color-fuchsia-500) 20%, #121829);
+  --color-fuchsia-200: color-mix(in oklab, var(--color-fuchsia-500) 34%, #121829);
+  --color-fuchsia-700: var(--color-fuchsia-300);
+  --color-fuchsia-800: var(--wp-o-fuchsia-200);
+  --color-fuchsia-900: var(--wp-o-fuchsia-100);
+  --color-pink-50: color-mix(in oklab, var(--color-pink-500) 13%, #121829);
+  --color-pink-100: color-mix(in oklab, var(--color-pink-500) 20%, #121829);
+  --color-pink-200: color-mix(in oklab, var(--color-pink-500) 34%, #121829);
+  --color-pink-700: var(--color-pink-300);
+  --color-pink-800: var(--wp-o-pink-200);
+  --color-pink-900: var(--wp-o-pink-100);
+  --color-lime-50: color-mix(in oklab, var(--color-lime-500) 13%, #121829);
+  --color-lime-100: color-mix(in oklab, var(--color-lime-500) 20%, #121829);
+  --color-lime-200: color-mix(in oklab, var(--color-lime-500) 34%, #121829);
+  --color-lime-700: var(--color-lime-300);
+  --color-lime-800: var(--wp-o-lime-200);
+  --color-lime-900: var(--wp-o-lime-100);
+  --background: #0b1020;
+  --foreground: #eef0f6;
+  --surface: #121829;
+  --surface-muted: #151b2f;
+  --surface-raised: rgba(18, 24, 41, 0.88);
+  --border: #242b42;
+  --border-strong: #353e58;
+  --muted: #9098ae;
+  --primary-soft: color-mix(in oklab, #6366f1 16%, #121829);
+  --ring: rgba(129, 140, 248, 0.35);
+  --wp-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 22px 54px -30px rgba(0, 0, 0, 0.7);
+  --wp-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 22px -16px rgba(0, 0, 0, 0.6);
+  --wp-shadow-lg: 0 2px 4px rgba(0, 0, 0, 0.3), 0 30px 64px -32px rgba(0, 0, 0, 0.75);
+  background: #0b1020;
+  color: #eef0f6;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) :is(.wp-dark-surface, .wp-sidebar, .wp-mobile-drawer, .wp-tooltip-flyout, .dark-card, .hero-timekeeper, [class*="bg-[#0"], .bg-slate-800, .bg-slate-900, .bg-slate-950, [class*="bg-slate-800/"], [class*="bg-slate-900/"], [class*="bg-slate-950/"], [class*="from-slate-8"], [class*="from-slate-9"], [class*="from-indigo-9"], [class*="from-[#0"]) {
+  --color-slate-50: var(--wp-o-slate-50);
+  --color-slate-100: var(--wp-o-slate-100);
+  --color-slate-200: var(--wp-o-slate-200);
+  --color-slate-300: var(--wp-o-slate-300);
+  --color-slate-400: var(--wp-o-slate-400);
+  --color-slate-500: var(--wp-o-slate-500);
+  --color-slate-600: var(--wp-o-slate-600);
+  --color-slate-700: var(--wp-o-slate-700);
+  --color-slate-800: var(--wp-o-slate-800);
+  --color-slate-900: var(--wp-o-slate-900);
+  --color-slate-950: var(--wp-o-slate-950);
+  --color-indigo-50: var(--wp-o-indigo-50);
+  --color-indigo-100: var(--wp-o-indigo-100);
+  --color-indigo-200: var(--wp-o-indigo-200);
+  --color-indigo-700: var(--wp-o-indigo-700);
+  --color-indigo-800: var(--wp-o-indigo-800);
+  --color-indigo-900: var(--wp-o-indigo-900);
+  --color-blue-50: var(--wp-o-blue-50);
+  --color-blue-100: var(--wp-o-blue-100);
+  --color-blue-200: var(--wp-o-blue-200);
+  --color-blue-700: var(--wp-o-blue-700);
+  --color-blue-800: var(--wp-o-blue-800);
+  --color-blue-900: var(--wp-o-blue-900);
+  --color-emerald-50: var(--wp-o-emerald-50);
+  --color-emerald-100: var(--wp-o-emerald-100);
+  --color-emerald-200: var(--wp-o-emerald-200);
+  --color-emerald-700: var(--wp-o-emerald-700);
+  --color-emerald-800: var(--wp-o-emerald-800);
+  --color-emerald-900: var(--wp-o-emerald-900);
+  --color-green-50: var(--wp-o-green-50);
+  --color-green-100: var(--wp-o-green-100);
+  --color-green-200: var(--wp-o-green-200);
+  --color-green-700: var(--wp-o-green-700);
+  --color-green-800: var(--wp-o-green-800);
+  --color-green-900: var(--wp-o-green-900);
+  --color-rose-50: var(--wp-o-rose-50);
+  --color-rose-100: var(--wp-o-rose-100);
+  --color-rose-200: var(--wp-o-rose-200);
+  --color-rose-700: var(--wp-o-rose-700);
+  --color-rose-800: var(--wp-o-rose-800);
+  --color-rose-900: var(--wp-o-rose-900);
+  --color-red-50: var(--wp-o-red-50);
+  --color-red-100: var(--wp-o-red-100);
+  --color-red-200: var(--wp-o-red-200);
+  --color-red-700: var(--wp-o-red-700);
+  --color-red-800: var(--wp-o-red-800);
+  --color-red-900: var(--wp-o-red-900);
+  --color-amber-50: var(--wp-o-amber-50);
+  --color-amber-100: var(--wp-o-amber-100);
+  --color-amber-200: var(--wp-o-amber-200);
+  --color-amber-700: var(--wp-o-amber-700);
+  --color-amber-800: var(--wp-o-amber-800);
+  --color-amber-900: var(--wp-o-amber-900);
+  --color-orange-50: var(--wp-o-orange-50);
+  --color-orange-100: var(--wp-o-orange-100);
+  --color-orange-200: var(--wp-o-orange-200);
+  --color-orange-700: var(--wp-o-orange-700);
+  --color-orange-800: var(--wp-o-orange-800);
+  --color-orange-900: var(--wp-o-orange-900);
+  --color-yellow-50: var(--wp-o-yellow-50);
+  --color-yellow-100: var(--wp-o-yellow-100);
+  --color-yellow-200: var(--wp-o-yellow-200);
+  --color-yellow-700: var(--wp-o-yellow-700);
+  --color-yellow-800: var(--wp-o-yellow-800);
+  --color-yellow-900: var(--wp-o-yellow-900);
+  --color-sky-50: var(--wp-o-sky-50);
+  --color-sky-100: var(--wp-o-sky-100);
+  --color-sky-200: var(--wp-o-sky-200);
+  --color-sky-700: var(--wp-o-sky-700);
+  --color-sky-800: var(--wp-o-sky-800);
+  --color-sky-900: var(--wp-o-sky-900);
+  --color-cyan-50: var(--wp-o-cyan-50);
+  --color-cyan-100: var(--wp-o-cyan-100);
+  --color-cyan-200: var(--wp-o-cyan-200);
+  --color-cyan-700: var(--wp-o-cyan-700);
+  --color-cyan-800: var(--wp-o-cyan-800);
+  --color-cyan-900: var(--wp-o-cyan-900);
+  --color-teal-50: var(--wp-o-teal-50);
+  --color-teal-100: var(--wp-o-teal-100);
+  --color-teal-200: var(--wp-o-teal-200);
+  --color-teal-700: var(--wp-o-teal-700);
+  --color-teal-800: var(--wp-o-teal-800);
+  --color-teal-900: var(--wp-o-teal-900);
+  --color-violet-50: var(--wp-o-violet-50);
+  --color-violet-100: var(--wp-o-violet-100);
+  --color-violet-200: var(--wp-o-violet-200);
+  --color-violet-700: var(--wp-o-violet-700);
+  --color-violet-800: var(--wp-o-violet-800);
+  --color-violet-900: var(--wp-o-violet-900);
+  --color-purple-50: var(--wp-o-purple-50);
+  --color-purple-100: var(--wp-o-purple-100);
+  --color-purple-200: var(--wp-o-purple-200);
+  --color-purple-700: var(--wp-o-purple-700);
+  --color-purple-800: var(--wp-o-purple-800);
+  --color-purple-900: var(--wp-o-purple-900);
+  --color-fuchsia-50: var(--wp-o-fuchsia-50);
+  --color-fuchsia-100: var(--wp-o-fuchsia-100);
+  --color-fuchsia-200: var(--wp-o-fuchsia-200);
+  --color-fuchsia-700: var(--wp-o-fuchsia-700);
+  --color-fuchsia-800: var(--wp-o-fuchsia-800);
+  --color-fuchsia-900: var(--wp-o-fuchsia-900);
+  --color-pink-50: var(--wp-o-pink-50);
+  --color-pink-100: var(--wp-o-pink-100);
+  --color-pink-200: var(--wp-o-pink-200);
+  --color-pink-700: var(--wp-o-pink-700);
+  --color-pink-800: var(--wp-o-pink-800);
+  --color-pink-900: var(--wp-o-pink-900);
+  --color-lime-50: var(--wp-o-lime-50);
+  --color-lime-100: var(--wp-o-lime-100);
+  --color-lime-200: var(--wp-o-lime-200);
+  --color-lime-700: var(--wp-o-lime-700);
+  --color-lime-800: var(--wp-o-lime-800);
+  --color-lime-900: var(--wp-o-lime-900);
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) :is(.bg-white, .bg-white\/95, .bg-white\/90, .bg-white\/85, .bg-white\/80, .bg-white\/75, .bg-white\/70, .bg-white\/60) { background-color: #121829; }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) :is(.wp-dark-surface, .wp-sidebar, .wp-mobile-drawer, .wp-tooltip-flyout, .dark-card, .hero-timekeeper, [class*="bg-[#0"], .bg-slate-800, .bg-slate-900, .bg-slate-950, [class*="bg-slate-800/"], [class*="bg-slate-900/"], [class*="bg-slate-950/"], [class*="from-slate-8"], [class*="from-slate-9"], [class*="from-indigo-9"], [class*="from-[#0"]) :is(.bg-white, .bg-white\/95, .bg-white\/90, .bg-white\/85, .bg-white\/80, .bg-white\/75, .bg-white\/70, .bg-white\/60), html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) :is(.bg-white, .bg-white\/95, .bg-white\/90, .bg-white\/85, .bg-white\/80, .bg-white\/75, .bg-white\/70, .bg-white\/60):is(.wp-dark-surface, .wp-sidebar, .wp-mobile-drawer, .wp-tooltip-flyout, .dark-card, .hero-timekeeper, [class*="bg-[#0"], .bg-slate-800, .bg-slate-900, .bg-slate-950, [class*="bg-slate-800/"], [class*="bg-slate-900/"], [class*="bg-slate-950/"], [class*="from-slate-8"], [class*="from-slate-9"], [class*="from-indigo-9"], [class*="from-[#0"]) { background-color: var(--wp-o-white); }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) :is(.hover\:bg-white:hover) { background-color: #1a2136; }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .text-indigo-600:not(:is(.wp-dark-surface, .wp-sidebar, .wp-mobile-drawer, .wp-tooltip-flyout, .dark-card, .hero-timekeeper, [class*="bg-[#0"], .bg-slate-800, .bg-slate-900, .bg-slate-950, [class*="bg-slate-800/"], [class*="bg-slate-900/"], [class*="bg-slate-950/"], [class*="from-slate-8"], [class*="from-slate-9"], [class*="from-indigo-9"], [class*="from-[#0"]) *) { color: var(--color-indigo-400); }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .text-blue-600:not(:is(.wp-dark-surface, .wp-sidebar, .wp-mobile-drawer, .wp-tooltip-flyout, .dark-card, .hero-timekeeper, [class*="bg-[#0"], .bg-slate-800, .bg-slate-900, .bg-slate-950, [class*="bg-slate-800/"], [class*="bg-slate-900/"], [class*="bg-slate-950/"], [class*="from-slate-8"], [class*="from-slate-9"], [class*="from-indigo-9"], [class*="from-[#0"]) *) { color: var(--color-blue-400); }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .text-emerald-600:not(:is(.wp-dark-surface, .wp-sidebar, .wp-mobile-drawer, .wp-tooltip-flyout, .dark-card, .hero-timekeeper, [class*="bg-[#0"], .bg-slate-800, .bg-slate-900, .bg-slate-950, [class*="bg-slate-800/"], [class*="bg-slate-900/"], [class*="bg-slate-950/"], [class*="from-slate-8"], [class*="from-slate-9"], [class*="from-indigo-9"], [class*="from-[#0"]) *) { color: var(--color-emerald-400); }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .text-green-600:not(:is(.wp-dark-surface, .wp-sidebar, .wp-mobile-drawer, .wp-tooltip-flyout, .dark-card, .hero-timekeeper, [class*="bg-[#0"], .bg-slate-800, .bg-slate-900, .bg-slate-950, [class*="bg-slate-800/"], [class*="bg-slate-900/"], [class*="bg-slate-950/"], [class*="from-slate-8"], [class*="from-slate-9"], [class*="from-indigo-9"], [class*="from-[#0"]) *) { color: var(--color-green-400); }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .text-rose-600:not(:is(.wp-dark-surface, .wp-sidebar, .wp-mobile-drawer, .wp-tooltip-flyout, .dark-card, .hero-timekeeper, [class*="bg-[#0"], .bg-slate-800, .bg-slate-900, .bg-slate-950, [class*="bg-slate-800/"], [class*="bg-slate-900/"], [class*="bg-slate-950/"], [class*="from-slate-8"], [class*="from-slate-9"], [class*="from-indigo-9"], [class*="from-[#0"]) *) { color: var(--color-rose-400); }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .text-red-600:not(:is(.wp-dark-surface, .wp-sidebar, .wp-mobile-drawer, .wp-tooltip-flyout, .dark-card, .hero-timekeeper, [class*="bg-[#0"], .bg-slate-800, .bg-slate-900, .bg-slate-950, [class*="bg-slate-800/"], [class*="bg-slate-900/"], [class*="bg-slate-950/"], [class*="from-slate-8"], [class*="from-slate-9"], [class*="from-indigo-9"], [class*="from-[#0"]) *) { color: var(--color-red-400); }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .text-amber-600:not(:is(.wp-dark-surface, .wp-sidebar, .wp-mobile-drawer, .wp-tooltip-flyout, .dark-card, .hero-timekeeper, [class*="bg-[#0"], .bg-slate-800, .bg-slate-900, .bg-slate-950, [class*="bg-slate-800/"], [class*="bg-slate-900/"], [class*="bg-slate-950/"], [class*="from-slate-8"], [class*="from-slate-9"], [class*="from-indigo-9"], [class*="from-[#0"]) *) { color: var(--color-amber-400); }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .text-orange-600:not(:is(.wp-dark-surface, .wp-sidebar, .wp-mobile-drawer, .wp-tooltip-flyout, .dark-card, .hero-timekeeper, [class*="bg-[#0"], .bg-slate-800, .bg-slate-900, .bg-slate-950, [class*="bg-slate-800/"], [class*="bg-slate-900/"], [class*="bg-slate-950/"], [class*="from-slate-8"], [class*="from-slate-9"], [class*="from-indigo-9"], [class*="from-[#0"]) *) { color: var(--color-orange-400); }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .text-yellow-600:not(:is(.wp-dark-surface, .wp-sidebar, .wp-mobile-drawer, .wp-tooltip-flyout, .dark-card, .hero-timekeeper, [class*="bg-[#0"], .bg-slate-800, .bg-slate-900, .bg-slate-950, [class*="bg-slate-800/"], [class*="bg-slate-900/"], [class*="bg-slate-950/"], [class*="from-slate-8"], [class*="from-slate-9"], [class*="from-indigo-9"], [class*="from-[#0"]) *) { color: var(--color-yellow-400); }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .text-sky-600:not(:is(.wp-dark-surface, .wp-sidebar, .wp-mobile-drawer, .wp-tooltip-flyout, .dark-card, .hero-timekeeper, [class*="bg-[#0"], .bg-slate-800, .bg-slate-900, .bg-slate-950, [class*="bg-slate-800/"], [class*="bg-slate-900/"], [class*="bg-slate-950/"], [class*="from-slate-8"], [class*="from-slate-9"], [class*="from-indigo-9"], [class*="from-[#0"]) *) { color: var(--color-sky-400); }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .text-cyan-600:not(:is(.wp-dark-surface, .wp-sidebar, .wp-mobile-drawer, .wp-tooltip-flyout, .dark-card, .hero-timekeeper, [class*="bg-[#0"], .bg-slate-800, .bg-slate-900, .bg-slate-950, [class*="bg-slate-800/"], [class*="bg-slate-900/"], [class*="bg-slate-950/"], [class*="from-slate-8"], [class*="from-slate-9"], [class*="from-indigo-9"], [class*="from-[#0"]) *) { color: var(--color-cyan-400); }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .text-teal-600:not(:is(.wp-dark-surface, .wp-sidebar, .wp-mobile-drawer, .wp-tooltip-flyout, .dark-card, .hero-timekeeper, [class*="bg-[#0"], .bg-slate-800, .bg-slate-900, .bg-slate-950, [class*="bg-slate-800/"], [class*="bg-slate-900/"], [class*="bg-slate-950/"], [class*="from-slate-8"], [class*="from-slate-9"], [class*="from-indigo-9"], [class*="from-[#0"]) *) { color: var(--color-teal-400); }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .text-violet-600:not(:is(.wp-dark-surface, .wp-sidebar, .wp-mobile-drawer, .wp-tooltip-flyout, .dark-card, .hero-timekeeper, [class*="bg-[#0"], .bg-slate-800, .bg-slate-900, .bg-slate-950, [class*="bg-slate-800/"], [class*="bg-slate-900/"], [class*="bg-slate-950/"], [class*="from-slate-8"], [class*="from-slate-9"], [class*="from-indigo-9"], [class*="from-[#0"]) *) { color: var(--color-violet-400); }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .text-purple-600:not(:is(.wp-dark-surface, .wp-sidebar, .wp-mobile-drawer, .wp-tooltip-flyout, .dark-card, .hero-timekeeper, [class*="bg-[#0"], .bg-slate-800, .bg-slate-900, .bg-slate-950, [class*="bg-slate-800/"], [class*="bg-slate-900/"], [class*="bg-slate-950/"], [class*="from-slate-8"], [class*="from-slate-9"], [class*="from-indigo-9"], [class*="from-[#0"]) *) { color: var(--color-purple-400); }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .text-fuchsia-600:not(:is(.wp-dark-surface, .wp-sidebar, .wp-mobile-drawer, .wp-tooltip-flyout, .dark-card, .hero-timekeeper, [class*="bg-[#0"], .bg-slate-800, .bg-slate-900, .bg-slate-950, [class*="bg-slate-800/"], [class*="bg-slate-900/"], [class*="bg-slate-950/"], [class*="from-slate-8"], [class*="from-slate-9"], [class*="from-indigo-9"], [class*="from-[#0"]) *) { color: var(--color-fuchsia-400); }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .text-pink-600:not(:is(.wp-dark-surface, .wp-sidebar, .wp-mobile-drawer, .wp-tooltip-flyout, .dark-card, .hero-timekeeper, [class*="bg-[#0"], .bg-slate-800, .bg-slate-900, .bg-slate-950, [class*="bg-slate-800/"], [class*="bg-slate-900/"], [class*="bg-slate-950/"], [class*="from-slate-8"], [class*="from-slate-9"], [class*="from-indigo-9"], [class*="from-[#0"]) *) { color: var(--color-pink-400); }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .text-lime-600:not(:is(.wp-dark-surface, .wp-sidebar, .wp-mobile-drawer, .wp-tooltip-flyout, .dark-card, .hero-timekeeper, [class*="bg-[#0"], .bg-slate-800, .bg-slate-900, .bg-slate-950, [class*="bg-slate-800/"], [class*="bg-slate-900/"], [class*="bg-slate-950/"], [class*="from-slate-8"], [class*="from-slate-9"], [class*="from-indigo-9"], [class*="from-[#0"]) *) { color: var(--color-lime-400); }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-app-shell, html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-main-canvas {
+  background: radial-gradient(850px 420px at 4% -8%, rgba(99, 102, 241, 0.10), transparent 58%), #0b1020 !important;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-topbar {
+  background: rgba(13, 18, 34, 0.86) !important;
+  border-color: #1d2438 !important;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 28px -28px rgba(0, 0, 0, 0.8);
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-main-canvas .rounded-3xl.bg-white,
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-main-canvas .rounded-2xl.bg-white,
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-main-canvas .app-card,
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-main-canvas .glass-card { border-color: #1f2639 !important; }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-main-canvas .rounded-3xl.bg-white:hover,
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-main-canvas .rounded-2xl.bg-white:hover,
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-main-canvas .app-card:hover,
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-main-canvas .glass-card:hover { border-color: rgba(129, 140, 248, 0.45) !important; }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-main-canvas input:not([type="checkbox"]):not([type="radio"]),
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-main-canvas select,
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-main-canvas textarea { background-color: #0f1526; border-color: #2a3249; color: #eef0f6; }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-main-canvas input:not([type="checkbox"]):not([type="radio"]):focus,
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-main-canvas select:focus,
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-main-canvas textarea:focus { background-color: #121829; }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-main-canvas table thead { background: linear-gradient(180deg, #151b2f, #121829); }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-main-canvas table th { color: #9098ae; }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-main-canvas table tbody tr:hover { background: rgba(99, 102, 241, 0.07); }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-glass { background: rgba(18, 24, 41, 0.72); border-color: rgba(255, 255, 255, 0.06); }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .skeleton-shimmer { background: linear-gradient(100deg, #151b2f 20%, #1e2540 38%, #151b2f 56%); background-size: 200% 100%; }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) ::selection { background: rgba(129, 140, 248, 0.32); color: #fff; }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) ::-webkit-scrollbar-thumb { background: #2a3249; }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) ::-webkit-scrollbar-thumb:hover { background: #3a4462; }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) option { background: #121829; color: #eef0f6; }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) img:not([src$=".svg"]) { filter: none; }

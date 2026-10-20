@@ -20,6 +20,20 @@ jobs:
       - run: npm run lint
       - run: npx tsc --noEmit --incremental false
       - run: npm run build
+      - name: Start production server
+        run: |
+          npm start > /tmp/next.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf -o /dev/null http://localhost:3000/login && exit 0; sleep 1; done
+          cat /tmp/next.log; exit 1
+      - name: UI audit (layout, crashes, placeholder text, contrast)
+        run: npm run audit:ui
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+      - name: UI audit, dark theme
+        run: npm run audit:ui
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          THEME: dark
 
   deploy_alpha:
     name: Deploy Frontend Alpha

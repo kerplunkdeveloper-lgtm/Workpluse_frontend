@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { unwrapList } from "@/lib/utils";
 import { trialDaysLabel, trialDaysRemaining } from "@/components/billing/WorkspaceBilling";
 import type { SubscriptionPlanOption } from "@/types";
+import WebhooksSettings from "@/components/settings/WebhooksSettings";
 import { confirmDialog } from "@/components/ui/confirmDialog";
 import CompanyLogoSetting from "@/components/settings/CompanyLogoSetting";
 
@@ -39,6 +40,9 @@ export default function SubscriptionSettingsView() {
   const [activeEmployeesCount, setActiveEmployeesCount] = useState(0);
   const [cancelling, setCancelling] = useState(false);
   const [keyName, setKeyName] = useState("Production");
+  const [ssoForm, setSsoForm] = useState({ enabled: false, issuer: "", clientId: "", clientSecret: "", emailDomain: "" });
+  const [ssoCallbackUrl, setSsoCallbackUrl] = useState("");
+  const [isSavingSso, setIsSavingSso] = useState(false);
 
   useEffect(() => {
     if (user?.organization) {
@@ -51,6 +55,16 @@ export default function SubscriptionSettingsView() {
       });
     }
   }, [user]);
+
+  useEffect(() => {
+    orgApi.get().then((res) => {
+      const sso = res?.data?.sso;
+      if (sso) {
+        setSsoCallbackUrl(sso.callbackUrl || "");
+        setSsoForm((current) => ({ ...current, enabled: Boolean(sso.enabled), issuer: sso.issuer || "", clientId: sso.clientId || "", emailDomain: sso.emailDomain || "" }));
+      }
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     async function loadPlans() {
@@ -81,17 +95,15 @@ export default function SubscriptionSettingsView() {
         ? globalThis.crypto.randomUUID()
         : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const checkout = await billingApi.checkout({ plan: planId, billingCycle, couponCode: couponCode.trim() || undefined, idempotencyKey });
-      if (checkout?.success && checkout.data?.razorpayOrderId) {
+      if (checkout?.success && (checkout.data?.razorpayOrderId || checkout.data?.razorpaySubscriptionId)) {
         if (Number(checkout.data.discountAmountInr || 0) > 0) {
           toast.success(`Offer applied. You save ₹${Number(checkout.data.discountAmountInr).toLocaleString("en-IN")}.`);
         }
-        const options = {
+        const options: any = {
           key: checkout.data.keyId,
-          amount: Math.round(Number(checkout.data.amountInr) * 100),
           currency: "INR",
           name: "WorkPulse",
           description: `${checkout.data.plan} ${checkout.data.billingCycle === "ANNUAL" ? "annual" : "monthly"} subscription`,
-          order_id: checkout.data.razorpayOrderId,
           prefill: {
             name: user?.organization?.name || user?.email || "",
             email: user?.organization?.email || user?.email || "",
@@ -111,6 +123,8 @@ export default function SubscriptionSettingsView() {
             } else toast.error(verify?.message || "Verify failed");
           },
         };
+        if (checkout.data.razorpaySubscriptionId) options.subscription_id = checkout.data.razorpaySubscriptionId;
+        else { options.amount = Math.round(Number(checkout.data.amountInr) * 100); options.order_id = checkout.data.razorpayOrderId; }
         const existing = document.getElementById("razorpay-checkout");
         if (!existing) {
           await new Promise<void>((resolve, reject) => {
@@ -212,11 +226,14 @@ export default function SubscriptionSettingsView() {
       ? "Trial"
       : entitlement?.state === "CANCELED_ACTIVE"
         ? "Canceled"
+        : entitlement?.state === "PAST_DUE"
+          ? "Payment due"
         : entitlement?.state === "GRACE"
           ? "Grace period"
           : "Active";
 
   const invoices = orders.map((o) => ({
+    orderId: o.id,
     id: o.razorpayOrderId || o.id,
     date: o.paidAt || o.createdAt,
     amount: `₹${Number(o.amountInr || 0).toLocaleString("en-IN")}`,
@@ -224,13 +241,43 @@ export default function SubscriptionSettingsView() {
     plan: o.plan,
   }));
 
+  const downloadInvoice = async (orderId: string, invoiceId: string) => {
+    try {
+      const response = await billingApi.downloadInvoice(orderId);
+      const url = URL.createObjectURL(response.data);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${invoiceId}.pdf`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Invoice could not be downloaded.");
+    }
+  };
+
+  const handleSsoSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingSso(true);
+    try {
+      const res = await orgApi.updateSso(ssoForm);
+      if (res?.success) toast.success(ssoForm.enabled ? "Company SSO enabled." : "Company SSO disabled.");
+      else toast.error(res?.message || "Could not save SSO settings.");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Could not save SSO settings.");
+    } finally {
+      setIsSavingSso(false);
+    }
+  };
+
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-12">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2.5">
           <Settings className="w-7 h-7 text-indigo-600" />
-          Subscription & Organization Settings
+          Settings
         </h1>
         <p className="text-xs text-slate-500 mt-1">
           Manage your SaaS license tier, employee quota, enterprise security features, and company profile.
@@ -379,6 +426,32 @@ export default function SubscriptionSettingsView() {
         </form>
       </div>
 
+      {user?.role === "COMPANY_ADMIN" || user?.role === "SUPER_ADMIN" ? (
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs">
+          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+            <div className="p-2.5 rounded-2xl bg-violet-50 text-violet-600"><Shield className="w-5 h-5" /></div>
+            <div>
+              <h3 className="text-base font-semibold text-slate-900">Enterprise single sign-on</h3>
+              <p className="text-xs text-slate-500">Connect any OpenID Connect provider. Client secrets are encrypted on the server.</p>
+            </div>
+          </div>
+          <form onSubmit={handleSsoSubmit} className="space-y-4">
+            <label className="flex items-center gap-3 text-sm font-semibold text-slate-700">
+              <input type="checkbox" checked={ssoForm.enabled} onChange={(e) => setSsoForm({ ...ssoForm, enabled: e.target.checked })} className="h-4 w-4 rounded border-slate-300 text-indigo-600" />
+              Enable company SSO for this workspace
+            </label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input value={ssoForm.issuer} onChange={(e) => setSsoForm({ ...ssoForm, issuer: e.target.value })} placeholder="Issuer URL (https://idp.example.com)" className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 text-slate-900" />
+              <input value={ssoForm.clientId} onChange={(e) => setSsoForm({ ...ssoForm, clientId: e.target.value })} placeholder="OIDC client ID" className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 text-slate-900" />
+              <input type="password" value={ssoForm.clientSecret} onChange={(e) => setSsoForm({ ...ssoForm, clientSecret: e.target.value })} placeholder="OIDC client secret (leave blank to keep)" className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 text-slate-900" autoComplete="new-password" />
+              <input value={ssoForm.emailDomain} onChange={(e) => setSsoForm({ ...ssoForm, emailDomain: e.target.value })} placeholder="Allowed email domain (company.com)" className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 text-slate-900" />
+            </div>
+            <p className="text-[11px] text-slate-500">Register this callback URL with your identity provider: <code className="rounded bg-slate-100 px-1.5 py-0.5">{ssoCallbackUrl || "Configure BACKEND_PUBLIC_URL on the API"}</code></p>
+            <div className="flex justify-end"><button type="submit" disabled={isSavingSso} className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold flex items-center gap-2 disabled:opacity-60">{isSavingSso ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}Save SSO Settings</button></div>
+          </form>
+        </div>
+      ) : null}
+
       {/* Billing Cycle Switcher */}
       <div className="flex flex-col items-center text-center space-y-3 pt-4">
         <h3 className="text-base font-semibold text-slate-900">Choose Your Subscription Tier</h3>
@@ -519,12 +592,13 @@ export default function SubscriptionSettingsView() {
                 <th className="pb-3 px-3">Plan Tier</th>
                 <th className="pb-3 px-3">Amount</th>
                 <th className="pb-3 px-3">Status</th>
+                <th className="pb-3 px-3 text-right">Receipt</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
               {invoices.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="py-6 px-3 text-slate-400 text-center">No orders yet.</td>
+                  <td colSpan={6} className="py-6 px-3 text-slate-400 text-center">No orders yet.</td>
                 </tr>
               )}
               {invoices.map((inv) => (
@@ -537,6 +611,13 @@ export default function SubscriptionSettingsView() {
                     <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-50 text-slate-700 border border-slate-200">
                       {inv.status}
                     </span>
+                  </td>
+                  <td className="py-3 px-3 text-right">
+                    {inv.status === "PAID" && (
+                      <button type="button" onClick={() => void downloadInvoice(inv.orderId, inv.id)} className="text-xs font-bold text-indigo-600 hover:text-indigo-800 hover:underline">
+                        Download PDF
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -591,6 +672,7 @@ export default function SubscriptionSettingsView() {
           </div>
         </div>
       )}
+      {user?.features?.hasApiAccess && <WebhooksSettings />}
     </div>
   );
 }

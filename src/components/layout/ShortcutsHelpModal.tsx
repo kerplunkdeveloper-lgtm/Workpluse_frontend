@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { X, Command, Sparkles } from "lucide-react";
+import { X, Command } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface ShortcutItem {
@@ -101,9 +101,6 @@ export default function ShortcutsHelpModal({
                 <div>
                   <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
                     Keyboard Shortcuts & Navigation
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-xs font-semibold bg-indigo-100 text-indigo-700">
-                      <Sparkles className="w-3 h-3" /> Pro
-                    </span>
                   </h3>
                   <p className="text-xs text-slate-500">Speed up your workflow in WorkPulse</p>
                 </div>

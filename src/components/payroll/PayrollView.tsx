@@ -171,6 +171,12 @@ export default function PayrollView() {
     }
   };
 
+  // Exactly one header action is primary: whichever step comes next in generate → approve → disburse.
+  const allApproved = payslips.length > 0 && payslips.every((p) => ["APPROVED", "PAID", "DISBURSED"].includes(String(p.status)));
+  const allPaid = payslips.length > 0 && payslips.every((p) => ["PAID", "DISBURSED"].includes(String(p.status)));
+  const nextStep: "GENERATE" | "APPROVE" | "DISBURSE" | null = payslips.length === 0 ? "GENERATE" : !allApproved ? "APPROVE" : !allPaid ? "DISBURSE" : null;
+  const stepTone = (step: "GENERATE" | "APPROVE" | "DISBURSE") => (nextStep === step ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm shadow-indigo-600/25" : "bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-xs");
+
   const totalDisbursement = payslips.reduce((acc, p) => acc + (Number(p.netSalary) || 0), 0);
   const totalLopDeductions = payslips.reduce((acc, p) => acc + (Number(p.lopDeduction) || 0), 0);
 
@@ -181,10 +187,10 @@ export default function PayrollView() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2.5">
             <Receipt className="w-7 h-7 text-indigo-600" />
-            Payroll Processing & Payslip Hub
+            Payroll
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Statutory attendance-linked payroll, automated PF/ESI/TDS calculations, and one-click salary disbursement
+          <p className="text-sm text-slate-500 mt-1">
+            Attendance-linked pay with PF, ESI and TDS worked out for you.
           </p>
         </div>
 
@@ -216,7 +222,7 @@ export default function PayrollView() {
               </select>
             </div>
 
-            {cycle && (
+            {cycle?.start && cycle?.end && (
               <span className={`text-xs ${generateLocked ? "text-amber-700" : "text-slate-500"}`}>
                 Cycle {formatCycleDate(new Date(`${cycle.start}T00:00:00Z`))} to {formatCycleDate(new Date(`${cycle.end}T00:00:00Z`))}
                 {" · "}
@@ -229,34 +235,34 @@ export default function PayrollView() {
               onClick={handleGenerateBatch}
               disabled={isGenerating || generateLocked}
               title={generateLocked ? `Available after the cycle ends on ${cycle.generateAfter}` : undefined}
-              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm flex items-center gap-1.5 shadow-sm transition disabled:opacity-50"
+              className={`px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-1.5 transition active:scale-[0.98] disabled:opacity-50 ${stepTone("GENERATE")}`}
             >
-              {isGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin text-white" /> : <Calculator className="w-3.5 h-3.5 text-white" />}
-              Generate Batch
+              {isGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Calculator className="w-3.5 h-3.5" />}
+              Generate payroll
             </button>
 
             <button
               onClick={handleApproveBatch}
               disabled={isApproving || payslips.length === 0}
-              className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-sm flex items-center gap-1.5 shadow-sm transition disabled:opacity-50"
+              className={`px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-1.5 transition active:scale-[0.98] disabled:opacity-50 ${stepTone("APPROVE")}`}
             >
-              {isApproving ? <Loader2 className="w-3.5 h-3.5 animate-spin text-white" /> : <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
-              Approve Batch
+              {isApproving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+              Approve
             </button>
 
             <button
               onClick={handleDisburseBatch}
               disabled={isDisbursing || payslips.length === 0}
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm flex items-center gap-1.5 shadow-sm transition disabled:opacity-50"
+              className={`px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-1.5 transition active:scale-[0.98] disabled:opacity-50 ${stepTone("DISBURSE")}`}
             >
-              {isDisbursing ? <Loader2 className="w-3.5 h-3.5 animate-spin text-white" /> : <Send className="w-3.5 h-3.5 text-white" />}
-              Disburse & Send Alerts
+              {isDisbursing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              Disburse & notify
             </button>
 
             <button
               onClick={handleExportCsv}
               disabled={payslips.length === 0}
-              className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-800 font-semibold text-sm flex items-center gap-1.5 border border-slate-200 transition disabled:opacity-50"
+              className="px-3 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold text-sm flex items-center gap-1.5 transition disabled:opacity-50"
             >
               <Download className="w-3.5 h-3.5" />
               Export CSV
@@ -277,7 +283,7 @@ export default function PayrollView() {
             }`}
           >
             <Receipt className="w-3.5 h-3.5" />
-            <span>Payroll Records & Batches</span>
+            <span>Payroll runs</span>
           </button>
           <button
             onClick={() => setActiveSection("SALARY")}
@@ -299,7 +305,7 @@ export default function PayrollView() {
             }`}
           >
             <Palette className="w-3.5 h-3.5" />
-            <span>Payslip Template Studio</span>
+            <span>Payslip template</span>
           </button>
         </div>
       )}
@@ -313,29 +319,29 @@ export default function PayrollView() {
           {/* KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs overflow-hidden">
-          <p className="text-xs font-semibold text-slate-500 uppercase mb-1 flex items-center gap-1.5">
+          <p className="text-xs font-medium text-slate-500 mb-1.5 flex items-center gap-1.5">
             <DollarSign className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-            Total Monthly Payout
+            Total payout this month
           </p>
-          <p className="text-2xl font-bold text-slate-900 truncate">{formatCurrency(totalDisbursement)}</p>
+          <p className="text-2xl font-semibold tabular-nums tracking-[-0.02em] text-slate-900 truncate">{formatCurrency(totalDisbursement)}</p>
           <p className="text-xs text-slate-500 mt-1">Across {payslips.length} employee records</p>
         </div>
 
         <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs overflow-hidden">
-          <p className="text-xs font-semibold text-slate-500 uppercase mb-1 flex items-center gap-1.5">
+          <p className="text-xs font-medium text-slate-500 mb-1.5 flex items-center gap-1.5">
             <TrendingUp className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-            LOP Deductions
+            Loss-of-pay deductions
           </p>
-          <p className="text-2xl font-bold text-rose-600 truncate">{formatCurrency(totalLopDeductions)}</p>
+          <p className="text-2xl font-semibold tabular-nums tracking-[-0.02em] text-rose-600 truncate">{formatCurrency(totalLopDeductions)}</p>
           <p className="text-xs text-slate-500 mt-1">Attendance-linked absence deduction</p>
         </div>
 
         <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs overflow-hidden">
-          <p className="text-xs font-semibold text-slate-500 uppercase mb-1 flex items-center gap-1.5">
+          <p className="text-xs font-medium text-slate-500 mb-1.5 flex items-center gap-1.5">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            Disbursement Mode
+            Disbursement
           </p>
-          <p className="text-lg font-bold text-emerald-700 truncate">Automated Direct Bank & WhatsApp</p>
+          <p className="text-base font-semibold leading-snug tracking-[-0.01em] text-slate-900">Direct to bank, payslips on WhatsApp</p>
           <p className="text-xs text-slate-500 mt-1">Complies with 26 days/month standard</p>
         </div>
       </div>
@@ -366,7 +372,7 @@ export default function PayrollView() {
               ) : payslips.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="text-center py-12 text-slate-500">
-                    No payslips found for this cycle. Click "Generate Batch" to create.
+                    No payslips for this cycle yet. Use "Generate payroll" to create them.
                   </td>
                 </tr>
               ) : (

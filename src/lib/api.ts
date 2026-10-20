@@ -53,12 +53,14 @@ export function getWebDeviceId(): string | null {
   return id;
 }
 
-function forceSessionLogout() {
+function forceSessionLogout(failedToken?: string) {
   if (typeof window === "undefined") return;
   // During the first render, page-level data requests can receive a 401
   // before AuthProvider has restored the saved token. Never destroy a valid
   // persisted session during that hydration window.
   if (!isSessionHydrated()) return;
+  const currentToken = getSessionAccessToken();
+  if (failedToken && currentToken && failedToken !== currentToken) return;
   setSessionAccessToken(null);
   delete api.defaults.headers.common.Authorization;
   // Remove credentials left by older WorkPulse releases.
@@ -71,6 +73,24 @@ function forceSessionLogout() {
   }
 }
 
+let accessRefreshPromise: Promise<string | null> | null = null;
+
+async function refreshAccessTokenSilently(): Promise<string | null> {
+  if (!accessRefreshPromise) {
+    accessRefreshPromise = api
+      .post("/auth/refresh", { client: "web" })
+      .then((response) => {
+        const nextToken = response.data?.data?.accessToken || response.data?.data?.token || null;
+        if (nextToken) setSessionAccessToken(nextToken);
+        return nextToken;
+      })
+      .catch(() => null)
+      .finally(() => {
+        accessRefreshPromise = null;
+      });
+  }
+  return accessRefreshPromise;
+}
 export const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
@@ -127,10 +147,30 @@ api.interceptors.response.use(
 
     if (!originalRequest) return Promise.reject(error);
 
-    if (error.response?.status === 401 && !originalRequest.url?.includes("/auth/login") && !originalRequest.url?.includes("/auth/refresh") && !originalRequest.url?.includes("/auth/me")) {
-      forceSessionLogout();
+    if (typeof window !== "undefined" && (!error.response || error.response.status >= 500)) {
+      window.dispatchEvent(new CustomEvent("workpulse:server-error", {
+        detail: { kind: error.response ? "server" : "network", status: error.response?.status ?? 0 },
+      }));
     }
 
+    if (error.response?.status === 401 && !originalRequest.url?.includes("/auth/login") && !originalRequest.url?.includes("/auth/refresh") && !originalRequest.url?.includes("/auth/me")) {
+      const retryableRequest = originalRequest as typeof originalRequest & { _workpulseRetry?: boolean };
+      if (!retryableRequest._workpulseRetry) {
+        retryableRequest._workpulseRetry = true;
+        const refreshedToken = await refreshAccessTokenSilently();
+        if (refreshedToken) {
+          retryableRequest.headers = retryableRequest.headers || {};
+          retryableRequest.headers.Authorization = "Bearer " + refreshedToken;
+          return api(retryableRequest);
+        }
+      }
+
+      const authorization = originalRequest.headers?.Authorization || originalRequest.headers?.authorization;
+      const failedToken = typeof authorization === "string" && authorization.startsWith("Bearer ")
+        ? authorization.slice(7)
+        : undefined;
+      forceSessionLogout(failedToken);
+    }
     if (typeof window !== "undefined" && error.response?.status === 402) {
       const payload = error.response.data || {};
       window.dispatchEvent(new CustomEvent("workpulse:billing", { detail: payload }));
@@ -147,12 +187,36 @@ api.interceptors.response.use(
  * ========================================== */
 
 export const authApi = {
+  discoverSso: async (email: string) => {
+    const res = await api.post("/auth/sso/discover", { email });
+    return res.data;
+  },
+  exchangeSso: async (code: string) => {
+    const res = await api.post("/auth/sso/exchange", { code });
+    return res.data;
+  },
   loginWithGoogle: async (idToken: string) => {
     const res = await api.post("/auth/google", { idToken, client: "web" });
     return res.data;
   },
   login: async (email: string, password: string) => {
     const res = await api.post("/auth/login", { email, password, client: "web" });
+    return res.data;
+  },
+  verifyTwoFactorLogin: async (challengeToken: string, code: string) => {
+    const res = await api.post("/auth/2fa/verify-login", { challengeToken, code });
+    return res.data;
+  },
+  beginTwoFactorSetup: async () => {
+    const res = await api.post("/auth/2fa/setup");
+    return res.data;
+  },
+  confirmTwoFactorSetup: async (code: string) => {
+    const res = await api.post("/auth/2fa/confirm", { code });
+    return res.data;
+  },
+  disableTwoFactor: async (code: string) => {
+    const res = await api.post("/auth/2fa/disable", { code });
     return res.data;
   },
   register: async (payload: any) => {
@@ -258,6 +322,14 @@ export const attendanceApi = {
     const res = await api.post("/attendance/break-end", coords || {});
     return res.data;
   },
+  startLunch: async (coords?: { latitude: number; longitude: number }) => {
+    const res = await api.post("/attendance/lunch-start", coords || {});
+    return res.data;
+  },
+  endLunch: async (coords?: { latitude: number; longitude: number }) => {
+    const res = await api.post("/attendance/lunch-end", coords || {});
+    return res.data;
+  },
   getTodayStatus: async () => {
     const res = await api.get("/attendance/today");
     return res.data;
@@ -331,6 +403,10 @@ export const correctionsApi = {
   },
   getPendingCorrections: async () => {
     const res = await api.get("/attendance/corrections/pending");
+    return res.data;
+  },
+  getAllCorrections: async () => {
+    const res = await api.get("/attendance/corrections", { params: { status: "ALL", limit: 500 } });
     return res.data;
   },
   review: async (id: string, payload: { status: "APPROVED" | "REJECTED"; reviewNote?: string }) => {
@@ -540,6 +616,7 @@ export const billingApi = {
     const res = await api.get("/billing/orders");
     return res.data;
   },
+  downloadInvoice: async (id: string) => api.get(`/billing/orders/${id}/invoice`, { responseType: "blob" }),
   cancel: async () => {
     const res = await api.post("/billing/cancel");
     return res.data;
@@ -549,6 +626,10 @@ export const billingApi = {
 export const platformApi = {
   overview: async () => {
     const res = await api.get("/admin/platform/overview");
+    return res.data;
+  },
+  revenue: async (days = 30) => {
+    const res = await api.get("/admin/platform/revenue", { params: { days } });
     return res.data;
   },
   attention: async () => {
@@ -582,6 +663,10 @@ export const platformApi = {
     const res = await api.post(`/admin/platform/clients/${id}/actions`, body);
     return res.data;
   },
+  sendAdminPasswordReset: async (id: string) => {
+    const res = await api.post(`/admin/platform/clients/${id}/admin-password-reset`);
+    return res.data;
+  },
 };
 
 export const billingAdminApi = {
@@ -591,6 +676,14 @@ export const billingAdminApi = {
   },
   updatePrice: async (plan: string, billingCycle: string, payload: { priceInr: number; isActive?: boolean }) => {
     const res = await api.put(`/admin/billing/prices/${plan}/${billingCycle}`, payload);
+    return res.data;
+  },
+  limits: async () => {
+    const res = await api.get("/admin/billing/limits");
+    return res.data;
+  },
+  updateLimit: async (plan: string, payload: { maxEmployees: number; maxBranches: number; hasGeofence: boolean; hasPayroll: boolean; hasShiftPlanner: boolean; hasApiAccess: boolean }) => {
+    const res = await api.put(`/admin/billing/limits/${plan}`, payload);
     return res.data;
   },
   offers: async () => {
@@ -618,6 +711,10 @@ export const orgApi = {
   },
   update: async (payload: any) => {
     const res = await api.put("/organization", payload);
+    return res.data;
+  },
+  updateSso: async (payload: { enabled: boolean; issuer?: string; clientId?: string; clientSecret?: string; emailDomain?: string }) => {
+    const res = await api.put("/organization", { sso: payload });
     return res.data;
   },
   uploadLogo: async (file: File) => {
@@ -687,6 +784,14 @@ export const apiKeysApi = {
     const res = await api.delete(`/api-keys/${id}`);
     return res.data;
   },
+};
+
+export const webhooksApi = {
+  list: async () => (await api.get("/webhooks")).data,
+  create: async (payload: { url: string; events?: string[] }) => (await api.post("/webhooks", payload)).data,
+  update: async (id: string, payload: { url?: string; events?: string[]; isActive?: boolean }) => (await api.patch(`/webhooks/${id}`, payload)).data,
+  remove: async (id: string) => (await api.delete(`/webhooks/${id}`)).data,
+  test: async (id: string) => (await api.post(`/webhooks/${id}/test`)).data,
 };
 
 export const chatApi = {
@@ -876,6 +981,18 @@ export const employeesApi = {
   },
   inviteEmployee: async (payload: any) => {
     const res = await api.post("/employees/invite", payload);
+    return res.data;
+  },
+  limits: async () => {
+    const res = await api.get("/admin/billing/limits");
+    return res.data;
+  },
+  updateLimit: async (plan: string, payload: { maxEmployees: number; maxBranches: number; hasGeofence: boolean; hasPayroll: boolean; hasShiftPlanner: boolean; hasApiAccess: boolean }) => {
+    const res = await api.put(`/admin/billing/limits/${plan}`, payload);
+    return res.data;
+  },
+  resendInvite: async (id: string) => {
+    const res = await api.post(`/employees/${id}/resend-invite`);
     return res.data;
   },
   // Employee Documents
@@ -1145,6 +1262,22 @@ export const policyApi = {
     const res = await api.put("/policy", payload);
     return res.data;
   },
+  listLateComingLop: async () => {
+    const res = await api.get("/policy/late-coming-lop");
+    return res.data;
+  },
+  createLateComingLop: async (payload: any) => {
+    const res = await api.post("/policy/late-coming-lop", payload);
+    return res.data;
+  },
+  updateLateComingLop: async (id: string, payload: any) => {
+    const res = await api.put(`/policy/late-coming-lop/${id}`, payload);
+    return res.data;
+  },
+  deleteLateComingLop: async (id: string) => {
+    const res = await api.delete(`/policy/late-coming-lop/${id}`);
+    return res.data;
+  },
 };
 
 export const reportsApi = {
@@ -1169,6 +1302,10 @@ export const compOffApi = {
   },
   getHistory: async () => {
     const res = await api.get("/compoff/history");
+    return res.data;
+  },
+  getPending: async () => {
+    const res = await api.get("/compoff/pending");
     return res.data;
   },
   review: async (id: string, payload: { status: "APPROVED" | "REJECTED"; reviewNote?: string }) => {
