@@ -33,6 +33,7 @@ export default function ThemedToaster() {
     <Toaster
       theme={dark ? "dark" : "light"}
       position="top-right"
+      className="wp-sonner-toaster"
       richColors
       closeButton
       toastOptions={{ style: dark ? DARK : LIGHT }}

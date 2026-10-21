@@ -753,3 +753,14 @@ table, .type-kpi { font-variant-numeric: tabular-nums; }
     }
   }
 }
+
+
+/* Keep Sonner notifications inside the viewport on narrow screens. */
+@media (max-width: 640px) {
+  .wp-sonner-toaster {
+    left: 50% !important;
+    right: auto !important;
+    width: min(356px, calc(100vw - 32px)) !important;
+    transform: translateX(-50%);
+  }
+}
