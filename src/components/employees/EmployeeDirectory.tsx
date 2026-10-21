@@ -899,7 +899,7 @@ export default function EmployeeDirectory() {
               <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200 mb-4 flex items-start gap-2.5">
                 {/* <Sparkles className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" /> */}
                 <p className="text-xs text-indigo-900 leading-relaxed">
-                  WorkPulse will generate a secure temporary password and email it to the employee with their company sign-in link. They must change password upon first login.
+                  WorkPluse will generate a secure temporary password and email it to the employee with their company sign-in link. They must change password upon first login.
                 </p>
               </div>
             )}

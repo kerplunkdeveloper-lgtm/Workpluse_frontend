@@ -41,7 +41,7 @@ export default function Brand({
   return (
     <Link
       href={href}
-      aria-label="WorkPulse home"
+      aria-label="WorkPluse home"
       suppressHydrationWarning
       className={`inline-flex items-center gap-3 rounded-xl ${className}`}
     >

@@ -73,7 +73,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!user) return;
 
     const key = "workpulse_session_started_at";
-    const maxAge = 30 * 24 * 60 * 60 * 1000;
+    const maxAge =
+      user.role === "SUPER_ADMIN"
+        ? 30 * 60 * 1000
+        : user.role === "COMPANY_ADMIN"
+          ? 15 * 24 * 60 * 60 * 1000
+          : 30 * 24 * 60 * 60 * 1000;
+    const sessionLabel =
+      user.role === "SUPER_ADMIN"
+        ? "30-minute owner"
+        : user.role === "COMPANY_ADMIN"
+          ? "15-day admin"
+          : "30-day";
     const maxTimerDelay = 2_000_000_000;
     const saved = Number(localStorage.getItem(key));
     const startedAt = Number.isFinite(saved) && saved > 0 ? saved : Date.now();
@@ -93,7 +104,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSessionAccessToken(null);
       setUser(null);
       setToken(null);
-      toast.info("Your 30-day session has expired. Please log in again.");
+      toast.info("Your " + sessionLabel + " session has expired. Please log in again.");
       go("/login");
     };
 
@@ -268,7 +279,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           toast.success("Email verified! Check your email for your Plan Unlock Code.", { duration: 6000 });
           go("/dashboard");
         } else {
-          toast.success("Email verified! Welcome to WorkPulse.");
+          toast.success("Email verified! Welcome to WorkPluse.");
           go("/dashboard");
         }
         return true;

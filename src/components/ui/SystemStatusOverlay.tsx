@@ -40,7 +40,7 @@ export default function SystemStatusOverlay() {
           <Icon className="relative h-9 w-9 text-indigo-600" strokeWidth={1.7} />
         </div>
         <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-indigo-600">
-          {isNetwork ? "Connection interrupted" : "WorkPulse service"}
+          {isNetwork ? "Connection interrupted" : "WorkPluse service"}
         </p>
         <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-400" aria-label={`Error code ${errorCode}`}>
           Error code <span className="font-mono text-slate-600">{errorCode}</span>

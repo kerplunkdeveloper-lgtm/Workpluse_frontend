@@ -365,7 +365,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   ) && !Boolean(todayStatus?.hasCheckedOut || todayStatus?.attendance?.checkOut);
   const isOnBreak = todayStatus?.isOnBreak;
 
-  const orgName = user?.organization?.name || "WorkPulse";
+  const orgName = user?.organization?.name || "WorkPluse";
   const planName = isPlatformOwner ? "Platform owner" : user?.organization?.subscriptionPlan || "Standard Plan";
   const maxEmps = user?.features?.maxEmployees || user?.organization?.maxEmployees || 10;
   const countedSeats = Number(
@@ -721,7 +721,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 className="flex items-center gap-1 hover:text-slate-900 transition shrink-0 font-semibold"
               >
                 <Home className="w-3.5 h-3.5 text-indigo-600" />
-                <span className="hidden sm:inline">WorkPulse</span>
+                <span className="hidden sm:inline">WorkPluse</span>
               </Link>
 
               {/* The section label only appears where there is room; its chevron
@@ -1030,6 +1030,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       >
                         <FileCheck2 className="w-4 h-4 text-slate-400" />
                         <span>My profile & documents</span>
+                      </Link>
+                      <Link
+                        href={user?.role === "SUPER_ADMIN" ? "/platform/security" : "/security"}
+                        onClick={() => setProfileDropdownOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-100 transition"
+                      >
+                        <ShieldCheck className="w-4 h-4 text-slate-400" />
+                        <span>Sign-in security</span>
                       </Link>
                       <Link
                         href="/settings"

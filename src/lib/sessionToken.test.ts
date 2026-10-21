@@ -14,4 +14,20 @@ describe("in-memory browser session", () => {
     setSessionAccessToken(null);
     expect(getSessionAccessToken()).toBeNull();
   });
+
+  it("never writes the token to persistent storage", () => {
+    const writes: string[] = [];
+    const storage = { setItem: (k: string) => writes.push(k), getItem: () => "stale", removeItem: () => {} };
+    const g = globalThis as unknown as { window?: { localStorage: typeof storage } };
+    const previous = g.window;
+    g.window = { localStorage: storage };
+    try {
+      setSessionAccessToken("access-token");
+      expect(writes).toEqual([]);
+      setSessionAccessToken(null);
+      expect(getSessionAccessToken()).toBeNull();
+    } finally {
+      g.window = previous;
+    }
+  });
 });

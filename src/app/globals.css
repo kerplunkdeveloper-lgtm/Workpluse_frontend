@@ -60,7 +60,7 @@
   color-scheme: light;
 }
 
-/* WorkPulse visual system: a calm, high-contrast workspace with a small amount
+/* WorkPluse visual system: a calm, high-contrast workspace with a small amount
    of motion to make state changes feel intentional (without distracting users). */
 :root {
   --wp-ink: #0a0f24;
@@ -751,5 +751,16 @@ table, .type-kpi { font-variant-numeric: tabular-nums; }
       animation-timeline: view();
       animation-range: entry 0% entry 38%;
     }
+  }
+}
+
+
+/* Keep Sonner notifications inside the viewport on narrow screens. */
+@media (max-width: 640px) {
+  .wp-sonner-toaster {
+    left: 50% !important;
+    right: auto !important;
+    width: min(356px, calc(100vw - 32px)) !important;
+    transform: translateX(-50%);
   }
 }

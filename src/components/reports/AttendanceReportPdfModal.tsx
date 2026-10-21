@@ -60,7 +60,7 @@ export default function AttendanceReportPdfModal({
   const orgName =
     dailyData?.organizationName ||
     monthlyData?.organizationName ||
-    "WorkPulse Enterprise Workforce";
+    "WorkPluse Enterprise Workforce";
 
   // Filter daily records if filter chosen
   const rawRecords = dailyData?.records || dailyData?.attendances || [];
@@ -361,7 +361,7 @@ export default function AttendanceReportPdfModal({
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
                 Verified ISO 27001 / Indian Labour Code Form D/E Muster Roll Compliance
               </span>
-              <span>WorkPulse AI Timesheet Engine v2.0</span>
+              <span>WorkPluse AI Timesheet Engine v2.0</span>
             </div>
 
             <div className="grid grid-cols-3 gap-8 pt-10 text-center text-xs">
