@@ -87,7 +87,7 @@ export default function ReportsView() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `WorkPulse_Daily_Attendance_${selectedDate}.csv`);
+    link.setAttribute("download", `WorkPluse_Daily_Attendance_${selectedDate}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -118,7 +118,7 @@ export default function ReportsView() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `WorkPulse_Monthly_Attendance_${selectedMonth}_${selectedYear}.csv`);
+    link.setAttribute("download", `WorkPluse_Monthly_Attendance_${selectedMonth}_${selectedYear}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

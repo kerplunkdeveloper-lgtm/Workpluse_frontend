@@ -14,7 +14,7 @@ export default function WorkspaceSuspended() {
       </span>
       <h1 className="mt-5 font-serif text-2xl font-semibold text-slate-950">Workspace suspended</h1>
       <p className="mt-2 max-w-md text-sm leading-6 text-slate-600">
-        Access to {user?.organization?.name || "this workspace"} has been paused. Your data is safe and nothing has been deleted. Please contact WorkPulse support to
+        Access to {user?.organization?.name || "this workspace"} has been paused. Your data is safe and nothing has been deleted. Please contact WorkPluse support to
         restore access.
       </p>
       <button

@@ -61,7 +61,7 @@ export const FEATURES: Feature[] = [
 export const OFFLINE = {
   eyebrow: "Built for weak networks",
   headline: "Punch in from a basement. Sync when the signal returns.",
-  body: "Factory floors, warehouses and remote sites lose signal. WorkPulse records each punch on the device and sends them to the server in order, keeping the exact time each one happened.",
+  body: "Factory floors, warehouses and remote sites lose signal. WorkPluse records each punch on the device and sends them to the server in order, keeping the exact time each one happened.",
   points: [
     "Punches are kept safe if the tab closes or the device restarts",
     "The exact original time is honoured, so nobody gets an unfair late mark",
@@ -111,8 +111,8 @@ export const WORKFLOW = [
 export const FAQ = [
   { question: "What happens when an employee loses internet?", answer: "The punch is stored securely on the device with its original time and syncs automatically when the connection returns." },
   { question: "Can each branch have its own attendance rules?", answer: "Yes. Set a separate geofence, radius, shift pattern and grace period for every branch." },
-  { question: "Does WorkPulse support Indian payroll workflows?", answer: "WorkPulse includes workflows for PF, ESI, TDS, overtime, loss of pay and payslip generation. Your team remains responsible for reviewing rules that apply to your organisation." },
+  { question: "Does WorkPluse support Indian payroll workflows?", answer: "WorkPluse includes workflows for PF, ESI, TDS, overtime, loss of pay and payslip generation. Your team remains responsible for reviewing rules that apply to your organisation." },
   { question: "Can we start without a card?", answer: "Yes. Start with the free trial and move to a paid plan only when your workspace is ready." },
   { question: "How many employees can we add?", answer: "Plans are designed to scale from a small team to large multi-branch organisations. Current limits are shown in the live pricing section." },
-  { question: "Where can employees use WorkPulse?", answer: "Admins and HR work from the web. Employees can punch from a phone browser or the companion app." },
+  { question: "Where can employees use WorkPluse?", answer: "Admins and HR work from the web. Employees can punch from a phone browser or the companion app." },
 ] as const;

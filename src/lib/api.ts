@@ -63,7 +63,7 @@ function forceSessionLogout(failedToken?: string) {
   if (failedToken && currentToken && failedToken !== currentToken) return;
   setSessionAccessToken(null);
   delete api.defaults.headers.common.Authorization;
-  // Remove credentials left by older WorkPulse releases.
+  // Remove credentials left by older WorkPluse releases.
   localStorage.removeItem("workpulse_access_token");
   localStorage.removeItem("workpulse_refresh_token");
   localStorage.removeItem("workpulse_user");

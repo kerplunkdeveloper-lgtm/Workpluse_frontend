@@ -8,7 +8,7 @@ export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Workforce attendance, leave and payroll",
-  description: "WorkPulse keeps Indian teams in rhythm with geofenced attendance, offline punches, leave and payroll in one focused workspace.",
+  description: "WorkPluse keeps Indian teams in rhythm with geofenced attendance, offline punches, leave and payroll in one focused workspace.",
   alternates: { canonical: "/" },
 };
 
@@ -60,7 +60,7 @@ export default async function LandingPage() {
         __html: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "SoftwareApplication",
-          name: "WorkPulse",
+          name: "WorkPluse",
           applicationCategory: "BusinessApplication",
           operatingSystem: "Web, Android",
           offers,

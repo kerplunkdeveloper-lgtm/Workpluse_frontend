@@ -60,7 +60,7 @@
   color-scheme: light;
 }
 
-/* WorkPulse visual system: a calm, high-contrast workspace with a small amount
+/* WorkPluse visual system: a calm, high-contrast workspace with a small amount
    of motion to make state changes feel intentional (without distracting users). */
 :root {
   --wp-ink: #0a0f24;

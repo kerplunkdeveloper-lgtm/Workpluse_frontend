@@ -100,7 +100,7 @@ export default function CandidatePortalPage() {
   const rejected = candidate?.status === "REJECTED" || candidate?.status === "OFFER_REJECTED";
   const progress = accepted ? 4 : candidate?.documents?.length ? 3 : candidate?.status === "OFFER_SENT" ? 2 : 1;
   const documentCount = candidate?.documents?.length || 0;
-  const companyName = "WorkPulse";
+  const companyName = "WorkPluse";
   const initials = candidate ? `${candidate.firstName?.[0] || ""}${candidate.lastName?.[0] || ""}` : "W";
 
   const documentTypes = useMemo(() => [
@@ -120,7 +120,7 @@ export default function CandidatePortalPage() {
       <main className="flex min-h-[100dvh] items-center justify-center bg-slate-50 px-5 text-center">
         <section className="w-full max-w-md rounded-[28px] border border-slate-200 bg-white p-8 shadow-[0_24px_80px_-44px_rgba(15,23,42,.3)]">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-600"><CircleAlert className="h-7 w-7" /></div>
-          <p className="mt-6 text-xs font-bold uppercase tracking-[.18em] text-slate-400">WorkPulse onboarding</p>
+          <p className="mt-6 text-xs font-bold uppercase tracking-[.18em] text-slate-400">WorkPluse onboarding</p>
           <h1 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">Invitation unavailable</h1>
           <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-slate-500">{error || "This invitation link is invalid or has expired. Ask your hiring contact to send a fresh invitation."}</p>
           <a href="mailto:support@workpulse.com" className="mt-7 inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700">Contact support <ArrowRight className="h-4 w-4" /></a>
@@ -181,7 +181,7 @@ export default function CandidatePortalPage() {
           <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-7"><div className="flex items-start justify-between"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-indigo-600">Your files</p><h2 className="mt-2 text-xl font-semibold tracking-tight">Document checklist</h2></div><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">{documentCount} uploaded</span></div><div className="mt-6 space-y-2">{documentCount === 0 ? <div className="rounded-2xl bg-slate-50 p-5 text-center"><FileText className="mx-auto h-6 w-6 text-slate-300" /><p className="mt-2 text-sm font-semibold text-slate-700">No documents yet</p><p className="mt-1 text-xs leading-5 text-slate-500">Your uploaded documents will appear here for review.</p></div> : candidate.documents?.map((doc) => <div key={doc.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3"><div className="flex min-w-0 items-center gap-3"><div className="rounded-xl bg-white p-2 text-indigo-600"><FileText className="h-4 w-4" /></div><span className="truncate text-sm font-semibold text-slate-800">{doc.documentType.replace(/_/g, " ")}</span></div><span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${doc.status === "VERIFIED" ? "bg-emerald-50 text-emerald-700" : doc.status === "REJECTED" ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700"}`}>{doc.status}</span></div>)}</div></div>
         </section>
 
-        <footer className="flex flex-wrap items-center justify-between gap-3 px-1 py-8 text-xs text-slate-400"><span>Need help? Contact your hiring team.</span><span className="inline-flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /> Securely powered by WorkPulse</span></footer>
+        <footer className="flex flex-wrap items-center justify-between gap-3 px-1 py-8 text-xs text-slate-400"><span>Need help? Contact your hiring team.</span><span className="inline-flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /> Securely powered by WorkPluse</span></footer>
       </div>
     </main>
   );

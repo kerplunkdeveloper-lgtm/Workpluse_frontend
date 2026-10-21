@@ -35,8 +35,8 @@ export function SiteHeader() {
       >
         <div className="flex h-14 items-center justify-between gap-4 pl-3 pr-2 sm:pl-4">
           <Link href="/" className="flex min-w-0 items-center gap-2.5">
-            <Image src="/logo-128.png" alt="WorkPulse logo" width={30} height={30} className="h-[30px] w-[30px] rounded-lg" priority />
-            <span className="truncate text-[17px] font-semibold tracking-tight text-slate-950">WorkPulse</span>
+            <Image src="/logo-128.png" alt="WorkPluse logo" width={30} height={30} className="h-[30px] w-[30px] rounded-lg" priority />
+            <span className="truncate text-[17px] font-semibold tracking-tight text-slate-950">WorkPluse</span>
           </Link>
 
           <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
