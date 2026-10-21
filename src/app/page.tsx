@@ -2,9 +2,12 @@ import type { Metadata } from "next";
 import { Hero, ProofBar, Features, Workflow, Offline, Security, FAQ, CtaBand, SiteFooter } from "@/components/landing/LandingSections";
 import { PricingClient } from "@/components/landing/PricingClient";
 import { SiteHeader } from "@/components/landing/SiteHeader";
+import { FAQ as FAQ_ITEMS } from "@/components/landing/content";
 import type { SubscriptionPlanOption } from "@/types";
 
 export const revalidate = 300;
+
+const jsonLd = (data: object) => JSON.stringify(data).replace(/</g, "\\u003c");
 
 export const metadata: Metadata = {
   title: "Workforce attendance, leave and payroll",
@@ -29,6 +32,7 @@ async function getPlans(): Promise<{ plans: SubscriptionPlanOption[]; unavailabl
 
 export default async function LandingPage() {
   const { plans, unavailable } = await getPlans();
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/+$/, "");
   const offers = plans.map((plan) => ({
     "@type": "Offer",
     name: plan.name,
@@ -57,13 +61,33 @@ export default async function LandingPage() {
       </main>
       <SiteFooter />
       <script type="application/ld+json" dangerouslySetInnerHTML={{
-        __html: JSON.stringify({
+        __html: jsonLd({
           "@context": "https://schema.org",
-          "@type": "SoftwareApplication",
-          name: "WorkPluse",
-          applicationCategory: "BusinessApplication",
-          operatingSystem: "Web, Android",
-          offers,
+          "@graph": [
+            {
+              "@type": "Organization",
+              "@id": `${siteUrl}/#organization`,
+              name: "WorkPluse",
+              url: siteUrl,
+              logo: `${siteUrl}/logo-128.png`,
+            },
+            {
+              "@type": "SoftwareApplication",
+              name: "WorkPluse",
+              applicationCategory: "BusinessApplication",
+              operatingSystem: "Web, Android",
+              publisher: { "@id": `${siteUrl}/#organization` },
+              offers,
+            },
+            {
+              "@type": "FAQPage",
+              mainEntity: FAQ_ITEMS.map((item) => ({
+                "@type": "Question",
+                name: item.question,
+                acceptedAnswer: { "@type": "Answer", text: item.answer },
+              })),
+            },
+          ],
         }),
       }} />
     </div>

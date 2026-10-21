@@ -8,6 +8,7 @@ import { UserRole } from "@/types";
 import AppSkeletonLoader from "@/components/ui/AppSkeletonLoader";
 import { BillingLocked } from "@/components/billing/WorkspaceBilling";
 import WorkspaceSuspended from "@/components/billing/WorkspaceSuspended";
+import TwoFactorSettings from "@/components/security/TwoFactorSettings";
 import { roleLabel } from "@/lib/utils";
 
 interface ProtectedRouteProps {
@@ -61,6 +62,22 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
   // A suspended workspace gets no billing escape hatch: only the owner can lift it.
   if (user.entitlement?.code === "ACCOUNT_SUSPENDED" && user.role !== "SUPER_ADMIN") {
     return <WorkspaceSuspended />;
+  }
+
+  // The workspace requires admins to use 2FA; the API refuses everything but
+  // setup until it is on, so show setup in place of the page.
+  if (user.twoFactorSetupRequired) {
+    return (
+      <main className="mx-auto max-w-2xl space-y-4 p-4 sm:p-8">
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          Your workspace requires admins to turn on two-step verification before continuing.
+        </div>
+        <TwoFactorSettings
+          eyebrow="Required by your workspace"
+          description="Scan the secret with an authenticator app such as Google Authenticator or 1Password, then enter the code it shows."
+        />
+      </main>
+    );
   }
 
   const locked = user.entitlement && user.entitlement.allowApp === false;

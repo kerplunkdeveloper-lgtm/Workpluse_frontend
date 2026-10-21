@@ -17,6 +17,7 @@ import { unwrapList } from "@/lib/utils";
 import { trialDaysLabel, trialDaysRemaining } from "@/components/billing/WorkspaceBilling";
 import type { SubscriptionPlanOption } from "@/types";
 import WebhooksSettings from "@/components/settings/WebhooksSettings";
+import AdminTwoFactorPolicy from "@/components/settings/AdminTwoFactorPolicy";
 import { confirmDialog } from "@/components/ui/confirmDialog";
 import CompanyLogoSetting from "@/components/settings/CompanyLogoSetting";
 
@@ -672,6 +673,7 @@ export default function SubscriptionSettingsView() {
           </div>
         </div>
       )}
+      {user?.role === "COMPANY_ADMIN" && <AdminTwoFactorPolicy />}
       {user?.features?.hasApiAccess && <WebhooksSettings />}
     </div>
   );

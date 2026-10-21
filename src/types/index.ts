@@ -54,6 +54,7 @@ export interface Organization {
   address?: string;
   taxId?: string;
   logoUrl?: string | null;
+  requireAdminTwoFactor?: boolean;
   subscriptionPlan?: SubscriptionPlan;
   subscriptionStatus?: string;
   subscriptionExpiresAt?: string | Date | null;
@@ -152,6 +153,9 @@ export interface User {
   avatarUrl?: string;
   planLocked?: boolean;
   mustChangePassword?: boolean;
+  twoFactorEnabled?: boolean;
+  /** Workspace policy blocks this admin until two-step verification is on. */
+  twoFactorSetupRequired?: boolean;
   entitlement?: WorkspaceEntitlement;
   features?: WorkspaceFeatures;
 }
