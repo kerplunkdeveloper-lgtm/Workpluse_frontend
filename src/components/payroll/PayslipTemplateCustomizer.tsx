@@ -352,7 +352,7 @@ export default function PayslipTemplateCustomizer() {
             <span>Company Branding Studio</span>
           </div>
           <h1 className="text-xl font-bold tracking-tight text-slate-900">
-            Corporate Payslip Template Customizer
+            Payslip template
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
             Configure company letterhead, branding palettes, section toggles, and official signatory stamp for all employee payslips.

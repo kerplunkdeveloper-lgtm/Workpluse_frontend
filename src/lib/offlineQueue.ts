@@ -1,4 +1,3 @@
-/** IndexedDB-backed attendance queue for resilient offline punch capture. */
 
 const DB_NAME = "workpulse_offline";
 const DB_VERSION = 1;
@@ -7,7 +6,7 @@ const STORE_NAME = "pending_punches";
 export interface OfflinePunch {
   id: string;          // UUID generated on device (used to clear after sync)
   ownerId: string;     // Authenticated user that created the event
-  type: "CHECK_IN" | "CHECK_OUT" | "BREAK_START" | "BREAK_END" | "WFH_CHECK_IN";
+  type: "CHECK_IN" | "CHECK_OUT" | "BREAK_START" | "BREAK_END" | "LUNCH_START" | "LUNCH_END" | "WFH_CHECK_IN";
   timestamp: string;   // ISO 8601 — EXACT time the user tapped the button
   latitude?: number;
   longitude?: number;
@@ -17,7 +16,7 @@ export interface OfflinePunch {
   note?: string;
   deviceId?: string;
   locationLabel?: string;
-  enqueuedAt: string;  // ISO — when it was saved to IndexedDB (for display)
+  enqueuedAt: string;
 }
 
 // ─── Open / initialise DB ────────────────────────────────────────────────────

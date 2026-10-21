@@ -1,9 +1,7 @@
 @import "tailwindcss";
+@import "./theme-dark.css";
 
 @theme {
-  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-serif: Georgia, "Times New Roman", serif;
-
   /* Neutrals: Tailwind slate re-tinted toward the brand indigo so sidebar, hero,
      canvas, borders and text read as one family. 950 is the shared ink. Mid-tones
      are a little darker than stock slate so secondary text clears contrast. */
@@ -33,9 +31,12 @@
   --color-blue-950: #1e1b4b;
 }
 
-/* Marketing fonts are loaded with next/font on the landing page only; `inline`
-   lets the utilities resolve the per-element variables next/font sets. */
+/* Keep the workspace typography deterministic across local, CI, and offline deployments. */
 @theme inline {
+  /* Product typography stays on a neutral sans; the editorial serif stays on the marketing site. */
+  --font-sans: var(--wp-app-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: var(--wp-app-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--wp-app-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-landing: var(--wp-font-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: var(--wp-font-serif), Georgia, "Times New Roman", serif;
   --font-code: var(--wp-font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -84,14 +85,33 @@ body {
     radial-gradient(900px 420px at 100% 0%, rgba(99, 102, 241, 0.05), transparent 46%),
     var(--background);
   color: var(--foreground);
-  font-feature-settings: "ss01", "cv02";
+  font-feature-settings: "cv11", "ss01";
+  letter-spacing: -0.006em;
   text-rendering: optimizeLegibility;
 }
 
 /* Kept in the base layer so font utilities such as `font-serif` on headings win. */
 @layer base {
   h1, h2 { font-family: var(--font-sans); }
-}
+  /* Shared workspace type scale: every menu reads as one product. */
+  .wp-main-canvas h1 {
+    font-size: clamp(1.5rem, 1.28rem + 0.65vw, 2rem);
+    line-height: 1.15;
+    letter-spacing: -0.035em;
+    font-weight: 700;
+  }
+  .wp-main-canvas h2 {
+    font-size: clamp(1.125rem, 1rem + 0.32vw, 1.35rem);
+    line-height: 1.25;
+    letter-spacing: -0.025em;
+    font-weight: 650;
+  }
+  .wp-main-canvas h3 {
+    font-size: 1rem;
+    line-height: 1.35;
+    letter-spacing: -0.015em;
+    font-weight: 650;
+  }}
 
 .auth-canvas {
   background: var(--background);
@@ -542,7 +562,49 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
     #f6f7fb !important;
 }
 
-.wp-dashboard-hero {
+
+/* Product-wide finishing layer. These primitives let legacy feature markup adopt
+   one visual system incrementally across Dashboard, People, Payroll, Workplace,
+   Insights, and Platform modules. */
+.wp-main-canvas {
+  color: var(--foreground);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+.wp-main-canvas .text-slate-500,
+.wp-main-canvas .text-slate-400 { color: #667085; }
+.wp-main-canvas .app-card,
+.wp-main-canvas .glass-card {
+  border-radius: 1rem;
+  box-shadow: 0 1px 2px rgba(19, 25, 49, 0.035), 0 14px 34px -26px rgba(40, 36, 120, 0.26);
+}
+.wp-main-canvas .app-card:hover,
+.wp-main-canvas .glass-card:hover {
+  box-shadow: 0 1px 2px rgba(19, 25, 49, 0.04), 0 20px 42px -28px rgba(40, 36, 120, 0.34);
+}
+.wp-main-canvas label {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.wp-main-canvas button:not(:disabled),
+.wp-main-canvas a[role="button"] { font-weight: 600; }
+.wp-main-canvas button:disabled { cursor: not-allowed; opacity: 0.58; }
+.wp-main-canvas :is(input, select, textarea)::placeholder { color: #98a2b3; }
+.wp-main-canvas .wp-page-header h1 {
+  font-size: clamp(1.625rem, 1.36rem + 0.8vw, 2.1rem);
+  line-height: 1.1;
+}
+.wp-main-canvas .wp-page-header p { max-width: 68ch; line-height: 1.55; }
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-main-canvas label {
+  color: #c7d2fe;
+}
+@media (max-width: 640px) {
+  .wp-main-canvas { font-size: 0.8125rem; }
+  .wp-main-canvas .app-card,
+  .wp-main-canvas .glass-card { border-radius: 0.875rem; }
+}.wp-dashboard-hero {
   box-shadow: 0 24px 58px -42px rgba(79, 70, 229, 0.5);
 }
 

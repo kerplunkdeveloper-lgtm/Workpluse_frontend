@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { chatApi } from "@/lib/api";
+import { chatApi, getSessionAccessToken } from "@/lib/api";
 import { unwrapList } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -184,6 +184,7 @@ export default function ChatView() {
 
   const [threads, setThreads] = useState<Thread[]>([]);
   const [workspaceSize, setWorkspaceSize] = useState(0);
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -209,6 +210,33 @@ export default function ChatView() {
   const stickToBottom = useRef(true);
   const prependAnchor = useRef<number | null>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const accessToken = getSessionAccessToken();
+    if (!accessToken) return undefined;
+    const configured = process.env.NEXT_PUBLIC_WS_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_LOCAL_API_URL;
+    const base = configured
+      ? configured.replace(/^http/i, (value) => value.toLowerCase() === "https" ? "wss" : "ws").replace(/\/+$/, "").replace(/\/api$/, "")
+      : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`;
+    let socket: WebSocket | null = null;
+    let retry: number | undefined;
+    let closed = false;
+    const connect = () => {
+      if (closed) return;
+      socket = new WebSocket(`${base}/ws/chat?token=${encodeURIComponent(accessToken)}`);
+      socket.onclose = () => { if (!closed) retry = window.setTimeout(connect, 5000); };
+      socket.onerror = () => socket?.close();
+      socket.onmessage = (event) => {
+        try {
+          const frame = JSON.parse(event.data);
+          if (frame?.type === "chat:presence:snapshot" && Array.isArray(frame.userIds)) setOnlineUsers(new Set(frame.userIds));
+          if (frame?.type === "chat:presence" && frame.userId) setOnlineUsers((current) => { const next = new Set(current); if (frame.online) next.add(frame.userId); else next.delete(frame.userId); return next; });
+        } catch { /* ignore malformed realtime frames */ }
+      };
+    };
+    connect();
+    return () => { closed = true; if (retry) window.clearTimeout(retry); socket?.close(); };
+  }, [user?.id]);
 
   /* Data loading */
   const loadThreads = useCallback(async () => {
@@ -447,7 +475,7 @@ export default function ChatView() {
             isActive ? "bg-indigo-50 ring-1 ring-indigo-100" : "hover:bg-slate-50"
           }`}
         >
-          <Avatar label={info.title} channel={info.channel} />
+          <span className="relative"><Avatar label={info.title} channel={info.channel} />{!info.channel && onlineUsers.has(otherMember(t)?.id || "") && <span aria-label="Online" className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />}</span>
           <span className="min-w-0 flex-1">
             <span className="flex items-baseline justify-between gap-2">
               <span className={`truncate text-sm ${isActive ? "font-bold text-indigo-950" : "font-semibold text-slate-900"}`}>
@@ -455,7 +483,7 @@ export default function ChatView() {
               </span>
               <span className="shrink-0 text-[11px] tabular-nums text-slate-500">{listStamp(last?.createdAt || t.updatedAt)}</span>
             </span>
-            <span className="mt-0.5 block truncate text-xs text-slate-600">{preview}</span>
+            <span className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-slate-600"><span className="truncate">{preview}</span>{!info.channel && onlineUsers.has(otherMember(t)?.id || "") && <span className="shrink-0 text-[10px] font-semibold text-emerald-600">Online</span>}</span>
           </span>
         </button>
       </li>
@@ -475,7 +503,7 @@ export default function ChatView() {
         <div>
           <h1 className="flex items-center gap-2.5 font-serif text-2xl font-bold tracking-tight text-slate-900">
             <MessageSquare aria-hidden="true" className="h-6 w-6 text-indigo-600" />
-            Team Chat &amp; Channels
+            Chat
           </h1>
           <p className="mt-1 text-sm text-slate-600">Direct messages and channels for your workforce</p>
         </div>
@@ -602,7 +630,7 @@ export default function ChatView() {
                               onClick={() => void startDirect(p)}
                               className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500"
                             >
-                              <Avatar label={personName(p)} />
+                              <span className="relative"><Avatar label={personName(p)} />{onlineUsers.has(p.id) && <span aria-label="Online" className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />}</span>
                               <span className="min-w-0 flex-1">
                                 <span className="block truncate text-sm font-semibold text-slate-900">{personName(p)}</span>
                                 <span className="block truncate text-xs text-slate-600">

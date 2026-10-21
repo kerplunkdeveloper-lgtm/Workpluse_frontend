@@ -125,7 +125,7 @@ export default function ExpenseClaimsView() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2.5">
             <Wallet className="w-7 h-7 text-indigo-600" />
-            Expense Reimbursement Claims
+            Expenses
           </h1>
           <p className="text-xs text-slate-500 mt-1">
             Submit business expenditure receipts, track manager approval status, and manage settlement ledger

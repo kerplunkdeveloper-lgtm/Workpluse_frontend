@@ -95,6 +95,14 @@ export interface Shift {
   startTime: string;
   endTime: string;
   graceMinutes: number;
+  breakMinutes?: number;
+  lunchMinutes?: number;
+  breakIncluded?: boolean;
+  lunchIncluded?: boolean;
+  durationMinutes?: number;
+  durationHours?: string;
+  scheduledWorkMinutes?: number;
+  scheduledWorkHours?: string;
   workingDays: string;
 }
 
@@ -164,10 +172,12 @@ export interface Attendance {
   checkIn?: string;
   checkOut?: string;
   status: AttendanceStatus;
-  /** Minutes worked, as stored by the API. Prefer this over the legacy fields below. */
   workingMinutes?: number;
-  /** Total break minutes, as stored by the API. */
   breakMinutes?: number;
+  lunchMinutes?: number;
+  totalPauseMinutes?: number;
+  scheduledWorkMinutes?: number;
+  overtimeMinutes?: number;
   workHours?: number;
   workMinutes?: number;
   overtimeHours?: number;
@@ -175,6 +185,7 @@ export interface Attendance {
   isWorkFromHome?: boolean;
   wfhNote?: string;
   totalBreakMinutes?: number;
+  totalLunchMinutes?: number;
   shift?: Pick<Shift, "id" | "name" | "startTime" | "endTime"> | null;
   events?: { id: string; type: string; timestamp: string }[];
   breaks?: BreakRecord[];
@@ -186,21 +197,25 @@ export interface Attendance {
   checkOutLocation?: string | null;
   employee?: Employee;
   branch?: Branch;
+  correctionReason?: string | null;
+  correctionStatus?: string | null;
+  correctionReviewNote?: string | null;
 }
-
 export interface AttendanceTodayStatus {
   hasCheckedIn: boolean;
   hasCheckedOut: boolean;
   isOnBreak: boolean;
+  activePauseType?: "BREAK" | "LUNCH" | null;
   isWorkFromHome: boolean;
   attendance?: Attendance;
   currentBreak?: BreakRecord;
   shift?: Shift;
   totalBreakMinutes?: number;
+  totalLunchMinutes?: number;
+  totalPauseMinutes?: number;
   workedMinutesToday?: number;
   locationPolicy?: CheckInLocationPolicy;
 }
-
 /** Where the organization lets employees check in (Policy → "Where can employees check in?"). */
 export interface CheckInLocationPolicy {
   mode: "ANYWHERE" | "OFFICE_ONLY";

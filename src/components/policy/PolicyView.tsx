@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { policyApi } from "@/lib/api";
 import { unwrapItem } from "@/lib/utils";
-import { SlidersHorizontal, Loader2, CheckCircle2, Globe, Building2, Check } from "lucide-react";
+import { SlidersHorizontal, Loader2, CheckCircle2, Globe, Building2, Check, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
 import { cyclePeriod, formatCycleDate, MONTH_NAMES } from "@/lib/payrollCycle";
@@ -44,6 +44,57 @@ export default function PolicyView() {
   const [saving, setSaving] = useState(false);
   const [isDefault, setIsDefault] = useState(false);
   const [customCycle, setCustomCycle] = useState(false);
+  const [lateRules, setLateRules] = useState<any[]>([]);
+  const [lateRuleForm, setLateRuleForm] = useState({ lateDays: "", lopDays: "1", graceMinutes: "15", isActive: true, remarks: "" });
+  const [editingLateRuleId, setEditingLateRuleId] = useState<string | null>(null);
+  const [lateRulesLoading, setLateRulesLoading] = useState(true);
+  const [lateRuleSaving, setLateRuleSaving] = useState(false);
+
+  const loadLateRules = async () => {
+    try {
+      const res = await policyApi.listLateComingLop();
+      setLateRules(res?.rules || res?.data || []);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to load late-coming rules");
+    } finally {
+      setLateRulesLoading(false);
+    }
+  };
+
+  useEffect(() => { void loadLateRules(); }, []);
+
+  const resetLateRuleForm = () => {
+    setLateRuleForm({ lateDays: "", lopDays: "1", graceMinutes: "15", isActive: true, remarks: "" });
+    setEditingLateRuleId(null);
+  };
+
+  const saveLateRule = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLateRuleSaving(true);
+    try {
+      const payload = { ...lateRuleForm, lateDays: Number(lateRuleForm.lateDays), lopDays: Number(lateRuleForm.lopDays), graceMinutes: Number(lateRuleForm.graceMinutes) };
+      if (editingLateRuleId) await policyApi.updateLateComingLop(editingLateRuleId, payload);
+      else await policyApi.createLateComingLop(payload);
+      toast.success(editingLateRuleId ? "Late-coming rule updated" : "Late-coming rule added");
+      resetLateRuleForm();
+      await loadLateRules();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || "Could not save rule");
+    } finally {
+      setLateRuleSaving(false);
+    }
+  };
+
+  const editLateRule = (rule: any) => {
+    setEditingLateRuleId(rule.id);
+    setLateRuleForm({ lateDays: String(rule.lateDays), lopDays: String(rule.lopDays), graceMinutes: String(rule.graceMinutes ?? 0), isActive: Boolean(rule.isActive), remarks: rule.remarks || "" });
+  };
+
+  const deleteLateRule = async (id: string) => {
+    if (!window.confirm("Delete this late-coming LOP rule?")) return;
+    try { await policyApi.deleteLateComingLop(id); toast.success("Late-coming rule deleted"); if (editingLateRuleId === id) resetLateRuleForm(); await loadLateRules(); }
+    catch (err: any) { toast.error(err.response?.data?.message || "Could not delete rule"); }
+  };
 
   const matchedPreset = CYCLE_PRESETS.findIndex(
     (preset) => preset.startDay === form.payrollCycleStartDay && preset.endDay === form.payrollCycleEndDay,
@@ -173,6 +224,25 @@ export default function PolicyView() {
           </p>
         )}
       </div>
+
+      <section className="grid grid-cols-1 xl:grid-cols-[minmax(260px,0.34fr)_minmax(0,1fr)] gap-5 items-start">
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs">
+          <h2 className="text-lg font-semibold text-slate-950">Company Late-coming LOP Policy</h2>
+          <p className="mt-1 text-xs text-slate-500">Create a rule for every completed block of late arrivals in a payroll cycle.</p>
+          <form onSubmit={saveLateRule} className="mt-5 space-y-4">
+            <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-800">Late days <span className="text-rose-500">*</span></span><input required type="number" min="1" step="1" value={lateRuleForm.lateDays} onChange={(e) => setLateRuleForm((p) => ({ ...p, lateDays: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm" /><span className="text-xs text-slate-400">Every this many late arrivals counts as LOP.</span></label>
+            <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-800">LOP days <span className="text-rose-500">*</span></span><select required value={lateRuleForm.lopDays} onChange={(e) => setLateRuleForm((p) => ({ ...p, lopDays: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm"><option value="0.5">0.5 day</option><option value="1">1 day</option><option value="1.5">1.5 days</option><option value="2">2 days</option></select><span className="text-xs text-slate-400">LOP applied for each completed block of late days.</span></label>
+            <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-800">Grace (minutes)</span><input type="number" min="0" max="1440" value={lateRuleForm.graceMinutes} onChange={(e) => setLateRuleForm((p) => ({ ...p, graceMinutes: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm" /><span className="text-xs text-slate-400">Check-in after shift start + grace counts as late.</span></label>
+            <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-800">Status</span><select value={lateRuleForm.isActive ? "true" : "false"} onChange={(e) => setLateRuleForm((p) => ({ ...p, isActive: e.target.value === "true" }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm"><option value="true">Active</option><option value="false">Inactive</option></select></label>
+            <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-800">Remarks</span><input value={lateRuleForm.remarks} onChange={(e) => setLateRuleForm((p) => ({ ...p, remarks: e.target.value }))} placeholder="Optional note" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm" /></label>
+            <div className="flex gap-3 pt-1"><button disabled={lateRuleSaving} type="submit" className="inline-flex items-center gap-2 rounded-xl bg-cyan-500 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-600 disabled:opacity-60"><CheckCircle2 className="h-4 w-4" />{lateRuleSaving ? "Saving..." : editingLateRuleId ? "Update Rule" : "Save Policy"}</button>{editingLateRuleId && <button type="button" onClick={resetLateRuleForm} className="rounded-xl bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-600">Cancel</button>}</div>
+          </form>
+        </div>
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs overflow-x-auto">
+          <h2 className="text-lg font-semibold text-slate-950">Late-coming LOP Rules</h2>
+          {lateRulesLoading ? <div className="py-12 text-center text-sm text-slate-400">Loading rules...</div> : lateRules.length === 0 ? <div className="py-12 text-center text-sm text-slate-400">No rules yet. Add the first late-coming rule.</div> : <table className="mt-6 w-full min-w-[720px] text-left"><thead><tr className="text-xs font-semibold text-slate-400"><th className="pb-3">S.No</th><th className="pb-3">Late Days</th><th className="pb-3">LOP Days</th><th className="pb-3">Grace Time</th><th className="pb-3">Status</th><th className="pb-3">Remarks</th><th className="pb-3 text-right">Action</th></tr></thead><tbody>{lateRules.map((rule, index) => <tr key={rule.id} className="border-t border-dashed border-slate-200 text-sm text-slate-800"><td className="py-4">{index + 1}</td><td className="py-4 font-semibold">{rule.lateDays} late days</td><td className="py-4">{rule.lopDays} LOP day(s)</td><td className="py-4 text-cyan-600">◷ {rule.graceMinutes} mins</td><td className="py-4"><span className={`rounded-lg px-3 py-2 text-xs font-semibold ${rule.isActive ? "bg-sky-50 text-sky-600" : "bg-slate-100 text-slate-500"}`}>{rule.isActive ? "Active" : "Inactive"}</span></td><td className="py-4 max-w-[180px] truncate text-slate-500">{rule.remarks || "-"}</td><td className="py-4"><div className="flex justify-end gap-2"><button type="button" title="Edit rule" onClick={() => editLateRule(rule)} className="rounded-lg bg-cyan-50 p-2 text-cyan-600 hover:bg-cyan-100"><Pencil className="h-4 w-4" /></button><button type="button" title="Delete rule" onClick={() => void deleteLateRule(rule.id)} className="rounded-lg bg-rose-50 p-2 text-rose-500 hover:bg-rose-100"><Trash2 className="h-4 w-4" /></button></div></td></tr>)}</tbody></table>}
+        </div>
+      </section>
 
       <section className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4 shadow-xs" aria-labelledby="checkin-location-heading">
         <div className="flex items-start justify-between gap-4">

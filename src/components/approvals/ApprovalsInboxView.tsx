@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { correctionsApi, leavesApi, overtimeApi, expensesApi } from "@/lib/api";
+import { correctionsApi, leavesApi, overtimeApi, expensesApi, compOffApi } from "@/lib/api";
 import { formatDate, formatTime, formatCurrency, unwrapList } from "@/lib/utils";
 import {
   ShieldCheck,
@@ -18,7 +18,7 @@ import {
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 
-type ApprovalCategory = "CORRECTIONS" | "LEAVES" | "OVERTIME" | "EXPENSES";
+type ApprovalCategory = "CORRECTIONS" | "LEAVES" | "OVERTIME" | "EXPENSES" | "COMPOFF";
 
 export default function ApprovalsInboxView() {
   const [activeTab, setActiveTab] = useState<ApprovalCategory>("CORRECTIONS");
@@ -26,16 +26,18 @@ export default function ApprovalsInboxView() {
   const [leaves, setLeaves] = useState<any[]>([]);
   const [overtimes, setOvertimes] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
+  const [compOffs, setCompOffs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadAllPending = async () => {
     setLoading(true);
     try {
-      const [corrRes, leaveRes, otRes, expRes] = await Promise.allSettled([
+      const [corrRes, leaveRes, otRes, expRes, compRes] = await Promise.allSettled([
         correctionsApi.getPendingCorrections(),
         leavesApi.getAllLeaves({ status: "PENDING" }),
         overtimeApi.getPending(),
         expensesApi.getAllClaims(),
+        compOffApi.getPending(),
       ]);
 
       if (corrRes.status === "fulfilled") {
@@ -54,6 +56,7 @@ export default function ApprovalsInboxView() {
           )
         );
       }
+      if (compRes.status === "fulfilled") setCompOffs(unwrapList(compRes.value));
     } catch (err) {
       console.error("Failed to load approvals inbox:", err);
     } finally {
@@ -135,7 +138,20 @@ export default function ApprovalsInboxView() {
     }
   };
 
-  const totalPending = corrections.length + leaves.length + overtimes.length + expenses.length;
+  const handleReviewCompOff = async (id: string, status: "APPROVED" | "REJECTED") => {
+    toast.loading("Reviewing comp-off request...", { id: "compoff-act" });
+    try {
+      const res = await compOffApi.review(id, { status, reviewNote: "Reviewed in approvals inbox" });
+      toast.dismiss("compoff-act");
+      if (res?.success) { toast.success(`Comp-off request ${status}!`); loadAllPending(); }
+      else toast.error(res?.message || "Action failed");
+    } catch (err: any) {
+      toast.dismiss("compoff-act");
+      toast.error(err.response?.data?.message || err.message || "Action failed");
+    }
+  };
+
+  const totalPending = corrections.length + leaves.length + overtimes.length + expenses.length + compOffs.length;
 
   return (
     <div className="space-y-6">
@@ -226,6 +242,17 @@ export default function ApprovalsInboxView() {
             </span>
           )}
         </button>
+
+        <button
+          onClick={() => setActiveTab("COMPOFF")}
+          className={`px-4 py-2 rounded-xl text-sm font-semibold transition flex items-center gap-2 ${
+            activeTab === "COMPOFF" ? "bg-indigo-600 text-white shadow" : "bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+          }`}
+        >
+          <Sparkles className="w-4 h-4" />
+          <span>Comp-Off</span>
+          {compOffs.length > 0 && <span className="px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold">{compOffs.length}</span>}
+        </button>
       </div>
 
       {/* Tab Panels */}
@@ -241,179 +268,273 @@ export default function ApprovalsInboxView() {
               All attendance regularization requests are clear! No pending items.
             </div>
           ) : (
-            <div className="space-y-3">
-              {corrections.map((corr) => (
-                <div
-                  key={corr.id}
-                  className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-slate-50/80 border border-slate-200"
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-slate-900">
-                        {corr.employee?.firstName} {corr.employee?.lastName}
-                      </span>
-                      <span className="text-xs text-indigo-600 font-medium">
-                        ({corr.employee?.department?.name || corr.employee?.employeeCode})
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-600 mt-1">
-                      Target Date: <span className="font-semibold text-slate-900">{formatDate(corr.attendance?.date || corr.createdAt)}</span> | Requested In: {formatTime(corr.requestedCheckIn)} / Out: {formatTime(corr.requestedCheckOut)}
-                    </p>
-                    <p className="text-xs text-slate-500 mt-0.5 italic">Reason: "{corr.reason}"</p>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleReviewCorrection(corr.id, "APPROVED")}
-                      className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow transition flex items-center gap-1"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => handleReviewCorrection(corr.id, "REJECTED")}
-                      className="px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold text-xs transition flex items-center gap-1"
-                    >
-                      <XCircle className="w-3.5 h-3.5" />
-                      Reject
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )
+<div className="overflow-x-auto rounded-2xl border border-slate-200/80">
+              <table className="min-w-[900px] w-full table-fixed text-left text-sm">
+                <thead className="bg-slate-50/90 text-[10px] uppercase tracking-[0.14em] text-slate-500">
+                  <tr>
+                    <th className="w-[19%] px-4 py-3 font-semibold">Employee</th>
+                    <th className="w-[14%] px-4 py-3 font-semibold">Date</th>
+                    <th className="w-[22%] px-4 py-3 font-semibold">Requested time</th>
+                    <th className="w-[29%] px-4 py-3 font-semibold">Reason</th>
+                    <th className="w-[16%] px-4 py-3 text-right font-semibold">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {corrections.map((corr) => {
+                    const reason = String(corr.reason || "No reason provided");
+                    return (
+                      <tr key={corr.id} className="align-middle transition-colors hover:bg-indigo-50/[0.32]">
+                        <td className="px-4 py-4">
+                          <p className="truncate font-semibold text-slate-900">{corr.employee?.firstName} {corr.employee?.lastName}</p>
+                          <p className="mt-1 truncate text-xs text-slate-500">{corr.employee?.department?.name || corr.employee?.employeeCode || "—"}</p>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-4 text-xs font-medium text-slate-700">{formatDate(corr.attendance?.date || corr.createdAt)}</td>
+                        <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-600">
+                          <span className="font-medium text-slate-900">In</span> {formatTime(corr.requestedCheckIn)} <span className="mx-1 text-slate-300">/</span> <span className="font-medium text-slate-900">Out</span> {formatTime(corr.requestedCheckOut)}
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="group relative max-w-[260px]">
+                            <p className="truncate text-xs leading-5 text-slate-700" title={reason}>{reason}</p>
+                            <div role="tooltip" className="pointer-events-none invisible absolute bottom-full left-0 z-30 mb-2 w-[min(360px,calc(100vw-3rem))] rounded-xl bg-slate-950 px-3 py-2 text-xs leading-5 text-white opacity-0 shadow-xl transition-all duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+                              {reason}
+                              <span className="absolute -bottom-1 left-5 h-2 w-2 rotate-45 bg-slate-950" />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button type="button" onClick={() => handleReviewCorrection(corr.id, "APPROVED")} className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-px hover:bg-emerald-500 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40">
+                              <CheckCircle2 className="h-3.5 w-3.5" /> Approve
+                            </button>
+                            <button type="button" onClick={() => handleReviewCorrection(corr.id, "REJECTED")} className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:-translate-y-px hover:bg-rose-100 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/30">
+                              <XCircle className="h-3.5 w-3.5" /> Reject
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>          )
         ) : activeTab === "LEAVES" ? (
           leaves.length === 0 ? (
             <div className="py-12 text-center text-slate-500 text-xs">
               No pending leave requests awaiting your decision.
             </div>
           ) : (
-            <div className="space-y-3">
-              {leaves.map((leave) => (
-                <div
-                  key={leave.id}
-                  className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-slate-50/80 border border-slate-200"
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-slate-900">
-                        {leave.employee?.firstName} {leave.employee?.lastName}
-                      </span>
-                      <span className="px-2 py-0.5 rounded text-xs font-bold bg-indigo-50 border border-indigo-200 text-indigo-700">
-                        {leave.leaveType?.name || "Leave"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-600 mt-1">
-                      {formatDate(leave.startDate)} to {formatDate(leave.endDate)} ({leave.totalDays} days)
-                    </p>
-                    <p className="text-xs text-slate-500 mt-0.5 italic">Reason: "{leave.reason}"</p>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleReviewLeave(leave.id, "APPROVED")}
-                      className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow transition flex items-center gap-1"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => handleReviewLeave(leave.id, "REJECTED")}
-                      className="px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold text-xs transition flex items-center gap-1"
-                    >
-                      <XCircle className="w-3.5 h-3.5" />
-                      Reject
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )
+<div className="overflow-x-auto rounded-2xl border border-slate-200/80">
+              <table className="min-w-[900px] w-full table-fixed text-left text-sm">
+                <thead className="bg-slate-50/90 text-[10px] uppercase tracking-[0.14em] text-slate-500">
+                  <tr>
+                    <th className="w-[19%] px-4 py-3 font-semibold">Employee</th>
+                    <th className="w-[14%] px-4 py-3 font-semibold">Date</th>
+                    <th className="w-[22%] px-4 py-3 font-semibold">Requested time</th>
+                    <th className="w-[29%] px-4 py-3 font-semibold">Reason</th>
+                    <th className="w-[16%] px-4 py-3 text-right font-semibold">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {corrections.map((corr) => {
+                    const reason = String(corr.reason || "No reason provided");
+                    return (
+                      <tr key={corr.id} className="align-middle transition-colors hover:bg-indigo-50/[0.32]">
+                        <td className="px-4 py-4">
+                          <p className="truncate font-semibold text-slate-900">{corr.employee?.firstName} {corr.employee?.lastName}</p>
+                          <p className="mt-1 truncate text-xs text-slate-500">{corr.employee?.department?.name || corr.employee?.employeeCode || "—"}</p>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-4 text-xs font-medium text-slate-700">{formatDate(corr.attendance?.date || corr.createdAt)}</td>
+                        <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-600">
+                          <span className="font-medium text-slate-900">In</span> {formatTime(corr.requestedCheckIn)} <span className="mx-1 text-slate-300">/</span> <span className="font-medium text-slate-900">Out</span> {formatTime(corr.requestedCheckOut)}
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="group relative max-w-[260px]">
+                            <p className="truncate text-xs leading-5 text-slate-700" title={reason}>{reason}</p>
+                            <div role="tooltip" className="pointer-events-none invisible absolute bottom-full left-0 z-30 mb-2 w-[min(360px,calc(100vw-3rem))] rounded-xl bg-slate-950 px-3 py-2 text-xs leading-5 text-white opacity-0 shadow-xl transition-all duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+                              {reason}
+                              <span className="absolute -bottom-1 left-5 h-2 w-2 rotate-45 bg-slate-950" />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button type="button" onClick={() => handleReviewCorrection(corr.id, "APPROVED")} className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-px hover:bg-emerald-500 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40">
+                              <CheckCircle2 className="h-3.5 w-3.5" /> Approve
+                            </button>
+                            <button type="button" onClick={() => handleReviewCorrection(corr.id, "REJECTED")} className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:-translate-y-px hover:bg-rose-100 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/30">
+                              <XCircle className="h-3.5 w-3.5" /> Reject
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>          )
         ) : activeTab === "OVERTIME" ? (
           overtimes.length === 0 ? (
             <div className="py-12 text-center text-slate-500 text-xs">
               No pending overtime accumulation claims.
             </div>
           ) : (
-            <div className="space-y-3">
-              {overtimes.map((ot) => (
-                <div
-                  key={ot.id}
-                  className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-slate-50/80 border border-slate-200"
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-slate-900">
-                        {ot.employee?.firstName} {ot.employee?.lastName}
-                      </span>
-                      <span className="font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded text-xs">{ot.hours || 0} Hours OT</span>
-                    </div>
-                    <p className="text-xs text-slate-600 mt-1">Date: {formatDate(ot.date)}</p>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleReviewOvertime(ot.id, "APPROVED")}
-                      className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow transition"
-                    >
-                      Approve OT
-                    </button>
-                    <button
-                      onClick={() => handleReviewOvertime(ot.id, "REJECTED")}
-                      className="px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold text-xs transition"
-                    >
-                      Reject
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )
-        ) : (
+<div className="overflow-x-auto rounded-2xl border border-slate-200/80">
+              <table className="min-w-[900px] w-full table-fixed text-left text-sm">
+                <thead className="bg-slate-50/90 text-[10px] uppercase tracking-[0.14em] text-slate-500">
+                  <tr>
+                    <th className="w-[19%] px-4 py-3 font-semibold">Employee</th>
+                    <th className="w-[14%] px-4 py-3 font-semibold">Date</th>
+                    <th className="w-[22%] px-4 py-3 font-semibold">Requested time</th>
+                    <th className="w-[29%] px-4 py-3 font-semibold">Reason</th>
+                    <th className="w-[16%] px-4 py-3 text-right font-semibold">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {corrections.map((corr) => {
+                    const reason = String(corr.reason || "No reason provided");
+                    return (
+                      <tr key={corr.id} className="align-middle transition-colors hover:bg-indigo-50/[0.32]">
+                        <td className="px-4 py-4">
+                          <p className="truncate font-semibold text-slate-900">{corr.employee?.firstName} {corr.employee?.lastName}</p>
+                          <p className="mt-1 truncate text-xs text-slate-500">{corr.employee?.department?.name || corr.employee?.employeeCode || "—"}</p>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-4 text-xs font-medium text-slate-700">{formatDate(corr.attendance?.date || corr.createdAt)}</td>
+                        <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-600">
+                          <span className="font-medium text-slate-900">In</span> {formatTime(corr.requestedCheckIn)} <span className="mx-1 text-slate-300">/</span> <span className="font-medium text-slate-900">Out</span> {formatTime(corr.requestedCheckOut)}
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="group relative max-w-[260px]">
+                            <p className="truncate text-xs leading-5 text-slate-700" title={reason}>{reason}</p>
+                            <div role="tooltip" className="pointer-events-none invisible absolute bottom-full left-0 z-30 mb-2 w-[min(360px,calc(100vw-3rem))] rounded-xl bg-slate-950 px-3 py-2 text-xs leading-5 text-white opacity-0 shadow-xl transition-all duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+                              {reason}
+                              <span className="absolute -bottom-1 left-5 h-2 w-2 rotate-45 bg-slate-950" />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button type="button" onClick={() => handleReviewCorrection(corr.id, "APPROVED")} className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-px hover:bg-emerald-500 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40">
+                              <CheckCircle2 className="h-3.5 w-3.5" /> Approve
+                            </button>
+                            <button type="button" onClick={() => handleReviewCorrection(corr.id, "REJECTED")} className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:-translate-y-px hover:bg-rose-100 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/30">
+                              <XCircle className="h-3.5 w-3.5" /> Reject
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>          )
+        ) : activeTab === "EXPENSES" ? (
           expenses.length === 0 ? (
             <div className="py-12 text-center text-slate-500 text-xs">
               No reimbursement claims pending review.
             </div>
           ) : (
-            <div className="space-y-3">
-              {expenses.map((exp) => (
-                <div
-                  key={exp.id}
-                  className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-slate-50/80 border border-slate-200"
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-slate-900">
-                        {exp.employee?.firstName} {exp.employee?.lastName}
-                      </span>
-                      <span className="px-2 py-0.5 rounded text-xs font-bold bg-amber-50 border border-amber-200 text-amber-800">
-                        {exp.category}
-                      </span>
-                      <span className="font-bold text-emerald-700 text-xs">
-                        {formatCurrency(exp.amount)}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-1 italic">"{exp.description}"</p>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleReviewExpense(exp.id, "APPROVED")}
-                      className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow transition"
-                    >
-                      Approve Claim
-                    </button>
-                    <button
-                      onClick={() => handleReviewExpense(exp.id, "REJECTED")}
-                      className="px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold text-xs transition"
-                    >
-                      Reject
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )
+<div className="overflow-x-auto rounded-2xl border border-slate-200/80">
+              <table className="min-w-[900px] w-full table-fixed text-left text-sm">
+                <thead className="bg-slate-50/90 text-[10px] uppercase tracking-[0.14em] text-slate-500">
+                  <tr>
+                    <th className="w-[19%] px-4 py-3 font-semibold">Employee</th>
+                    <th className="w-[14%] px-4 py-3 font-semibold">Date</th>
+                    <th className="w-[22%] px-4 py-3 font-semibold">Requested time</th>
+                    <th className="w-[29%] px-4 py-3 font-semibold">Reason</th>
+                    <th className="w-[16%] px-4 py-3 text-right font-semibold">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {corrections.map((corr) => {
+                    const reason = String(corr.reason || "No reason provided");
+                    return (
+                      <tr key={corr.id} className="align-middle transition-colors hover:bg-indigo-50/[0.32]">
+                        <td className="px-4 py-4">
+                          <p className="truncate font-semibold text-slate-900">{corr.employee?.firstName} {corr.employee?.lastName}</p>
+                          <p className="mt-1 truncate text-xs text-slate-500">{corr.employee?.department?.name || corr.employee?.employeeCode || "—"}</p>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-4 text-xs font-medium text-slate-700">{formatDate(corr.attendance?.date || corr.createdAt)}</td>
+                        <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-600">
+                          <span className="font-medium text-slate-900">In</span> {formatTime(corr.requestedCheckIn)} <span className="mx-1 text-slate-300">/</span> <span className="font-medium text-slate-900">Out</span> {formatTime(corr.requestedCheckOut)}
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="group relative max-w-[260px]">
+                            <p className="truncate text-xs leading-5 text-slate-700" title={reason}>{reason}</p>
+                            <div role="tooltip" className="pointer-events-none invisible absolute bottom-full left-0 z-30 mb-2 w-[min(360px,calc(100vw-3rem))] rounded-xl bg-slate-950 px-3 py-2 text-xs leading-5 text-white opacity-0 shadow-xl transition-all duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+                              {reason}
+                              <span className="absolute -bottom-1 left-5 h-2 w-2 rotate-45 bg-slate-950" />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button type="button" onClick={() => handleReviewCorrection(corr.id, "APPROVED")} className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-px hover:bg-emerald-500 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40">
+                              <CheckCircle2 className="h-3.5 w-3.5" /> Approve
+                            </button>
+                            <button type="button" onClick={() => handleReviewCorrection(corr.id, "REJECTED")} className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:-translate-y-px hover:bg-rose-100 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/30">
+                              <XCircle className="h-3.5 w-3.5" /> Reject
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>          )
+        ) : (
+          compOffs.length === 0 ? (
+            <div className="py-12 text-center text-slate-500 text-xs">No comp-off requests pending review.</div>
+          ) : (
+<div className="overflow-x-auto rounded-2xl border border-slate-200/80">
+              <table className="min-w-[900px] w-full table-fixed text-left text-sm">
+                <thead className="bg-slate-50/90 text-[10px] uppercase tracking-[0.14em] text-slate-500">
+                  <tr>
+                    <th className="w-[19%] px-4 py-3 font-semibold">Employee</th>
+                    <th className="w-[14%] px-4 py-3 font-semibold">Date</th>
+                    <th className="w-[22%] px-4 py-3 font-semibold">Requested time</th>
+                    <th className="w-[29%] px-4 py-3 font-semibold">Reason</th>
+                    <th className="w-[16%] px-4 py-3 text-right font-semibold">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {corrections.map((corr) => {
+                    const reason = String(corr.reason || "No reason provided");
+                    return (
+                      <tr key={corr.id} className="align-middle transition-colors hover:bg-indigo-50/[0.32]">
+                        <td className="px-4 py-4">
+                          <p className="truncate font-semibold text-slate-900">{corr.employee?.firstName} {corr.employee?.lastName}</p>
+                          <p className="mt-1 truncate text-xs text-slate-500">{corr.employee?.department?.name || corr.employee?.employeeCode || "—"}</p>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-4 text-xs font-medium text-slate-700">{formatDate(corr.attendance?.date || corr.createdAt)}</td>
+                        <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-600">
+                          <span className="font-medium text-slate-900">In</span> {formatTime(corr.requestedCheckIn)} <span className="mx-1 text-slate-300">/</span> <span className="font-medium text-slate-900">Out</span> {formatTime(corr.requestedCheckOut)}
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="group relative max-w-[260px]">
+                            <p className="truncate text-xs leading-5 text-slate-700" title={reason}>{reason}</p>
+                            <div role="tooltip" className="pointer-events-none invisible absolute bottom-full left-0 z-30 mb-2 w-[min(360px,calc(100vw-3rem))] rounded-xl bg-slate-950 px-3 py-2 text-xs leading-5 text-white opacity-0 shadow-xl transition-all duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+                              {reason}
+                              <span className="absolute -bottom-1 left-5 h-2 w-2 rotate-45 bg-slate-950" />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button type="button" onClick={() => handleReviewCorrection(corr.id, "APPROVED")} className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-px hover:bg-emerald-500 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40">
+                              <CheckCircle2 className="h-3.5 w-3.5" /> Approve
+                            </button>
+                            <button type="button" onClick={() => handleReviewCorrection(corr.id, "REJECTED")} className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:-translate-y-px hover:bg-rose-100 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/30">
+                              <XCircle className="h-3.5 w-3.5" /> Reject
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>          )
         )}
       </div>
     </div>

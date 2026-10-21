@@ -259,7 +259,7 @@ export default function AssetManagementView() {
             </div>
             <div>
               <h1 className="font-serif text-2xl font-bold text-slate-900 tracking-tight">
-                Asset Inventory & Lifecycle
+                Assets
               </h1>
               <p className="text-sm text-slate-500">
                 Track hardware equipment, serial numbers, employee custody, warranty & offboarding returns

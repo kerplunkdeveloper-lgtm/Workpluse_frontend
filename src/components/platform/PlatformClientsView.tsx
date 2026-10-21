@@ -84,6 +84,11 @@ interface Overview {
   recentPayments: Array<{ id: string; clientId?: string; client?: string; plan: string; amountInr: number; paidAt?: string }>;
 }
 
+interface RevenuePoint {
+  date: string;
+  amountInr: number;
+}
+
 const PLAN_LABEL: Record<string, string> = {
   FREE_TRIAL: "Free trial",
   STARTER: "Starter",
@@ -100,6 +105,8 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 const rupees = (n: number) => `₹${Math.round(n || 0).toLocaleString("en-IN")}`;
+/** Null-safe count: a missing field from an older API renders as 0 instead of crashing the console. */
+const count = (n?: number | null) => Math.round(Number(n) || 0).toLocaleString("en-IN");
 const shortDate = (iso?: string | null) =>
   iso ? new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—";
 
@@ -140,7 +147,7 @@ function SeatBar({ used, max }: { used: number; max: number }) {
   return (
     <div className="min-w-[110px]">
       <p className="text-xs tabular-nums text-slate-700">
-        <span className="font-semibold text-slate-900">{used.toLocaleString("en-IN")}</span> / {max.toLocaleString("en-IN")}
+        <span className="font-semibold text-slate-900">{count(used)}</span> / {count(max)}
       </p>
       <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Seats used">
         <div className={`h-full rounded-full ${tone}`} style={{ width: `${pct}%` }} />
@@ -151,6 +158,7 @@ function SeatBar({ used, max }: { used: number; max: number }) {
 
 export default function PlatformClientsView() {
   const [overview, setOverview] = useState<Overview | null>(null);
+  const [revenue, setRevenue] = useState<{ totalInr: number; points: RevenuePoint[] } | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -180,6 +188,10 @@ export default function PlatformClientsView() {
     platformApi
       .overview()
       .then((res) => setOverview(res?.data || null))
+      .catch(() => undefined);
+    platformApi
+      .revenue(30)
+      .then((res) => setRevenue(res?.data || null))
       .catch(() => undefined);
   }, []);
 
@@ -213,11 +225,11 @@ export default function PlatformClientsView() {
   const filtersOn = Boolean(search || plan || status || expiring);
   const kpis = overview
     ? [
-        { label: "Clients", value: overview.totalClients.toLocaleString("en-IN"), sub: `${overview.newClientsLast30Days} new in 30 days`, icon: Building2 },
-        { label: "Paying", value: overview.payingClients.toLocaleString("en-IN"), sub: `${overview.trialClients} on trial`, icon: CreditCard },
+        { label: "Clients", value: count(overview.totalClients), sub: `${count(overview.newClientsLast30Days)} new in 30 days`, icon: Building2 },
+        { label: "Paying", value: count(overview.payingClients), sub: `${count(overview.trialClients)} on trial`, icon: CreditCard },
         { label: "Monthly revenue (MRR)", value: rupees(overview.mrrInr), sub: `${rupees(overview.arrInr)} per year`, icon: TrendingUp },
-        { label: "Collected, last 30 days", value: rupees(overview.revenueLast30DaysInr), sub: `${overview.paidOrdersLast30Days} payment${overview.paidOrdersLast30Days === 1 ? "" : "s"}`, icon: IndianRupee },
-        { label: "Active seats", value: overview.activeSeats.toLocaleString("en-IN"), sub: "across all clients", icon: Users },
+        { label: "Collected, last 30 days", value: rupees(overview.revenueLast30DaysInr), sub: `${count(overview.paidOrdersLast30Days)} payment${overview.paidOrdersLast30Days === 1 ? "" : "s"}`, icon: IndianRupee },
+        { label: "Active seats", value: count(overview.activeSeats), sub: "across all clients", icon: Users },
       ]
     : [];
 
@@ -249,6 +261,33 @@ export default function PlatformClientsView() {
               </div>
             ))
           : Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-[104px] animate-pulse rounded-2xl border border-slate-100 bg-white" />)}
+      </section>
+
+      <section aria-labelledby="revenue-title" className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_50px_-34px_rgba(15,23,42,0.35)] sm:p-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">Cash collected</p>
+            <h2 id="revenue-title" className="mt-1 font-serif text-xl font-semibold tracking-tight text-slate-950">Last 30 days</h2>
+          </div>
+          <p className="text-sm font-bold tabular-nums text-slate-900">{revenue ? rupees(revenue.totalInr) : "Loading…"}</p>
+        </div>
+        <div className="mt-5 flex h-36 items-end gap-1 border-b border-slate-100 pb-1" aria-label="Daily collected revenue chart">
+          {(revenue?.points || Array.from({ length: 30 }, (_, i) => ({ date: String(i), amountInr: 0 }))).map((point, index, points) => {
+            const max = Math.max(...points.map((p) => p.amountInr), 1);
+            const height = point.amountInr ? Math.max(6, Math.round((point.amountInr / max) * 100)) : 2;
+            return (
+              <div key={point.date} className="group relative flex h-full min-w-0 flex-1 items-end" title={`${point.date}: ${rupees(point.amountInr)}`}>
+                <div className="w-full rounded-t-md bg-indigo-500/80 transition group-hover:bg-indigo-600" style={{ height: `${height}%` }} />
+                {(index === 0 || index === points.length - 1 || point.amountInr > 0) && (
+                  <span className="pointer-events-none absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9px] text-slate-400">
+                    {point.date.length > 4 ? new Date(`${point.date}T00:00:00Z`).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "UTC" }) : ""}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <p className="mt-8 text-xs text-slate-500">Paid orders only. Values are grouped by UTC day and exclude failed or pending payments.</p>
       </section>
 
       <AttentionPanel onOpen={setOpenId} refreshKey={attentionKey} />
@@ -423,11 +462,11 @@ export default function PlatformClientsView() {
         />
       </section>
 
-      {overview && overview.recentPayments.length > 0 && (
+      {overview && (overview.recentPayments?.length ?? 0) > 0 && (
         <section className="rounded-3xl border border-slate-200 bg-white p-5">
           <h2 className="text-sm font-bold text-slate-900">Recent payments</h2>
           <ul className="mt-3 divide-y divide-slate-100">
-            {overview.recentPayments.map((p) => (
+            {(overview.recentPayments || []).map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
                 <button type="button" onClick={() => p.clientId && setOpenId(p.clientId)} className="min-w-0 text-left">
                   <span className="block truncate font-semibold text-slate-900">{p.client}</span>
@@ -463,6 +502,7 @@ function ClientPanel({ id, onClose, onChanged }: { id: string; onClose: () => vo
   const [client, setClient] = useState<ClientDetail | null>(null);
   const [dialog, setDialog] = useState<null | "EXTEND" | "CHANGE_PLAN" | "SUSPEND" | "REACTIVATE">(null);
   const [failed, setFailed] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
   const closeRef = React.useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -576,6 +616,26 @@ function ClientPanel({ id, onClose, onChanged }: { id: string; onClose: () => vo
                   {row("Last activity (anyone)", ago(client.lastActiveAt))}
                   {row("Joined", shortDate(client.createdAt))}
                 </dl>
+                {client.admin?.email && (
+                  <button
+                    type="button"
+                    disabled={sendingReset}
+                    onClick={async () => {
+                      setSendingReset(true);
+                      try {
+                        const result = await platformApi.sendAdminPasswordReset(client.id);
+                        toast.success(result?.data?.delivered === false ? "Reset email could not be delivered." : "Password reset email sent to the company admin.");
+                      } catch (error: any) {
+                        toast.error(error?.response?.data?.message || "Password reset email could not be sent.");
+                      } finally {
+                        setSendingReset(false);
+                      }
+                    }}
+                    className="mt-3 w-full rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2.5 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-50"
+                  >
+                    {sendingReset ? "Sending reset email…" : "Send admin password reset"}
+                  </button>
+                )}
               </section>
 
               <section>
@@ -614,13 +674,13 @@ function ClientPanel({ id, onClose, onChanged }: { id: string; onClose: () => vo
                     {client.paidOrders} paid · {rupees(client.lifetimePaidInr)} lifetime
                   </span>
                 </div>
-                {client.orders.length === 0 ? (
+                {(client.orders?.length ?? 0) === 0 ? (
                   <p className="mt-2 rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500">
                     No payments yet. This plan was set up without checkout.
                   </p>
                 ) : (
                   <ul className="mt-2 divide-y divide-slate-100">
-                    {client.orders.map((o) => (
+                    {(client.orders || []).map((o) => (
                       <li key={o.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
                         <div>
                           <p className="font-semibold text-slate-900">

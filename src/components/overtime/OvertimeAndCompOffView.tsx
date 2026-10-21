@@ -98,7 +98,7 @@ export default function OvertimeAndCompOffView() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2.5">
             <Layers className="w-7 h-7 text-indigo-600" />
-            Comp-Off Ledger & Overtime Accrual
+            Overtime & comp-off
           </h1>
           <p className="text-xs text-slate-500 mt-1">
             Automatic credit for working on Sundays and holidays, 100% overtime accumulation, and comp-off redemption

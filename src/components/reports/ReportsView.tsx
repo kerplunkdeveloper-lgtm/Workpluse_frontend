@@ -159,7 +159,7 @@ export default function ReportsView() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2.5">
             <BarChart3 className="w-7 h-7 text-indigo-600" />
-            Attendance Reports & PDF Generator
+            Reports
           </h1>
           <p className="text-xs text-slate-500 mt-1">
             View & download official PDF registers for daily records (Present, Late, Absent, Leaves) and monthly overall muster rolls

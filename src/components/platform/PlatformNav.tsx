@@ -2,12 +2,13 @@
 
 import React from "react";
 import Link from "next/link";
-import { Building2, History, IndianRupee } from "lucide-react";
+import { Building2, History, IndianRupee, ShieldCheck } from "lucide-react";
 
 const TABS = [
   { href: "/platform/clients", label: "Clients", icon: Building2, hint: "Companies, plans and payments" },
   { href: "/platform/billing", label: "Pricing & offers", icon: IndianRupee, hint: "Plan prices and coupons" },
   { href: "/platform/activity", label: "Activity", icon: History, hint: "Every owner action on a client" },
+  { href: "/platform/security", label: "Security", icon: ShieldCheck, hint: "Two-step verification and platform security" },
 ] as const;
 
 /** Segmented navigation shared by the platform-owner screens. */

@@ -119,7 +119,9 @@ export default function OffboardingView() {
     }
     try {
       const summary = await offboardingApi.noticeSummary();
-      setNoticeSummary(summary?.data || null);
+      // Only trust a summary that carries its counters; otherwise fall back to the locally derived figures.
+      const data = summary?.data;
+      setNoticeSummary(data && typeof data.awaitingHrReview === "number" && typeof data.endingWithin7Days === "number" ? data : null);
     } catch {
       setNoticeSummary(null);
     }
@@ -375,7 +377,7 @@ export default function OffboardingView() {
             <span className="p-2.5 rounded-2xl bg-rose-50 text-rose-600 border border-rose-200">
               <UserMinus className="w-6 h-6" />
             </span>
-            Offboarding & Full & Final (F&F) Settlement
+            Offboarding
           </h1>
           <p className="text-xs text-slate-500 mt-1">
             End-to-end separation pipeline: Resignation review, notice period, department clearances, payroll-integrated F&F, and formal documentation.

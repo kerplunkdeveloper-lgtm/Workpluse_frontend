@@ -57,6 +57,8 @@ interface AttendanceContextType {
   checkOut: (options?: PunchOptions) => Promise<boolean>;
   startBreak: () => Promise<boolean>;
   endBreak: () => Promise<boolean>;
+  startLunch: () => Promise<boolean>;
+  endLunch: () => Promise<boolean>;
   wfhCheckIn: (note?: string) => Promise<boolean>;
   triggerSync: () => Promise<void>;
   refreshStatus: () => Promise<void>;
@@ -257,9 +259,12 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
           hasCheckedIn,
           hasCheckedOut,
           isOnBreak,
+          activePauseType: raw.activePauseType || null,
           isWorkFromHome,
           attendance: raw.attendance,
           totalBreakMinutes: raw.totalBreakMinutes || raw.attendance?.breakMinutes || 0,
+          totalLunchMinutes: raw.totalLunchMinutes || raw.attendance?.lunchMinutes || 0,
+          totalPauseMinutes: raw.totalPauseMinutes || ((raw.attendance?.breakMinutes || 0) + (raw.attendance?.lunchMinutes || 0)),
           workedMinutesToday: raw.attendance?.workingMinutes || 0,
           shift: raw.employee?.shift || raw.shift,
           locationPolicy: raw.locationPolicy,
@@ -348,8 +353,10 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
             }));
           } else if (type === "BREAK_START") {
             setTodayStatus((prev: any) => ({ ...(prev || {}), isOnBreak: true }));
-          } else if (type === "BREAK_END") {
-            setTodayStatus((prev: any) => ({ ...(prev || {}), isOnBreak: false }));
+          } else if (type === "BREAK_END" || type === "LUNCH_END") {
+            setTodayStatus((prev: any) => ({ ...(prev || {}), isOnBreak: false, activePauseType: null }));
+          } else if (type === "LUNCH_START") {
+            setTodayStatus((prev: any) => ({ ...(prev || {}), isOnBreak: true, activePauseType: "LUNCH" }));
           }
           return true;
         }
@@ -497,6 +504,16 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
     );
   }, [currentLocation, handlePunch]);
 
+  const startLunch = useCallback(async (): Promise<boolean> => {
+    const coords = currentLocation ? { latitude: currentLocation.latitude, longitude: currentLocation.longitude } : undefined;
+    return handlePunch("LUNCH_START", () => attendanceApi.startLunch(coords), "Lunch started!", coords);
+  }, [currentLocation, handlePunch]);
+
+  const endLunch = useCallback(async (): Promise<boolean> => {
+    const coords = currentLocation ? { latitude: currentLocation.latitude, longitude: currentLocation.longitude } : undefined;
+    return handlePunch("LUNCH_END", () => attendanceApi.endLunch(coords), "Lunch ended!", coords);
+  }, [currentLocation, handlePunch]);
+
   const wfhCheckIn = useCallback(async (note?: string): Promise<boolean> => {
     setIsActionLoading(true);
     const punchTimestamp = new Date().toISOString();
@@ -549,6 +566,8 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
         checkOut,
         startBreak,
         endBreak,
+        startLunch,
+        endLunch,
         wfhCheckIn,
         triggerSync,
         refreshStatus: fetchTodayStatus,

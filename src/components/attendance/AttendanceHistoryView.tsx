@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CalendarRange, FileSearch, Pencil, Plus, RefreshCw } from "lucide-react";
-import { attendanceApi } from "@/lib/api";
+import { attendanceApi, correctionsApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { formatTime, unwrapList } from "@/lib/utils";
 import type { Attendance } from "@/types";
@@ -11,7 +11,7 @@ import Pagination from "@/components/ui/Pagination";
 import RegularizationModal from "./RegularizationModal";
 import AdminMarkDialog, { type AdminMarkInitial } from "./AdminMarkDialog";
 import EmployeeCombobox, { type EmployeeOption } from "./EmployeeCombobox";
-import { breakMinutesOf, formatHm, localDateKey, recordDateKey, statusMeta, workedMinutes } from "./attendanceUtils";
+import { breakMinutesOf, formatHm, localDateKey, lunchMinutesOf, recordDateKey, statusMeta, workedMinutes } from "./attendanceUtils";
 
 const TEAM_ROLES = ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"];
 
@@ -84,6 +84,8 @@ export default function AttendanceHistoryView() {
   const [regularize, setRegularize] = useState<Attendance | null>(null);
   const [markOpen, setMarkOpen] = useState(false);
   const [markInitial, setMarkInitial] = useState<AdminMarkInitial | undefined>();
+  const [correctionRequests, setCorrectionRequests] = useState<any[]>([]);
+  const [correctionsLoading, setCorrectionsLoading] = useState(false);
 
   const setFilters = useCallback(
     (next: Record<string, string | null>) => {
@@ -124,6 +126,21 @@ export default function AttendanceHistoryView() {
     };
   }, [from, to, status, employee?.id, isTeamView, page, pageSize, reloadKey]);
 
+useEffect(() => {
+    let active = true;
+    setCorrectionsLoading(true);
+    (isTeamView ? correctionsApi.getAllCorrections() : correctionsApi.getMyCorrections())
+      .then((res) => {
+        if (active) setCorrectionRequests(unwrapList<any>(res));
+      })
+      .catch(() => {
+        if (active) setCorrectionRequests([]);
+      })
+      .finally(() => active && setCorrectionsLoading(false));
+    return () => {
+      active = false;
+    };
+  }, [isTeamView, reloadKey]);
   const reload = () => setReloadKey((k) => k + 1);
 
   const openCorrection = (row: Attendance) => {
@@ -225,8 +242,53 @@ export default function AttendanceHistoryView() {
         onRetry={reload}
         onClearFilters={() => setFilters({ status: null, range: "all", from: null, to: null, employee: null, employeeName: null })}
         onCorrect={openCorrection}
+        correctionRequests={correctionRequests}
       />
 
+{!isTeamView && (
+        <section className="overflow-hidden rounded-2xl bg-white ring-1 ring-slate-900/[0.06] shadow-[0_12px_35px_-24px_rgba(15,23,42,0.35)]" aria-labelledby="correction-requests-title">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+            <div>
+              <h3 id="correction-requests-title" className="text-sm font-semibold text-slate-950">My correction requests</h3>
+              <p className="mt-0.5 text-xs text-slate-500">Submitted reasons and review status for your attendance changes.</p>
+            </div>
+            <span className="rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">{correctionRequests.length} request{correctionRequests.length === 1 ? "" : "s"}</span>
+          </div>
+          {correctionsLoading ? (
+            <div className="px-5 py-8 text-center text-xs text-slate-500">Loading correction requests…</div>
+          ) : correctionRequests.length === 0 ? (
+            <div className="px-5 py-8 text-center text-xs text-slate-500">No correction requests submitted yet.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-[760px] w-full table-fixed text-left text-sm">
+                <thead className="bg-slate-50/90 text-[10px] uppercase tracking-[0.14em] text-slate-500">
+                  <tr>
+                    <th className="w-[16%] px-5 py-3 font-semibold">Date</th>
+                    <th className="w-[21%] px-4 py-3 font-semibold">Requested time</th>
+                    <th className="w-[39%] px-4 py-3 font-semibold">Reason</th>
+                    <th className="w-[24%] px-4 py-3 font-semibold">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {correctionRequests.map((request) => {
+                    const reason = String(request.reason || "No reason provided");
+                    const requestStatus = String(request.status || "PENDING");
+                    const statusClass = requestStatus === "APPROVED" ? "bg-emerald-50 text-emerald-700 ring-emerald-600/15" : requestStatus === "REJECTED" ? "bg-rose-50 text-rose-700 ring-rose-600/15" : "bg-amber-50 text-amber-700 ring-amber-600/15";
+                    return (
+                      <tr key={request.id} className="align-middle hover:bg-slate-50/70">
+                        <td className="whitespace-nowrap px-5 py-4 text-xs font-medium text-slate-700">{prettyRange(recordDateKey({ date: request.attendance?.date || request.date || request.createdAt }), undefined)}</td>
+                        <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-600"><span className="font-medium text-slate-900">In</span> {formatTime(request.requestedCheckIn)} <span className="mx-1 text-slate-300">/</span> <span className="font-medium text-slate-900">Out</span> {formatTime(request.requestedCheckOut)}</td>
+                        <td className="px-4 py-4"><div className="group relative max-w-[320px]"><p className="truncate text-xs leading-5 text-slate-700" title={reason}>{reason}</p><div role="tooltip" className="pointer-events-none invisible absolute bottom-full left-0 z-30 mb-2 w-[min(360px,calc(100vw-3rem))] rounded-xl bg-slate-950 px-3 py-2 text-xs leading-5 text-white opacity-0 shadow-xl transition-all duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">{reason}<span className="absolute -bottom-1 left-5 h-2 w-2 rotate-45 bg-slate-950" /></div></div></td>
+                        <td className="px-4 py-4"><span className={`inline-flex rounded-lg px-2.5 py-1 text-[11px] font-semibold ring-1 ${statusClass}`}>{requestStatus.replace(/_/g, " ")}</span>{request.reviewNote && <p className="mt-1 max-w-[180px] truncate text-[11px] text-slate-500" title={request.reviewNote}>Review: {request.reviewNote}</p>}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
       {!loading && total > 0 && (
         <Pagination
           page={page}
@@ -300,10 +362,11 @@ export interface AttendanceLogViewProps {
   onRetry: () => void;
   onClearFilters: () => void;
   onCorrect: (row: Attendance) => void;
+  correctionRequests: any[];
 }
 
 /** Presentational: table on wide screens, stacked cards on phones. */
-export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered, onRetry, onClearFilters, onCorrect }: AttendanceLogViewProps) {
+export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered, onRetry, onClearFilters, onCorrect, correctionRequests }: AttendanceLogViewProps) {
   const shell = "overflow-hidden rounded-2xl bg-white ring-1 ring-slate-900/[0.06] shadow-[0_1px_2px_rgba(15,23,42,0.04)]";
 
   if (failed) {
@@ -344,7 +407,7 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
     <div className={shell}>
       {/* Wide screens: table */}
       <div className="hidden overflow-x-auto md:block">
-        <table className="w-full text-sm">
+        <table className="min-w-[1260px] w-full text-sm">
           <thead className="border-b border-slate-100 bg-slate-50/70">
             <tr>
               {isTeamView && <th className={`${th} pl-5`}>Employee</th>}
@@ -352,7 +415,9 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
               <th className={th}>Punch in</th>
               <th className={th}>Punch out</th>
               <th className={th}>Worked</th>
-              <th className={`${th} hidden xl:table-cell`}>Breaks</th>
+              <th className={`${th} hidden xl:table-cell`}>Break</th>
+              <th className={`${th} hidden xl:table-cell`}>Lunch</th>
+              <th className={`${th} hidden xl:table-cell`}>Overtime</th>
               <th className={`${th} hidden lg:table-cell`}>Location</th>
               <th className={th}>Status</th>
               <th className={`${th} pr-5 text-right`}><span className="sr-only">Actions</span></th>
@@ -362,13 +427,14 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
             {loading
               ? skeletonRows.map((_, i) => (
                   <tr key={i}>
-                    <td colSpan={isTeamView ? 9 : 8} className="px-5 py-3.5"><span className="skeleton-shimmer block h-5 rounded-md" /></td>
+                    <td colSpan={isTeamView ? 12 : 11} className="px-5 py-3.5"><span className="skeleton-shimmer block h-5 rounded-md" /></td>
                   </tr>
                 ))
               : rows.map((row) => {
                   const day = dayLabel(row);
                   const mins = workedMinutes(row);
                   const late = Number(row.lateMinutes || 0);
+                  const correction = correctionRequests.find((request) => request.attendanceId === row.id || (request.employeeId === row.employeeId && String(request.date || request.attendance?.date || "").slice(0, 10) === recordDateKey(row)));
                   return (
                     <tr key={row.id} className="group transition hover:bg-slate-50/70">
                       {isTeamView && (
@@ -393,7 +459,16 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
                       <td className="whitespace-nowrap px-4 py-3 tabular-nums text-slate-700">{row.checkIn && !row.checkOut ? <span className="text-xs font-medium text-emerald-700">Working</span> : timeOrDash(row.checkOut)}</td>
                       <td className="whitespace-nowrap px-4 py-3 font-semibold tabular-nums text-slate-900">{mins ? formatHm(mins) : "—"}</td>
                       <td className="hidden whitespace-nowrap px-4 py-3 tabular-nums text-slate-500 xl:table-cell">{breakMinutesOf(row) ? formatHm(breakMinutesOf(row)) : "—"}</td>
-                      <td className="hidden max-w-[14rem] truncate px-4 py-3 text-slate-600 lg:table-cell" title={row.checkInLocation || row.branch?.name || ""}>{row.checkInLocation || row.branch?.name || "—"}</td>
+                      <td className="hidden whitespace-nowrap px-4 py-3 tabular-nums text-slate-500 xl:table-cell">{lunchMinutesOf(row) ? formatHm(lunchMinutesOf(row)) : "—"}</td>
+                      <td className="hidden whitespace-nowrap px-4 py-3 tabular-nums text-indigo-700 xl:table-cell">{row.overtimeMinutes ? formatHm(row.overtimeMinutes) : "—"}</td>
+                      <td className="hidden max-w-[18rem] px-4 py-3 xl:table-cell">
+                        {(row.correctionReason || correction?.reason) ? (
+                          <div className="group relative max-w-[16rem]">
+                            <p className="truncate text-xs text-slate-700" title={row.correctionReason || correction?.reason}>{row.correctionReason || correction?.reason}</p>
+                            <div role="tooltip" className="pointer-events-none invisible absolute bottom-full left-0 z-30 mb-2 w-[min(360px,calc(100vw-3rem))] rounded-xl bg-slate-950 px-3 py-2 text-xs leading-5 text-white opacity-0 shadow-xl transition-all duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">{row.correctionReason || correction?.reason}<span className="absolute -bottom-1 left-5 h-2 w-2 rotate-45 bg-slate-950" /></div>
+                          </div>
+                        ) : <span className="text-xs text-slate-400">—</span>}
+                      </td>
                       <td className="whitespace-nowrap px-4 py-3"><StatusBadge status={row.status} /></td>
                       <td className="py-3 pl-4 pr-5 text-right">
                         <button
@@ -420,6 +495,7 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
               const day = dayLabel(row);
               const mins = workedMinutes(row);
               const late = Number(row.lateMinutes || 0);
+              const correction = correctionRequests.find((request) => request.attendanceId === row.id || (request.employeeId === row.employeeId && String(request.date || request.attendance?.date || "").slice(0, 10) === recordDateKey(row)));
               return (
                 <li key={row.id} className="p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -437,7 +513,12 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
                     <div><dt className="text-slate-500">Out</dt><dd className="mt-0.5 font-semibold tabular-nums text-slate-900">{row.checkIn && !row.checkOut ? "Working" : timeOrDash(row.checkOut)}</dd></div>
                     <div><dt className="text-slate-500">Worked</dt><dd className="mt-0.5 font-semibold tabular-nums text-slate-900">{mins ? formatHm(mins) : "—"}</dd></div>
                   </dl>
-                  <div className="mt-2.5 flex items-center justify-between">
+{(row.correctionReason || correction?.reason) && (
+                    <div className="mt-2 rounded-xl bg-indigo-50/70 px-3 py-2 ring-1 ring-indigo-100">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-indigo-600">Correction reason</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-700">{row.correctionReason || correction?.reason}</p>
+                    </div>
+                  )}                  <div className="mt-2.5 flex items-center justify-between">
                     <span className="text-xs font-medium text-amber-700">{late > 0 ? `${formatHm(late)} late` : ""}</span>
                     <button type="button" onClick={() => onCorrect(row)} className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600">
                       <Pencil className="h-3 w-3" /> {isTeamView ? "Correct" : "Request fix"}

@@ -125,7 +125,7 @@ function Cell({ value }: { value: Access }) {
   }
   if (value === false) {
     return (
-      <span className="text-slate-300" aria-label="No access">
+      <span className="text-slate-400" aria-label="No access">
         &mdash;
       </span>
     );
