@@ -124,7 +124,7 @@ export default function BulkImportModal({
       const url = URL.createObjectURL(new Blob([output], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = "WorkPluse_Employee_Import_Template.xlsx";
+      anchor.download = "WorkPulse_Employee_Import_Template.xlsx";
       anchor.click();
       URL.revokeObjectURL(url);
 

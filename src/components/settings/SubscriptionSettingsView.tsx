@@ -103,7 +103,7 @@ export default function SubscriptionSettingsView() {
         const options: any = {
           key: checkout.data.keyId,
           currency: "INR",
-          name: "WorkPluse",
+          name: "WorkPulse",
           description: `${checkout.data.plan} ${checkout.data.billingCycle === "ANNUAL" ? "annual" : "monthly"} subscription`,
           prefill: {
             name: user?.organization?.name || user?.email || "",
@@ -306,7 +306,7 @@ export default function SubscriptionSettingsView() {
               </span>
             </div>
             <h2 className="text-xl font-semibold text-slate-900">
-              {user?.organization?.name || "WorkPluse Global Technologies"}
+              {user?.organization?.name || "WorkPulse Global Technologies"}
             </h2>
             <p className="text-xs text-slate-500 max-w-lg leading-relaxed">
               {entitlement?.message ||
@@ -369,7 +369,7 @@ export default function SubscriptionSettingsView() {
                 value={orgForm.name}
                 onChange={(e) => setOrgForm({ ...orgForm, name: e.target.value })}
                 className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-slate-900 placeholder-slate-400"
-                placeholder="WorkPluse Global Technologies"
+                placeholder="WorkPulse Global Technologies"
               />
             </div>
             <div className="space-y-1.5">

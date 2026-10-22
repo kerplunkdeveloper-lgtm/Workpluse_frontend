@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Briefcase, Building2, CheckCircle2, Home, LogOut, Plane } from "lucide-react";
+import { Building2, BriefcaseBusiness, CheckCircle2, Home, LogOut } from "lucide-react";
 import { useAttendance, PunchOptions } from "@/context/AttendanceContext";
 
 export type PunchConfirmAction = "CHECK_IN" | "CHECK_OUT";
@@ -13,7 +13,7 @@ interface PunchConfirmDialogProps {
   loading?: boolean;
   locationLabel?: string | null;
   onCancel: () => void;
-  /** Receives the work mode the employee picked (only asked for when check-in is office only). */
+  /** Receives the work mode and optional note the employee picked before check-in. */
   onConfirm: (options?: PunchOptions) => void;
 }
 
@@ -23,19 +23,21 @@ export default function PunchConfirmDialog(props: PunchConfirmDialogProps) {
   return <PunchConfirmBody {...props} action={props.action} />;
 }
 
-function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm }: PunchConfirmDialogProps & { action: PunchConfirmAction }) {
-  const { todayStatus } = useAttendance();
+function PunchConfirmBody({ action, loading, onCancel, onConfirm }: PunchConfirmDialogProps & { action: PunchConfirmAction }) {
+  const { todayStatus, isWithinGeofence } = useAttendance();
   const policy = todayStatus?.locationPolicy;
   const isCheckIn = action === "CHECK_IN";
   // In "anywhere" mode the punch is accepted wherever you are, so don't ask.
-  const askWorkMode = isCheckIn && policy?.mode === "OFFICE_ONLY" && policy.radiusMeters !== null;
+  const askWorkMode = isCheckIn;
   const [workMode, setWorkMode] = useState<CheckInWorkMode>("OFFICE");
+  const [note, setNote] = useState("");
+  const officeBlocked = isCheckIn && workMode === "OFFICE" && !isWithinGeofence;
+  const customNoteRequired = isCheckIn && workMode === "CLIENT_VISIT" && !note.trim();
 
   const modes: { value: CheckInWorkMode; label: string; icon: typeof Building2 }[] = [
-    { value: "OFFICE", label: "At the office", icon: Building2 },
-    ...(policy?.allowWfh ? [{ value: "WORK_FROM_HOME" as const, label: "Work from home", icon: Home }] : []),
-    { value: "CLIENT_VISIT", label: "Client visit", icon: Briefcase },
-    { value: "TRAVEL", label: "Travel / field", icon: Plane },
+    { value: "OFFICE", label: "Office", icon: Building2 },
+    ...(policy?.allowWfh !== false ? [{ value: "WORK_FROM_HOME" as const, label: "Remote / WFH", icon: Home }] : []),
+    { value: "CLIENT_VISIT" as const, label: "Other", icon: BriefcaseBusiness },
   ];
 
   return (
@@ -50,9 +52,9 @@ function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm 
           </h3>
           <p className="text-sm text-slate-500 leading-relaxed">
             {isCheckIn
-              ? locationLabel
-                ? `Your shift will start and the team will see you clocked in at ${locationLabel}.`
-                : "Your current time and location will be recorded. The team can see where you clocked in."
+              ? workMode === "WORK_FROM_HOME"
+                ? "You are checking in as Remote / WFH. Your work mode will be recorded for today."
+                : "Office check-in will verify your GPS distance from the assigned office before starting your shift."
               : "Your shift will end now. Today's hours will be saved to your timesheet."}
           </p>
         </div>
@@ -77,14 +79,31 @@ function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm 
                 );
               })}
             </div>
-            <p className="text-[11px] leading-4 text-slate-500">
-              {workMode === "OFFICE"
-                ? "You need to be inside the office area to check in."
-                : "You can check in from anywhere. Your manager will see the work mode you chose."}
+            <p className={`text-[11px] leading-4 ${officeBlocked ? "font-semibold text-rose-600" : "text-slate-500"}`}>
+              {officeBlocked
+                ? "You are outside the assigned office area. Move closer to the office or choose Remote / WFH."
+                : workMode === "OFFICE"
+                ? "Your GPS must be inside the assigned office area to check in as Office."
+                : workMode === "CLIENT_VISIT"
+                ? "Choose Other when you need to record a custom work reason."
+                : "You can check in from anywhere as Remote / WFH."}
             </p>
           </fieldset>
         )}
 
+        {askWorkMode && (
+          <label className="block space-y-1.5">
+            <span className="text-xs font-semibold text-slate-700">{workMode === "CLIENT_VISIT" ? "Custom work reason" : "Custom note"} <span className="font-normal text-slate-400">{workMode === "CLIENT_VISIT" ? "(required)" : "(optional)"}</span></span>
+            <textarea
+              value={note}
+              onChange={(event) => setNote(event.target.value.slice(0, 160))}
+              placeholder={workMode === "CLIENT_VISIT" ? "Example: Client visit, shoot, travel..." : workMode === "WORK_FROM_HOME" ? "Example: Working from home today" : "Example: Main office"}
+              rows={2}
+              className={`w-full resize-none rounded-xl border px-3 py-2.5 text-xs text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 ${customNoteRequired ? "border-rose-300" : "border-slate-200"}`}
+            />
+            <p className={`text-[10px] ${customNoteRequired ? "text-rose-600" : "text-slate-400"}`}>{customNoteRequired ? "Enter a reason to continue." : "This note will appear in the attendance Location column."}</p>
+          </label>
+        )}
         <div className="flex items-center justify-end gap-2 pt-1">
           <button
             type="button"
@@ -96,8 +115,8 @@ function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm 
           </button>
           <button
             type="button"
-            onClick={() => onConfirm(askWorkMode ? { workMode } : undefined)}
-            disabled={loading}
+            onClick={() => onConfirm(askWorkMode ? { workMode, note: note.trim() || undefined } : undefined)}
+            disabled={loading || officeBlocked || customNoteRequired}
             className={`px-4 py-2 text-sm font-semibold text-white rounded-xl shadow-sm transition disabled:opacity-50 ${
               isCheckIn ? "bg-indigo-600 hover:bg-indigo-500" : "bg-rose-600 hover:bg-rose-500"
             }`}
