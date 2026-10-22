@@ -15,6 +15,14 @@ import { breakMinutesOf, formatHm, localDateKey, lunchMinutesOf, recordDateKey, 
 
 const TEAM_ROLES = ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"];
 
+const workModeDisplay = (row: Attendance) => {
+  const isRemote = row.status === "WORK_FROM_HOME" || row.isWorkFromHome || Boolean(row.wfhNote);
+  return {
+    label: isRemote ? "Remote / WFH" : "Office",
+    note: row.checkInLocation || row.wfhNote || "",
+  };
+};
+
 const STATUS_FILTERS = [
   { value: "ALL", label: "All" },
   { value: "PRESENT", label: "Present" },
@@ -418,7 +426,7 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
               <th className={`${th} hidden xl:table-cell`}>Break</th>
               <th className={`${th} hidden xl:table-cell`}>Lunch</th>
               <th className={`${th} hidden xl:table-cell`}>Overtime</th>
-              <th className={`${th} hidden lg:table-cell`}>Location</th>
+              <th className={`${th} hidden lg:table-cell`}>{isTeamView ? "Correction reason" : "Location"}</th>
               <th className={th}>Status</th>
               <th className={`${th} pr-5 text-right`}><span className="sr-only">Actions</span></th>
             </tr>
@@ -435,15 +443,17 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
                   const mins = workedMinutes(row);
                   const late = Number(row.lateMinutes || 0);
                   const correction = correctionRequests.find((request) => request.attendanceId === row.id || (request.employeeId === row.employeeId && String(request.date || request.attendance?.date || "").slice(0, 10) === recordDateKey(row)));
+                  const workMode = workModeDisplay(row);
                   return (
                     <tr key={row.id} className="group transition hover:bg-slate-50/70">
                       {isTeamView && (
                         <td className="py-3 pl-5 pr-4">
-                          <div className="flex min-w-[12rem] items-center gap-3">
+                          <div className="flex min-w-[18rem] max-w-[24rem] items-start gap-3">
                             <Avatar row={row} />
                             <div className="min-w-0">
-                              <p className="truncate font-medium text-slate-900">{employeeName(row)}</p>
+                              <p className="font-medium text-slate-900">{employeeName(row)}</p>
                               <p className="truncate text-xs text-slate-500">{[row.employee?.employeeCode, row.employee?.designation || row.employee?.department?.name].filter(Boolean).join(" · ") || "—"}</p>
+                              <p className="mt-1 whitespace-normal break-words text-[11px] font-semibold leading-4 text-indigo-600">{workMode.label}{workMode.note ? ` · ${workMode.note}` : ""}</p>
                             </div>
                           </div>
                         </td>
@@ -462,10 +472,10 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
                       <td className="hidden whitespace-nowrap px-4 py-3 tabular-nums text-slate-500 xl:table-cell">{lunchMinutesOf(row) ? formatHm(lunchMinutesOf(row)) : "—"}</td>
                       <td className="hidden whitespace-nowrap px-4 py-3 tabular-nums text-indigo-700 xl:table-cell">{row.overtimeMinutes ? formatHm(row.overtimeMinutes) : "—"}</td>
                       <td className="hidden max-w-[18rem] px-4 py-3 xl:table-cell">
-                        {(row.correctionReason || correction?.reason) ? (
+                        {(isTeamView ? (row.correctionReason || correction?.reason) : (row.checkInLocation || row.branch?.name)) ? (
                           <div className="group relative max-w-[16rem]">
-                            <p className="truncate text-xs text-slate-700" title={row.correctionReason || correction?.reason}>{row.correctionReason || correction?.reason}</p>
-                            <div role="tooltip" className="pointer-events-none invisible absolute bottom-full left-0 z-30 mb-2 w-[min(360px,calc(100vw-3rem))] rounded-xl bg-slate-950 px-3 py-2 text-xs leading-5 text-white opacity-0 shadow-xl transition-all duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">{row.correctionReason || correction?.reason}<span className="absolute -bottom-1 left-5 h-2 w-2 rotate-45 bg-slate-950" /></div>
+                            <p className="truncate text-xs text-slate-700" title={isTeamView ? (row.correctionReason || correction?.reason || "") : (row.checkInLocation || row.branch?.name || "")}>{isTeamView ? (row.correctionReason || correction?.reason) : (row.checkInLocation || row.branch?.name)}</p>
+                            <div role="tooltip" className="pointer-events-none invisible absolute bottom-full left-0 z-30 mb-2 w-[min(360px,calc(100vw-3rem))] rounded-xl bg-slate-950 px-3 py-2 text-xs leading-5 text-white opacity-0 shadow-xl transition-all duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">{isTeamView ? (row.correctionReason || correction?.reason) : (row.checkInLocation || row.branch?.name)}<span className="absolute -bottom-1 left-5 h-2 w-2 rotate-45 bg-slate-950" /></div>
                           </div>
                         ) : <span className="text-xs text-slate-400">—</span>}
                       </td>
@@ -496,6 +506,7 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
               const mins = workedMinutes(row);
               const late = Number(row.lateMinutes || 0);
               const correction = correctionRequests.find((request) => request.attendanceId === row.id || (request.employeeId === row.employeeId && String(request.date || request.attendance?.date || "").slice(0, 10) === recordDateKey(row)));
+              const workMode = workModeDisplay(row);
               return (
                 <li key={row.id} className="p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -504,6 +515,7 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-slate-900">{isTeamView ? employeeName(row) : `${day.weekday}, ${day.date}`}</p>
                         <p className="truncate text-xs text-slate-500">{isTeamView ? `${day.weekday}, ${day.date}` : row.checkInLocation || row.branch?.name || "—"}</p>
+                        {isTeamView && <p className="mt-1 whitespace-normal break-words text-[11px] font-semibold leading-4 text-indigo-600">{workMode.label}{workMode.note ? ` · ${workMode.note}` : ""}</p>}
                       </div>
                     </div>
                     <StatusBadge status={row.status} />
@@ -518,7 +530,8 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
                       <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-indigo-600">Correction reason</p>
                       <p className="mt-1 text-xs leading-5 text-slate-700">{row.correctionReason || correction?.reason}</p>
                     </div>
-                  )}                  <div className="mt-2.5 flex items-center justify-between">
+                  )}
+                  <div className="mt-2.5 flex items-center justify-between">
                     <span className="text-xs font-medium text-amber-700">{late > 0 ? `${formatHm(late)} late` : ""}</span>
                     <button type="button" onClick={() => onCorrect(row)} className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600">
                       <Pencil className="h-3 w-3" /> {isTeamView ? "Correct" : "Request fix"}

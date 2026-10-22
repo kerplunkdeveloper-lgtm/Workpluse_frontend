@@ -33,7 +33,8 @@ export default function PunchClockCard() {
     if (!action) return;
     const options: PunchOptions = {
       workMode: chosen?.workMode || (ctx.todayStatus?.isWorkFromHome ? "WORK_FROM_HOME" : "OFFICE"),
-      locationLabel: ctx.locationLabel || undefined,
+      note: chosen?.note,
+      locationLabel: chosen?.note?.trim() || ctx.locationLabel || undefined,
     };
     const ok = action === "CHECK_IN" ? await ctx.checkIn(options) : await ctx.checkOut(options);
     if (ok) setAction(null);
@@ -70,7 +71,7 @@ export default function PunchClockCard() {
         <LocationPanel
           policy={status?.locationPolicy}
           showRule={!status?.hasCheckedIn}
-          label={ctx.locationLabel || status?.attendance?.checkInLocation || null}
+          label={status?.attendance?.checkInLocation || ctx.locationLabel || null}
           gpsReady={Boolean(ctx.currentLocation)}
           distance={ctx.distanceToBranch}
           error={ctx.locationError}
@@ -78,7 +79,7 @@ export default function PunchClockCard() {
           onSync={() => void ctx.triggerSync()}
         />
       </div>
-      <PunchConfirmDialog action={action} loading={ctx.isActionLoading} locationLabel={ctx.locationLabel} onCancel={() => setAction(null)} onConfirm={(o) => void confirmPunch(o)} />
+      <PunchConfirmDialog action={action} loading={ctx.isActionLoading} onCancel={() => setAction(null)} onConfirm={(o) => void confirmPunch(o)} />
     </>
   );
 }

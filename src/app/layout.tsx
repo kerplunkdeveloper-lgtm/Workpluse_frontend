@@ -8,24 +8,24 @@ import SystemStatusOverlay from "@/components/ui/SystemStatusOverlay";
 
 export const metadata: Metadata = {
   title: {
-    default: "WorkPluse | Workforce that stays in rhythm",
-    template: "%s | WorkPluse",
+    default: "WorkPulse | Workforce that stays in rhythm",
+    template: "%s | WorkPulse",
   },
   description:
     "Attendance, people operations, leave, payroll, and onboarding in one focused workspace.",
-  applicationName: "WorkPluse",
+  applicationName: "WorkPulse",
   keywords: ["workforce management", "attendance", "payroll", "HR software", "geofencing"],
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
   openGraph: {
     type: "website",
-    siteName: "WorkPluse",
-    title: "WorkPluse | Workforce that stays in rhythm",
+    siteName: "WorkPulse",
+    title: "WorkPulse | Workforce that stays in rhythm",
     description: "Attendance, people operations, leave, payroll, and onboarding in one focused workspace.",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "WorkPluse workforce management" }],
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "WorkPulse workforce management" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "WorkPluse | Workforce that stays in rhythm",
+    title: "WorkPulse | Workforce that stays in rhythm",
     description: "Attendance, people operations, leave, payroll, and onboarding in one focused workspace.",
     images: ["/og.png"],
   },

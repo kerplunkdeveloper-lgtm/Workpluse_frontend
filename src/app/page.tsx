@@ -11,7 +11,7 @@ const jsonLd = (data: object) => JSON.stringify(data).replace(/</g, "\\u003c");
 
 export const metadata: Metadata = {
   title: "Workforce attendance, leave and payroll",
-  description: "WorkPluse keeps Indian teams in rhythm with geofenced attendance, offline punches, leave and payroll in one focused workspace.",
+  description: "WorkPulse keeps Indian teams in rhythm with geofenced attendance, offline punches, leave and payroll in one focused workspace.",
   alternates: { canonical: "/" },
 };
 
@@ -67,13 +67,13 @@ export default async function LandingPage() {
             {
               "@type": "Organization",
               "@id": `${siteUrl}/#organization`,
-              name: "WorkPluse",
+              name: "WorkPulse",
               url: siteUrl,
               logo: `${siteUrl}/logo-128.png`,
             },
             {
               "@type": "SoftwareApplication",
-              name: "WorkPluse",
+              name: "WorkPulse",
               applicationCategory: "BusinessApplication",
               operatingSystem: "Web, Android",
               publisher: { "@id": `${siteUrl}/#organization` },

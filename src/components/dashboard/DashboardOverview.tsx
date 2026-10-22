@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -38,7 +38,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useAttendance } from "@/context/AttendanceContext";
-import { attendanceApi, leavesApi, employeesApi, branchesApi, departmentsApi, offboardingApi } from "@/lib/api";
+import { attendanceApi, leavesApi, holidaysApi, employeesApi, branchesApi, departmentsApi, offboardingApi } from "@/lib/api";
 import UnlockPlanModal from "@/components/auth/UnlockPlanModal";
 import CompanyLogo from "@/components/ui/CompanyLogo";
 import PunchConfirmDialog, { PunchConfirmAction } from "@/components/attendance/PunchConfirmDialog";
@@ -131,9 +131,9 @@ function greetingFor(date: Date) {
 
 function timeContextBadge(date: Date) {
   const hour = date.getHours();
-  if (hour < 12) return { text: "Morning Velocity", icon: "☀️", color: "text-amber-400 bg-amber-950/40 border-amber-500/30" };
-  if (hour < 17) return { text: "Afternoon Focus", icon: "🌤️", color: "text-sky-400 bg-sky-950/40 border-sky-500/30" };
-  return { text: "Evening Operations", icon: "🌙", color: "text-indigo-400 bg-indigo-950/40 border-indigo-500/30" };
+  if (hour < 12) return { text: "Morning Velocity", icon: "â˜€ï¸", color: "text-amber-400 bg-amber-950/40 border-amber-500/30" };
+  if (hour < 17) return { text: "Afternoon Focus", icon: "ðŸŒ¤ï¸", color: "text-sky-400 bg-sky-950/40 border-sky-500/30" };
+  return { text: "Evening Operations", icon: "ðŸŒ™", color: "text-indigo-400 bg-indigo-950/40 border-indigo-500/30" };
 }
 
 function personName(employee: any) {
@@ -195,6 +195,7 @@ export default function DashboardOverview() {
   const [activeBreakdownTab, setActiveBreakdownTab] = useState<Exclude<RosterStatus, "ABSENT"> | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [allAttendance, setAllAttendance] = useState<any[]>([]);
+  const [attendanceTotal, setAttendanceTotal] = useState(0);
   const [allLeaves, setAllLeaves] = useState<any[]>([]);
   const [allEmployees, setAllEmployees] = useState<any[]>([]);
   const [orgCounts, setOrgCounts] = useState<{ branches: number | null; departments: number | null }>({ branches: null, departments: null });
@@ -212,6 +213,8 @@ export default function DashboardOverview() {
   const isAdmin = role === "COMPANY_ADMIN" || role === "SUPER_ADMIN";
   const canManage = isAdmin || role === "MANAGER";
   const [noticeSummary, setNoticeSummary] = useState<any>(null);
+  const [employeeHolidays, setEmployeeHolidays] = useState<any[]>([]);
+  const [employeeLeaves, setEmployeeLeaves] = useState<any[]>([]);
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -232,20 +235,36 @@ export default function DashboardOverview() {
       // Do not block first paint on large workforce lists. These hydrate charts,
       // rosters, and people moments after the dashboard is already usable.
       setLoading(false);
-      const [allAttendanceRes, leavesRes, employeesRes, branchesRes, departmentsRes] = await Promise.allSettled([
-        attendanceApi.getAllAttendance({ page: 1, limit: 200 }),
-        leavesApi.getAllLeaves(),
-        employeesApi.list({ page: 1, limit: 200 }),
-        branchesApi.list(),
-        departmentsApi.list(),
-      ]);
+      const [allAttendanceRes, leavesRes, employeesRes, branchesRes, departmentsRes] = canManage
+        ? await Promise.allSettled([
+            attendanceApi.getAllAttendance({ page: 1, limit: 200 }),
+            leavesApi.getAllLeaves(),
+            employeesApi.list({ page: 1, limit: 200 }),
+            branchesApi.list(),
+            departmentsApi.list(),
+          ])
+        : [
+            { status: "fulfilled", value: null },
+            { status: "fulfilled", value: null },
+            { status: "fulfilled", value: null },
+            { status: "fulfilled", value: null },
+            { status: "fulfilled", value: null },
+          ];
 
       setOrgCounts((current) => ({
         branches: branchesRes.status === "fulfilled" ? unwrapList(branchesRes.value).length : current.branches,
         departments: departmentsRes.status === "fulfilled" ? unwrapList(departmentsRes.value).length : current.departments,
       }));
       if (allAttendanceRes.status === "fulfilled" && allAttendanceRes.value) {
-        setAllAttendance(unwrapList(allAttendanceRes.value));
+        const attendanceList = unwrapList(allAttendanceRes.value);
+        const responseTotal = Number(
+          (allAttendanceRes.value as any)?.total ??
+          (allAttendanceRes.value as any)?.pagination?.total ??
+          (allAttendanceRes.value as any)?.meta?.total ??
+          attendanceList.length,
+        );
+        setAllAttendance(attendanceList);
+        setAttendanceTotal(Number.isFinite(responseTotal) ? responseTotal : attendanceList.length);
       }
       if (leavesRes.status === "fulfilled" && leavesRes.value) {
         setAllLeaves(unwrapList(leavesRes.value));
@@ -253,7 +272,17 @@ export default function DashboardOverview() {
       if (employeesRes.status === "fulfilled" && employeesRes.value) {
         const empList = unwrapList(employeesRes.value);
         setAllEmployees(empList);
-        setEmployeeTotal((employeesRes.value as any)?.total || empList.length);
+        setEmployeeTotal(
+          Number((employeesRes.value as any)?.total ?? (employeesRes.value as any)?.pagination?.total ?? empList.length),
+        );
+      }
+      if (!canManage) {
+        const [holidayRes, leaveRes] = await Promise.allSettled([
+          holidaysApi.upcoming({ limit: 4 }),
+          leavesApi.getMyLeaves(),
+        ]);
+        if (holidayRes.status === "fulfilled" && holidayRes.value) setEmployeeHolidays(unwrapList(holidayRes.value));
+        if (leaveRes.status === "fulfilled" && leaveRes.value) setEmployeeLeaves(unwrapList(leaveRes.value));
       }
       if (canManage) {
         try {
@@ -274,7 +303,7 @@ export default function DashboardOverview() {
 
   useEffect(() => {
     loadDashboardData();
-  }, []);
+  }, [canManage]);
 
   const handleManualRefresh = () => {
     setIsRefreshing(true);
@@ -337,7 +366,7 @@ export default function DashboardOverview() {
     return fallback;
   };
 
-  const totalEmployees = countFrom(["totalEmployees", "total"], employeeTotal || allEmployees.length || 0);
+    const totalEmployees = employeeTotal || allEmployees.length || countFrom(["totalEmployees"], 0);
   const presentCount = countFrom(["present", "presentCount"], roster.filter((p) => p.status === "PRESENT").length);
   const wfhCount = countFrom(["wfh", "wfhCount"], roster.filter((p) => p.status === "REMOTE").length);
   const leaveCount = countFrom(["onLeave", "leaveCount"], roster.filter((p) => p.status === "ON_LEAVE").length);
@@ -361,6 +390,14 @@ export default function DashboardOverview() {
       : 0;
 
   const displayName = user?.employee?.firstName || user?.email?.split("@")[0] || "User";
+  const employeeUpcomingHolidays = employeeHolidays
+    .filter((holiday) => holiday?.date && new Date(holiday.date).getTime() >= new Date().setHours(0, 0, 0, 0))
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, 3);
+  const employeeLeaveUpdates = employeeLeaves
+    .slice()
+    .sort((a, b) => new Date(b.createdAt || b.startDate || 0).getTime() - new Date(a.createdAt || a.startDate || 0).getTime())
+    .slice(0, 3);
   const formattedDate = currentTime.toLocaleDateString("en-IN", {
     weekday: "long",
     day: "numeric",
@@ -447,12 +484,12 @@ export default function DashboardOverview() {
     return buckets.map((b) => ({ ...b, peak: maxCount > 0 && b.count === maxCount }));
   }, [allAttendance]);
 
-  const kpis = [
+  const kpis = canManage ? [
     { key: "PRESENT" as const, count: presentCount, percent: presentPercentage },
     { key: "REMOTE" as const, count: wfhCount, percent: wfhPercentage },
     { key: "ON_LEAVE" as const, count: leaveCount, percent: leavePercentage },
     { key: "LATE" as const, count: lateCount, percent: latePercentage },
-  ];
+  ] : [];
 
   const absentCount = Math.max(0, totalEmployees - presentCount - wfhCount - leaveCount - lateCount);
   const chartTotal = Math.max(1, presentCount + wfhCount + leaveCount + lateCount + absentCount);
@@ -679,7 +716,7 @@ export default function DashboardOverview() {
   }
 
   return (
-    <div className="space-y-6 max-w-[1440px] mx-auto pb-6">
+    <div className="wp-dashboard-v2 space-y-7 max-w-[1480px] mx-auto pb-8">
       {/* Load error banner if any */}
       {loadError && (
         <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center justify-between">
@@ -716,8 +753,8 @@ export default function DashboardOverview() {
         </div>
       )}
 
-   
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white p-6 sm:p-8 shadow-2xl border border-slate-800">
+
+      <section className="wp-dashboard-hero relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white p-6 sm:p-9 shadow-2xl border border-slate-800">
         {/* Subtle decorative background glow patterns */}
         <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-1/3 -mb-20 w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
@@ -737,7 +774,7 @@ export default function DashboardOverview() {
                 {timeBadge.text}
               </span>
 
-              <span className="hidden sm:inline text-slate-500">•</span>
+              <span className="hidden sm:inline text-slate-500">â€¢</span>
               <span className="text-slate-400 text-xs">{formattedDate}</span>
               <span className="font-semibold tabular-nums text-indigo-200 bg-white/[0.06] px-2.5 py-0.5 rounded-lg ring-1 ring-white/10 text-xs">
                 <LiveClock />
@@ -759,7 +796,7 @@ export default function DashboardOverview() {
                 {greetingFor(currentTime)}, {displayName}
               </h1>
               <p className="text-xs sm:text-sm text-slate-300 mt-2 max-w-xl leading-relaxed">
-                Workforce operations, real-time presence, and team payroll — active for{" "}
+                Workforce operations, real-time presence, and team payroll â€” active for{" "}
                 <span className="inline-flex translate-y-[3px] items-center gap-2 rounded-full bg-white/10 py-0.5 pl-0.5 pr-3 ring-1 ring-white/15">
                   <CompanyLogo name={user?.organization?.name || "Workspace"} logoUrl={user?.organization?.logoUrl} size="xs" className="!rounded-full" />
                   <span className="font-semibold text-white">{user?.organization?.name || "Your Workspace"}</span>
@@ -768,7 +805,7 @@ export default function DashboardOverview() {
             </div>
 
             {/* Metric Snapshot Chips */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+            <div className={`grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1 ${canManage ? "" : "hidden"}`}>
               {[
                 { icon: Users, value: totalEmployees, label: "Total Staff", color: "text-indigo-400" },
                 { icon: Building2, value: totalBranches, label: "Branches", color: "text-emerald-400" },
@@ -822,11 +859,11 @@ export default function DashboardOverview() {
               </div>
               <div className="min-w-0 px-2.5 py-3">
                 <dt className="whitespace-nowrap text-[11px] font-medium text-slate-400">Clocked in</dt>
-                <dd className="mt-0.5 truncate text-sm font-semibold tabular-nums text-white">{todayCheckInTime || "—"}</dd>
+                <dd className="mt-0.5 truncate text-sm font-semibold tabular-nums text-white">{todayCheckInTime || "â€”"}</dd>
               </div>
               <div className="min-w-0 px-2.5 py-3">
                 <dt className="whitespace-nowrap text-[11px] font-medium text-slate-400">Clocked out</dt>
-                <dd className="mt-0.5 truncate text-sm font-semibold tabular-nums text-white">{todayCheckOutTime || "—"}</dd>
+                <dd className="mt-0.5 truncate text-sm font-semibold tabular-nums text-white">{todayCheckOutTime || "â€”"}</dd>
               </div>
             </dl>
 
@@ -872,10 +909,35 @@ export default function DashboardOverview() {
         </div>
       </section>
 
+      {!canManage && (
+        <section className="grid gap-4 lg:grid-cols-[1.25fr_1fr_1fr]" aria-label="Employee workspace highlights">
+          <article className="rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-emerald-50 p-5 shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">Your WorkPulse</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">Everything for your workday</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">Track attendance, request leave, view payslips, and stay updated from one simple employee workspace.</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link href="/attendance" className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white hover:bg-indigo-500">My attendance</Link>
+              <Link href="/leaves" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">Manage leave</Link>
+            </div>
+          </article>
+          <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-600">Next up</p><h2 className="mt-1 text-base font-semibold text-slate-950">Upcoming holidays</h2></div><CalendarDays className="h-5 w-5 text-emerald-500" /></div>
+            <div className="mt-4 space-y-3">
+              {employeeUpcomingHolidays.length ? employeeUpcomingHolidays.map((holiday) => <div key={holiday.id || holiday.date} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-3 py-2.5"><div className="min-w-0"><p className="truncate text-xs font-bold text-slate-800">{holiday.name || holiday.title || "Company holiday"}</p><p className="text-[11px] text-slate-500">{new Date(holiday.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</p></div><span className="shrink-0 rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-700">Holiday</span></div>) : <p className="py-3 text-xs text-slate-500">No upcoming holidays published yet.</p>}
+            </div>
+          </article>
+          <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-600">Leave desk</p><h2 className="mt-1 text-base font-semibold text-slate-950">Leave updates</h2></div><BellRing className="h-5 w-5 text-amber-500" /></div>
+            <div className="mt-4 space-y-3">
+              {employeeLeaveUpdates.length ? employeeLeaveUpdates.map((leave) => <div key={leave.id} className="rounded-2xl bg-slate-50 px-3 py-2.5"><div className="flex items-center justify-between gap-2"><p className="truncate text-xs font-bold text-slate-800">{leave.leaveType?.name || leave.leaveTypeName || "Leave request"}</p><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${leave.status === "APPROVED" ? "bg-emerald-100 text-emerald-700" : leave.status === "REJECTED" ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"}`}>{leave.status === "APPROVED" ? "Approved" : leave.status === "REJECTED" ? "Rejected" : "Pending"}</span></div><p className="mt-1 text-[11px] text-slate-500">{leave.status === "APPROVED" ? "Leave approved successfully." : leave.status === "REJECTED" ? "Leave request needs your attention." : "Waiting for HR approval."}</p></div>) : <p className="py-3 text-xs text-slate-500">No leave requests yet. Apply when you need time off.</p>}
+            </div>
+          </article>
+        </section>
+      )}
       {/* ======================================================== */}
       {/* 2. EXECUTIVE METRIC KPI CARDS (4 Interactive Tiles)     */}
       {/* ======================================================== */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <section className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 ${canManage ? "" : "hidden"}`}>
         {kpis.map((kpi) => {
           const meta = KPI_META[kpi.key];
           const Icon = meta.icon;
@@ -937,7 +999,7 @@ export default function DashboardOverview() {
                 <div className="mt-2.5 flex items-center justify-between text-xs text-slate-400">
                   <span>{meta.hint}</span>
                   <span className={`font-semibold ${active ? "text-indigo-600" : "group-hover:text-slate-600"}`}>
-                    {active ? "Hide List ▴" : "View Staff ▾"}
+                    {active ? "Hide List â–´" : "View Staff â–¾"}
                   </span>
                 </div>
               </div>
@@ -957,11 +1019,11 @@ export default function DashboardOverview() {
             <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">Selected workforce view</p><h2 className="mt-1 text-lg font-semibold text-slate-950">{KPI_META[activeBreakdownTab].label} staff</h2><p className="mt-1 text-xs text-slate-500">{filteredRoster.length} people match this status.</p></div>
             <div className="relative w-full sm:max-w-xs"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search staff" className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-xs outline-none focus:border-indigo-500 focus:bg-white" /></div>
           </div>
-          {filteredRoster.length === 0 ? <p className="py-8 text-center text-xs text-slate-400">No staff members match this status.</p> : <div className="mt-4 grid max-h-80 grid-cols-1 gap-2.5 overflow-y-auto pr-1 md:grid-cols-2 xl:grid-cols-3">{filteredRoster.map((person) => <div key={person.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3"><div className="flex min-w-0 items-center gap-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-xs font-bold text-indigo-700">{person.name.slice(0, 2).toUpperCase()}</span><div className="min-w-0"><p className="truncate text-xs font-bold text-slate-800">{person.name}</p><p className="truncate text-xs text-slate-500">{person.designation} · {person.department}</p></div></div><div className="shrink-0 text-right"><p className="font-mono text-xs font-bold text-slate-700">{person.checkInTime || "Not in"}</p>{person.employeeCode && <p className="font-mono text-[10px] text-slate-400">{person.employeeCode}</p>}</div></div>)}</div>}
+          {filteredRoster.length === 0 ? <p className="py-8 text-center text-xs text-slate-400">No staff members match this status.</p> : <div className="mt-4 grid max-h-80 grid-cols-1 gap-2.5 overflow-y-auto pr-1 md:grid-cols-2 xl:grid-cols-3">{filteredRoster.map((person) => <div key={person.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3"><div className="flex min-w-0 items-center gap-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-xs font-bold text-indigo-700">{person.name.slice(0, 2).toUpperCase()}</span><div className="min-w-0"><p className="truncate text-xs font-bold text-slate-800">{person.name}</p><p className="truncate text-xs text-slate-500">{person.designation} Â· {person.department}</p></div></div><div className="shrink-0 text-right"><p className="font-mono text-xs font-bold text-slate-700">{person.checkInTime || "Not in"}</p>{person.employeeCode && <p className="font-mono text-[10px] text-slate-400">{person.employeeCode}</p>}</div></div>)}</div>}
         </motion.section>}
       </AnimatePresence>
 
-      <section className="grid gap-4 xl:grid-cols-[0.78fr_1.42fr]" aria-label="Workforce analytics">
+      <section className={`grid gap-4 xl:grid-cols-[0.78fr_1.42fr] ${canManage ? "" : "hidden"}`} aria-label="Workforce analytics">
         <article className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-[0_18px_50px_-36px_rgba(15,23,42,0.35)] sm:p-6">
           <div className="flex items-start justify-between gap-3">
             <div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">Today at a glance</p><h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">Attendance mix</h2></div>
@@ -980,7 +1042,7 @@ export default function DashboardOverview() {
         <article className="min-w-0 rounded-3xl border border-slate-200/90 bg-white p-5 shadow-[0_18px_50px_-36px_rgba(15,23,42,0.35)] sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">Punch activity</p><h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">When your team clocks in</h2></div><Link href="/reports" className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700">Full reports <ArrowUpRight className="h-3.5 w-3.5" /></Link></div>
           <div className="mt-5 overflow-x-auto rounded-2xl bg-slate-50/80 p-2 sm:p-3"><svg viewBox="0 0 600 180" role="img" aria-label="Punch activity by time of day" className="h-44 w-full min-w-[520px]"><defs><linearGradient id="attendance-area" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#6366f1" stopOpacity=".25" /><stop offset="1" stopColor="#6366f1" stopOpacity="0" /></linearGradient></defs>{[35, 70, 105, 140].map((y) => <line key={y} x1="20" x2="580" y1={y} y2={y} style={{ stroke: "var(--color-slate-200)" }} strokeDasharray="3 5" />)}<polyline points={`20,142 ${trendPoints} 580,142`} fill="url(#attendance-area)" stroke="none" /><polyline points={trendPoints} fill="none" stroke="#4f46e5" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />{hourlyData.map((item, index) => { const max = Math.max(...hourlyData.map((entry) => entry.count), 1); const x = (index / Math.max(hourlyData.length - 1, 1)) * 560 + 20; const y = 142 - (item.count / max) * 106; return <circle key={item.time} cx={x} cy={y} r={item.peak ? 5 : 3.5} fill={item.peak ? "#10b981" : "#4f46e5"} stroke="white" strokeWidth="2" />; })}</svg><div className="flex min-w-[520px] justify-between px-2 text-[10px] font-semibold text-slate-400">{hourlyData.map((item) => <span key={item.time}>{item.time}</span>)}</div></div>
-          <div className="mt-4 grid grid-cols-3 gap-2"><div className="rounded-xl bg-emerald-50 p-3"><p className="text-[10px] font-semibold text-emerald-700">Peak window</p><p className="mt-1 text-sm font-bold text-emerald-900">{hourlyData.find((item) => item.peak)?.time || "—"}</p></div><div className="rounded-xl bg-indigo-50 p-3"><p className="text-[10px] font-semibold text-indigo-700">Total punches</p><p className="mt-1 text-sm font-bold text-indigo-900">{allAttendance.length}</p></div><div className="rounded-xl bg-amber-50 p-3"><p className="text-[10px] font-semibold text-amber-700">Pending leave</p><p className="mt-1 text-sm font-bold text-amber-900">{pendingLeaves}</p></div></div>
+          <div className="mt-4 grid grid-cols-3 gap-2"><div className="rounded-xl bg-emerald-50 p-3"><p className="text-[10px] font-semibold text-emerald-700">Peak window</p><p className="mt-1 text-sm font-bold text-emerald-900">{hourlyData.find((item) => item.peak)?.time || "â€”"}</p></div><div className="rounded-xl bg-indigo-50 p-3"><p className="text-[10px] font-semibold text-indigo-700">Total punches</p><p className="mt-1 text-sm font-bold text-indigo-900">{attendanceTotal || allAttendance.length}</p></div><div className="rounded-xl bg-amber-50 p-3"><p className="text-[10px] font-semibold text-amber-700">Pending leave</p><p className="mt-1 text-sm font-bold text-amber-900">{pendingLeaves}</p></div></div>
         </article>
 
         <article className="min-w-0 rounded-3xl border border-slate-200/90 bg-white p-5 shadow-[0_18px_50px_-36px_rgba(15,23,42,0.35)] sm:col-span-2 sm:p-6">
@@ -1041,7 +1103,7 @@ export default function DashboardOverview() {
                           ? `${-row.daysLeft}d past LWD`
                           : row.daysLeft === 0
                             ? "Leaves today"
-                            : `${row.daysLeft}d left · LWD ${row.lastWorkingDate}`
+                            : `${row.daysLeft}d left Â· LWD ${row.lastWorkingDate}`
                         : "LWD not set"}
                     </span>
                   </li>
@@ -1054,7 +1116,7 @@ export default function DashboardOverview() {
         )}
       </section>
 
- 
+
       <AnimatePresence>
         {activeBreakdownTab && (
           <motion.section
@@ -1105,13 +1167,13 @@ export default function DashboardOverview() {
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-slate-800 truncate">{person.name}</p>
                         <p className="text-xs text-slate-500 truncate">
-                          {person.designation} • {person.department}
+                          {person.designation} â€¢ {person.department}
                         </p>
                       </div>
                     </div>
                     <div className="text-right shrink-0">
                       <span className="text-xs font-mono font-bold text-slate-700 block">
-                        {person.checkInTime || "—"}
+                        {person.checkInTime || "â€”"}
                       </span>
                       {person.employeeCode && (
                         <span className="text-xs text-slate-400 font-mono">{person.employeeCode}</span>
@@ -1125,8 +1187,8 @@ export default function DashboardOverview() {
         )}
       </AnimatePresence>
 
-  
-      <section className="grid grid-cols-1 gap-5">
+
+      <section className={`grid grid-cols-1 gap-5 ${canManage ? "" : "hidden"}`}>
         {/* Left Column (8 cols): Hourly Attendance Rhythm & Functions */}
         <div className="space-y-5">
           {/* Premium hourly punch rhythm */}
@@ -1140,7 +1202,7 @@ export default function DashboardOverview() {
                 </div>
                 <div className="flex items-center gap-2 self-start rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />Live distribution</div>
               </div>
-              <div className="mt-5 grid grid-cols-3 gap-2 sm:max-w-md"><div className="rounded-2xl bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Total punches</p><p className="mt-1 text-lg font-bold tabular-nums text-slate-900">{allAttendance.length}</p></div><div className="rounded-2xl bg-indigo-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-500">Peak hour</p><p className="mt-1 text-lg font-bold text-indigo-900">{hourlyData.find((item) => item.peak)?.time || "No peak"}</p></div><div className="rounded-2xl bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Coverage</p><p className="mt-1 text-lg font-bold tabular-nums text-slate-900">{completionPercent}%</p></div></div>
+              <div className="mt-5 grid grid-cols-3 gap-2 sm:max-w-md"><div className="rounded-2xl bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Total punches</p><p className="mt-1 text-lg font-bold tabular-nums text-slate-900">{attendanceTotal || allAttendance.length}</p></div><div className="rounded-2xl bg-indigo-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-500">Peak hour</p><p className="mt-1 text-lg font-bold text-indigo-900">{hourlyData.find((item) => item.peak)?.time || "No peak"}</p></div><div className="rounded-2xl bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Coverage</p><p className="mt-1 text-lg font-bold tabular-nums text-slate-900">{completionPercent}%</p></div></div>
             </div>
             <div className="relative p-5 sm:p-6">
               <div className="pointer-events-none absolute inset-x-5 top-8 bottom-12 flex flex-col justify-between sm:inset-x-6"><span className="border-t border-dashed border-slate-100" /><span className="border-t border-dashed border-slate-100" /><span className="border-t border-dashed border-slate-100" /><span className="border-t border-dashed border-slate-100" /></div>
@@ -1169,15 +1231,15 @@ export default function DashboardOverview() {
             </div>
             {nextPeopleMoments.length > 0 ? <div className="p-5 sm:p-6">
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {nextPeopleMoments.map((moment) => <div key={moment.id} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-3"><div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${moment.type === "Birthday" ? "bg-pink-100 text-pink-600" : "bg-indigo-100 text-indigo-600"}`}>{moment.type === "Birthday" ? <Cake className="h-5 w-5" /> : <Award className="h-5 w-5" />}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-slate-800">{moment.name}</p><p className="text-xs text-slate-500">{moment.type} · {moment.month} {moment.day}</p></div></div>)}
+                {nextPeopleMoments.map((moment) => <div key={moment.id} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-3"><div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${moment.type === "Birthday" ? "bg-pink-100 text-pink-600" : "bg-indigo-100 text-indigo-600"}`}>{moment.type === "Birthday" ? <Cake className="h-5 w-5" /> : <Award className="h-5 w-5" />}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-slate-800">{moment.name}</p><p className="text-xs text-slate-500">{moment.type} Â· {moment.month} {moment.day}</p></div></div>)}
               </div>
-              {momentMonths.length > 0 && <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-4">{momentMonths.slice(0, 6).map((month) => <span key={month} className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">{month} · {peopleMoments.filter((moment) => moment.month === month).length}</span>)}</div>}
+              {momentMonths.length > 0 && <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-4">{momentMonths.slice(0, 6).map((month) => <span key={month} className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">{month} Â· {peopleMoments.filter((moment) => moment.month === month).length}</span>)}</div>}
             </div> : <div className="p-8 text-center"><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400"><Cake className="h-6 w-6" /></div><p className="mt-3 text-sm font-semibold text-slate-700">No upcoming people moments yet</p><p className="mt-1 text-xs text-slate-400">Add date of birth or date of joining to employee profiles to see notifications here.</p></div>}
           </section>
         </div>
 
         {/* Right Column (4 cols): Shift Completion Donut & Summary */}
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className={`grid gap-5 md:grid-cols-2 ${canManage ? "" : "hidden"}`}>
           {/* Shift completion gauge */}
           <div className="p-5 sm:p-6 rounded-3xl bg-white border border-slate-200/90 shadow-sm space-y-5">
             <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
@@ -1271,7 +1333,7 @@ export default function DashboardOverview() {
       <PunchConfirmDialog
         action={pendingPunch}
         loading={isActionLoading}
-        locationLabel={locationLabel}
+
         onCancel={() => setPendingPunch(null)}
         onConfirm={async (options) => {
           const ok = pendingPunch === "CHECK_OUT" ? await checkOut() : await checkIn(options);
@@ -1296,3 +1358,7 @@ export default function DashboardOverview() {
     </div>
   );
 }
+
+
+
+

@@ -399,7 +399,7 @@ export default function CommandPalette({
                   Execute
                 </span>
               </div>
-              <span className="text-slate-400 font-medium">WorkPluse Pro Command Bar</span>
+              <span className="text-slate-400 font-medium">WorkPulse Pro Command Bar</span>
             </div>
           </motion.div>
         </div>
