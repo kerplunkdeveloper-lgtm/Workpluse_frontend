@@ -22,7 +22,7 @@ export default function NotFound() {
             Go to dashboard
           </Link>
           <Link href="/" className="inline-flex h-12 items-center rounded-xl border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:border-indigo-200 hover:text-indigo-700">
-            WorkPluse home
+            WorkPulse home
           </Link>
         </div>
       </div>

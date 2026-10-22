@@ -65,7 +65,7 @@ export default function ExitDocumentsModal({
   };
 
   const org = docData?.organization || {
-    name: "WorkPluse Enterprise Technologies Pvt Ltd",
+    name: "WorkPulse Enterprise Technologies Pvt Ltd",
     address: "Global Tech Park, Outer Ring Road, Bellandur, Bengaluru, KA 560103",
     email: "hr@workpulse.io",
     phone: "+91 80 4911 2000",

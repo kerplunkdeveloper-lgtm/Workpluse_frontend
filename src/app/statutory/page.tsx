@@ -6,7 +6,7 @@ import StatutoryView from "@/components/statutory/StatutoryView";
 
 export default function StatutoryPage() {
   return (
-    <ProtectedRoute>
+    <ProtectedRoute allowedRoles={["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"]}>
       <AppLayout>
         <StatutoryView />
       </AppLayout>

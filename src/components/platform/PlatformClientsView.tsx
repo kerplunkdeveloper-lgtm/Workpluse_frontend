@@ -242,7 +242,7 @@ export default function PlatformClientsView() {
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-rose-600">Platform owner</p>
           <h1 className="mt-1 font-serif text-3xl font-semibold tracking-tight text-slate-950">Clients</h1>
-          <p className="mt-1 text-sm text-slate-600">Every company on WorkPluse, their plan, seats and payments.</p>
+          <p className="mt-1 text-sm text-slate-600">Every company on WorkPulse, their plan, seats and payments.</p>
         </div>
         <PlatformNav active="clients" />
       </div>

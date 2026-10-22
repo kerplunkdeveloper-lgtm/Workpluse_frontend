@@ -107,7 +107,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Payroll", href: "/payroll", icon: Receipt, hint: "Automated payroll runs and payslip distribution", keywords: ["salary", "payslip", "pay"], feature: "hasPayroll", badge: "Auto", badgeColor: "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30" },
       { label: "Loans", href: "/loans", icon: HandCoins, hint: "Salary advances and EMI deductions", keywords: ["advance", "loan"] },
-      { label: "Statutory", href: "/statutory", icon: Landmark, hint: "PF, ESI, Professional Tax, and compliance registers", keywords: ["pf", "esi", "tax", "compliance"], feature: "hasPayroll" },
+      { label: "Statutory", href: "/statutory", icon: Landmark, hint: "PF, ESI, Professional Tax, and compliance registers", keywords: ["pf", "esi", "tax", "compliance"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"], feature: "hasPayroll" },
       { label: "Expenses", href: "/expenses", icon: CreditCard, hint: "Employee reimbursements and receipt claims", keywords: ["claim", "reimburse"] },
       { label: "Overtime", href: "/overtime", icon: Layers, hint: "Extra working hours and comp-off balances", keywords: ["ot", "comp off"] },
       { label: "Appraisals", href: "/appraisals", icon: Award, hint: "Periodic reviews, ratings, and performance goals", keywords: ["review", "performance"] },
@@ -365,7 +365,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   ) && !Boolean(todayStatus?.hasCheckedOut || todayStatus?.attendance?.checkOut);
   const isOnBreak = todayStatus?.isOnBreak;
 
-  const orgName = user?.organization?.name || "WorkPluse";
+  const orgName = user?.organization?.name || "WorkPulse";
   const planName = isPlatformOwner ? "Platform owner" : user?.organization?.subscriptionPlan || "Standard Plan";
   const maxEmps = user?.features?.maxEmployees || user?.organization?.maxEmployees || 10;
   const countedSeats = Number(
@@ -721,7 +721,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 className="flex items-center gap-1 hover:text-slate-900 transition shrink-0 font-semibold"
               >
                 <Home className="w-3.5 h-3.5 text-indigo-600" />
-                <span className="hidden sm:inline">WorkPluse</span>
+                <span className="hidden sm:inline">WorkPulse</span>
               </Link>
 
               {/* The section label only appears where there is room; its chevron

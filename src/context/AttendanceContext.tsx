@@ -177,24 +177,30 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
     async (coords: GeoCoordinates) => {
       setCurrentLocation(coords);
       setLocationError(null);
-      setIsWithinGeofence(true);
       const branch = user?.employee?.branch;
+      const policy = todayStatus?.locationPolicy;
       if (branch && branch.latitude && branch.longitude) {
         const branchLat = typeof branch.latitude === "string" ? parseFloat(branch.latitude) : branch.latitude;
         const branchLng = typeof branch.longitude === "string" ? parseFloat(branch.longitude) : branch.longitude;
-        setDistanceToBranch(calculateDistanceMeters(coords.latitude, coords.longitude, branchLat, branchLng));
+        const distance = calculateDistanceMeters(coords.latitude, coords.longitude, branchLat, branchLng);
+        const radius = Number(branch.radiusMeters || policy?.radiusMeters || 200);
+        setDistanceToBranch(distance);
+        setIsWithinGeofence(distance <= radius + Math.max(Number(coords.accuracy || 0), 0));
+      } else {
+        setDistanceToBranch(null);
+        setIsWithinGeofence(true);
       }
       const label = await reverseGeocodeLabel(coords.latitude, coords.longitude);
       if (label) setLocationLabel(label);
       return label;
     },
-    [user]
+    [todayStatus?.locationPolicy, user]
   );
 
   const requestBrowserLocation = useCallback((): Promise<GeoCoordinates | null> => {
     return new Promise((resolve) => {
       if (typeof window === "undefined" || !navigator.geolocation) {
-        setIsWithinGeofence(true);
+        setIsWithinGeofence(false);
         setLocationError("Geolocation is not supported by this browser.");
         resolve(null);
         return;
@@ -212,7 +218,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
         },
         (error) => {
           setDistanceToBranch(null);
-          setIsWithinGeofence(true);
+          setIsWithinGeofence(false);
           // Browser messages ("User denied Geolocation") aren't written for employees.
           setLocationError(
             error.code === error.PERMISSION_DENIED
@@ -420,6 +426,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
       const coords = currentLocation || (await requestBrowserLocation()) || undefined;
       const resolvedLabel =
         options?.locationLabel ||
+        options?.note?.trim() ||
         locationLabel ||
         (coords ? await reverseGeocodeLabel(coords.latitude, coords.longitude) : null) ||
         undefined;
@@ -457,6 +464,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
       const coords = currentLocation || (await requestBrowserLocation()) || undefined;
       const resolvedLabel =
         options?.locationLabel ||
+        options?.note?.trim() ||
         locationLabel ||
         (coords ? await reverseGeocodeLabel(coords.latitude, coords.longitude) : null) ||
         undefined;

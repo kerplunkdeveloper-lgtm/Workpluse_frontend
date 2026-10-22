@@ -39,7 +39,7 @@ export default function AuthShell({
 
         <div className="relative z-10 my-auto max-w-[34rem] py-16">
           <p className="mb-5 text-xs font-bold uppercase tracking-[0.22em] text-indigo-200">
-            WorkPluse workspace
+            WorkPulse workspace
           </p>
           <h1 className="font-serif text-balance text-4xl font-semibold leading-[1.12] tracking-tight xl:text-[46px]">
             {asideTitle}
