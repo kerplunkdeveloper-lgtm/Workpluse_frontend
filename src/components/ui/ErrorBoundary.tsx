@@ -27,7 +27,7 @@ export default class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    console.error("[WorkPulse] Screen failed to render:", error, info.componentStack);
+    console.error("[WorkPluse] Screen failed to render:", error, info.componentStack);
   }
 
   componentDidUpdate(prev: Props) {

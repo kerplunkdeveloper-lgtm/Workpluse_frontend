@@ -2,6 +2,27 @@ import axios from "axios";
 import { getSessionAccessToken, isSessionHydrated, setSessionAccessToken } from "./sessionToken";
 export { getSessionAccessToken, markSessionHydrated, setSessionAccessToken } from "./sessionToken";
 
+declare module "axios" {
+  interface AxiosRequestConfig {
+    /** Optional/background call. Its caller already copes with a failure, so it must not raise the full-screen outage overlay. */
+    skipGlobalError?: boolean;
+    /** Internal: how many times a transient failure of this request has been retried. */
+    _transientRetries?: number;
+  }
+}
+
+const BACKGROUND_REQUEST = { skipGlobalError: true } as const;
+
+// A GET is safe to repeat. Brief database or network hiccups (a pooled
+// connection dropped, the API restarting) usually clear within a second or two,
+// so retry before the user ever sees a failure.
+const RETRYABLE_STATUSES = new Set([500, 502, 503, 504]);
+const MAX_TRANSIENT_RETRIES = 2;
+const TRANSIENT_RETRY_DELAY_MS = 400;
+
+// Whether the outage overlay is currently up, so the next success can clear it.
+let outageSignalled = false;
+
 function normalizeApiUrl(url: string): string {
   let next = url.trim();
   if (!next.startsWith("http://") && !next.startsWith("https://")) {
@@ -63,7 +84,7 @@ function forceSessionLogout(failedToken?: string) {
   if (failedToken && currentToken && failedToken !== currentToken) return;
   setSessionAccessToken(null);
   delete api.defaults.headers.common.Authorization;
-  // Remove credentials left by older WorkPulse releases.
+  // Remove credentials left by older WorkPluse releases.
   localStorage.removeItem("workpulse_access_token");
   localStorage.removeItem("workpulse_refresh_token");
   localStorage.removeItem("workpulse_user");
@@ -141,13 +162,33 @@ api.interceptors.request.use(
 );
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // The server answered, so any outage screen from earlier is out of date.
+    if (outageSignalled && typeof window !== "undefined") {
+      outageSignalled = false;
+      window.dispatchEvent(new Event("workpulse:server-recovered"));
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
 
     if (!originalRequest) return Promise.reject(error);
 
-    if (typeof window !== "undefined" && (!error.response || error.response.status >= 500)) {
+    // A request the page itself cancelled (navigation, unmount) is not an outage.
+    const serverFailure = !axios.isCancel(error) && (!error.response || error.response.status >= 500);
+    const retryable = serverFailure && (!error.response || RETRYABLE_STATUSES.has(error.response.status));
+    const method = String(originalRequest.method || "get").toLowerCase();
+    const attempts = originalRequest._transientRetries ?? 0;
+
+    if (retryable && method === "get" && attempts < MAX_TRANSIENT_RETRIES) {
+      originalRequest._transientRetries = attempts + 1;
+      await new Promise((resolve) => setTimeout(resolve, TRANSIENT_RETRY_DELAY_MS * (attempts + 1)));
+      return api(originalRequest);
+    }
+
+    if (typeof window !== "undefined" && serverFailure && !originalRequest.skipGlobalError) {
+      outageSignalled = true;
       window.dispatchEvent(new CustomEvent("workpulse:server-error", {
         detail: { kind: error.response ? "server" : "network", status: error.response?.status ?? 0 },
       }));
@@ -330,20 +371,22 @@ export const attendanceApi = {
     const res = await api.post("/attendance/lunch-end", coords || {});
     return res.data;
   },
+  // Both fall back gracefully in their callers, so a failure here is not an outage.
   getTodayStatus: async () => {
-    const res = await api.get("/attendance/today");
+    const res = await api.get("/attendance/today", BACKGROUND_REQUEST);
     return res.data;
   },
   getLiveToday: async () => {
-    const res = await api.get("/attendance/live-today");
+    const res = await api.get("/attendance/live-today", BACKGROUND_REQUEST);
     return res.data;
   },
   getMyAttendance: async (params?: any) => {
     const res = await api.get("/attendance/my", { params });
     return res.data;
   },
-  getAllAttendance: async (params?: any) => {
-    const res = await api.get("/attendance/all", { params });
+  /** `background` marks a timer-driven refresh whose failure must not raise the outage overlay. */
+  getAllAttendance: async (params?: any, options?: { background?: boolean }) => {
+    const res = await api.get("/attendance/all", { params, ...(options?.background ? BACKGROUND_REQUEST : {}) });
     return res.data;
   },
   /** Date-range history. Admins and managers get the team; everyone else gets their own records. */
@@ -358,8 +401,8 @@ export const attendanceApi = {
     const res = await api.get("/attendance/history", { params });
     return res.data;
   },
-  getSummary: async (date?: string, branchId?: string) => {
-    const res = await api.get("/attendance/summary", { params: { date, branchId } });
+  getSummary: async (date?: string, branchId?: string, options?: { background?: boolean }) => {
+    const res = await api.get("/attendance/summary", { params: { date, branchId }, ...(options?.background ? BACKGROUND_REQUEST : {}) });
     return res.data;
   },
   adminMarkAttendance: async (payload: {

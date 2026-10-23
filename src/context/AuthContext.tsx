@@ -279,7 +279,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           toast.success("Email verified! Check your email for your Plan Unlock Code.", { duration: 6000 });
           go("/dashboard");
         } else {
-          toast.success("Email verified! Welcome to WorkPulse.");
+          toast.success("Email verified! Welcome to WorkPluse.");
           go("/dashboard");
         }
         return true;

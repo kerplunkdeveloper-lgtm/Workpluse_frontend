@@ -19,8 +19,16 @@ export default function SystemStatusOverlay() {
       });
     };
 
+    // The API answered again (restarted, or a flaky connection recovered), so the
+    // outage screen is stale and should not keep blocking the app.
+    const handleRecovery = () => setStatusState(null);
+
     window.addEventListener("workpulse:server-error", handleFailure);
-    return () => window.removeEventListener("workpulse:server-error", handleFailure);
+    window.addEventListener("workpulse:server-recovered", handleRecovery);
+    return () => {
+      window.removeEventListener("workpulse:server-error", handleFailure);
+      window.removeEventListener("workpulse:server-recovered", handleRecovery);
+    };
   }, []);
 
   if (!statusState) return null;
@@ -40,7 +48,7 @@ export default function SystemStatusOverlay() {
           <Icon className="relative h-9 w-9 text-indigo-600" strokeWidth={1.7} />
         </div>
         <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-indigo-600">
-          {isNetwork ? "Connection interrupted" : "WorkPulse service"}
+          {isNetwork ? "Connection interrupted" : "WorkPluse service"}
         </p>
         <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-400" aria-label={`Error code ${errorCode}`}>
           Error code <span className="font-mono text-slate-600">{errorCode}</span>
