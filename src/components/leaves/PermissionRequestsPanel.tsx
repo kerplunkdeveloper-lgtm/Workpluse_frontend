@@ -5,6 +5,7 @@ import { permissionsApi } from "@/lib/api";
 import { formatCycleDate, PERMISSION_HOUR_OPTIONS } from "@/lib/payrollCycle";
 import { Clock, Loader2, Send, Trash2, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import { todayLocalKey } from "@/lib/utils";
 
 type PermissionRequest = {
   id: string;
@@ -36,7 +37,7 @@ const parseDay = (value: string) => {
   return new Date(Date.UTC(y, m - 1, d));
 };
 
-const todayKey = () => new Date().toISOString().slice(0, 10);
+const todayKey = () => todayLocalKey();
 
 export default function PermissionRequestsPanel({ canReview }: { canReview: boolean }) {
   const [requests, setRequests] = useState<PermissionRequest[]>([]);

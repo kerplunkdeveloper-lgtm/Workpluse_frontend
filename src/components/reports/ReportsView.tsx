@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { reportsApi } from "@/lib/api";
-import { formatDate, formatTime, formatDurationMinutes } from "@/lib/utils";
+import { formatDate, formatTime, formatDurationMinutes, todayLocalKey } from "@/lib/utils";
 import {
   BarChart3,
   Download,
@@ -26,7 +26,7 @@ import DatePicker from "@/components/ui/DatePicker";
 
 export default function ReportsView() {
   const [activeTab, setActiveTab] = useState<"DAILY" | "MONTHLY">("DAILY");
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
+  const [selectedDate, setSelectedDate] = useState(todayLocalKey());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [dailyStatusFilter, setDailyStatusFilter] = useState<string>("ALL");
@@ -34,36 +34,55 @@ export default function ReportsView() {
 
   const [dailyReport, setDailyReport] = useState<any>(null);
   const [monthlyReport, setMonthlyReport] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadingDaily, setLoadingDaily] = useState(true);
+  const [loadingMonthly, setLoadingMonthly] = useState(true);
 
   // PDF Modal State
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
   const [pdfModalType, setPdfModalType] = useState<"DAILY" | "MONTHLY">("DAILY");
 
-  const loadReports = async () => {
-    setLoading(true);
+  // Each report loads on its own inputs. A failed load clears the report instead of leaving the
+  // previous date's rows on screen under the new date's heading.
+  const loadDaily = async () => {
+    setLoadingDaily(true);
     try {
-      const [dailyRes, monthlyRes] = await Promise.allSettled([
-        reportsApi.getDaily(selectedDate),
-        reportsApi.getMonthly(selectedMonth, selectedYear),
-      ]);
-
-      if (dailyRes.status === "fulfilled" && dailyRes.value?.success) {
-        setDailyReport(dailyRes.value.data || dailyRes.value);
-      }
-      if (monthlyRes.status === "fulfilled" && monthlyRes.value?.success) {
-        setMonthlyReport(monthlyRes.value.data || monthlyRes.value);
-      }
+      const res = await reportsApi.getDaily(selectedDate);
+      setDailyReport(res?.success ? res.data || res : null);
     } catch (err) {
-      console.error("Failed to load reports:", err);
+      console.error("Failed to load daily report:", err);
+      setDailyReport(null);
     } finally {
-      setLoading(false);
+      setLoadingDaily(false);
     }
   };
 
+  const loadMonthly = async () => {
+    setLoadingMonthly(true);
+    try {
+      const res = await reportsApi.getMonthly(selectedMonth, selectedYear);
+      setMonthlyReport(res?.success ? res.data || res : null);
+    } catch (err) {
+      console.error("Failed to load monthly report:", err);
+      setMonthlyReport(null);
+    } finally {
+      setLoadingMonthly(false);
+    }
+  };
+
+  const loadReports = () => {
+    void loadDaily();
+    void loadMonthly();
+  };
+
   useEffect(() => {
-    loadReports();
-  }, [selectedDate, selectedMonth, selectedYear]);
+    void loadDaily();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate]);
+
+  useEffect(() => {
+    void loadMonthly();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMonth, selectedYear]);
 
   const handleExportDailyCSV = () => {
     const records = dailyReport?.records || dailyReport?.attendances || [];
@@ -466,7 +485,7 @@ export default function ReportsView() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {loading ? (
+                {loadingDaily ? (
                   <tr>
                     <td colSpan={8} className="text-center py-10 text-slate-500">
                       Loading daily attendance register...
@@ -549,7 +568,7 @@ export default function ReportsView() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {loading ? (
+                {loadingMonthly ? (
                   <tr>
                     <td colSpan={10} className="text-center py-10 text-slate-500">
                       Loading monthly muster roll...

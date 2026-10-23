@@ -34,7 +34,7 @@ export default function ApprovalsInboxView() {
     try {
       const [corrRes, leaveRes, otRes, expRes, compRes] = await Promise.allSettled([
         correctionsApi.getPendingCorrections(),
-        leavesApi.getAllLeaves({ status: "PENDING" }),
+        leavesApi.getAllLeaves({ status: "PENDING", limit: 200 }),
         overtimeApi.getPending(),
         expensesApi.getAllClaims(),
         compOffApi.getPending(),

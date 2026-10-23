@@ -39,7 +39,7 @@ export default function BranchesAndGeofencesView() {
   const loadBranches = async () => {
     setLoading(true);
     try {
-      const [brRes, empRes] = await Promise.allSettled([branchesApi.list(), employeesApi.list({ page: 1, limit: 200 })]);
+      const [brRes, empRes] = await Promise.allSettled([branchesApi.list(), employeesApi.list({ page: 1, limit: 500, status: "WORKING" })]);
       if (brRes.status === "fulfilled") setBranches(unwrapList<Branch>(brRes.value));
       if (empRes.status === "fulfilled") setEmployees(unwrapList(empRes.value));
     } catch (err) {
@@ -282,7 +282,7 @@ export default function BranchesAndGeofencesView() {
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Pondicherry HQ"
+                  placeholder="e.g. Main office"
                   className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
                   required
                 />

@@ -150,6 +150,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Reports", href: "/reports", icon: BarChart3, hint: "Daily logs and monthly muster roll PDF exports", keywords: ["analytics", "export"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"], badge: "PDF", badgeColor: "bg-sky-500/20 text-sky-300 border border-sky-500/30" },
       { label: "Settings", href: "/settings", icon: Settings, hint: "Organization profile, subscription tier, and API keys", keywords: ["plan", "billing", "company"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN"] },
+      { label: "Audit log", href: "/audit", icon: History, hint: "Who changed what, and when, across your workspace", keywords: ["history", "activity", "security", "changes", "log"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN"] },
       { label: "Permissions", href: "/permissions", icon: KeyRound, hint: "Granular role access controls and privileges", keywords: ["access", "roles", "security"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN"] },
     ],
   },

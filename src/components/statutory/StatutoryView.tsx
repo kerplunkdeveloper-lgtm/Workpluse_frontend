@@ -81,7 +81,7 @@ export default function StatutoryView() {
   useEffect(() => {
     (async () => {
       if (isAdmin) {
-        const list = unwrapList(await employeesApi.list());
+        const list = unwrapList(await employeesApi.list({ page: 1, limit: 500 }));
         setEmployees(list);
         if (list[0]?.id) {
           setEmployeeId(list[0].id);

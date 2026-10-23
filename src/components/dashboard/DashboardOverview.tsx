@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -41,11 +41,12 @@ import { useAttendance } from "@/context/AttendanceContext";
 import { attendanceApi, leavesApi, holidaysApi, employeesApi, branchesApi, departmentsApi, offboardingApi } from "@/lib/api";
 import UnlockPlanModal from "@/components/auth/UnlockPlanModal";
 import CompanyLogo from "@/components/ui/CompanyLogo";
+import AnnouncementsCard from "./AnnouncementsCard";
 import PunchConfirmDialog, { PunchConfirmAction } from "@/components/attendance/PunchConfirmDialog";
 import { formatHm, liveWorkedMs } from "@/components/attendance/attendanceUtils";
 import { formatTime, formatDurationMinutes, unwrapList, unwrapItem } from "@/lib/utils";
 
-type RosterStatus = "PRESENT" | "REMOTE" | "ON_LEAVE" | "LATE" | "ABSENT";
+import { dashboardCounts, rosterStatusFor, type RosterStatus } from "./dashboardMetrics";
 
 interface RosterPerson {
   id: string;
@@ -284,8 +285,12 @@ export default function DashboardOverview() {
       const [allAttendanceRes, leavesRes, employeesRes, branchesRes, departmentsRes] = canManage
         ? await Promise.allSettled([
             attendanceApi.getAllAttendance(attendanceParams),
-            leavesApi.getAllLeaves(),
-            employeesApi.list({ page: 1, limit: 200 }),
+            // The list endpoint returns the newest 50 of every status; ask for what the dashboard needs.
+            Promise.all([
+              leavesApi.getAllLeaves({ status: "PENDING", limit: 200 }),
+              leavesApi.getAllLeaves({ status: "APPROVED", limit: 200 }),
+            ]).then(([pending, approved]) => ({ data: [...unwrapList(pending), ...unwrapList(approved)] })),
+            employeesApi.list({ page: 1, limit: 200, status: "WORKING" }),
             branchesApi.list(),
             departmentsApi.list(),
           ])
@@ -395,17 +400,8 @@ export default function DashboardOverview() {
       const att = attendanceByEmpId.get(emp.id);
       const leave = leaveByEmpId.get(emp.id);
 
-      let status: RosterStatus = "ABSENT";
-      let checkInTime: string | undefined;
-
-      if (att) {
-        checkInTime = att.checkIn ? formatTime(att.checkIn) : undefined;
-        if (att.status === "LATE") status = "LATE";
-        else if (att.status === "WORK_FROM_HOME" || att.isWfh) status = "REMOTE";
-        else status = "PRESENT";
-      } else if (leave) {
-        status = "ON_LEAVE";
-      }
+      const status = rosterStatusFor(att, Boolean(leave));
+      const checkInTime = att?.checkIn ? formatTime(att.checkIn) : undefined;
 
       return {
         id: emp.id,
@@ -420,20 +416,12 @@ export default function DashboardOverview() {
     });
   }, [allEmployees, allAttendance, allLeaves, todayKey]);
 
-  const countFrom = (keys: string[], fallback: number) => {
-    if (!summary || typeof summary !== "object") return fallback;
-    for (const key of keys) {
-      const val = summary[key];
-      if (typeof val === "number" && !Number.isNaN(val)) return val;
-    }
-    return fallback;
-  };
-
-    const totalEmployees = employeeTotal || allEmployees.length || countFrom(["totalEmployees"], 0);
-  const presentCount = countFrom(["present", "presentCount"], roster.filter((p) => p.status === "PRESENT").length);
-  const wfhCount = countFrom(["wfh", "wfhCount"], roster.filter((p) => p.status === "REMOTE").length);
-  const leaveCount = countFrom(["onLeave", "leaveCount"], roster.filter((p) => p.status === "ON_LEAVE").length);
-  const lateCount = countFrom(["late", "lateCount"], roster.filter((p) => p.status === "LATE").length);
+  const counts = dashboardCounts(summary, roster, employeeTotal || allEmployees.length);
+  const totalEmployees = counts.total;
+  const presentCount = counts.present;
+  const wfhCount = counts.wfh;
+  const leaveCount = counts.onLeave;
+  const lateCount = counts.late;
   const pendingLeaves = allLeaves.filter((leave) => leave.status === "PENDING").length;
 
   const pct = (count: number) => (totalEmployees > 0 ? ((count / totalEmployees) * 100).toFixed(1) : "0.0");
@@ -442,15 +430,10 @@ export default function DashboardOverview() {
   const leavePercentage = pct(leaveCount);
   const latePercentage = pct(lateCount);
 
+  const completionPercent = counts.turnoutPercent;
   const completedCount = presentCount + lateCount;
   const inProgressCount = wfhCount;
-  const notStartedCount = Math.max(0, totalEmployees - completedCount - inProgressCount - leaveCount);
-  const completionPercent =
-    Number.isFinite(Number(summary?.attendanceRate))
-      ? Math.round(Number(summary.attendanceRate))
-      : totalEmployees > 0
-      ? Math.round((completedCount / totalEmployees) * 100)
-      : 0;
+  const notStartedCount = counts.notStarted;
 
   const displayName = user?.employee?.firstName || user?.email?.split("@")[0] || "User";
   const employeeUpcomingHolidays = employeeHolidays
@@ -525,21 +508,20 @@ export default function DashboardOverview() {
   }, [activeBreakdownTab, roster, searchQuery]);
 
   const hourlyData = useMemo(() => {
+    // Two-hour windows (6-8am ... 8-10pm). Earlier and later punches fall into the first and last window.
     const buckets = [
-      { time: "6am", hour: 6, count: 0 },
-      { time: "8am", hour: 8, count: 0 },
-      { time: "10am", hour: 10, count: 0 },
-      { time: "12pm", hour: 12, count: 0 },
-      { time: "2pm", hour: 14, count: 0 },
-      { time: "4pm", hour: 16, count: 0 },
-      { time: "6pm", hour: 18, count: 0 },
-      { time: "8pm", hour: 20, count: 0 },
+      { time: "6-8am", hour: 6, count: 0 },
+      { time: "8-10am", hour: 8, count: 0 },
+      { time: "10-12pm", hour: 10, count: 0 },
+      { time: "12-2pm", hour: 12, count: 0 },
+      { time: "2-4pm", hour: 14, count: 0 },
+      { time: "4-6pm", hour: 16, count: 0 },
+      { time: "6-8pm", hour: 18, count: 0 },
+      { time: "8-10pm", hour: 20, count: 0 },
     ];
     const addClockIns = (hour: number, count: number) => {
-      const bucket = buckets.reduce((prev, curr) =>
-        Math.abs(curr.hour - hour) < Math.abs(prev.hour - hour) ? curr : prev
-      );
-      bucket.count += count;
+      const index = Math.min(buckets.length - 1, Math.max(0, Math.floor((hour - 6) / 2)));
+      buckets[index].count += count;
     };
     // The server counts today's clock-ins by the tenant's local hour. Rows are
     // only a fallback for a backend that predates that field, and are limited to today.
@@ -566,7 +548,7 @@ export default function DashboardOverview() {
     { key: "LATE" as const, count: lateCount, percent: latePercentage },
   ] : [];
 
-  const absentCount = Math.max(0, totalEmployees - presentCount - wfhCount - leaveCount - lateCount);
+  const absentCount = counts.notStarted;
   const chartTotal = Math.max(1, presentCount + wfhCount + leaveCount + lateCount + absentCount);
   const pieStops = (() => {
     const colors = ["#10b981", "#8b5cf6", "#38bdf8", "#f59e0b", "var(--color-slate-300)"];
@@ -870,19 +852,19 @@ export default function DashboardOverview() {
               <h1 className="text-[26px] sm:text-[32px] font-semibold tracking-[-0.035em] text-white flex items-center gap-3">
                 {greetingFor(currentTime)}, {displayName}
               </h1>
-              <p className="text-xs sm:text-sm text-slate-300 mt-2 max-w-xl leading-relaxed">
+              <p className="text-xs sm:text-sm text-slate-300 mt-2 max-w-2xl leading-relaxed">
                 Workforce operations, real-time presence, and team payroll — active for{" "}
-                <span className="inline-flex translate-y-[3px] items-center gap-2 rounded-full bg-white/10 py-0.5 pl-0.5 pr-3 ring-1 ring-white/15">
+                <span className="inline-flex items-center align-middle gap-1.5 rounded-full bg-white/10 py-0.5 pl-0.5 pr-2.5 ring-1 ring-white/15 text-white font-semibold">
                   <CompanyLogo name={user?.organization?.name || "Workspace"} logoUrl={user?.organization?.logoUrl} size="xs" className="!rounded-full" />
-                  <span className="font-semibold text-white">{user?.organization?.name || "Your Workspace"}</span>
+                  <span>{user?.organization?.name || "Your Workspace"}</span>
                 </span>
-              </p>
+              </p>                                
             </div>
 
             {/* Metric Snapshot Chips */}
             <div className={`grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1 ${canManage ? "" : "hidden"}`}>
               {[
-                { icon: Users, value: totalEmployees, label: "Total Staff", color: "text-indigo-400" },
+                { icon: Users, value: totalEmployees, label: "Total Employees", color: "text-indigo-400" },
                 { icon: Building2, value: totalBranches, label: "Branches", color: "text-emerald-400" },
                 { icon: Layers, value: orgCounts.departments ?? uniqueDepartments, label: "Departments", color: "text-amber-400" },
                 { icon: Activity, value: `${completionPercent}%`, label: "Turnout Today", color: "text-sky-400" },
@@ -909,7 +891,16 @@ export default function DashboardOverview() {
               <span className="flex min-w-0 flex-1 items-center gap-1.5 font-semibold text-slate-200">
                 <MapPin className={`w-4 h-4 ${isWithinGeofence ? "text-emerald-400" : "text-amber-400"}`} />
                 <span className="min-w-0 truncate">
-                  {todayStatus?.attendance?.checkInLocation || locationLabel || (currentLocation ? "GPS Verified" : "Anywhere Punch")}
+                  {(() => {
+                    const rawLoc = todayStatus?.attendance?.checkInLocation;
+                    const cleanLoc = rawLoc && !/^ward\s+\d+/i.test(rawLoc) ? rawLoc : null;
+                    if (isCheckedIn || hasCheckedOutToday) {
+                      return cleanLoc || user?.employee?.branch?.name || "Checked in";
+                    }
+                    return user?.employee?.branch?.name
+                      ? `${user.employee.branch.name}${isWithinGeofence ? " (In office zone)" : ""}`
+                      : (isWithinGeofence ? "Office zone verified" : "Anywhere Punch");
+                  })()}
                 </span>
               </span>
 
@@ -983,6 +974,8 @@ export default function DashboardOverview() {
           </div>
         </div>
       </section>
+
+      <AnnouncementsCard />
 
       {!canManage && (
         <section className="grid gap-4 lg:grid-cols-[1.25fr_1fr_1fr]" aria-label="Employee workspace highlights">
@@ -1116,7 +1109,7 @@ export default function DashboardOverview() {
 
         <article className="min-w-0 rounded-3xl border border-slate-200/90 bg-white p-5 shadow-[0_18px_50px_-36px_rgba(15,23,42,0.35)] sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">Punch activity</p><h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">When your team clocks in</h2></div><Link href="/reports" className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700">Full reports <ArrowUpRight className="h-3.5 w-3.5" /></Link></div>
-          <div className="mt-5 overflow-x-auto rounded-2xl bg-slate-50/80 p-2 sm:p-3"><svg viewBox="0 0 600 180" role="img" aria-label="Punch activity by time of day" className="h-44 w-full min-w-[520px]"><defs><linearGradient id="attendance-area" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#6366f1" stopOpacity=".25" /><stop offset="1" stopColor="#6366f1" stopOpacity="0" /></linearGradient></defs>{[35, 70, 105, 140].map((y) => <line key={y} x1="20" x2="580" y1={y} y2={y} style={{ stroke: "var(--color-slate-200)" }} strokeDasharray="3 5" />)}<polyline points={`20,142 ${trendPoints} 580,142`} fill="url(#attendance-area)" stroke="none" /><polyline points={trendPoints} fill="none" stroke="#4f46e5" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />{hourlyData.map((item, index) => { const max = Math.max(...hourlyData.map((entry) => entry.count), 1); const x = (index / Math.max(hourlyData.length - 1, 1)) * 560 + 20; const y = 142 - (item.count / max) * 106; return <circle key={item.time} cx={x} cy={y} r={item.peak ? 5 : 3.5} fill={item.peak ? "#10b981" : "#4f46e5"} stroke="white" strokeWidth="2" />; })}</svg><div className="flex min-w-[520px] justify-between px-2 text-[10px] font-semibold text-slate-400">{hourlyData.map((item) => <span key={item.time}>{item.time}</span>)}</div></div>
+          <div className="mt-5 overflow-x-auto rounded-2xl bg-slate-50/80 p-2 sm:p-3"><svg viewBox="0 0 600 180" role="img" aria-label="Punch activity by time of day" className="h-44 w-full min-w-[520px]"><defs><linearGradient id="attendance-area" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#6366f1" stopOpacity=".25" /><stop offset="1" stopColor="#6366f1" stopOpacity="0" /></linearGradient></defs>{[35, 70, 105, 140].map((y) => <line key={y} x1="20" x2="580" y1={y} y2={y} style={{ stroke: "var(--color-slate-200)" }} strokeDasharray="3 5" />)}<polyline points={`20,142 ${trendPoints} 580,142`} fill="url(#attendance-area)" stroke="none" /><polyline points={trendPoints} fill="none" stroke="#4f46e5" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />{hourlyData.map((item, index) => { const max = Math.max(...hourlyData.map((entry) => entry.count), 1); const x = (index / Math.max(hourlyData.length - 1, 1)) * 560 + 20; const y = 142 - (item.count / max) * 106; return <g key={item.time}><circle cx={x} cy={y} r={item.peak ? 5 : 3.5} fill={item.peak ? "#10b981" : "#4f46e5"} stroke="white" strokeWidth="2" /><text x={x} y="170" textAnchor="middle" fontSize="10" fontWeight="600" style={{ fill: "var(--color-slate-400)" }}>{item.time}</text></g>; })}{clockInsToday === 0 && <text x="300" y="100" textAnchor="middle" fontSize="12" fontWeight="600" style={{ fill: "var(--color-slate-400)" }}>No clock-ins yet today</text>}</svg></div>
           <div className="mt-4 grid grid-cols-3 gap-2"><div className="rounded-xl bg-emerald-50 p-3"><p className="text-[10px] font-semibold text-emerald-700">Peak window</p><p className="mt-1 text-sm font-bold text-emerald-900">{hourlyData.find((item) => item.peak)?.time || "—"}</p></div><div className="rounded-xl bg-indigo-50 p-3"><p className="text-[10px] font-semibold text-indigo-700">Clock-ins today</p><p className="mt-1 text-sm font-bold text-indigo-900">{clockInsToday}</p></div><div className="rounded-xl bg-amber-50 p-3"><p className="text-[10px] font-semibold text-amber-700">Pending leave</p><p className="mt-1 text-sm font-bold text-amber-900">{pendingLeaves}</p></div></div>
         </article>
 
@@ -1277,7 +1270,7 @@ export default function DashboardOverview() {
                 </div>
                 <div className="flex items-center gap-2 self-start rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />Live distribution</div>
               </div>
-              <div className="mt-5 grid grid-cols-3 gap-2 sm:max-w-md"><div className="rounded-2xl bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Clock-ins today</p><p className="mt-1 text-lg font-bold tabular-nums text-slate-900">{clockInsToday}</p></div><div className="rounded-2xl bg-indigo-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-500">Peak hour</p><p className="mt-1 text-lg font-bold text-indigo-900">{hourlyData.find((item) => item.peak)?.time || "No peak"}</p></div><div className="rounded-2xl bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Coverage</p><p className="mt-1 text-lg font-bold tabular-nums text-slate-900">{completionPercent}%</p></div></div>
+              <div className="mt-5 grid grid-cols-3 gap-2 sm:max-w-md"><div className="rounded-2xl bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Clock-ins today</p><p className="mt-1 text-lg font-bold tabular-nums text-slate-900">{clockInsToday}</p></div><div className="rounded-2xl bg-indigo-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-500">Peak window</p><p className="mt-1 text-lg font-bold text-indigo-900">{hourlyData.find((item) => item.peak)?.time || "No peak"}</p></div><div className="rounded-2xl bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Coverage</p><p className="mt-1 text-lg font-bold tabular-nums text-slate-900">{completionPercent}%</p></div></div>
             </div>
             <div className="relative p-5 sm:p-6">
               <div className="pointer-events-none absolute inset-x-5 top-8 bottom-12 flex flex-col justify-between sm:inset-x-6"><span className="border-t border-dashed border-slate-100" /><span className="border-t border-dashed border-slate-100" /><span className="border-t border-dashed border-slate-100" /><span className="border-t border-dashed border-slate-100" /></div>
@@ -1285,7 +1278,7 @@ export default function DashboardOverview() {
                 {hourlyData.map((item) => {
                   const maxVal = Math.max(...hourlyData.map((d) => d.count), 4);
                   const height = Math.max(item.count > 0 ? 12 : 5, Math.round((item.count / maxVal) * 100));
-                  return <div key={item.time} className="group flex h-full min-w-0 flex-1 flex-col items-center justify-end"><div className="mb-2 flex h-5 items-end"><span className={`text-[11px] font-bold tabular-nums transition ${item.peak ? "text-indigo-600" : "text-slate-400 opacity-0 group-hover:opacity-100"}`}>{item.count}</span></div><div className={`relative w-full max-w-[52px] rounded-t-2xl transition-all duration-500 group-hover:-translate-y-1 ${item.peak ? "bg-indigo-600 shadow-[0_12px_24px_-10px_rgba(79,70,229,0.8)]" : "bg-slate-200 group-hover:bg-indigo-200"}`} style={{ height: `${height}%` }}><span className={`absolute inset-x-1 top-1 h-1 rounded-full ${item.peak ? "bg-white/35" : "bg-white/70"}`} /></div><span className={`mt-3 text-[11px] font-semibold ${item.peak ? "text-indigo-700" : "text-slate-500"}`}>{item.time}</span></div>;
+                  return <div key={item.time} className="group flex h-full min-w-0 flex-1 flex-col items-center justify-end"><div className="mb-2 flex h-5 items-end"><span className={`text-[11px] font-bold tabular-nums transition ${item.peak ? "text-indigo-600" : "text-slate-400 opacity-0 group-hover:opacity-100"}`}>{item.count}</span></div><div className={`relative w-full max-w-[52px] rounded-t-2xl transition-all duration-500 group-hover:-translate-y-1 ${item.peak ? "bg-indigo-600 shadow-[0_12px_24px_-10px_rgba(79,70,229,0.8)]" : "bg-slate-200 group-hover:bg-indigo-200"}`} style={{ height: `${height}%` }}><span className={`absolute inset-x-1 top-1 h-1 rounded-full ${item.peak ? "bg-white/35" : "bg-white/70"}`} /></div><span className={`mt-3 whitespace-nowrap text-[10px] font-semibold sm:text-[11px] ${item.peak ? "text-indigo-700" : "text-slate-500"}`}>{item.time}</span></div>;
                 })}
               </div>
             </div>

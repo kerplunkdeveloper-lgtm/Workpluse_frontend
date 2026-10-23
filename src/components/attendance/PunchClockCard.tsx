@@ -2,12 +2,8 @@
 
 import React, { useEffect, useId, useState } from "react";
 import {
-  Building2,
   Coffee,
-  Globe,
   LockKeyhole,
-  MapPin,
-  Navigation,
   Play,
   RefreshCw,
   Square,
@@ -17,9 +13,9 @@ import {
 import { useAttendance, PunchOptions } from "@/context/AttendanceContext";
 import { useAuth } from "@/context/AuthContext";
 import { formatTime } from "@/lib/utils";
-import type { Attendance, CheckInLocationPolicy } from "@/types";
+import type { Attendance } from "@/types";
 import PunchConfirmDialog from "./PunchConfirmDialog";
-import { breakMinutesOf, lunchMinutesOf, formatClock, formatDistance, formatHm, formatShiftTime, liveWorkedMs, shiftLengthMinutes } from "./attendanceUtils";
+import { breakMinutesOf, lunchMinutesOf, formatClock, formatHm, formatShiftTime, liveWorkedMs, shiftLengthMinutes } from "./attendanceUtils";
 
 type PunchAction = "CHECK_IN" | "CHECK_OUT";
 
@@ -42,8 +38,7 @@ export default function PunchClockCard() {
 
   if (ctx.isLoading && !ctx.todayStatus) {
     return (
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]" aria-busy="true">
-        <div className="skeleton-shimmer h-[340px] rounded-2xl" />
+      <div className="grid gap-4" aria-busy="true">
         <div className="skeleton-shimmer h-[340px] rounded-2xl" />
       </div>
     );
@@ -52,7 +47,7 @@ export default function PunchClockCard() {
   const status = ctx.todayStatus;
   return (
     <>
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]">
+      <div className="grid gap-4">
         <TodayPanel
           firstName={user?.employee?.firstName || ""}
           attendance={status?.attendance}
@@ -68,25 +63,13 @@ export default function PunchClockCard() {
           onStartLunch={() => void ctx.startLunch()}
           onEndLunch={() => void ctx.endLunch()}
         />
-        <LocationPanel
-          policy={status?.locationPolicy}
-          showRule={!status?.hasCheckedIn}
-          label={status?.attendance?.checkInLocation || ctx.locationLabel || null}
-          gpsReady={Boolean(ctx.currentLocation)}
-          distance={ctx.distanceToBranch}
-          error={ctx.locationError}
-          pendingPunches={ctx.pendingPunchCount}
-          onSync={() => void ctx.triggerSync()}
-        />
+        <PunchNotices error={ctx.locationError} pendingPunches={ctx.pendingPunchCount} onSync={() => void ctx.triggerSync()} />
       </div>
       <PunchConfirmDialog action={action} loading={ctx.isActionLoading} onCancel={() => setAction(null)} onConfirm={(o) => void confirmPunch(o)} />
     </>
   );
 }
 
-
-/** Light surface used by the secondary (location) card. */
-const CARD = "rounded-[28px] bg-white ring-1 ring-slate-900/[0.06] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_18px_45px_-26px_rgba(15,23,42,0.22)]";
 
 /** Deep-ink hero surface. Deliberately has no `bg-white`, which would win over any dark background utility. */
 const HERO =
@@ -299,142 +282,24 @@ function Fact({ label, value, tone }: { label: string; value: string; tone?: str
   );
 }
 
-export interface LocationPanelProps {
-  policy?: CheckInLocationPolicy;
-  showRule: boolean;
-  label: string | null;
-  gpsReady: boolean;
-  distance: number | null;
+export interface PunchNoticesProps {
   error: string | null;
   pendingPunches: number;
   onSync: () => void;
 }
 
-type GeoState = { badge: string; badgeTone: string; caption: string; dot: string };
-
-/** Truthful geofence status: only claims "Verified" when the rule is actually satisfied. */
-function geofenceState(policy: CheckInLocationPolicy | undefined, distance: number | null, gpsReady: boolean): GeoState {
-  const OK = "bg-emerald-50 text-emerald-700 ring-emerald-600/20";
-  const WARN = "bg-amber-50 text-amber-800 ring-amber-600/25";
-  const IDLE = "bg-slate-100 text-slate-600 ring-slate-500/15";
-  const anywhere = policy?.mode === "ANYWHERE" || policy?.radiusMeters === null;
-  if (anywhere) return { badge: "Verified", badgeTone: OK, caption: "Any location is allowed. Ready to record your punch.", dot: "#10b981" };
-  if (distance === null || !gpsReady) return { badge: "Locating", badgeTone: IDLE, caption: "Waiting for a GPS fix.", dot: "#94a3b8" };
-  if (policy?.radiusMeters == null) return { badge: "Located", badgeTone: OK, caption: "Ready to record your punch.", dot: "#10b981" };
-  return distance <= policy.radiusMeters
-    ? { badge: "In range", badgeTone: OK, caption: "You're inside the check-in area.", dot: "#10b981" }
-    : { badge: "Out of range", badgeTone: WARN, caption: "Move closer to your branch to punch in.", dot: "#f59e0b" };
-}
-
-/** Branch at the centre, the geofence as a ring, and you as a dot placed by real distance. */
-function GeofenceMap({ radius, distance, dot }: { radius: number | null; distance: number | null; dot: string }) {
-  const R = 50;
-  const ratio = radius && distance !== null ? Math.min(distance / radius, 1.9) : 0;
-  const angle = (-35 * Math.PI) / 180;
-  const ux = 120 + Math.cos(angle) * R * ratio;
-  const uy = 75 + Math.sin(angle) * R * ratio;
+/** Only renders when there is something to act on: a location problem or punches waiting to sync. */
+export function PunchNotices({ error, pendingPunches, onSync }: PunchNoticesProps) {
+  if (!error && pendingPunches === 0) return null;
   return (
-    <svg viewBox="0 0 240 150" className="h-full w-full" aria-hidden="true">
-      <defs>
-        <radialGradient id="geo-fill" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#6366f1" stopOpacity="0.22" />
-          <stop offset="100%" stopColor="#6366f1" stopOpacity="0.04" />
-        </radialGradient>
-      </defs>
-      <circle cx="120" cy="75" r={R * 1.7} fill="none" stroke="#c7d2fe" strokeOpacity="0.5" strokeDasharray="2 5" />
-      <circle cx="120" cy="75" r={R} fill="url(#geo-fill)" stroke="#6366f1" strokeOpacity="0.55" strokeWidth="1.25" />
-      <circle cx="120" cy="75" r={R * 0.5} fill="none" stroke="#6366f1" strokeOpacity="0.18" />
-      <circle cx="120" cy="75" r="5" fill="#4f46e5" />
-      <circle cx="120" cy="75" r="9" fill="none" stroke="#4f46e5" strokeOpacity="0.35" />
-      {distance !== null && radius ? (
-        <>
-          <line x1="120" y1="75" x2={ux} y2={uy} stroke="#818cf8" strokeOpacity="0.6" strokeDasharray="3 3" />
-          <circle cx={ux} cy={uy} r="11" fill={dot} fillOpacity="0.18" />
-          <circle cx={ux} cy={uy} r="5.5" fill={dot} stroke="#fff" strokeWidth="2" />
-        </>
-      ) : null}
-    </svg>
-  );
-}
-
-export function LocationPanel({ policy, showRule, label, gpsReady, distance, error, pendingPunches, onSync }: LocationPanelProps) {
-  const geo = geofenceState(policy, distance, gpsReady);
-  const radius = policy?.radiusMeters ?? null;
-  return (
-    <aside className={`${CARD} h-fit overflow-hidden p-5 sm:p-7`} aria-labelledby="location-title">
-      <div className="flex items-center justify-between">
-        <h2 id="location-title" className="text-sm font-semibold tracking-[-0.01em] text-slate-900">Location</h2>
-        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${gpsReady ? "bg-emerald-50 text-emerald-700 ring-emerald-600/15" : "bg-slate-100 text-slate-500 ring-slate-500/10"}`}>
-          <Navigation className="h-3.5 w-3.5" />
-          {gpsReady ? "GPS ready" : "Finding you…"}
-        </span>
-      </div>
-
-      <div className="mt-5 flex items-start gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-indigo-50 to-indigo-100/70 text-indigo-600 ring-1 ring-indigo-200/60">
-          <MapPin className="h-[18px] w-[18px]" />
-        </span>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold tracking-[-0.01em] text-slate-900" title={label || undefined}>{label || "Location not available yet"}</p>
-          <p className="mt-0.5 text-xs leading-5 text-slate-500">
-            {distance !== null ? `${formatDistance(distance)} from your branch` : "Your team sees a place name, never exact coordinates."}
-          </p>
+    <div className="space-y-2">
+      {error && <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">{error}</p>}
+      {pendingPunches > 0 && (
+        <div className="flex items-center justify-between gap-3 rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-900">
+          <span>{pendingPunches} offline punch{pendingPunches === 1 ? "" : "es"} waiting to sync</span>
+          <button type="button" onClick={onSync} className="font-semibold text-indigo-700 hover:text-indigo-900">Sync now</button>
         </div>
-      </div>
-
-      <div className="relative mt-6 overflow-hidden rounded-2xl bg-slate-50/80 ring-1 ring-slate-900/[0.06]">
-        <div aria-hidden="true" className="absolute inset-0 [background-image:radial-gradient(rgba(100,116,139,0.22)_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_78%)]" />
-        <div className="relative flex items-center justify-between px-4 pt-4">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Attendance geofence</span>
-          <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${geo.badgeTone}`}>{geo.badge}</span>
-        </div>
-        <div className="relative h-[190px] w-full px-4">
-          <GeofenceMap radius={radius} distance={distance} dot={geo.dot} />
-        </div>
-        <p className="relative border-t border-slate-900/[0.06] bg-white/70 px-4 py-3 text-sm font-medium tracking-[-0.01em] text-slate-800 backdrop-blur">{geo.caption}</p>
-      </div>
-
-      {showRule && <CheckInRule policy={policy} distance={distance} />}
-
-      <div className="mt-auto space-y-2 pt-5">
-        {error && <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">{error}</p>}
-        {pendingPunches > 0 && (
-          <div className="flex items-center justify-between gap-3 rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-900">
-            <span>{pendingPunches} offline punch{pendingPunches === 1 ? "" : "es"} waiting to sync</span>
-            <button type="button" onClick={onSync} className="font-semibold text-indigo-700 hover:text-indigo-900">Sync now</button>
-          </div>
-        )}
-      </div>
-    </aside>
-  );
-}
-
-/** Tells the employee where they're allowed to check in before they tap Punch in. */
-function CheckInRule({ policy, distance }: { policy?: CheckInLocationPolicy; distance: number | null }) {
-  if (!policy) return null;
-
-  if (policy.mode === "ANYWHERE" || policy.radiusMeters === null) {
-    return (
-      <div className="mt-5 flex items-start gap-2.5 rounded-xl bg-emerald-50 px-3.5 py-3 text-emerald-900">
-        <Globe className="mt-0.5 h-4 w-4 shrink-0" />
-        <p className="text-xs leading-5"><span className="font-semibold">Check in from anywhere.</span> Your location is still recorded with the punch.</p>
-      </div>
-    );
-  }
-
-  const where = policy.branchName ? `of ${policy.branchName}` : "of your office";
-  const inside = distance !== null && distance <= policy.radiusMeters;
-  const outside = distance !== null && !inside;
-  return (
-    <div className={`mt-5 flex items-start gap-2.5 rounded-xl px-3.5 py-3 ${outside ? "bg-amber-50 text-amber-900" : "bg-indigo-50 text-indigo-900"}`}>
-      <Building2 className="mt-0.5 h-4 w-4 shrink-0" />
-      <p className="text-xs leading-5">
-        <span className="font-semibold">Office check-in only</span>, within {formatDistance(policy.radiusMeters)} {where}.
-        {inside && " You're inside the area."}
-        {outside && ` You're about ${formatDistance(distance)} away, so move closer to check in.`}
-        {distance === null && " We'll confirm your location when you punch in."}
-        {outside && ` Working elsewhere today? Pick${policy.allowWfh ? " Work from home," : ""} Client visit or Travel when you punch in.`}
-      </p>
+      )}
     </div>
   );
 }

@@ -67,7 +67,7 @@ export default function CompanyLeavePanel({ canManage }: { canManage: boolean })
       }
       setLoading(false);
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [canManage]);
 
   const days = spanDays(startDate, endDate || startDate);

@@ -7,6 +7,11 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /** Pull a list out of any backend envelope ({ data }, { records }, nested, or a bare array). */
+/** Today as YYYY-MM-DD in the browser's local calendar. toISOString() is UTC and shows yesterday before 5:30 AM IST. */
+export function todayLocalKey(date: Date = new Date()): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 export function unwrapList<T = any>(res: any): T[] {
   if (!res) return [];
   if (Array.isArray(res)) return res;

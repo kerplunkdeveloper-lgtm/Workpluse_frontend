@@ -45,6 +45,7 @@ import {
   User,
 } from "lucide-react";
 import { assetsApi, employeesApi } from "@/lib/api";
+import { todayLocalKey } from "@/lib/utils";
 import {
   Asset,
   AssetCategory,
@@ -208,9 +209,9 @@ export default function AssetManagementView() {
   useEffect(() => {
     async function fetchEmployees() {
       try {
-        const res = await employeesApi.getAll();
+        const res = await employeesApi.getAll({ page: 1, limit: 500, status: "WORKING" });
         if (res?.success && Array.isArray(res.data)) {
-          setEmployees(res.data.filter((e: Employee) => e.status === "ACTIVE"));
+          setEmployees(res.data);
         }
       } catch (err) {
         console.error("Failed to load employees", err);
@@ -1643,7 +1644,7 @@ function MaintenanceModal({
   const [issueDescription, setIssueDescription] = useState("");
   const [vendorName, setVendorName] = useState("");
   const [cost, setCost] = useState("");
-  const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
+  const [startDate, setStartDate] = useState(todayLocalKey());
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1806,7 +1807,7 @@ function CompleteMaintenanceModal({
 }) {
   const [actualCost, setActualCost] = useState("");
   const [newCondition, setNewCondition] = useState<AssetCondition>("EXCELLENT");
-  const [completedDate, setCompletedDate] = useState(new Date().toISOString().split("T")[0]);
+  const [completedDate, setCompletedDate] = useState(todayLocalKey());
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);

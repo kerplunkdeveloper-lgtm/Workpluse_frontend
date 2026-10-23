@@ -36,8 +36,8 @@ function IndividualSalaryView() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await employeesApi.list();
-        setEmployees(unwrapList<Employee>(res).filter((e) => e.status === "ACTIVE"));
+        const res = await employeesApi.list({ page: 1, limit: 500, status: "WORKING" });
+        setEmployees(unwrapList<Employee>(res));
       } finally {
         setLoading(false);
       }

@@ -49,7 +49,7 @@ export default function ShiftsAndRostersView() {
     try {
       const [shiftRes, empRes, ovRes] = await Promise.allSettled([
         shiftsApi.list(),
-        employeesApi.list(),
+        employeesApi.list({ page: 1, limit: 500, status: "WORKING" }),
         shiftOverridesApi.list(),
       ]);
       if (shiftRes.status === "fulfilled") setShifts(unwrapList<Shift>(shiftRes.value));

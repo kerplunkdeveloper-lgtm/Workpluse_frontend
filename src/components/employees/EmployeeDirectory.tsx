@@ -25,6 +25,7 @@ import {
   FileSpreadsheet,
   Megaphone,
   KeyRound,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
@@ -66,6 +67,34 @@ export default function EmployeeDirectory() {
   const [selectedEmployeeForProfile, setSelectedEmployeeForProfile] = useState<Employee | null>(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const canExport = viewerRole === "SUPER_ADMIN" || viewerRole === "COMPANY_ADMIN";
+
+  // Exports exactly what the filters above show (all pages), as a CSV that opens in Excel.
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await employeesApi.exportCsv({
+        status: filters.status || undefined,
+        departmentId: filters.departmentId || undefined,
+        branchId: filters.branchId || undefined,
+      });
+      if (!res?.success || !res.data) throw new Error(res?.message || "Export failed");
+      const file = res.data;
+      const blob = new Blob(["﻿" + file.content], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = file.fileName;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${file.rowCount} employee${file.rowCount === 1 ? "" : "s"}.${file.truncated ? " The list was capped at 5,000." : ""}`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || "Could not export the directory.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
 
   // Create / Invite Employee Modal State
@@ -387,6 +416,16 @@ export default function EmployeeDirectory() {
             <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
             Import Excel
           </button>
+          {canExport && (
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm font-semibold text-sm flex items-center gap-2 transition disabled:opacity-60"
+            >
+              {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-indigo-600" />}
+              Export CSV
+            </button>
+          )}
 
           <button
             onClick={() => {

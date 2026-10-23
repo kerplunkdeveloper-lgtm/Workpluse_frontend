@@ -32,6 +32,7 @@ import confetti from "canvas-confetti";
 export default function PayrollView() {
   const { role } = useAuth();
   const [payslips, setPayslips] = useState<Payslip[]>([]);
+  const [previewRows, setPreviewRows] = useState<Payslip[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedPayslip, setSelectedPayslip] = useState<Payslip | null>(null);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
@@ -45,6 +46,8 @@ export default function PayrollView() {
   const [activeSection, setActiveSection] = useState<"RECORDS" | "SALARY" | "TEMPLATES">("RECORDS");
 
   const isAdminOrManager = role === "COMPANY_ADMIN" || role === "SUPER_ADMIN" || role === "MANAGER";
+  // HR prepares payroll; only an admin generates, approves and disburses it (the server enforces this too).
+  const isAdmin = role === "COMPANY_ADMIN" || role === "SUPER_ADMIN";
   const [cycle, setCycle] = useState<any>(null);
 
   useEffect(() => {
@@ -61,19 +64,54 @@ export default function PayrollView() {
     setLoading(true);
     try {
       if (isAdminOrManager) {
-        const res = await payrollApi.getPayslips({ month: selectedMonth, year: selectedYear });
-        setPayslips(unwrapList<Payslip>(res));
+        const params = { month: selectedMonth, year: selectedYear };
+        const res = await payrollApi.getPayslips(params);
+        const generated = unwrapList<Payslip>(res);
+        setPayslips(generated);
+
+        // Show live calculated values when this month has not been generated yet.
+        // These are previews only and cannot be approved or disbursed.
+        if (generated.length === 0) {
+          const previewRes = await payrollApi.calculatePreview(params);
+          const previews = Array.isArray(previewRes?.data?.previews) ? previewRes.data.previews : [];
+          setPreviewRows(
+            previews.map((preview: any, index: number) => ({
+              id: `preview-${preview.employee?.id || index}`,
+              employeeId: preview.employee?.id || `preview-${index}`,
+              month: selectedMonth,
+              year: selectedYear,
+              basicSalary: preview.salaryBreakdown?.baseSalary || 0,
+              hra: preview.salaryBreakdown?.hra || 0,
+              allowances: preview.salaryBreakdown?.allowancesTotal || 0,
+              grossSalary: preview.salaryBreakdown?.grossSalary || 0,
+              totalDeductions: preview.deductions?.deductionsTotal || 0,
+              lopDeduction: preview.deductions?.unpaidLeaveDeduction || 0,
+              overtimePay: preview.salaryBreakdown?.overtimePay || 0,
+              netSalary: preview.netSalary || 0,
+              status: "DRAFT",
+              createdAt: new Date().toISOString(),
+              employee: {
+                firstName: preview.employee?.name || "Employee",
+                lastName: "",
+                employeeCode: preview.employee?.employeeCode || "WP-EMP",
+              },
+            })),
+          );
+        } else {
+          setPreviewRows([]);
+        }
       } else {
         const res = await payrollApi.getMyPayslips();
         setPayslips(unwrapList<Payslip>(res));
+        setPreviewRows([]);
       }
     } catch (err: any) {
       console.error("Failed to load payslips:", err);
+      setPreviewRows([]);
     } finally {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     loadPayslips();
   }, [selectedMonth, selectedYear, isAdminOrManager]);
@@ -177,8 +215,10 @@ export default function PayrollView() {
   const nextStep: "GENERATE" | "APPROVE" | "DISBURSE" | null = payslips.length === 0 ? "GENERATE" : !allApproved ? "APPROVE" : !allPaid ? "DISBURSE" : null;
   const stepTone = (step: "GENERATE" | "APPROVE" | "DISBURSE") => (nextStep === step ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm shadow-indigo-600/25" : "bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-xs");
 
-  const totalDisbursement = payslips.reduce((acc, p) => acc + (Number(p.netSalary) || 0), 0);
-  const totalLopDeductions = payslips.reduce((acc, p) => acc + (Number(p.lopDeduction) || 0), 0);
+  const displayPayslips = payslips.length > 0 ? payslips : previewRows;
+  const showingPreview = payslips.length === 0 && previewRows.length > 0;
+  const totalDisbursement = displayPayslips.reduce((acc, p) => acc + (Number(p.netSalary) || 0), 0);
+  const totalLopDeductions = displayPayslips.reduce((acc, p) => acc + (Number(p.lopDeduction) || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -231,6 +271,8 @@ export default function PayrollView() {
               </span>
             )}
 
+            {isAdmin ? (
+              <>
             <button
               onClick={handleGenerateBatch}
               disabled={isGenerating || generateLocked}
@@ -258,6 +300,10 @@ export default function PayrollView() {
               {isDisbursing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
               Disburse & notify
             </button>
+              </>
+            ) : (
+              <span className="text-xs font-medium text-slate-500">An admin generates, approves and disburses payroll.</span>
+            )}
 
             <button
               onClick={handleExportCsv}
@@ -324,7 +370,7 @@ export default function PayrollView() {
             Total payout this month
           </p>
           <p className="text-2xl font-semibold tabular-nums tracking-[-0.02em] text-slate-900 truncate">{formatCurrency(totalDisbursement)}</p>
-          <p className="text-xs text-slate-500 mt-1">Across {payslips.length} employee records</p>
+          <p className="text-xs text-slate-500 mt-1">Across {displayPayslips.length} employee records</p>
         </div>
 
         <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs overflow-hidden">
@@ -345,6 +391,13 @@ export default function PayrollView() {
           <p className="text-xs text-slate-500 mt-1">Complies with 26 days/month standard</p>
         </div>
       </div>
+
+      {showingPreview && (
+        <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <p><span className="font-semibold">Calculated preview for {selectedMonth}/{selectedYear}.</span> Generate payroll after the cycle ends to create official payslips.</p>
+        </div>
+      )}
 
       {/* Payslips Table */}
       <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
@@ -369,14 +422,14 @@ export default function PayrollView() {
                     Loading payroll records...
                   </td>
                 </tr>
-              ) : payslips.length === 0 ? (
+              ) : displayPayslips.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="text-center py-12 text-slate-500">
                     No payslips for this cycle yet. Use "Generate payroll" to create them.
                   </td>
                 </tr>
               ) : (
-                payslips.map((slip) => (
+                displayPayslips.map((slip) => (
                   <tr key={slip.id} className="hover:bg-slate-50/80 transition">
                     <td className="py-3.5 px-4 font-semibold text-slate-900">
                       <div>
@@ -415,16 +468,20 @@ export default function PayrollView() {
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => {
-                          setSelectedPayslip(slip);
-                          setModalOpen(true);
-                        }}
-                        className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition inline-flex items-center gap-1.5"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        View Letterhead
-                      </button>
+                      {showingPreview ? (
+                        <span className="text-xs font-semibold text-slate-400">Preview only</span>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setSelectedPayslip(slip);
+                            setModalOpen(true);
+                          }}
+                          className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition inline-flex items-center gap-1.5"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          View Letterhead
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))

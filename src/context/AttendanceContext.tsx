@@ -173,12 +173,22 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
   }, [triggerSync]);
 
   // ── Track browser GPS location ───────────────────────────────────────────────
+  // Read through refs so this callback keeps one identity. Depending on `todayStatus` made every
+  // status fetch (which returns a new policy object) re-run the polling effect below, which
+  // fetched again: an endless request loop that also re-asked for GPS each time.
+  const userRef = useRef(user);
+  const policyRef = useRef(todayStatus?.locationPolicy);
+  useEffect(() => {
+    userRef.current = user;
+    policyRef.current = todayStatus?.locationPolicy;
+  });
+
   const applyCoords = useCallback(
     async (coords: GeoCoordinates) => {
       setCurrentLocation(coords);
       setLocationError(null);
-      const branch = user?.employee?.branch;
-      const policy = todayStatus?.locationPolicy;
+      const branch = userRef.current?.employee?.branch;
+      const policy = policyRef.current;
       if (branch && branch.latitude && branch.longitude) {
         const branchLat = typeof branch.latitude === "string" ? parseFloat(branch.latitude) : branch.latitude;
         const branchLng = typeof branch.longitude === "string" ? parseFloat(branch.longitude) : branch.longitude;
@@ -190,11 +200,11 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
         setDistanceToBranch(null);
         setIsWithinGeofence(true);
       }
-      const label = await reverseGeocodeLabel(coords.latitude, coords.longitude);
+      const label = branch?.name || null;
       if (label) setLocationLabel(label);
       return label;
     },
-    [todayStatus?.locationPolicy, user]
+    []
   );
 
   const requestBrowserLocation = useCallback((): Promise<GeoCoordinates | null> => {
@@ -275,8 +285,10 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
           shift: raw.employee?.shift || raw.shift,
           locationPolicy: raw.locationPolicy,
         });
-        if (raw.attendance?.checkInLocation) {
+        if (raw.attendance?.checkInLocation && !/^ward\s+\d+/i.test(raw.attendance.checkInLocation)) {
           setLocationLabel(raw.attendance.checkInLocation);
+        } else if (user?.employee?.branch?.name) {
+          setLocationLabel(user.employee.branch.name);
         }
       }
     } catch (err: any) {
@@ -284,7 +296,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [token, isOnline]);
+  }, [token, isOnline, user?.employee?.branch?.name]);
 
   useEffect(() => {
     fetchTodayStatusRef.current = fetchTodayStatus;
@@ -325,6 +337,32 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
       setIsActionLoading(true);
       const punchTimestamp = new Date().toISOString();
 
+      // Reflect a queued punch on screen straight away so the employee does not tap again.
+      const markPunchedLocally = () => {
+        if (type === "CHECK_IN") {
+          setTodayStatus((prev: any) => ({
+            ...(prev || {}),
+            hasCheckedIn: true,
+            hasCheckedOut: false,
+            checkInTime: punchTimestamp,
+            isOfflinePunch: true,
+          }));
+        } else if (type === "CHECK_OUT") {
+          setTodayStatus((prev: any) => ({
+            ...(prev || {}),
+            hasCheckedOut: true,
+            checkOutTime: punchTimestamp,
+            isOfflinePunch: true,
+          }));
+        } else if (type === "BREAK_START") {
+          setTodayStatus((prev: any) => ({ ...(prev || {}), isOnBreak: true }));
+        } else if (type === "BREAK_END" || type === "LUNCH_END") {
+          setTodayStatus((prev: any) => ({ ...(prev || {}), isOnBreak: false, activePauseType: null }));
+        } else if (type === "LUNCH_START") {
+          setTodayStatus((prev: any) => ({ ...(prev || {}), isOnBreak: true, activePauseType: "LUNCH" }));
+        }
+      };
+
       try {
         if (!isOnline) {
           // OFFLINE — save to IndexedDB
@@ -341,29 +379,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
           toast.success(`📴 ${successMessage} (saved offline — will sync when online)`, {
             duration: 4000,
           });
-          // Optimistically update local UI state
-          if (type === "CHECK_IN") {
-            setTodayStatus((prev: any) => ({
-              ...(prev || {}),
-              hasCheckedIn: true,
-              hasCheckedOut: false,
-              checkInTime: punchTimestamp,
-              isOfflinePunch: true,
-            }));
-          } else if (type === "CHECK_OUT") {
-            setTodayStatus((prev: any) => ({
-              ...(prev || {}),
-              hasCheckedOut: true,
-              checkOutTime: punchTimestamp,
-              isOfflinePunch: true,
-            }));
-          } else if (type === "BREAK_START") {
-            setTodayStatus((prev: any) => ({ ...(prev || {}), isOnBreak: true }));
-          } else if (type === "BREAK_END" || type === "LUNCH_END") {
-            setTodayStatus((prev: any) => ({ ...(prev || {}), isOnBreak: false, activePauseType: null }));
-          } else if (type === "LUNCH_START") {
-            setTodayStatus((prev: any) => ({ ...(prev || {}), isOnBreak: true, activePauseType: "LUNCH" }));
-          }
+          markPunchedLocally();
           return true;
         }
 
@@ -397,6 +413,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
             ...metadata,
           });
           await refreshPendingCount();
+          markPunchedLocally();
           toast.warning(`📴 Network offline — ${successMessage} saved locally.`, { duration: 5000 });
           return true;
         }
@@ -424,12 +441,11 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
   const checkIn = useCallback(
     async (options?: PunchOptions): Promise<boolean> => {
       const coords = currentLocation || (await requestBrowserLocation()) || undefined;
+      const branchName = user?.employee?.branch?.name;
       const resolvedLabel =
         options?.locationLabel ||
         options?.note?.trim() ||
-        locationLabel ||
-        (coords ? await reverseGeocodeLabel(coords.latitude, coords.longitude) : null) ||
-        undefined;
+        (options?.workMode === "WORK_FROM_HOME" ? "Work from home" : branchName || "Office");
       const modeLabel =
         options?.workMode === "SHOOT"
           ? "On-Site Shoot"
@@ -456,18 +472,17 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
         }
       );
     },
-    [currentLocation, handlePunch, locationLabel, requestBrowserLocation]
+    [currentLocation, handlePunch, requestBrowserLocation, user?.employee?.branch?.name]
   );
 
   const checkOut = useCallback(
     async (options?: PunchOptions): Promise<boolean> => {
       const coords = currentLocation || (await requestBrowserLocation()) || undefined;
+      const branchName = user?.employee?.branch?.name;
       const resolvedLabel =
         options?.locationLabel ||
         options?.note?.trim() ||
-        locationLabel ||
-        (coords ? await reverseGeocodeLabel(coords.latitude, coords.longitude) : null) ||
-        undefined;
+        (options?.workMode === "WORK_FROM_HOME" ? "Work from home" : branchName || "Office");
       return handlePunch(
         "CHECK_OUT",
         () => attendanceApi.checkOut({ ...(coords || {}), ...options, locationLabel: resolvedLabel }),
@@ -481,7 +496,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
         }
       );
     },
-    [currentLocation, handlePunch, locationLabel, requestBrowserLocation]
+    [currentLocation, handlePunch, requestBrowserLocation, user?.employee?.branch?.name]
   );
 
   const startBreak = useCallback(async (): Promise<boolean> => {

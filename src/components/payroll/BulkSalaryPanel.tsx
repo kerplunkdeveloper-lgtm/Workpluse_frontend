@@ -41,7 +41,7 @@ export default function BulkSalaryPanel() {
       let page = 1;
       let totalPages = 1;
       do {
-        const res = await employeesApi.list({ page, limit: PAGE_SIZE });
+        const res = await employeesApi.list({ page, limit: PAGE_SIZE, status: "WORKING" });
         all.push(...unwrapList<Employee>(res));
         totalPages = res?.totalPages || 1;
         page += 1;
@@ -63,7 +63,7 @@ export default function BulkSalaryPanel() {
 
   useEffect(() => {
     loadAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const splitTotal = Object.values(split).reduce((sum, value) => sum + (Number(value) || 0), 0);

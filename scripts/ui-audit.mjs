@@ -1,21 +1,4 @@
-#!/usr/bin/env node
-/**
- * UI audit: renders every app screen against a mocked API and fails on
- *   - horizontal page overflow / elements cut off at the viewport edge
- *   - runtime crashes (error overlay, uncaught exceptions)
- *   - leaked placeholder text: NaN, undefined, null, Invalid Date, [object Object]
- *   - unreadable text (contrast below 3:1 against its solid background)
- *
- * The backend is never contacted: every /backend-api/* request is answered with
- * fixture data, so it is safe to run against any build.
- *
- *   npm run dev            # or: npm run build && npm start
- *   npm run audit:ui       # all roles, 375 + 1440 px, light theme
- *   THEME=dark npm run audit:ui
- *   WIDTHS=375,768,1440 SHOTS=1 npm run audit:ui   # screenshots in .ui-audit/
- *
- * Env: BASE_URL (default http://localhost:3000), CHROME_PATH, ROLES, ROUTES, WIDTHS, THEME, SHOTS.
- */
+
 import fs from "node:fs";
 import path from "node:path";
 import puppeteer from "puppeteer-core";
@@ -30,7 +13,7 @@ const ROUTES_BY_ROLE = {
   COMPANY_ADMIN: [
     "/dashboard", "/attendance", "/employees", "/leaves", "/payroll", "/reports", "/approvals", "/assets",
     "/branches", "/chat", "/departments", "/expenses", "/holidays", "/loans", "/offboarding", "/onboarding",
-    "/overtime", "/permissions", "/policy", "/profile", "/settings", "/shifts", "/statutory", "/appraisals",
+    "/overtime", "/audit", "/permissions", "/policy", "/profile", "/settings", "/shifts", "/statutory", "/appraisals",
     "/change-password", "/", "/login", "/register", "/forgot-password", "/verify-email", "/this-page-does-not-exist",
   ],
   EMPLOYEE: ["/dashboard", "/attendance", "/leaves", "/payroll", "/expenses", "/profile", "/chat"],
