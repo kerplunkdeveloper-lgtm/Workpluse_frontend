@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -131,9 +131,9 @@ function greetingFor(date: Date) {
 
 function timeContextBadge(date: Date) {
   const hour = date.getHours();
-  if (hour < 12) return { text: "Morning Velocity", icon: "â˜€ï¸", color: "text-amber-400 bg-amber-950/40 border-amber-500/30" };
-  if (hour < 17) return { text: "Afternoon Focus", icon: "ðŸŒ¤ï¸", color: "text-sky-400 bg-sky-950/40 border-sky-500/30" };
-  return { text: "Evening Operations", icon: "ðŸŒ™", color: "text-indigo-400 bg-indigo-950/40 border-indigo-500/30" };
+  if (hour < 12) return { text: "Morning Velocity", icon: "☀️", color: "text-amber-400 bg-amber-950/40 border-amber-500/30" };
+  if (hour < 17) return { text: "Afternoon Focus", icon: "🌤️", color: "text-sky-400 bg-sky-950/40 border-sky-500/30" };
+  return { text: "Evening Operations", icon: "🌙", color: "text-indigo-400 bg-indigo-950/40 border-indigo-500/30" };
 }
 
 function personName(employee: any) {
@@ -152,6 +152,22 @@ function isSameDay(value?: string | Date | null) {
     date.getMonth() === now.getMonth() &&
     date.getDate() === now.getDate()
   );
+}
+
+/**
+ * Attendance and leave dates are DATE columns serialised at UTC midnight, so the
+ * "YYYY-MM-DD" prefix is the calendar day. Comparing prefixes against the
+ * server's own "today" avoids the browser's timezone shifting a record a day.
+ */
+function isTodayRecord(record: any, todayKey: string) {
+  if (typeof record?.date === "string") return record.date.slice(0, 10) === todayKey;
+  return isSameDay(record?.checkIn);
+}
+
+function leaveCoversDay(leave: any, todayKey: string) {
+  const start = String(leave?.startDate || "").slice(0, 10);
+  const end = String(leave?.endDate || leave?.startDate || "").slice(0, 10);
+  return Boolean(start) && start <= todayKey && todayKey <= end;
 }
 
 // Only this small component re-renders every second; the dashboard itself
@@ -195,7 +211,6 @@ export default function DashboardOverview() {
   const [activeBreakdownTab, setActiveBreakdownTab] = useState<Exclude<RosterStatus, "ABSENT"> | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [allAttendance, setAllAttendance] = useState<any[]>([]);
-  const [attendanceTotal, setAttendanceTotal] = useState(0);
   const [allLeaves, setAllLeaves] = useState<any[]>([]);
   const [allEmployees, setAllEmployees] = useState<any[]>([]);
   const [orgCounts, setOrgCounts] = useState<{ branches: number | null; departments: number | null }>({ branches: null, departments: null });
@@ -203,6 +218,10 @@ export default function DashboardOverview() {
   const [pendingPunch, setPendingPunch] = useState<PunchConfirmAction | null>(null);
   const [selectedQuickAction, setSelectedQuickAction] = useState<QuickAction | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  // Server-side "today" the lists were last built for, and a guard so a slow
+  // network never stacks overlapping live refreshes.
+  const loadedDayRef = useRef<string | null>(null);
+  const refreshInFlightRef = useRef(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -216,20 +235,47 @@ export default function DashboardOverview() {
   const [employeeHolidays, setEmployeeHolidays] = useState<any[]>([]);
   const [employeeLeaves, setEmployeeLeaves] = useState<any[]>([]);
 
-  const loadDashboardData = async () => {
-    setLoading(true);
-    setLoadError(null);
+  /**
+   * `silent` is the once-a-minute live refresh: it only re-reads today's summary
+   * and punches, and escalates to a full reload when the server's day rolls over.
+   */
+  const loadDashboardData = async (silent = false): Promise<void> => {
+    if (silent && !canManage) return;
+    if (!silent) {
+      setLoading(true);
+      setLoadError(null);
+    }
     try {
-      // Render the shell from the small, high-value requests first.
+      // Render the shell from the small, high-value requests first. The summary
+      // is manager-only (employees would just get a 403), and it is the source of
+      // truth for the tenant's "today".
       const [summaryRes, historyRes] = await Promise.allSettled([
-        attendanceApi.getSummary(),
-        attendanceApi.getMyAttendance({ limit: 5, page: 1 }),
+        canManage ? attendanceApi.getSummary(undefined, undefined, { background: silent }) : Promise.resolve(null),
+        silent ? Promise.resolve(null) : attendanceApi.getMyAttendance({ limit: 5, page: 1 }),
       ]);
+      let todayKey: string | undefined;
       if (summaryRes.status === "fulfilled" && summaryRes.value) {
-        setSummary(unwrapItem(summaryRes.value) || summaryRes.value);
+        const summaryData = unwrapItem(summaryRes.value) || summaryRes.value;
+        todayKey = typeof summaryData?.date === "string" ? summaryData.date : undefined;
+        if (silent && todayKey && loadedDayRef.current && todayKey !== loadedDayRef.current) {
+          // A new day started while the page stayed open: rebuild every list.
+          await loadDashboardData();
+          return;
+        }
+        if (!silent) loadedDayRef.current = todayKey ?? null;
+        setSummary(summaryData);
       }
       if (historyRes.status === "fulfilled" && historyRes.value) {
         setRecentAttendance(unwrapList(historyRes.value).slice(0, 5));
+      }
+
+      // Only today's rows: without the date the API returns every day ever
+      // recorded, newest first, so older days crowd today out of the page.
+      const attendanceParams = { page: 1, limit: 200, ...(todayKey ? { date: todayKey } : {}) };
+      if (silent) {
+        const liveRes = await Promise.allSettled([attendanceApi.getAllAttendance(attendanceParams, { background: true })]);
+        if (liveRes[0].status === "fulfilled" && liveRes[0].value) setAllAttendance(unwrapList(liveRes[0].value));
+        return;
       }
 
       // Do not block first paint on large workforce lists. These hydrate charts,
@@ -237,7 +283,7 @@ export default function DashboardOverview() {
       setLoading(false);
       const [allAttendanceRes, leavesRes, employeesRes, branchesRes, departmentsRes] = canManage
         ? await Promise.allSettled([
-            attendanceApi.getAllAttendance({ page: 1, limit: 200 }),
+            attendanceApi.getAllAttendance(attendanceParams),
             leavesApi.getAllLeaves(),
             employeesApi.list({ page: 1, limit: 200 }),
             branchesApi.list(),
@@ -256,15 +302,7 @@ export default function DashboardOverview() {
         departments: departmentsRes.status === "fulfilled" ? unwrapList(departmentsRes.value).length : current.departments,
       }));
       if (allAttendanceRes.status === "fulfilled" && allAttendanceRes.value) {
-        const attendanceList = unwrapList(allAttendanceRes.value);
-        const responseTotal = Number(
-          (allAttendanceRes.value as any)?.total ??
-          (allAttendanceRes.value as any)?.pagination?.total ??
-          (allAttendanceRes.value as any)?.meta?.total ??
-          attendanceList.length,
-        );
-        setAllAttendance(attendanceList);
-        setAttendanceTotal(Number.isFinite(responseTotal) ? responseTotal : attendanceList.length);
+        setAllAttendance(unwrapList(allAttendanceRes.value));
       }
       if (leavesRes.status === "fulfilled" && leavesRes.value) {
         setAllLeaves(unwrapList(leavesRes.value));
@@ -305,10 +343,34 @@ export default function DashboardOverview() {
     loadDashboardData();
   }, [canManage]);
 
+  // Keep the "live" numbers live, and fresh for a new day: refresh every minute
+  // and whenever the tab becomes visible again after sitting in the background.
+  useEffect(() => {
+    if (!canManage) return;
+    const refresh = () => {
+      if (document.visibilityState !== "visible" || refreshInFlightRef.current) return;
+      refreshInFlightRef.current = true;
+      loadDashboardData(true).finally(() => {
+        refreshInFlightRef.current = false;
+      });
+    };
+    const timer = setInterval(refresh, 60_000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [canManage]);
+
   const handleManualRefresh = () => {
     setIsRefreshing(true);
     loadDashboardData();
   };
+
+  // The tenant's "today" as reported by the server; the browser's own calendar
+  // day is only a fallback until the first summary arrives.
+  const localDayKey = `${currentTime.getFullYear()}-${String(currentTime.getMonth() + 1).padStart(2, "0")}-${String(currentTime.getDate()).padStart(2, "0")}`;
+  const todayKey = typeof summary?.date === "string" ? summary.date : localDayKey;
 
   // Build live Roster
   const roster: RosterPerson[] = useMemo(() => {
@@ -316,14 +378,15 @@ export default function DashboardOverview() {
 
     const attendanceByEmpId = new Map<string, any>();
     allAttendance.forEach((att) => {
-      if (isSameDay(att.date || att.checkIn)) {
+      if (isTodayRecord(att, todayKey)) {
         attendanceByEmpId.set(att.employeeId, att);
       }
     });
 
+    // A leave that began earlier still covers today, so match the whole range.
     const leaveByEmpId = new Map<string, any>();
     allLeaves.forEach((leave) => {
-      if (leave.status === "APPROVED" && isSameDay(leave.startDate)) {
+      if (leave.status === "APPROVED" && leaveCoversDay(leave, todayKey)) {
         leaveByEmpId.set(leave.employeeId, leave);
       }
     });
@@ -355,7 +418,7 @@ export default function DashboardOverview() {
         status,
       };
     });
-  }, [allEmployees, allAttendance, allLeaves]);
+  }, [allEmployees, allAttendance, allLeaves, todayKey]);
 
   const countFrom = (keys: string[], fallback: number) => {
     if (!summary || typeof summary !== "object") return fallback;
@@ -472,17 +535,29 @@ export default function DashboardOverview() {
       { time: "6pm", hour: 18, count: 0 },
       { time: "8pm", hour: 20, count: 0 },
     ];
-    allAttendance.forEach((att) => {
-      if (!att.checkIn) return;
-      const hour = new Date(att.checkIn).getHours();
+    const addClockIns = (hour: number, count: number) => {
       const bucket = buckets.reduce((prev, curr) =>
         Math.abs(curr.hour - hour) < Math.abs(prev.hour - hour) ? curr : prev
       );
-      if (bucket) bucket.count += 1;
-    });
+      bucket.count += count;
+    };
+    // The server counts today's clock-ins by the tenant's local hour. Rows are
+    // only a fallback for a backend that predates that field, and are limited to today.
+    const serverHourly: unknown = summary?.hourlyCheckIns;
+    if (Array.isArray(serverHourly) && serverHourly.length === 24) {
+      serverHourly.forEach((count, hour) => {
+        if (Number(count) > 0) addClockIns(hour, Number(count));
+      });
+    } else {
+      allAttendance.forEach((att) => {
+        if (att.checkIn && isTodayRecord(att, todayKey)) addClockIns(new Date(att.checkIn).getHours(), 1);
+      });
+    }
     const maxCount = Math.max(...buckets.map((b) => b.count), 0);
     return buckets.map((b) => ({ ...b, peak: maxCount > 0 && b.count === maxCount }));
-  }, [allAttendance]);
+  }, [summary, allAttendance, todayKey]);
+  // Sum of the bars, so the headline number always matches the chart under it.
+  const clockInsToday = hourlyData.reduce((sum, bucket) => sum + bucket.count, 0);
 
   const kpis = canManage ? [
     { key: "PRESENT" as const, count: presentCount, percent: presentPercentage },
@@ -774,7 +849,7 @@ export default function DashboardOverview() {
                 {timeBadge.text}
               </span>
 
-              <span className="hidden sm:inline text-slate-500">â€¢</span>
+              <span className="hidden sm:inline text-slate-500">•</span>
               <span className="text-slate-400 text-xs">{formattedDate}</span>
               <span className="font-semibold tabular-nums text-indigo-200 bg-white/[0.06] px-2.5 py-0.5 rounded-lg ring-1 ring-white/10 text-xs">
                 <LiveClock />
@@ -796,7 +871,7 @@ export default function DashboardOverview() {
                 {greetingFor(currentTime)}, {displayName}
               </h1>
               <p className="text-xs sm:text-sm text-slate-300 mt-2 max-w-xl leading-relaxed">
-                Workforce operations, real-time presence, and team payroll â€” active for{" "}
+                Workforce operations, real-time presence, and team payroll — active for{" "}
                 <span className="inline-flex translate-y-[3px] items-center gap-2 rounded-full bg-white/10 py-0.5 pl-0.5 pr-3 ring-1 ring-white/15">
                   <CompanyLogo name={user?.organization?.name || "Workspace"} logoUrl={user?.organization?.logoUrl} size="xs" className="!rounded-full" />
                   <span className="font-semibold text-white">{user?.organization?.name || "Your Workspace"}</span>
@@ -859,11 +934,11 @@ export default function DashboardOverview() {
               </div>
               <div className="min-w-0 px-2.5 py-3">
                 <dt className="whitespace-nowrap text-[11px] font-medium text-slate-400">Clocked in</dt>
-                <dd className="mt-0.5 truncate text-sm font-semibold tabular-nums text-white">{todayCheckInTime || "â€”"}</dd>
+                <dd className="mt-0.5 truncate text-sm font-semibold tabular-nums text-white">{todayCheckInTime || "—"}</dd>
               </div>
               <div className="min-w-0 px-2.5 py-3">
                 <dt className="whitespace-nowrap text-[11px] font-medium text-slate-400">Clocked out</dt>
-                <dd className="mt-0.5 truncate text-sm font-semibold tabular-nums text-white">{todayCheckOutTime || "â€”"}</dd>
+                <dd className="mt-0.5 truncate text-sm font-semibold tabular-nums text-white">{todayCheckOutTime || "—"}</dd>
               </div>
             </dl>
 
@@ -912,7 +987,7 @@ export default function DashboardOverview() {
       {!canManage && (
         <section className="grid gap-4 lg:grid-cols-[1.25fr_1fr_1fr]" aria-label="Employee workspace highlights">
           <article className="rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-emerald-50 p-5 shadow-sm">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">Your WorkPulse</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">Your WorkPluse</p>
             <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">Everything for your workday</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">Track attendance, request leave, view payslips, and stay updated from one simple employee workspace.</p>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -999,7 +1074,7 @@ export default function DashboardOverview() {
                 <div className="mt-2.5 flex items-center justify-between text-xs text-slate-400">
                   <span>{meta.hint}</span>
                   <span className={`font-semibold ${active ? "text-indigo-600" : "group-hover:text-slate-600"}`}>
-                    {active ? "Hide List â–´" : "View Staff â–¾"}
+                    {active ? "Hide List ▴" : "View Staff ▾"}
                   </span>
                 </div>
               </div>
@@ -1019,7 +1094,7 @@ export default function DashboardOverview() {
             <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">Selected workforce view</p><h2 className="mt-1 text-lg font-semibold text-slate-950">{KPI_META[activeBreakdownTab].label} staff</h2><p className="mt-1 text-xs text-slate-500">{filteredRoster.length} people match this status.</p></div>
             <div className="relative w-full sm:max-w-xs"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search staff" className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-xs outline-none focus:border-indigo-500 focus:bg-white" /></div>
           </div>
-          {filteredRoster.length === 0 ? <p className="py-8 text-center text-xs text-slate-400">No staff members match this status.</p> : <div className="mt-4 grid max-h-80 grid-cols-1 gap-2.5 overflow-y-auto pr-1 md:grid-cols-2 xl:grid-cols-3">{filteredRoster.map((person) => <div key={person.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3"><div className="flex min-w-0 items-center gap-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-xs font-bold text-indigo-700">{person.name.slice(0, 2).toUpperCase()}</span><div className="min-w-0"><p className="truncate text-xs font-bold text-slate-800">{person.name}</p><p className="truncate text-xs text-slate-500">{person.designation} Â· {person.department}</p></div></div><div className="shrink-0 text-right"><p className="font-mono text-xs font-bold text-slate-700">{person.checkInTime || "Not in"}</p>{person.employeeCode && <p className="font-mono text-[10px] text-slate-400">{person.employeeCode}</p>}</div></div>)}</div>}
+          {filteredRoster.length === 0 ? <p className="py-8 text-center text-xs text-slate-400">No staff members match this status.</p> : <div className="mt-4 grid max-h-80 grid-cols-1 gap-2.5 overflow-y-auto pr-1 md:grid-cols-2 xl:grid-cols-3">{filteredRoster.map((person) => <div key={person.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3"><div className="flex min-w-0 items-center gap-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-xs font-bold text-indigo-700">{person.name.slice(0, 2).toUpperCase()}</span><div className="min-w-0"><p className="truncate text-xs font-bold text-slate-800">{person.name}</p><p className="truncate text-xs text-slate-500">{person.designation} · {person.department}</p></div></div><div className="shrink-0 text-right"><p className="font-mono text-xs font-bold text-slate-700">{person.checkInTime || "Not in"}</p>{person.employeeCode && <p className="font-mono text-[10px] text-slate-400">{person.employeeCode}</p>}</div></div>)}</div>}
         </motion.section>}
       </AnimatePresence>
 
@@ -1042,7 +1117,7 @@ export default function DashboardOverview() {
         <article className="min-w-0 rounded-3xl border border-slate-200/90 bg-white p-5 shadow-[0_18px_50px_-36px_rgba(15,23,42,0.35)] sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">Punch activity</p><h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">When your team clocks in</h2></div><Link href="/reports" className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700">Full reports <ArrowUpRight className="h-3.5 w-3.5" /></Link></div>
           <div className="mt-5 overflow-x-auto rounded-2xl bg-slate-50/80 p-2 sm:p-3"><svg viewBox="0 0 600 180" role="img" aria-label="Punch activity by time of day" className="h-44 w-full min-w-[520px]"><defs><linearGradient id="attendance-area" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#6366f1" stopOpacity=".25" /><stop offset="1" stopColor="#6366f1" stopOpacity="0" /></linearGradient></defs>{[35, 70, 105, 140].map((y) => <line key={y} x1="20" x2="580" y1={y} y2={y} style={{ stroke: "var(--color-slate-200)" }} strokeDasharray="3 5" />)}<polyline points={`20,142 ${trendPoints} 580,142`} fill="url(#attendance-area)" stroke="none" /><polyline points={trendPoints} fill="none" stroke="#4f46e5" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />{hourlyData.map((item, index) => { const max = Math.max(...hourlyData.map((entry) => entry.count), 1); const x = (index / Math.max(hourlyData.length - 1, 1)) * 560 + 20; const y = 142 - (item.count / max) * 106; return <circle key={item.time} cx={x} cy={y} r={item.peak ? 5 : 3.5} fill={item.peak ? "#10b981" : "#4f46e5"} stroke="white" strokeWidth="2" />; })}</svg><div className="flex min-w-[520px] justify-between px-2 text-[10px] font-semibold text-slate-400">{hourlyData.map((item) => <span key={item.time}>{item.time}</span>)}</div></div>
-          <div className="mt-4 grid grid-cols-3 gap-2"><div className="rounded-xl bg-emerald-50 p-3"><p className="text-[10px] font-semibold text-emerald-700">Peak window</p><p className="mt-1 text-sm font-bold text-emerald-900">{hourlyData.find((item) => item.peak)?.time || "â€”"}</p></div><div className="rounded-xl bg-indigo-50 p-3"><p className="text-[10px] font-semibold text-indigo-700">Total punches</p><p className="mt-1 text-sm font-bold text-indigo-900">{attendanceTotal || allAttendance.length}</p></div><div className="rounded-xl bg-amber-50 p-3"><p className="text-[10px] font-semibold text-amber-700">Pending leave</p><p className="mt-1 text-sm font-bold text-amber-900">{pendingLeaves}</p></div></div>
+          <div className="mt-4 grid grid-cols-3 gap-2"><div className="rounded-xl bg-emerald-50 p-3"><p className="text-[10px] font-semibold text-emerald-700">Peak window</p><p className="mt-1 text-sm font-bold text-emerald-900">{hourlyData.find((item) => item.peak)?.time || "—"}</p></div><div className="rounded-xl bg-indigo-50 p-3"><p className="text-[10px] font-semibold text-indigo-700">Clock-ins today</p><p className="mt-1 text-sm font-bold text-indigo-900">{clockInsToday}</p></div><div className="rounded-xl bg-amber-50 p-3"><p className="text-[10px] font-semibold text-amber-700">Pending leave</p><p className="mt-1 text-sm font-bold text-amber-900">{pendingLeaves}</p></div></div>
         </article>
 
         <article className="min-w-0 rounded-3xl border border-slate-200/90 bg-white p-5 shadow-[0_18px_50px_-36px_rgba(15,23,42,0.35)] sm:col-span-2 sm:p-6">
@@ -1103,7 +1178,7 @@ export default function DashboardOverview() {
                           ? `${-row.daysLeft}d past LWD`
                           : row.daysLeft === 0
                             ? "Leaves today"
-                            : `${row.daysLeft}d left Â· LWD ${row.lastWorkingDate}`
+                            : `${row.daysLeft}d left · LWD ${row.lastWorkingDate}`
                         : "LWD not set"}
                     </span>
                   </li>
@@ -1167,13 +1242,13 @@ export default function DashboardOverview() {
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-slate-800 truncate">{person.name}</p>
                         <p className="text-xs text-slate-500 truncate">
-                          {person.designation} â€¢ {person.department}
+                          {person.designation} • {person.department}
                         </p>
                       </div>
                     </div>
                     <div className="text-right shrink-0">
                       <span className="text-xs font-mono font-bold text-slate-700 block">
-                        {person.checkInTime || "â€”"}
+                        {person.checkInTime || "—"}
                       </span>
                       {person.employeeCode && (
                         <span className="text-xs text-slate-400 font-mono">{person.employeeCode}</span>
@@ -1202,7 +1277,7 @@ export default function DashboardOverview() {
                 </div>
                 <div className="flex items-center gap-2 self-start rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />Live distribution</div>
               </div>
-              <div className="mt-5 grid grid-cols-3 gap-2 sm:max-w-md"><div className="rounded-2xl bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Total punches</p><p className="mt-1 text-lg font-bold tabular-nums text-slate-900">{attendanceTotal || allAttendance.length}</p></div><div className="rounded-2xl bg-indigo-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-500">Peak hour</p><p className="mt-1 text-lg font-bold text-indigo-900">{hourlyData.find((item) => item.peak)?.time || "No peak"}</p></div><div className="rounded-2xl bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Coverage</p><p className="mt-1 text-lg font-bold tabular-nums text-slate-900">{completionPercent}%</p></div></div>
+              <div className="mt-5 grid grid-cols-3 gap-2 sm:max-w-md"><div className="rounded-2xl bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Clock-ins today</p><p className="mt-1 text-lg font-bold tabular-nums text-slate-900">{clockInsToday}</p></div><div className="rounded-2xl bg-indigo-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-500">Peak hour</p><p className="mt-1 text-lg font-bold text-indigo-900">{hourlyData.find((item) => item.peak)?.time || "No peak"}</p></div><div className="rounded-2xl bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Coverage</p><p className="mt-1 text-lg font-bold tabular-nums text-slate-900">{completionPercent}%</p></div></div>
             </div>
             <div className="relative p-5 sm:p-6">
               <div className="pointer-events-none absolute inset-x-5 top-8 bottom-12 flex flex-col justify-between sm:inset-x-6"><span className="border-t border-dashed border-slate-100" /><span className="border-t border-dashed border-slate-100" /><span className="border-t border-dashed border-slate-100" /><span className="border-t border-dashed border-slate-100" /></div>
@@ -1231,9 +1306,9 @@ export default function DashboardOverview() {
             </div>
             {nextPeopleMoments.length > 0 ? <div className="p-5 sm:p-6">
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {nextPeopleMoments.map((moment) => <div key={moment.id} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-3"><div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${moment.type === "Birthday" ? "bg-pink-100 text-pink-600" : "bg-indigo-100 text-indigo-600"}`}>{moment.type === "Birthday" ? <Cake className="h-5 w-5" /> : <Award className="h-5 w-5" />}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-slate-800">{moment.name}</p><p className="text-xs text-slate-500">{moment.type} Â· {moment.month} {moment.day}</p></div></div>)}
+                {nextPeopleMoments.map((moment) => <div key={moment.id} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-3"><div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${moment.type === "Birthday" ? "bg-pink-100 text-pink-600" : "bg-indigo-100 text-indigo-600"}`}>{moment.type === "Birthday" ? <Cake className="h-5 w-5" /> : <Award className="h-5 w-5" />}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-slate-800">{moment.name}</p><p className="text-xs text-slate-500">{moment.type} · {moment.month} {moment.day}</p></div></div>)}
               </div>
-              {momentMonths.length > 0 && <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-4">{momentMonths.slice(0, 6).map((month) => <span key={month} className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">{month} Â· {peopleMoments.filter((moment) => moment.month === month).length}</span>)}</div>}
+              {momentMonths.length > 0 && <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-4">{momentMonths.slice(0, 6).map((month) => <span key={month} className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">{month} · {peopleMoments.filter((moment) => moment.month === month).length}</span>)}</div>}
             </div> : <div className="p-8 text-center"><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400"><Cake className="h-6 w-6" /></div><p className="mt-3 text-sm font-semibold text-slate-700">No upcoming people moments yet</p><p className="mt-1 text-xs text-slate-400">Add date of birth or date of joining to employee profiles to see notifications here.</p></div>}
           </section>
         </div>

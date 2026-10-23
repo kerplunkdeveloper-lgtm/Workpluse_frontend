@@ -15,7 +15,7 @@ import {
   Wallet,
 } from "lucide-react";
 
-export function WorkPulseMark({ size = 36 }: { size?: number }) {
+export function WorkPluseMark({ size = 36 }: { size?: number }) {
   return (
     <span
       className="inline-flex shrink-0 items-center justify-center rounded-full bg-[#4d46e8] text-white shadow-[0_8px_18px_-10px_rgba(37,99,235,0.7)] font-serif"
@@ -49,8 +49,8 @@ function DashboardPreview() {
       <div className="flex min-h-[260px]">
         <aside className="hidden w-[118px] shrink-0 flex-col border-r border-slate-100 bg-slate-950 px-2.5 py-3 sm:flex">
           <div className="mb-3 flex items-center gap-1.5 px-1">
-            <WorkPulseMark size={22} />
-            <span className="text-xs font-bold text-white">WorkPulse</span>
+            <WorkPluseMark size={22} />
+            <span className="text-xs font-bold text-white">WorkPluse</span>
           </div>
           <nav className="space-y-0.5">
             {[
@@ -249,8 +249,8 @@ export default function MarketingAuthLayout({ children }: { children: ReactNode 
 
           <header className="relative flex items-center justify-between gap-3 px-5 py-3 sm:px-8">
             <Link href="/" className="flex items-center gap-2.5">
-              <WorkPulseMark />
-              <span className="font-serif text-[17px] font-semibold tracking-tight text-slate-900">WorkPulse</span>
+              <WorkPluseMark />
+              <span className="font-serif text-[17px] font-semibold tracking-tight text-slate-900">WorkPluse</span>
             </Link>
 
             <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 text-[13px] font-medium text-slate-500 md:flex">

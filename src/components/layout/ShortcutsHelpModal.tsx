@@ -102,7 +102,7 @@ export default function ShortcutsHelpModal({
                   <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
                     Keyboard Shortcuts & Navigation
                   </h3>
-                  <p className="text-xs text-slate-500">Speed up your workflow in WorkPulse</p>
+                  <p className="text-xs text-slate-500">Speed up your workflow in WorkPluse</p>
                 </div>
               </div>
               <button
@@ -154,7 +154,7 @@ export default function ShortcutsHelpModal({
 
             {/* Footer */}
             <div className="border-t border-slate-100 px-6 py-3 bg-slate-50 flex items-center justify-between text-xs text-slate-500">
-              <span>WorkPulse Enterprise Edition</span>
+              <span>WorkPluse Enterprise Edition</span>
               <span>Press <kbd className="px-1 py-0.5 text-xs font-mono bg-white border border-slate-200 rounded">Esc</kbd> to dismiss</span>
             </div>
           </motion.div>

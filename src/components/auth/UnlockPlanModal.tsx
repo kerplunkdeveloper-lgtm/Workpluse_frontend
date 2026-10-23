@@ -104,8 +104,8 @@ export default function UnlockPlanModal({
             <div className="flex items-center gap-2.5 mb-6 px-4 py-3 rounded-2xl bg-indigo-50 border border-indigo-200">
               <Mail className="w-4 h-4 text-indigo-600 shrink-0" />
               <p className="text-xs text-indigo-900">
-                Check your inbox for an email from WorkPulse with subject:{" "}
-                <span className="font-mono font-semibold">"[WorkPulse] Your Plan Unlock Code"</span>
+                Check your inbox for an email from WorkPluse with subject:{" "}
+                <span className="font-mono font-semibold">"[WorkPluse] Your Plan Unlock Code"</span>
               </p>
             </div>
 

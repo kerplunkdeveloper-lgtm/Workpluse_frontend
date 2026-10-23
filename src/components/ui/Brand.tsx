@@ -26,7 +26,7 @@ export default function Brand({
       {!compact && (
         <span className="min-w-0 leading-none">
           <span className={`block font-sans text-[20px] font-semibold tracking-tight ${inverse ? "text-white" : "text-slate-950"}`}>
-            Work<span className={inverse ? "text-indigo-200" : "text-indigo-600"}>Pulse</span>
+            Work<span className={inverse ? "text-indigo-200" : "text-indigo-600"}>Pluse</span>
           </span>
           {subtitle && (
             <span className={`mt-1.5 block truncate text-xs font-semibold uppercase tracking-[0.18em] ${inverse ? "text-white/50" : "text-slate-500"}`}>
@@ -41,7 +41,7 @@ export default function Brand({
   return (
     <Link
       href={href}
-      aria-label="WorkPulse home"
+      aria-label="WorkPluse home"
       suppressHydrationWarning
       className={`inline-flex items-center gap-3 rounded-xl ${className}`}
     >

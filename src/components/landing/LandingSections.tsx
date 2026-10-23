@@ -132,7 +132,7 @@ export function DashboardPreview() {
 function ProductPreview() {
   const { line, area, last } = trendPaths(TREND);
   return (
-    <div aria-label="WorkPulse dashboard preview" role="img" className="wp-rise wp-rise-delay-3 relative mx-auto mt-16 max-w-[1120px] pb-6 sm:mt-20">
+    <div aria-label="WorkPluse dashboard preview" role="img" className="wp-rise wp-rise-delay-3 relative mx-auto mt-16 max-w-[1120px] pb-6 sm:mt-20">
       <div aria-hidden="true" className="absolute inset-x-[8%] top-10 -z-10 h-[70%] rounded-full bg-indigo-500/25 blur-[90px]" />
 
       <div className="rounded-[20px] bg-white/50 p-1.5 ring-1 ring-slate-900/[0.08] backdrop-blur sm:rounded-[28px] sm:p-2.5">
@@ -146,7 +146,7 @@ function ProductPreview() {
             </div>
             <div className="mx-auto flex items-center gap-1.5 rounded-md bg-white px-3 py-1 text-[11px] font-medium text-slate-500 ring-1 ring-slate-200">
               <Lock className="h-3 w-3" aria-hidden="true" />
-              WorkPulse · Dashboard
+              WorkPluse · Dashboard
             </div>
             <div className="w-[42px]" />
           </div>
@@ -290,7 +290,7 @@ function ProductPreview() {
 
 export function ProofBar() {
   return (
-    <section aria-label="Who WorkPulse is built for" className="py-14 sm:py-20">
+    <section aria-label="Who WorkPluse is built for" className="py-14 sm:py-20">
       <div className={WRAP}>
         <p className="text-center text-[13px] font-medium text-slate-500">Built for teams that don&apos;t sit at desks all day</p>
         <ul className="mt-7 flex flex-wrap items-center justify-center gap-x-8 gap-y-5 sm:gap-x-12">
@@ -886,8 +886,8 @@ export function SiteFooter() {
       <div className={`${WRAP} grid gap-10 py-14 md:grid-cols-[1.4fr_repeat(3,1fr)]`}>
         <div className="max-w-xs">
           <Link href="/" className="flex items-center gap-2.5">
-            <Image src="/logo-128.png" alt="WorkPulse logo" width={32} height={32} className="h-8 w-8 rounded-xl" />
-            <span className="text-[17px] font-semibold tracking-tight text-slate-950">WorkPulse</span>
+            <Image src="/logo-128.png" alt="WorkPluse logo" width={32} height={32} className="h-8 w-8 rounded-xl" />
+            <span className="text-[17px] font-semibold tracking-tight text-slate-950">WorkPluse</span>
           </Link>
           <p className="mt-4 text-pretty text-sm leading-relaxed text-slate-500">Geofenced attendance, leave and payroll for Indian teams. Built for the floor, not just the office.</p>
         </div>
@@ -910,7 +910,7 @@ export function SiteFooter() {
       </div>
       <div className="border-t border-slate-200/80">
         <div className={`${WRAP} flex flex-col gap-2 py-6 text-[13px] text-slate-500 sm:flex-row sm:items-center sm:justify-between`}>
-          <p>© {new Date().getFullYear()} WorkPulse. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} WorkPluse. All rights reserved.</p>
           <p>Made for teams across India.</p>
         </div>
       </div>

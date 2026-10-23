@@ -60,7 +60,7 @@
   color-scheme: light;
 }
 
-/* WorkPulse visual system: a calm, high-contrast workspace with a small amount
+/* WorkPluse visual system: a calm, high-contrast workspace with a small amount
    of motion to make state changes feel intentional (without distracting users). */
 :root {
   --wp-ink: #0a0f24;
@@ -767,3 +767,7 @@ table, .type-kpi { font-variant-numeric: tabular-nums; }
 
 .wp-dashboard-v2{--dash-ink:#111827;--dash-muted:#667085}.wp-dashboard-v2 .wp-dashboard-hero{box-shadow:0 28px 70px -42px rgba(30,41,99,.72)}.wp-dashboard-v2 .wp-kpi-card{border-radius:1.25rem!important;box-shadow:0 18px 40px -30px rgba(30,41,99,.34);transition:transform .2s ease,box-shadow .2s ease}.wp-dashboard-v2 .wp-kpi-card:hover{transform:translateY(-3px);box-shadow:0 24px 46px -30px rgba(79,70,229,.45)}.wp-dashboard-v2 .rounded-3xl.bg-white,.wp-dashboard-v2 .rounded-3xl.border{border-radius:1.35rem}.wp-dashboard-v2 .text-\[11px\].font-bold.uppercase{letter-spacing:.16em;color:#6366f1}.wp-dashboard-v2 .grid.gap-4.xl\:grid-cols-\[0\.78fr_1\.42fr\] article{box-shadow:0 18px 45px -34px rgba(15,23,42,.32)}
 @media(max-width:900px){.wp-dashboard-v2{padding-bottom:2rem}.wp-dashboard-v2 .wp-dashboard-hero{border-radius:1.5rem}}
+
+/* Hide scrollbar - used by TimeSelect scroll columns */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
