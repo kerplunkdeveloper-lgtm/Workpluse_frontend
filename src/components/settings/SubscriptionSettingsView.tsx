@@ -96,6 +96,16 @@ export default function SubscriptionSettingsView() {
         ? globalThis.crypto.randomUUID()
         : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const checkout = await billingApi.checkout({ plan: planId, billingCycle, couponCode: couponCode.trim() || undefined, idempotencyKey });
+      // A 100%-off offer leaves nothing to pay: the server has already activated
+      // the plan, so there is no Razorpay window to open.
+      if (checkout?.success && checkout.data?.activated) {
+        const planName = plans.find((plan: any) => plan.id === planId)?.name || planId;
+        toast.success(`Offer applied. Your ${planName} plan is now active.`);
+        setCouponCode("");
+        await refreshUser();
+        billingApi.orders().then((res) => setOrders(unwrapList(res).length ? unwrapList(res) : res?.data || [])).catch(() => {});
+        return;
+      }
       if (checkout?.success && (checkout.data?.razorpayOrderId || checkout.data?.razorpaySubscriptionId)) {
         if (Number(checkout.data.discountAmountInr || 0) > 0) {
           toast.success(`Offer applied. You save ₹${Number(checkout.data.discountAmountInr).toLocaleString("en-IN")}.`);
@@ -103,7 +113,7 @@ export default function SubscriptionSettingsView() {
         const options: any = {
           key: checkout.data.keyId,
           currency: "INR",
-          name: "WorkPulse",
+          name: "WorkPluse",
           description: `${checkout.data.plan} ${checkout.data.billingCycle === "ANNUAL" ? "annual" : "monthly"} subscription`,
           prefill: {
             name: user?.organization?.name || user?.email || "",
@@ -306,7 +316,7 @@ export default function SubscriptionSettingsView() {
               </span>
             </div>
             <h2 className="text-xl font-semibold text-slate-900">
-              {user?.organization?.name || "WorkPulse Global Technologies"}
+              {user?.organization?.name || "WorkPluse Global Technologies"}
             </h2>
             <p className="text-xs text-slate-500 max-w-lg leading-relaxed">
               {entitlement?.message ||
@@ -369,7 +379,7 @@ export default function SubscriptionSettingsView() {
                 value={orgForm.name}
                 onChange={(e) => setOrgForm({ ...orgForm, name: e.target.value })}
                 className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-slate-900 placeholder-slate-400"
-                placeholder="WorkPulse Global Technologies"
+                placeholder="WorkPluse Global Technologies"
               />
             </div>
             <div className="space-y-1.5">

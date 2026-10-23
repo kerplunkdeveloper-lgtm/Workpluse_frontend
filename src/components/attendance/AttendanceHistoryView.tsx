@@ -286,7 +286,7 @@ useEffect(() => {
                       <tr key={request.id} className="align-middle hover:bg-slate-50/70">
                         <td className="whitespace-nowrap px-5 py-4 text-xs font-medium text-slate-700">{prettyRange(recordDateKey({ date: request.attendance?.date || request.date || request.createdAt }), undefined)}</td>
                         <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-600"><span className="font-medium text-slate-900">In</span> {formatTime(request.requestedCheckIn)} <span className="mx-1 text-slate-300">/</span> <span className="font-medium text-slate-900">Out</span> {formatTime(request.requestedCheckOut)}</td>
-                        <td className="px-4 py-4"><div className="group relative max-w-[320px]"><p className="truncate text-xs leading-5 text-slate-700" title={reason}>{reason}</p><div role="tooltip" className="pointer-events-none invisible absolute bottom-full left-0 z-30 mb-2 w-[min(360px,calc(100vw-3rem))] rounded-xl bg-slate-950 px-3 py-2 text-xs leading-5 text-white opacity-0 shadow-xl transition-all duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">{reason}<span className="absolute -bottom-1 left-5 h-2 w-2 rotate-45 bg-slate-950" /></div></div></td>
+                        <td className="px-4 py-4"><ReasonCell text={reason} maxW="max-w-[320px]" /></td>
                         <td className="px-4 py-4"><span className={`inline-flex rounded-lg px-2.5 py-1 text-[11px] font-semibold ring-1 ${statusClass}`}>{requestStatus.replace(/_/g, " ")}</span>{request.reviewNote && <p className="mt-1 max-w-[180px] truncate text-[11px] text-slate-500" title={request.reviewNote}>Review: {request.reviewNote}</p>}</td>
                       </tr>
                     );
@@ -358,6 +358,28 @@ function StatusBadge({ status }: { status: string }) {
       <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
       {meta.label}
     </span>
+  );
+}
+
+/** Truncated reason text with a premium tooltip on hover. */
+function ReasonCell({ text, maxW = "max-w-[16rem]" }: { text: string; maxW?: string }) {
+  const needsTooltip = text.length > 28;
+  return (
+    <div className={`group/reason relative ${maxW}`}>
+      <p className="truncate text-xs leading-5 text-slate-700 cursor-default">
+        {text}
+      </p>
+      {needsTooltip && (
+        <div
+          role="tooltip"
+          className="pointer-events-none invisible absolute bottom-full left-1/2 z-30 mb-2.5 w-[min(340px,calc(100vw-2rem))] -translate-x-1/2 rounded-xl border border-white/10 bg-slate-950 px-3.5 py-2.5 text-[11px] leading-[1.6] text-slate-200 opacity-0 shadow-2xl backdrop-blur-sm transition-all duration-200 ease-out group-hover/reason:visible group-hover/reason:opacity-100"
+        >
+          <p className="whitespace-pre-wrap break-words">{text}</p>
+          {/* Arrow */}
+          <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 h-2.5 w-2.5 rotate-45 border-b border-r border-white/10 bg-slate-950" />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -471,14 +493,12 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
                       <td className="hidden whitespace-nowrap px-4 py-3 tabular-nums text-slate-500 xl:table-cell">{breakMinutesOf(row) ? formatHm(breakMinutesOf(row)) : "—"}</td>
                       <td className="hidden whitespace-nowrap px-4 py-3 tabular-nums text-slate-500 xl:table-cell">{lunchMinutesOf(row) ? formatHm(lunchMinutesOf(row)) : "—"}</td>
                       <td className="hidden whitespace-nowrap px-4 py-3 tabular-nums text-indigo-700 xl:table-cell">{row.overtimeMinutes ? formatHm(row.overtimeMinutes) : "—"}</td>
-                      <td className="hidden max-w-[18rem] px-4 py-3 xl:table-cell">
+                      <td className="hidden max-w-[18rem] px-4 py-3 lg:table-cell">
                         {(isTeamView ? (row.correctionReason || correction?.reason) : (row.checkInLocation || row.branch?.name)) ? (
-                          <div className="group relative max-w-[16rem]">
-                            <p className="truncate text-xs text-slate-700" title={isTeamView ? (row.correctionReason || correction?.reason || "") : (row.checkInLocation || row.branch?.name || "")}>{isTeamView ? (row.correctionReason || correction?.reason) : (row.checkInLocation || row.branch?.name)}</p>
-                            <div role="tooltip" className="pointer-events-none invisible absolute bottom-full left-0 z-30 mb-2 w-[min(360px,calc(100vw-3rem))] rounded-xl bg-slate-950 px-3 py-2 text-xs leading-5 text-white opacity-0 shadow-xl transition-all duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">{isTeamView ? (row.correctionReason || correction?.reason) : (row.checkInLocation || row.branch?.name)}<span className="absolute -bottom-1 left-5 h-2 w-2 rotate-45 bg-slate-950" /></div>
-                          </div>
+                          <ReasonCell text={String(isTeamView ? (row.correctionReason || correction?.reason) : (row.checkInLocation || row.branch?.name))} maxW="max-w-[16rem]" />
                         ) : <span className="text-xs text-slate-400">—</span>}
                       </td>
+
                       <td className="whitespace-nowrap px-4 py-3"><StatusBadge status={row.status} /></td>
                       <td className="py-3 pl-4 pr-5 text-right">
                         <button
