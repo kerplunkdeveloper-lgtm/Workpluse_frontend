@@ -647,6 +647,10 @@ export const payrollApi = {
 };
 
 export const billingApi = {
+  quote: async (payload: { plan: string; billingCycle: string; couponCode?: string }) => {
+    const res = await api.post("/billing/quote", payload);
+    return res.data;
+  },
   checkout: async (payload: { plan: string; billingCycle: string; couponCode?: string; idempotencyKey?: string }) => {
     const res = await api.post("/billing/checkout", payload);
     return res.data;

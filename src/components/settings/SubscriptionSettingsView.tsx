@@ -11,6 +11,7 @@ import {
   Save,
   Building,
   Shield,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { unwrapList } from "@/lib/utils";
@@ -27,6 +28,35 @@ export default function SubscriptionSettingsView() {
   const [billingCycle, setBillingCycle] = useState<"MONTHLY" | "ANNUAL">("MONTHLY");
   const [couponCode, setCouponCode] = useState("");
   const [upgradingPlan, setUpgradingPlan] = useState<string | null>(null);
+  const [offerQuotes, setOfferQuotes] = useState<{ plan: string; ok: boolean; text: string }[] | null>(null);
+  const [checkingOffer, setCheckingOffer] = useState(false);
+
+  // Shows what the typed offer code does on each paid plan before anyone pays.
+  const checkOffer = async () => {
+    const code = couponCode.trim();
+    if (!code) return;
+    setCheckingOffer(true);
+    try {
+      const results = await Promise.all(
+        ["STARTER", "PROFESSIONAL", "ENTERPRISE"].map(async (plan) => {
+          const name = plans.find((p: any) => p.id === plan)?.name || plan;
+          try {
+            const res = await billingApi.quote({ plan, billingCycle, couponCode: code });
+            const d = res?.data;
+            const text = d?.free
+              ? `${name}: free (you save ₹${Number(d.discountAmountInr).toLocaleString("en-IN")})`
+              : `${name}: pay ₹${Number(d?.amountInr).toLocaleString("en-IN")} (save ₹${Number(d?.discountAmountInr).toLocaleString("en-IN")})`;
+            return { plan, ok: true, text };
+          } catch (err: any) {
+            return { plan, ok: false, text: `${name}: ${err?.response?.data?.message?.replace(/Offer \S+ /, "Offer ") || "not available"}` };
+          }
+        }),
+      );
+      setOfferQuotes(results);
+    } finally {
+      setCheckingOffer(false);
+    }
+  };
   const [orgForm, setOrgForm] = useState({
     name: "",
     email: "",
@@ -243,14 +273,30 @@ export default function SubscriptionSettingsView() {
           ? "Grace period"
           : "Active";
 
-  const invoices = orders.map((o) => ({
-    orderId: o.id,
-    id: o.razorpayOrderId || o.id,
-    date: o.paidAt || o.createdAt,
-    amount: `₹${Number(o.amountInr || 0).toLocaleString("en-IN")}`,
-    status: o.status,
-    plan: o.plan,
-  }));
+  const invoices = orders.map((o) => {
+    const amount = Number(o.amountInr || 0);
+    const discount = Number(o.discountAmountInr || 0);
+    return {
+      orderId: o.id as string,
+      id: o.razorpayOrderId || o.id,
+      number: `INV-${String(o.id).slice(0, 8).toUpperCase()}`,
+      date: o.paidAt || o.createdAt,
+      amount: amount === 0 && o.status === "PAID" ? "Free" : `₹${amount.toLocaleString("en-IN")}`,
+      saved: discount > 0 ? `₹${discount.toLocaleString("en-IN")} saved` : "",
+      status: String(o.status || ""),
+      plan: String(o.plan || ""),
+      cycle: String(o.billingCycle || "").toLowerCase(),
+    };
+  });
+  const planLabel = (plan: string) => plan.charAt(0) + plan.slice(1).toLowerCase().replace("_", " ");
+  const formatReceiptDate = (value?: string) =>
+    value ? new Date(value).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+  const statusBadge = (status: string) =>
+    status === "PAID"
+      ? { label: "Paid", cls: "bg-emerald-50 text-emerald-700 ring-emerald-600/20" }
+      : status === "FAILED"
+        ? { label: "Failed", cls: "bg-rose-50 text-rose-700 ring-rose-600/20" }
+        : { label: "Pending", cls: "bg-amber-50 text-amber-700 ring-amber-600/20" };
 
   const downloadInvoice = async (orderId: string, invoiceId: string) => {
     try {
@@ -491,14 +537,30 @@ export default function SubscriptionSettingsView() {
         <div className="flex items-center gap-2">
           <input
             value={couponCode}
-            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+            onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setOfferQuotes(null); }}
+            onKeyDown={(e) => { if (e.key === "Enter") void checkOffer(); }}
             placeholder="Offer code (optional)"
-            maxLength={32}
+            maxLength={40}
             className="w-52 px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
             aria-label="Offer code"
           />
+          <button
+            type="button"
+            onClick={() => void checkOffer()}
+            disabled={!couponCode.trim() || checkingOffer}
+            className="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold disabled:opacity-40"
+          >
+            {checkingOffer ? "Checking…" : "Apply"}
+          </button>
           <span className="text-xs text-slate-500">Try WELCOME20 or ANNUAL20</span>
         </div>
+        {offerQuotes && (
+          <ul className="basis-full space-y-1 text-xs" aria-live="polite">
+            {offerQuotes.map((q) => (
+              <li key={q.plan} className={q.ok ? "text-emerald-700" : "text-slate-400"}>{q.ok ? "✓ " : "✗ "}{q.text}</li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {/* Plan Cards Grid */}
@@ -594,47 +656,105 @@ export default function SubscriptionSettingsView() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-[13px]">
-            <thead>
-              <tr className="border-b border-slate-100 text-slate-400 font-semibold uppercase tracking-wider text-xs">
-                <th className="pb-3 px-3">Invoice ID</th>
-                <th className="pb-3 px-3">Date</th>
-                <th className="pb-3 px-3">Plan Tier</th>
-                <th className="pb-3 px-3">Amount</th>
-                <th className="pb-3 px-3">Status</th>
-                <th className="pb-3 px-3 text-right">Receipt</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {invoices.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="py-6 px-3 text-slate-400 text-center">No orders yet.</td>
-                </tr>
-              )}
-              {invoices.map((inv) => (
-                <tr key={inv.id} className="hover:bg-slate-50/60 transition">
-                  <td className="py-3 px-3 font-bold text-slate-900 break-all">{inv.id}</td>
-                  <td className="py-3 px-3 text-slate-500">{inv.date ? new Date(inv.date).toLocaleDateString() : "—"}</td>
-                  <td className="py-3 px-3 font-medium">{inv.plan}</td>
-                  <td className="py-3 px-3 font-bold text-slate-900">{inv.amount}</td>
-                  <td className="py-3 px-3">
-                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-50 text-slate-700 border border-slate-200">
-                      {inv.status}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-right">
-                    {inv.status === "PAID" && (
-                      <button type="button" onClick={() => void downloadInvoice(inv.orderId, inv.id)} className="text-xs font-bold text-indigo-600 hover:text-indigo-800 hover:underline">
-                        Download PDF
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {invoices.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-10 text-center">
+            <FileText className="mx-auto h-6 w-6 text-slate-300" aria-hidden="true" />
+            <p className="mt-2 text-sm font-medium text-slate-600">No invoices yet</p>
+            <p className="text-xs text-slate-400">Receipts appear here after your first paid or activated plan.</p>
+          </div>
+        ) : (
+          <>
+            {/* Tablet and desktop: aligned table */}
+            <div className="hidden md:block overflow-hidden rounded-2xl border border-slate-200">
+              <table className="w-full table-fixed text-left text-[13px]">
+                <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  <tr>
+                    <th className="w-[22%] px-4 py-3">Invoice</th>
+                    <th className="w-[15%] px-4 py-3">Date</th>
+                    <th className="w-[20%] px-4 py-3">Plan</th>
+                    <th className="w-[15%] px-4 py-3 text-right">Amount</th>
+                    <th className="w-[12%] px-4 py-3">Status</th>
+                    <th className="w-[16%] px-4 py-3 text-right">Receipt</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
+                  {invoices.map((inv) => {
+                    const badge = statusBadge(inv.status);
+                    return (
+                      <tr key={inv.orderId} className="transition hover:bg-slate-50/60">
+                        <td className="px-4 py-3.5 align-middle font-semibold text-slate-900 truncate">{inv.number}</td>
+                        <td className="px-4 py-3.5 align-middle text-slate-500 whitespace-nowrap">{formatReceiptDate(inv.date)}</td>
+                        <td className="px-4 py-3.5 align-middle">
+                          <span className="font-medium text-slate-800">{planLabel(inv.plan)}</span>
+                          {inv.cycle && <span className="ml-1.5 text-xs capitalize text-slate-400">{inv.cycle}</span>}
+                        </td>
+                        <td className="px-4 py-3.5 align-middle text-right tabular-nums">
+                          <span className="font-semibold text-slate-900">{inv.amount}</span>
+                          {inv.saved && <span className="block text-[11px] font-normal text-emerald-600">{inv.saved}</span>}
+                        </td>
+                        <td className="px-4 py-3.5 align-middle">
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${badge.cls}`}>{badge.label}</span>
+                        </td>
+                        <td className="px-4 py-3.5 align-middle text-right">
+                          {inv.status === "PAID" ? (
+                            <button
+                    type="button"
+                    onClick={() => void downloadInvoice(inv.orderId, inv.number)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40"
+                  >
+                    <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                    Download PDF
+                  </button>
+                          ) : (
+                            <span className="text-xs text-slate-300">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Phones: one card per invoice, nothing scrolls sideways */}
+            <ul className="space-y-3 md:hidden">
+              {invoices.map((inv) => {
+                const badge = statusBadge(inv.status);
+                return (
+                  <li key={inv.orderId} className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-900">{inv.number}</p>
+                        <p className="text-xs text-slate-500">{formatReceiptDate(inv.date)}</p>
+                      </div>
+                      <span className={`shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${badge.cls}`}>{badge.label}</span>
+                    </div>
+                    <div className="mt-3 flex items-end justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-slate-700">
+                          {planLabel(inv.plan)}
+                          {inv.cycle && <span className="ml-1.5 text-xs capitalize text-slate-400">{inv.cycle}</span>}
+                        </p>
+                        <p className="text-base font-bold tabular-nums text-slate-900">{inv.amount}</p>
+                        {inv.saved && <p className="text-[11px] text-emerald-600">{inv.saved}</p>}
+                      </div>
+                      {inv.status === "PAID" && (
+                        <button
+                    type="button"
+                    onClick={() => void downloadInvoice(inv.orderId, inv.number)}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 active:bg-indigo-100"
+                  >
+                    <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                    Download PDF
+                  </button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
       </div>
 
       {user?.features?.hasApiAccess && (
