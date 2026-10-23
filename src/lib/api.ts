@@ -791,6 +791,25 @@ export const loansApi = {
   },
 };
 
+export const announcementsApi = {
+  list: async () => {
+    const res = await api.get("/announcements");
+    return res.data;
+  },
+  create: async (payload: any) => {
+    const res = await api.post("/announcements", payload);
+    return res.data;
+  },
+  update: async (id: string, payload: any) => {
+    const res = await api.put(`/announcements/${id}`, payload);
+    return res.data;
+  },
+  remove: async (id: string) => {
+    const res = await api.delete(`/announcements/${id}`);
+    return res.data;
+  },
+};
+
 export const appraisalsApi = {
   list: async () => {
     const res = await api.get("/appraisals");
@@ -976,6 +995,10 @@ export const onboardingApi = {
 export const employeesApi = {
   list: async (params?: any) => {
     const res = await api.get("/employees", { params });
+    return res.data;
+  },
+  exportCsv: async (params?: { status?: string; departmentId?: string; branchId?: string }) => {
+    const res = await api.get("/employees/export", { params });
     return res.data;
   },
   getAll: async (params?: any) => {
@@ -1195,7 +1218,7 @@ export const devicesApi = {
 };
 
 export const auditApi = {
-  list: async (params?: { action?: string; entity?: string; page?: number; limit?: number }) => {
+  list: async (params?: { action?: string; entity?: string; from?: string; to?: string; page?: number; limit?: number }) => {
     const res = await api.get("/audit-logs", { params });
     return res.data;
   },

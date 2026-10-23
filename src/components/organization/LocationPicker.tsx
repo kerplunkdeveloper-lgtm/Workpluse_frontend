@@ -90,9 +90,12 @@ export default function LocationPicker({ value, radiusMeters, onChange }: Locati
     } else if (e.key === "ArrowUp" && results.length) {
       e.preventDefault();
       setActiveIndex((i) => (i <= 0 ? results.length - 1 : i - 1));
-    } else if (e.key === "Enter" && open && activeIndex >= 0) {
-      e.preventDefault();
-      choose(results[activeIndex]);
+    } else if (e.key === "Enter") {
+      if (open && results.length > 0) {
+        e.preventDefault();
+        const selected = activeIndex >= 0 ? results[activeIndex] : results[0];
+        choose(selected);
+      }
     } else if (e.key === "Escape") {
       setOpen(false);
     }
@@ -153,7 +156,7 @@ export default function LocationPicker({ value, radiusMeters, onChange }: Locati
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => results.length > 0 && setOpen(true)}
             onKeyDown={onKeyDown}
-            placeholder="Search office address..."
+            placeholder="Search company name, office address, landmark..."
             autoComplete="off"
             className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-9 text-xs text-slate-900 transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
           />

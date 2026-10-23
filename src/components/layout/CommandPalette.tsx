@@ -176,6 +176,7 @@ export default function CommandPalette({
       // Insights & Admin
       { id: "nav-reports", label: "Reports & PDF Muster Roll", category: "Insights & Admin", hint: "Daily attendance logs, monthly muster roll PDF exports", href: "/reports", icon: BarChart3, badge: "PDF", keywords: ["export", "excel", "csv", "analytics"] },
       { id: "nav-settings", label: "Workspace & Billing Settings", category: "Insights & Admin", hint: "Subscription plan, Razorpay invoices, company profile", href: "/settings", icon: Settings, keywords: ["plan", "billing", "invoice", "company", "license"] },
+      { id: "nav-audit", label: "Audit Log", category: "Insights & Admin", hint: "Who changed what, and when, across your workspace", href: "/audit", icon: History, keywords: ["history", "activity", "security", "changes", "log"] },
       { id: "nav-permissions", label: "Role Permissions & Security", category: "Insights & Admin", hint: "Custom access roles, granular feature permissions", href: "/permissions", icon: KeyRound, keywords: ["security", "roles", "access", "admin"] },
     ];
 

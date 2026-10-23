@@ -59,8 +59,8 @@ const permissions: { module: string; description: string; access: Record<Role, A
   },
   {
     module: "Employee directory",
-    description: "View and manage employee records",
-    access: { COMPANY_ADMIN: true, MANAGER: "Cannot change roles", EMPLOYEE: false },
+    description: "View and manage employee records. Only admins can export the directory",
+    access: { COMPANY_ADMIN: true, MANAGER: "Cannot change roles or export", EMPLOYEE: false },
   },
   {
     module: "Roles & user access",
@@ -88,9 +88,19 @@ const permissions: { module: string; description: string; access: Record<Role, A
     access: { COMPANY_ADMIN: "Approve & lock", MANAGER: "Prepare & view", EMPLOYEE: "Own payslips" },
   },
   {
-    module: "Reports & audit logs",
-    description: "Muster roll, exports and organization activity history",
+    module: "Reports",
+    description: "Daily attendance and the monthly muster roll",
     access: { COMPANY_ADMIN: true, MANAGER: true, EMPLOYEE: false },
+  },
+  {
+    module: "Audit log",
+    description: "Who changed what and when. It records salary and payroll figures, so it is admin only",
+    access: { COMPANY_ADMIN: true, MANAGER: false, EMPLOYEE: false },
+  },
+  {
+    module: "Announcements",
+    description: "Post to the company notice board",
+    access: { COMPANY_ADMIN: "Post & manage all", MANAGER: "Post & manage own", EMPLOYEE: "Read only" },
   },
   {
     module: "Branches & departments",

@@ -129,9 +129,9 @@ export default function OffboardingView() {
 
   const loadEmployees = async () => {
     try {
-      const res = await employeesApi.list();
+      const res = await employeesApi.list({ page: 1, limit: 500, status: "WORKING" });
       if (res?.success) {
-        setEmployees((res.data || res.employees || []).filter((e: Employee) => e.status === "ACTIVE"));
+        setEmployees((res.data || res.employees || []).filter((e: Employee) => e.status === "ACTIVE" || e.status === "PROBATION"));
       }
     } catch (err) {
       console.warn("Could not fetch active employees for dropdown:", err);
