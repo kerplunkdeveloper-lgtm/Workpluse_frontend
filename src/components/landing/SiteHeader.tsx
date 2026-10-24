@@ -29,31 +29,40 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 px-3 pt-3 sm:px-4">
       <div
-        className={`mx-auto max-w-[1200px] rounded-2xl transition-[background-color,box-shadow,backdrop-filter] duration-300 ${
-          raised ? "bg-white/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-16px_rgba(30,27,75,0.25)] ring-1 ring-slate-900/[0.07] backdrop-blur-xl" : "bg-transparent"
+        className={`mx-auto max-w-[1200px] rounded-2xl transition-all duration-300 ${
+          raised
+            ? "bg-white/85 shadow-[0_12px_32px_-12px_rgba(15,23,42,0.12),0_1px_2px_rgba(15,23,42,0.05)] ring-1 ring-slate-900/[0.08] backdrop-blur-xl"
+            : "bg-white/60 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.05)] ring-1 ring-slate-900/[0.05] backdrop-blur-md"
         }`}
       >
-        <div className="flex h-14 items-center justify-between gap-4 pl-3 pr-2 sm:pl-4">
-          <Brand subtitle="Workforce, in rhythm" className="gap-2.5" />
+        <div className="flex h-16 items-center justify-between gap-4 pl-3 pr-2 sm:pl-4">
+          <Brand size="sm" subtitle="Workforce, in rhythm" />
 
           <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
             {NAV_LINKS.map((l) => (
-              <a key={l.href} href={l.href} className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-900/[0.04] hover:text-slate-950">
+              <a
+                key={l.href}
+                href={l.href}
+                className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-900/[0.04] hover:text-slate-950"
+              >
                 {l.label}
               </a>
             ))}
           </nav>
 
-          <div className="flex items-center gap-1.5">
-            <Link href="/login" className="hidden rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-900/[0.04] hover:text-slate-950 sm:inline-flex">
+          <div className="flex items-center gap-2">
+            <Link
+              href="/login"
+              className="hidden rounded-lg px-3 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-900/[0.04] hover:text-slate-950 sm:inline-flex"
+            >
               Sign in
             </Link>
             <Link
               href="/register"
-              className="keep-white group inline-flex h-9 items-center gap-1.5 rounded-full bg-slate-950 px-4 text-sm font-semibold shadow-[0_6px_16px_-6px_rgba(30,27,75,0.55),inset_0_1px_0_rgba(255,255,255,0.15)] transition hover:bg-slate-800 active:scale-[0.98]"
+              className="group relative inline-flex h-9 items-center gap-1.5 overflow-hidden rounded-full bg-slate-950 px-4 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(15,23,42,0.25),inset_0_1px_0_rgba(255,255,255,0.2)] transition-all duration-200 hover:bg-slate-800 active:scale-[0.98]"
             >
-              Start free
-              <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" aria-hidden="true" />
+              <span>Start free</span>
+              <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden="true" />
             </Link>
             <button
               type="button"
@@ -70,16 +79,28 @@ export function SiteHeader() {
 
         <div
           id="mobile-nav"
-          className={`grid overflow-hidden transition-[grid-template-rows,opacity] duration-300 md:hidden ${open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+          className={`grid overflow-hidden transition-[grid-template-rows,opacity] duration-300 md:hidden ${
+            open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+          }`}
         >
           <nav aria-label="Mobile" className="min-h-0">
-            <div className="space-y-0.5 border-t border-slate-900/[0.06] px-2 pb-3 pt-2">
+            <div className="space-y-1 border-t border-slate-900/[0.06] px-3 pb-3 pt-2">
               {NAV_LINKS.map((l) => (
-                <a key={l.href} href={l.href} tabIndex={open ? 0 : -1} onClick={() => setOpen(false)} className="block rounded-lg px-3 py-2.5 text-[15px] font-medium text-slate-700 hover:bg-slate-900/[0.04]">
+                <a
+                  key={l.href}
+                  href={l.href}
+                  tabIndex={open ? 0 : -1}
+                  onClick={() => setOpen(false)}
+                  className="block rounded-lg px-3 py-2 text-[15px] font-medium text-slate-700 hover:bg-slate-900/[0.04] hover:text-slate-950"
+                >
                   {l.label}
                 </a>
               ))}
-              <Link href="/login" tabIndex={open ? 0 : -1} className="block rounded-lg px-3 py-2.5 text-[15px] font-medium text-slate-700 hover:bg-slate-900/[0.04]">
+              <Link
+                href="/login"
+                tabIndex={open ? 0 : -1}
+                className="block rounded-lg px-3 py-2 text-[15px] font-medium text-slate-700 hover:bg-slate-900/[0.04] hover:text-slate-950"
+              >
                 Sign in
               </Link>
             </div>

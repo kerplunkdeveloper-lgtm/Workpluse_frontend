@@ -39,8 +39,8 @@ import {
   Search,
   MessageSquare,
   HelpCircle,
-  PanelLeftClose,
-  PanelLeftOpen,
+  ChevronsLeft,
+  ChevronsRight,
   CircleUser,
   Landmark,
   HandCoins,
@@ -407,7 +407,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           1. Sleek Modern Enterprise Left Sidebar
       ───────────────────────────────────────────────────────────────────────────── */}
       <aside
-        className={`wp-sidebar hidden lg:flex flex-col ${
+        className={`wp-sidebar hidden lg:flex flex-col min-h-0 ${
           sidebarCollapsed ? "w-[76px]" : "w-[276px]"
         } shrink-0 h-full z-30 select-none transition-[width] duration-200 relative`}
       >
@@ -421,24 +421,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             href="/dashboard"
             inverse
             compact={sidebarCollapsed}
-            subtitle={sidebarCollapsed ? undefined : "Enterprise"}
             className="min-w-0"
           />
 
           {!sidebarCollapsed && (
-            <div className="flex items-center gap-1.5 ml-auto">
-              <span className="px-1.5 py-0.5 rounded-md text-xs font-bold tracking-wider uppercase bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                PRO
-              </span>
-              <button
-                onClick={toggleSidebar}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.08] transition cursor-pointer"
-                title="Collapse menu (Ctrl+B)"
-                aria-label="Collapse menu"
-              >
-                <PanelLeftClose className="w-4 h-4" />
-              </button>
-            </div>
+            <button
+              onClick={toggleSidebar}
+              className="ml-2 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/[0.06] text-slate-300 ring-1 ring-white/15 hover:bg-indigo-500/30 hover:text-white hover:ring-indigo-300/40 transition cursor-pointer"
+              title="Collapse menu (Ctrl+B)"
+              aria-label="Collapse menu"
+            >
+              <ChevronsLeft className="w-4 h-4" />
+            </button>
           )}
         </div>
 
@@ -482,11 +476,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="flex justify-center pt-2">
             <button
               onClick={toggleSidebar}
-              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/[0.08] transition cursor-pointer"
+              className="grid h-8 w-8 place-items-center rounded-full bg-white/[0.06] text-slate-300 ring-1 ring-white/15 hover:bg-indigo-500/30 hover:text-white hover:ring-indigo-300/40 transition cursor-pointer"
               title="Expand menu (Ctrl+B)"
               aria-label="Expand menu"
             >
-              <PanelLeftOpen className="w-4 h-4" />
+              <ChevronsRight className="w-4 h-4" />
             </button>
           </div>
         )}
@@ -529,7 +523,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div
           ref={desktopNavRef}
           onScroll={(event) => rememberNavScroll(event, DESKTOP_NAV_SCROLL_KEY)}
-          className="flex-1 overflow-y-auto px-2.5 py-3 space-y-3.5 scrollbar-thin scrollbar-thumb-slate-800"
+          className="wp-nav-scroll flex-1 px-2.5 py-3 space-y-3.5"
         >
           {visibleSections.map((section) => {
             const filtering = navQuery.trim().length > 0;
@@ -665,7 +659,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Sidebar Footer: Quick Actions & Support */}
-        <div className={`wp-sidebar-footer ${sidebarCollapsed ? "p-2" : "p-3"} pt-2 border-t border-white/[0.06]`}>
+        <div className={`wp-sidebar-footer shrink-0 ${sidebarCollapsed ? "p-2" : "p-3"} pt-2 border-t border-white/[0.06]`}>
 
           {/* Quick Action links in Footer */}
           {!sidebarCollapsed ? (
@@ -1095,7 +1089,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               className="wp-mobile-drawer lg:hidden fixed inset-0 z-50 bg-slate-950 text-slate-200 p-5 flex flex-col"
             >
               <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
-                <Brand href="/dashboard" inverse subtitle="Enterprise" />
+                <Brand href="/dashboard" inverse />
                 <button
                   onClick={() => setMobileMenuOpen(false)}
                   className="p-2 rounded-xl bg-white/[0.08] text-slate-300 hover:text-white"
@@ -1165,7 +1159,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <div
                 ref={mobileNavRef}
                 onScroll={(event) => rememberNavScroll(event, MOBILE_NAV_SCROLL_KEY)}
-                className="flex-1 overflow-y-auto py-4 space-y-3"
+                className="wp-nav-scroll flex-1 py-4 space-y-3"
               >
                 {visibleSections.map((section) => {
                   const filtering = navQuery.trim().length > 0;

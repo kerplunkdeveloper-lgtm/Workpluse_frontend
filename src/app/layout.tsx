@@ -5,6 +5,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { AttendanceProvider } from "@/context/AttendanceContext";
 import ThemedToaster from "@/components/ui/ThemedToaster";
 import SystemStatusOverlay from "@/components/ui/SystemStatusOverlay";
+import HoverHints from "@/components/ui/HoverHints";
 
 export const metadata: Metadata = {
   title: {
@@ -30,8 +31,8 @@ export const metadata: Metadata = {
     images: ["/og.png"],
   },
   icons: {
-    icon: "/logo-128.png",
-    apple: "/logo-128.png",
+    icon: "/logo-v2-128.png",
+    apple: "/logo-v2-128.png",
   },
 };
 
@@ -57,6 +58,7 @@ export default function RootLayout({
             {children}
             <ThemedToaster />
             <SystemStatusOverlay />
+            <HoverHints />
           </AttendanceProvider>
         </AuthProvider>
       </body>

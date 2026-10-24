@@ -267,6 +267,25 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 
 .wp-sidebar > * { position: relative; }
 
+/* Sidebar / drawer menu list: always scrollable so every menu is reachable.
+   Wheel stays inside the menu, and a slim scrollbar shows (brighter on hover). */
+.wp-nav-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 1.5rem;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  scrollbar-gutter: stable;
+}
+/* Scrollbar appears only while the mouse is over the menu */
+.wp-nav-scroll:hover { scrollbar-color: rgba(165, 180, 252, 0.7) transparent; }
+.wp-nav-scroll::-webkit-scrollbar { width: 6px; }
+.wp-nav-scroll::-webkit-scrollbar-track { background: transparent; }
+.wp-nav-scroll::-webkit-scrollbar-thumb { background: transparent; border-radius: 999px; border: 0; transition: background 0.2s; }
+.wp-nav-scroll:hover::-webkit-scrollbar-thumb { background: rgba(165, 180, 252, 0.7); }
+.wp-nav-scroll:hover::-webkit-scrollbar-thumb:hover { background: rgba(165, 180, 252, 0.95); }
+
 .wp-workspace-switcher {
   min-height: 3.6rem;
   display: flex;
@@ -771,3 +790,191 @@ table, .type-kpi { font-variant-numeric: tabular-nums; }
 /* Hide scrollbar - used by TimeSelect scroll columns */
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ── SaaS Landing Page Enhancements ──────────────────────────────────────── */
+@keyframes wp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes lp-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes lp-pulse-glow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.05); }
+}
+
+@keyframes lp-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+@keyframes lp-radar {
+  0% { transform: scale(0.6); opacity: 0.8; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+.animate-lp-float {
+  animation: lp-float 6s ease-in-out infinite;
+}
+
+.animate-lp-float-delayed {
+  animation: lp-float 7s ease-in-out infinite;
+  animation-delay: -3s;
+}
+
+.animate-lp-pulse-glow {
+  animation: lp-pulse-glow 5s ease-in-out infinite;
+}
+
+.animate-lp-radar {
+  animation: lp-radar 2.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.lp-glow-card {
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.lp-glow-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.lp-glow-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 40px -15px rgba(99, 102, 241, 0.15);
+}
+
+.lp-hero-gradient {
+  background: radial-gradient(circle at 50% -10%, #312e81 0%, #1e1b4b 25%, #0a0e27 60%, #030712 100%);
+}
+
+.lp-text-gradient {
+  background: linear-gradient(135deg, #ffffff 20%, #c7d2fe 65%, #818cf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.lp-text-gradient-purple {
+  background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.lp-text-gradient-cyan {
+  background: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.lp-text-gradient-gold {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+@keyframes lp-aurora {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translate(20px, -20px) scale(1.1);
+    opacity: 0.55;
+  }
+}
+
+.animate-lp-aurora {
+  animation: lp-aurora 10s ease-in-out infinite;
+}
+
+/* Linear-style dark frosted glass cards */
+.lp-saas-card {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lp-saas-card:hover {
+  background: rgba(22, 33, 62, 0.65);
+  border-color: rgba(99, 102, 241, 0.45);
+  box-shadow: 0 20px 50px -15px rgba(99, 102, 241, 0.25), 0 0 20px 0 rgba(99, 102, 241, 0.15) inset;
+  transform: translateY(-3px);
+}
+
+/* Glowing button with subtle breathing light */
+.lp-btn-glow {
+  position: relative;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  box-shadow: 0 0 25px -4px rgba(99, 102, 241, 0.55), 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+.lp-btn-glow:hover {
+  background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
+  box-shadow: 0 0 35px -2px rgba(99, 102, 241, 0.8), 0 6px 20px rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
+}
+
+/* Subtle border beam highlight */
+@keyframes lp-border-beam {
+  100% {
+    offset-distance: 100%;
+  }
+}
+
+
+
+/* ── Auth pages (sign in / register) ─────────────────────────────────────── */
+.wp-auth-aside {
+  background:
+    radial-gradient(900px 520px at 8% -8%, rgba(99, 102, 241, 0.45), transparent 62%),
+    radial-gradient(700px 480px at 105% 38%, rgba(14, 165, 233, 0.28), transparent 60%),
+    radial-gradient(600px 420px at 30% 112%, rgba(139, 92, 246, 0.3), transparent 62%),
+    linear-gradient(160deg, #0b1130 0%, #080d24 55%, #050918 100%);
+}
+.wp-auth-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 80% 70% at 40% 40%, #000 30%, transparent 78%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 40% 40%, #000 30%, transparent 78%);
+}
+.wp-auth-form-bg {
+  background:
+    radial-gradient(640px 360px at 100% 0%, rgba(99, 102, 241, 0.09), transparent 65%),
+    radial-gradient(520px 320px at 0% 100%, rgba(14, 165, 233, 0.08), transparent 65%),
+    #f8fafc;
+}
+@keyframes wp-auth-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.wp-auth-float { animation: wp-auth-float 7s ease-in-out infinite; }
+@keyframes wp-auth-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.wp-auth-rise { animation: wp-auth-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .wp-auth-float, .wp-auth-rise { animation: none; }
+}

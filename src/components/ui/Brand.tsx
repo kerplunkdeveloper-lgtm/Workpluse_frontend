@@ -1,14 +1,26 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 
 interface BrandProps {
   href?: string;
+  /** Use on dark backgrounds: swaps to the white-wordmark logo. */
   inverse?: boolean;
+  /** Mark only (no wordmark), e.g. the collapsed sidebar. */
   compact?: boolean;
   subtitle?: string;
   className?: string;
+  size?: "sm" | "md" | "lg";
 }
+
+const LOCKUP = { width: 1024, height: 341 };
+
+const SIZES = {
+  sm: { box: "h-7 sm:h-8", mark: "h-8 w-8", sizes: "(max-width: 640px) 140px, 180px" },
+  md: { box: "h-9 sm:h-10", mark: "h-9 w-9", sizes: "(max-width: 640px) 180px, 220px" },
+  lg: { box: "h-11 sm:h-12", mark: "h-11 w-11", sizes: "(max-width: 640px) 220px, 280px" },
+} as const;
 
 export default function Brand({
   href = "/",
@@ -16,26 +28,41 @@ export default function Brand({
   compact = false,
   subtitle,
   className = "",
+  size = "md",
 }: BrandProps) {
-  const content = (
-    <>
-      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#4d46e8] text-white shadow-[0_10px_24px_-12px_rgba(37,99,235,0.8)]">
-        <span className="font-sans text-[20px] font-bold leading-none tracking-tight">W<span className="text-[15px]">.</span></span>
-        <span className="absolute bottom-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-sky-300" />
-      </span>
-      {!compact && (
-        <span className="min-w-0 leading-none">
-          <span className={`block font-sans text-[20px] font-semibold tracking-tight ${inverse ? "text-white" : "text-slate-950"}`}>
-            Work<span className={inverse ? "text-indigo-200" : "text-indigo-600"}>Pluse</span>
-          </span>
-          {subtitle && (
-            <span className={`mt-1.5 block truncate text-xs font-semibold uppercase tracking-[0.18em] ${inverse ? "text-white/50" : "text-slate-500"}`}>
-              {subtitle}
-            </span>
-          )}
+  const s = SIZES[size];
+
+  const content = compact ? (
+    <Image
+      src="/logo.png"
+      alt="WorkPluse"
+      width={128}
+      height={128}
+      sizes="64px"
+      className={`${s.mark} shrink-0 object-contain drop-shadow-sm`}
+      priority
+    />
+  ) : (
+    <div className="flex min-w-0 flex-col items-start leading-none justify-center">
+      <Image
+        src={inverse ? "/brand/workpulse-lockup-dark.png" : "/brand/workpulse-lockup.png"}
+        alt="WorkPluse"
+        width={LOCKUP.width}
+        height={LOCKUP.height}
+        sizes={s.sizes}
+        className={`${s.box} w-auto max-w-full shrink-0 object-contain object-left`}
+        priority
+      />
+      {subtitle && (
+        <span
+          className={`mt-1 block truncate text-[10px] font-bold uppercase tracking-[0.16em] leading-none ${
+            inverse ? "text-indigo-200/80" : "text-slate-500"
+          }`}
+        >
+          {subtitle}
         </span>
       )}
-    </>
+    </div>
   );
 
   return (
@@ -43,7 +70,7 @@ export default function Brand({
       href={href}
       aria-label="WorkPluse home"
       suppressHydrationWarning
-      className={`inline-flex items-center gap-3 rounded-xl ${className}`}
+      className={`inline-flex items-center rounded-xl transition-opacity hover:opacity-95 ${className}`}
     >
       {content}
     </Link>
