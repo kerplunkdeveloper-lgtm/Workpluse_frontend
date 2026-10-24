@@ -3,9 +3,16 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
-import { Lock, Mail, ArrowRight, Loader2, Eye, EyeOff } from "lucide-react";
-import AuthShell from "@/components/ui/AuthShell";
-import { authFieldRing } from "@/components/ui/MarketingAuthLayout";
+import { Lock, Mail, ArrowRight, Loader2, Eye, EyeOff, Building2 } from "lucide-react";
+import AuthShell, {
+  AuthDivider,
+  authIcon,
+  authInput,
+  authInputWrap,
+  authLabel,
+  authPrimaryButton,
+  authSecondaryButton,
+} from "@/components/ui/AuthShell";
 import { authApi } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -33,8 +40,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [emailFocused, setEmailFocused] = useState(false);
-  const [passwordFocused, setPasswordFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [ssoLoading, setSsoLoading] = useState(false);
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
@@ -60,7 +65,7 @@ export default function LoginPage() {
       window.google.accounts.id.renderButton(el, {
         theme: "outline",
         size: "large",
-        width: 320,
+        width: 360,
         text: "continue_with",
       });
     };
@@ -108,21 +113,21 @@ export default function LoginPage() {
     <AuthShell
       eyebrow="Sign in"
       title="Welcome back"
-      description="Use your work email to open the workspace."
+      description="Use your work email or employee code to open your workspace."
       footer={
         <>
           New organization?{" "}
-          <Link href="/register" className="font-bold text-indigo-600 hover:text-indigo-700">
+          <Link href="/register" className="font-semibold text-indigo-600 hover:text-indigo-700">
             Start a free trial
           </Link>
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label htmlFor="login-email" className="mb-2 block text-[12px] font-medium text-slate-600">Work email or employee code</label>
-          <div className={`flex items-center gap-3 rounded-full border bg-[#ffffff] px-4 py-3.5 transition-all ${authFieldRing(emailFocused)}`}>
-            <Mail className="h-4 w-4 shrink-0 text-slate-400" />
+          <label htmlFor="login-email" className={authLabel}>Work email or employee code</label>
+          <div className={authInputWrap()}>
+            <Mail className={authIcon} />
             <input
               type="text"
               inputMode="email"
@@ -131,85 +136,65 @@ export default function LoginPage() {
               autoComplete="username"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your work email"
-              onFocus={() => setEmailFocused(true)}
-              onBlur={() => setEmailFocused(false)}
-              className="flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-300"
+              placeholder="you@company.com"
+              className={authInput}
               required
             />
           </div>
         </div>
 
         <div>
-          <div className="mb-2 flex items-center justify-between">
-            <label htmlFor="login-password" className="text-[12px] font-medium text-slate-600">Password</label>
-            <Link href="/forgot-password" className="text-[12px] font-semibold text-indigo-600 hover:text-indigo-700">
+          <div className="mb-1.5 flex items-center justify-between">
+            <label htmlFor="login-password" className="text-[13px] font-semibold text-slate-700">Password</label>
+            <Link href="/forgot-password" className="text-[13px] font-semibold text-indigo-600 hover:text-indigo-700">
               Forgot password?
             </Link>
           </div>
-          <div className={`flex items-center gap-3 rounded-full border bg-[#ffffff] px-4 py-3.5 transition-all ${authFieldRing(passwordFocused)}`}>
-            <Lock className="h-4 w-4 shrink-0 text-slate-400" />
+          <div className={authInputWrap()}>
+            <Lock className={authIcon} />
             <input
               type={showPassword ? "text" : "password"}
               id="login-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
-              onFocus={() => setPasswordFocused(true)}
-              onBlur={() => setPasswordFocused(false)}
               autoComplete="current-password"
-              className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-300"
+              className={authInput}
               required
             />
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
-              className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-50 hover:text-slate-700"
+              className="shrink-0 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
               aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-pressed={showPassword}
             >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              {showPassword ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
             </button>
           </div>
         </div>
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="keep-white mt-1 flex w-full items-center justify-center gap-2 rounded-full bg-blue-600 py-3.5 text-sm font-semibold text-white shadow-[0_10px_24px_-8px_rgba(37,99,235,0.7)] transition hover:bg-blue-500 active:scale-[0.99] disabled:opacity-60"
-        >
+        <button type="submit" disabled={submitting} className={authPrimaryButton}>
           {submitting ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <>
               Sign in
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-0.5" />
             </>
           )}
         </button>
       </form>
 
-      {googleClientId ? (
-        <>
-          <div className="relative my-5">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200" />
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-[#ffffff] px-3 text-xs text-slate-400">Or</span>
-            </div>
-          </div>
-          <div id="google-signin" className="flex justify-center min-h-[40px]" />
-        </>
-      ) : null}
-      <button
-        type="button"
-        onClick={handleSso}
-        disabled={ssoLoading}
-        className="mt-4 flex w-full items-center justify-center gap-2 rounded-full border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700 disabled:opacity-60"
-      >
-        {ssoLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-        Continue with company SSO
-      </button>
+      <AuthDivider>or continue with</AuthDivider>
+
+      <div className="space-y-3">
+        {googleClientId ? <div id="google-signin" className="flex min-h-[44px] justify-center" /> : null}
+        <button type="button" onClick={handleSso} disabled={ssoLoading} className={authSecondaryButton}>
+          {ssoLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building2 className="h-[18px] w-[18px] text-slate-500" />}
+          Company SSO
+        </button>
+      </div>
     </AuthShell>
   );
 }

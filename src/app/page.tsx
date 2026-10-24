@@ -43,7 +43,7 @@ export default async function LandingPage() {
 
   return (
     // overflow-x-clip (not hidden) so the sticky header and sticky FAQ column keep working.
-    <div className="lp-grain relative isolate min-h-screen overflow-x-clip bg-[#f6f7f9] font-landing text-slate-900 antialiased selection:bg-indigo-100 selection:text-indigo-900">
+    <div className="lp-grain relative isolate min-h-screen overflow-x-clip bg-[#fafbfc] font-landing text-slate-900 antialiased selection:bg-indigo-100 selection:text-indigo-900">
       <a href="#main" className="sr-only z-[70] rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
         Skip to content
       </a>
@@ -69,7 +69,7 @@ export default async function LandingPage() {
               "@id": `${siteUrl}/#organization`,
               name: "WorkPluse",
               url: siteUrl,
-              logo: `${siteUrl}/logo-128.png`,
+              logo: `${siteUrl}/logo-v2-128.png`,
             },
             {
               "@type": "SoftwareApplication",

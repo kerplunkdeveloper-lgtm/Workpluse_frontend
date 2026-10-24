@@ -28,6 +28,7 @@ import {
   Download,
 } from "lucide-react";
 import { toast } from "sonner";
+import DatePicker from "@/components/ui/DatePicker";
 import confetti from "canvas-confetti";
 import EmployeeProfileModal from "./EmployeeProfileModal";
 import dynamic from "next/dynamic";
@@ -115,6 +116,7 @@ export default function EmployeeDirectory() {
   const [creatingDepartment, setCreatingDepartment] = useState(false);
   const [shiftId, setShiftId] = useState("");
   const [ctc, setCtc] = useState("");
+  const [dateOfJoining, setDateOfJoining] = useState("");
   const [gender, setGender] = useState("");
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [broadcastTitle, setBroadcastTitle] = useState("");
@@ -244,6 +246,7 @@ export default function EmployeeDirectory() {
           departmentId: departmentId || undefined,
           shiftId: shiftId || undefined,
           ctc: ctc ? Number(ctc) : undefined,
+          dateOfJoining: dateOfJoining || undefined,
           gender: gender || undefined,
           panNumber: panNumber || undefined,
           uanNumber: uanNumber || undefined,
@@ -275,6 +278,7 @@ export default function EmployeeDirectory() {
         setEmployeeCode("");
         setDesignation("");
         setCtc("");
+        setDateOfJoining("");
         setGender("");
         setPanNumber("");
         setUanNumber("");
@@ -1134,15 +1138,28 @@ export default function EmployeeDirectory() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[13px] font-medium text-slate-700 mb-1">Annual CTC (INR)</label>
-                <input
-                  type="number"
-                  value={ctc}
-                  onChange={(e) => setCtc(e.target.value)}
-                  placeholder="e.g. 900000"
-                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
-                />
+              <div className={inviteMode === "MANUAL" ? "grid grid-cols-2 gap-3" : ""}>
+                {inviteMode === "MANUAL" && (
+                  <div>
+                    <label className="block text-[13px] font-medium text-slate-700 mb-1">Joining Date</label>
+                    <DatePicker
+                      value={dateOfJoining}
+                      onChange={setDateOfJoining}
+                      placeholder="Select joining date"
+                      ariaLabel="Joining date"
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1">Annual CTC (INR)</label>
+                  <input
+                    type="number"
+                    value={ctc}
+                    onChange={(e) => setCtc(e.target.value)}
+                    placeholder="e.g. 900000"
+                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3">

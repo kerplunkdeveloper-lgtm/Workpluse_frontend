@@ -72,7 +72,7 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
     (template?.addressLine1 ? `${template.addressLine1}${template.addressLine2 ? ", " + template.addressLine2 : ""}` : "") ||
     "Corporate Headquarters, Cyber City, Phase II";
 
-  const logoUrl = details?.organization?.logoUrl || template?.logoUrl || "/logo.png";
+  const logoUrl = details?.organization?.logoUrl || template?.logoUrl || "/logo-v2.png";
   const taxLabel = details?.organization?.taxIdentifierLabel || template?.taxIdentifierLabel || "CIN / GSTIN";
   const taxValue = details?.organization?.taxIdentifierValue || template?.taxIdentifierValue || "";
   const primaryColor = template?.primaryColor || "#4f46e5";

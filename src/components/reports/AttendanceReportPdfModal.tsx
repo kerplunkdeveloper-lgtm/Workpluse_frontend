@@ -132,7 +132,7 @@ export default function AttendanceReportPdfModal({
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 shadow-sm">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" />
+                  <img src="/logo-v2.png" alt="Logo" className="w-full h-full object-cover" />
                 </div>
                 <div>
                   <h2 className="text-xl font-semibold tracking-tight text-slate-900 leading-tight">

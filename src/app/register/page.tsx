@@ -3,9 +3,14 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
-import { Building2, Mail, Lock, ArrowRight, Loader2, User, Eye, EyeOff, Check } from "lucide-react";
-import AuthShell from "@/components/ui/AuthShell";
-import { authFieldRing } from "@/components/ui/MarketingAuthLayout";
+import { Building2, Mail, Lock, ArrowRight, Loader2, User, Eye, EyeOff, Check, ChevronDown } from "lucide-react";
+import AuthShell, {
+  authIcon,
+  authInput,
+  authInputWrap,
+  authLabel,
+  authPrimaryButton,
+} from "@/components/ui/AuthShell";
 import { toast } from "sonner";
 import { authApi } from "@/lib/api";
 import type { SubscriptionPlan, SubscriptionPlanOption } from "@/types";
@@ -30,7 +35,6 @@ export default function RegisterPage() {
   const [subscriptionPlan, setSubscriptionPlan] = useState<SubscriptionPlan>("FREE_TRIAL");
   const [plans, setPlans] = useState<SubscriptionPlanOption[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [focused, setFocused] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<FieldName, string>>>({});
 
@@ -109,8 +113,7 @@ export default function RegisterPage() {
     }
   };
 
-  const inputWrap = (name: string) =>
-    `flex items-center gap-3 rounded-full border bg-[#ffffff] px-4 py-2.5 transition-all ${errors[name as FieldName] ? "border-rose-400 ring-2 ring-rose-100" : authFieldRing(focused === name)}`;
+  const inputWrap = (name: string) => authInputWrap(!!errors[name as FieldName]);
 
   return (
     <AuthShell
@@ -123,28 +126,27 @@ export default function RegisterPage() {
       footer={
         <>
           Already have an account?{" "}
-          <Link href="/login" className="font-bold text-indigo-600 hover:text-indigo-700">
+          <Link href="/login" className="font-semibold text-indigo-600 hover:text-indigo-700">
             Sign in
           </Link>
         </>
       }
     >
-      <form onSubmit={handleSubmit} noValidate className="space-y-3.5">
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
         <div>
-          <label htmlFor="register-organization" className="mb-1.5 block text-[12px] font-medium text-slate-600">Organization name</label>
+          <label htmlFor="register-organization" className={authLabel}>Organization name</label>
           <div className={inputWrap("org")}>
-            <Building2 className="h-4 w-4 shrink-0 text-slate-400" />
+            <Building2 className={authIcon} />
             <input
               type="text"
               id="register-organization"
               value={orgName}
               onChange={(e) => setOrgName(e.target.value)}
               placeholder="Acme Technologies"
-              onFocus={() => setFocused("org")}
-              onBlur={() => { setFocused(null); validateOne("org"); }}
+              onBlur={() => validateOne("org")}
               autoComplete="organization"
               {...a11y("org")}
-              className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-300"
+              className={authInput}
               required
             />
           </div>
@@ -153,54 +155,50 @@ export default function RegisterPage() {
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label htmlFor="register-first-name" className="mb-1.5 block text-[12px] font-medium text-slate-600">First name</label>
+            <label htmlFor="register-first-name" className={authLabel}>First name</label>
             <div className={inputWrap("first")}>
-              <User className="h-4 w-4 shrink-0 text-slate-400" />
+              <User className={authIcon} />
               <input
                 value={firstName}
                 id="register-first-name"
                 onChange={(e) => setFirstName(e.target.value)}
-                onFocus={() => setFocused("first")}
-                onBlur={() => { setFocused(null); validateOne("first"); }}
+                onBlur={() => validateOne("first")}
                 autoComplete="given-name"
                 {...a11y("first")}
-                className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none"
+                className={authInput}
                 required
               />
             </div>
             {fieldError("first")}
           </div>
           <div>
-            <label htmlFor="register-last-name" className="mb-1.5 block text-[12px] font-medium text-slate-600">Last name</label>
+            <label htmlFor="register-last-name" className={authLabel}>Last name</label>
             <div className={inputWrap("last")}>
               <input
                 value={lastName}
                 id="register-last-name"
                 onChange={(e) => setLastName(e.target.value)}
-                onFocus={() => setFocused("last")}
-                onBlur={() => setFocused(null)}
                 autoComplete="family-name"
-                className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none"
+                className={authInput}
               />
             </div>
           </div>
         </div>
 
         <div>
-          <label htmlFor="register-email" className="mb-1.5 block text-[12px] font-medium text-slate-600">Work email</label>
+          <label htmlFor="register-email" className={authLabel}>Work email</label>
           <div className={inputWrap("email")}>
-            <Mail className="h-4 w-4 shrink-0 text-slate-400" />
+            <Mail className={authIcon} />
             <input
               type="email"
               id="register-email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="admin@company.com"
-              onFocus={() => setFocused("email")}
-              onBlur={() => { setFocused(null); validateOne("email"); }}
+              onBlur={() => validateOne("email")}
               autoComplete="email"
               {...a11y("email")}
-              className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-300"
+              className={authInput}
               required
             />
           </div>
@@ -208,19 +206,18 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label htmlFor="register-password" className="mb-1.5 block text-[12px] font-medium text-slate-600">Password</label>
+          <label htmlFor="register-password" className={authLabel}>Password</label>
           <div className={inputWrap("password")}>
-            <Lock className="h-4 w-4 shrink-0 text-slate-400" />
+            <Lock className={authIcon} />
             <input
               type={showPassword ? "text" : "password"}
               id="register-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              onFocus={() => setFocused("password")}
-              onBlur={() => { setFocused(null); if (password) validateOne("password"); }}
+              onBlur={() => { if (password) validateOne("password"); }}
               autoComplete="new-password"
               {...a11y("password")}
-              className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none"
+              className={authInput}
               required
             />
             <button
@@ -228,33 +225,40 @@ export default function RegisterPage() {
               onClick={() => setShowPassword((v) => !v)}
               aria-label={showPassword ? "Hide password" : "Show password"}
               aria-pressed={showPassword}
-              className="shrink-0 text-slate-400 transition hover:text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500"
+              className="shrink-0 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500"
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
           {fieldError("password")}
-          <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1" aria-label="Password requirements">
-            {passwordRules(password).map((rule) => (
-              <li key={rule.label} className={`flex items-center gap-1.5 text-[12px] transition-colors ${rule.met ? "font-semibold text-emerald-600" : "text-slate-500"}`}>
-                <Check aria-hidden="true" className={`h-3 w-3 ${rule.met ? "opacity-100" : "opacity-30"}`} />
-                {rule.label}
-                <span className="sr-only">{rule.met ? " (met)" : " (not met)"}</span>
-              </li>
-            ))}
-          </ul>
+          <div className="mt-3" aria-label="Password strength">
+            <div className="flex gap-1.5">
+              {[0, 1, 2].map((i) => {
+                const met = passwordRules(password).filter((rule) => rule.met).length;
+                const tone = met === 3 ? "bg-emerald-500" : met === 2 ? "bg-amber-400" : "bg-rose-400";
+                return <span key={i} className={`h-1 flex-1 rounded-full transition-colors ${password && i < met ? tone : "bg-slate-200"}`} />;
+              })}
+            </div>
+            <ul className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1" aria-label="Password requirements">
+              {passwordRules(password).map((rule) => (
+                <li key={rule.label} className={`flex items-center gap-1.5 text-[12px] transition-colors ${rule.met ? "font-semibold text-emerald-600" : "text-slate-500"}`}>
+                  <Check aria-hidden="true" className={`h-3 w-3 ${rule.met ? "opacity-100" : "opacity-30"}`} />
+                  {rule.label}
+                  <span className="sr-only">{rule.met ? " (met)" : " (not met)"}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
 
         <div>
-          <label htmlFor="register-plan" className="mb-1.5 block text-[12px] font-medium text-slate-600">Preferred plan</label>
+          <label htmlFor="register-plan" className={authLabel}>Preferred plan</label>
           <div className={inputWrap("plan")}>
             <select
               value={subscriptionPlan}
               id="register-plan"
               onChange={(e) => setSubscriptionPlan(e.target.value as SubscriptionPlan)}
-              onFocus={() => setFocused("plan")}
-              onBlur={() => setFocused(null)}
-              className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none"
+              className={`${authInput} cursor-pointer appearance-none`}
             >
               {plans.length === 0 && <option value="FREE_TRIAL">Free trial</option>}
               {plans.map((plan) => (
@@ -263,6 +267,7 @@ export default function RegisterPage() {
                 </option>
               ))}
             </select>
+            <ChevronDown aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-400" />
           </div>
           {subscriptionPlan !== "FREE_TRIAL" && (
             <p className="mt-1.5 text-xs text-slate-500">
@@ -271,20 +276,18 @@ export default function RegisterPage() {
           )}
         </div>
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="keep-white mt-1 flex w-full items-center justify-center gap-2 rounded-full bg-blue-600 py-3.5 text-sm font-semibold text-white shadow-[0_10px_24px_-8px_rgba(37,99,235,0.7)] transition hover:bg-blue-500 active:scale-[0.99] disabled:opacity-60"
-        >
+        <button type="submit" disabled={submitting} className={authPrimaryButton}>
           {submitting ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <>
               Create workspace
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-0.5" />
             </>
           )}
         </button>
+
+        <p className="text-center text-xs text-slate-500">14-day trial · up to 10 employees · upgrade any time</p>
       </form>
     </AuthShell>
   );
