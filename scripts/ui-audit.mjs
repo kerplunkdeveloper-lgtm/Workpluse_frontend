@@ -169,7 +169,24 @@ function inspectPage() {
 }
 
 // ── Runner ───────────────────────────────────────────────────────────────────
-const browser = await puppeteer.launch({ executablePath: findBrowser(), headless: true, args: ["--disable-gpu", "--hide-scrollbars", "--no-first-run", "--no-sandbox"] });
+// CI runners are small and sandboxed: Chrome can take long to start and may never print the DevTools
+// WebSocket URL. Talking over a pipe avoids that URL, /dev/shm is bypassed, and a second try covers a slow first start.
+const launchBrowser = async () => {
+  const options = {
+    executablePath: findBrowser(),
+    headless: true,
+    pipe: true,
+    timeout: 120000,
+    args: ["--disable-gpu", "--hide-scrollbars", "--no-first-run", "--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--no-zygote"],
+  };
+  try {
+    return await puppeteer.launch(options);
+  } catch (e) {
+    console.warn(`Browser failed to start (${String(e.message).slice(0, 120)}). Trying again.`);
+    return puppeteer.launch({ ...options, headless: "shell" });
+  }
+};
+const browser = await launchBrowser();
 if (SHOTS) fs.mkdirSync(OUT, { recursive: true });
 let failures = 0;
 let checks = 0;
