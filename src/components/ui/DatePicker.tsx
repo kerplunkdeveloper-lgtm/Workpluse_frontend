@@ -287,12 +287,20 @@ export default function DatePicker({
   // Year options for fast jump
   const yearOptions = useMemo(() => {
     const currentYear = today.getFullYear();
+    // Honour min/max when given; otherwise cover a full lifetime back (birth dates) and a few decades ahead.
+    const first = Math.min(minDate ? minDate.getFullYear() : currentYear - 100, viewYear);
+    const last = Math.max(maxDate ? maxDate.getFullYear() : currentYear + 30, viewYear);
     const list: number[] = [];
-    for (let y = currentYear - 10; y <= currentYear + 15; y++) {
+    for (let y = first; y <= last; y++) {
       list.push(y);
     }
     return list;
-  }, [today]);
+  }, [today, minDate, maxDate, viewYear]);
+
+  // Open the year list already scrolled to the year being viewed, so earlier and later years are one scroll away.
+  const selectedYearRef = (node: HTMLButtonElement | null) => {
+    node?.scrollIntoView({ block: "center" });
+  };
 
   return (
     <div ref={containerRef} className={`relative inline-block w-full ${className}`}>
@@ -469,12 +477,13 @@ export default function DatePicker({
 
           {/* Body: Year Picker Mode */}
           {pickerMode === "year" && (
-            <div className="grid grid-cols-4 gap-2 py-2 max-h-56 overflow-y-auto pr-1">
+            <div className="grid grid-cols-4 gap-2 py-2 max-h-56 overflow-y-auto overscroll-contain pr-1">
               {yearOptions.map((y) => {
                 const isSelectedYear = viewYear === y;
                 return (
                   <button
                     key={y}
+                    ref={isSelectedYear ? selectedYearRef : undefined}
                     type="button"
                     onClick={() => {
                       setViewYear(y);
