@@ -117,7 +117,7 @@ export function TodayPanel({ firstName, attendance, shift, hasCheckedIn, hasChec
       ? { label: "On break", dot: "bg-amber-400 animate-pulse" }
       : working
         ? { label: "Working", dot: "bg-emerald-400 animate-pulse" }
-        : { label: "Not checked in", dot: "bg-slate-500" };
+        : { label: "Not punched in", dot: "bg-slate-500" };
 
   const hour = new Date(now).getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";

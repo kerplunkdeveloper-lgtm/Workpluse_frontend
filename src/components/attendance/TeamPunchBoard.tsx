@@ -92,7 +92,7 @@ export default function TeamPunchBoard() {
             Team punch locations
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            {clockedIn} on shift · visible to everyone in this workspace
+            {clockedIn} on shift · visible to admins and HR only
           </p>
         </div>
         <button
@@ -121,8 +121,8 @@ export default function TeamPunchBoard() {
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)} aria-label="Filter by status" className={selectClass}>
             <option value="ALL">All status</option>
             <option value="ON_SHIFT">On shift</option>
-            <option value="CLOCKED_OUT">Clocked out</option>
-            <option value="NOT_IN">Not clocked in</option>
+            <option value="CLOCKED_OUT">Punched out</option>
+            <option value="NOT_IN">Not punched in</option>
           </select>
           {branchOptions.length > 1 && (
             <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} aria-label="Filter by branch" className={selectClass}>
@@ -197,7 +197,7 @@ export default function TeamPunchBoard() {
                       </p>
                     )
                   ) : (
-                    <p className="mt-1 text-xs text-slate-400">Not clocked in</p>
+                    <p className="mt-1 text-xs text-slate-400">Not punched in</p>
                   )}
                 </div>
                 <span className="shrink-0 text-right text-[10px] font-mono font-semibold text-slate-600">

@@ -133,7 +133,7 @@ export default function AuthShell({
   title,
   description,
   asideTitle = "The workday, held in one place.",
-  asideDescription = "Clock in, approve leave, and run payroll without jumping between tools.",
+  asideDescription = "Punch in, approve leave, and run payroll without jumping between tools.",
   points = [
     "GPS attendance with offline punch sync",
     "Approvals, people, and shifts in one workspace",

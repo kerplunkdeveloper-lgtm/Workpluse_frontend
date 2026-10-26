@@ -367,7 +367,7 @@ function ProductPreview() {
                   {
                     label: "Present Today",
                     value: "98.2%",
-                    sub: "835 of 850 clocked in",
+                    sub: "835 of 850 punched in",
                     accent: "text-emerald-600",
                     border: "border-slate-200/80 bg-slate-50/50",
                   },

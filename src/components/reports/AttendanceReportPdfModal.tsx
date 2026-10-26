@@ -27,6 +27,15 @@ interface AttendanceReportPdfModalProps {
   selectedYear?: number;
 }
 
+const STATUS_SHORT: Record<string, string> = {
+  WORK_FROM_HOME: "WFH",
+  HALF_DAY: "Half day",
+  ON_LEAVE: "Leave",
+  WEEK_OFF: "Week off",
+};
+const statusText = (status?: string) => STATUS_SHORT[status || ""] || (status || "").replace(/_/g, " ");
+const minutesOrDash = (minutes?: number | null) => (minutes && minutes > 0 ? formatDurationMinutes(minutes) : "-");
+
 export default function AttendanceReportPdfModal({
   isOpen,
   onClose,
@@ -73,7 +82,8 @@ export default function AttendanceReportPdfModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-      <div className="w-full max-w-5xl bg-white text-slate-900 rounded-3xl p-6 sm:p-10 shadow-2xl relative my-6 print:p-0 print:m-0 print:shadow-none print:w-full print:max-w-none">
+      <style>{`@media print { @page { size: A4 landscape; margin: 10mm; } tr { break-inside: avoid; } thead { display: table-header-group; } }`}</style>
+      <div className="w-full max-w-6xl bg-white text-slate-900 rounded-3xl p-6 sm:p-10 shadow-2xl relative my-6 print:p-0 print:m-0 print:shadow-none print:w-full print:max-w-none">
         {/* Top Control Bar (Hidden on Print) */}
         <div className="flex flex-wrap items-center justify-between pb-5 border-b border-slate-200 mb-6 gap-4 print:hidden">
           <div className="flex flex-wrap items-center gap-2">
@@ -220,24 +230,39 @@ export default function AttendanceReportPdfModal({
           {/* Table Data */}
           <div className="overflow-x-auto rounded-xl border border-slate-200">
             {type === "DAILY" ? (
-              <table className="w-full text-left text-[13px] border-collapse">
-                <thead className="bg-slate-100 text-slate-700 text-xs uppercase font-bold tracking-wider border-b border-slate-300">
+              <table className="w-full table-fixed text-left text-[12px] border-collapse">
+                <colgroup>
+                  <col style={{ width: "3%" }} />
+                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "17%" }} />
+                  <col style={{ width: "14%" }} />
+                  <col style={{ width: "9%" }} />
+                  <col style={{ width: "9%" }} />
+                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "7%" }} />
+                  <col style={{ width: "9%" }} />
+                </colgroup>
+                <thead className="bg-slate-100 text-slate-700 text-[10px] uppercase font-bold tracking-wider border-b border-slate-300">
                   <tr>
-                    <th className="py-2.5 px-3">#</th>
-                    <th className="py-2.5 px-3">Code</th>
-                    <th className="py-2.5 px-3">Employee Name</th>
-                    <th className="py-2.5 px-3">Department</th>
-                    <th className="py-2.5 px-3">Punch In</th>
-                    <th className="py-2.5 px-3">Punch Out</th>
-                    <th className="py-2.5 px-3">Work Hours</th>
-                    <th className="py-2.5 px-3">Late Mins</th>
-                    <th className="py-2.5 px-3 text-center">Status</th>
+                    <th className="py-2.5 px-2">#</th>
+                    <th className="py-2.5 px-2">Code</th>
+                    <th className="py-2.5 px-2">Employee</th>
+                    <th className="py-2.5 px-2">Department</th>
+                    <th className="py-2.5 px-2">Punch In</th>
+                    <th className="py-2.5 px-2">Punch Out</th>
+                    <th className="py-2.5 px-2">Break</th>
+                    <th className="py-2.5 px-2">Lunch</th>
+                    <th className="py-2.5 px-2">Worked</th>
+                    <th className="py-2.5 px-2">Late</th>
+                    <th className="py-2.5 px-2 text-center">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {filteredDailyRecords.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="text-center py-8 text-slate-400 text-xs">
+                      <td colSpan={11} className="text-center py-8 text-slate-400 text-xs">
                         No attendance entries matching this status.
                       </td>
                     </tr>
@@ -250,28 +275,34 @@ export default function AttendanceReportPdfModal({
                       const isPresent = r.status === "PRESENT" || r.status === "WORK_FROM_HOME";
 
                       return (
-                        <tr key={r.id || idx} className="hover:bg-slate-50">
-                          <td className="py-2 px-3 text-slate-400 font-mono text-xs">{idx + 1}</td>
-                          <td className="py-2 px-3 font-mono font-bold text-slate-600 text-xs">
+                        <tr key={r.id || idx} className="hover:bg-slate-50 align-middle">
+                          <td className="py-2 px-2 text-slate-400 font-mono text-[11px]">{idx + 1}</td>
+                          <td className="py-2 px-2 font-mono font-bold text-slate-600 text-[11px] truncate">
                             {r.employee?.employeeCode || `EMP-${100 + idx}`}
                           </td>
-                          <td className="py-2 px-3 font-bold text-slate-900">{empName}</td>
-                          <td className="py-2 px-3 text-slate-600">{r.employee?.department?.name || "General"}</td>
-                          <td className="py-2 px-3 font-mono text-slate-700">
+                          <td className="py-2 px-2 font-bold text-slate-900 break-words">{empName}</td>
+                          <td className="py-2 px-2 text-slate-600 break-words">{r.employee?.department?.name || "General"}</td>
+                          <td className="py-2 px-2 font-mono text-slate-700 whitespace-nowrap">
                             {r.checkIn ? formatTime(r.checkIn) : "-"}
                           </td>
-                          <td className="py-2 px-3 font-mono text-slate-700">
+                          <td className="py-2 px-2 font-mono text-slate-700 whitespace-nowrap">
                             {r.checkOut ? formatTime(r.checkOut) : "-"}
                           </td>
-                          <td className="py-2 px-3 font-bold text-slate-800">
-                            {r.workHours ? `${Number(r.workHours).toFixed(1)} hrs` : "-"}
+                          <td className="py-2 px-2 font-mono text-slate-600 whitespace-nowrap">
+                            {minutesOrDash(r.breakMinutes)}
                           </td>
-                          <td className="py-2 px-3 font-mono text-amber-600 font-semibold">
-                            {r.lateMinutes && r.lateMinutes > 0 ? formatDurationMinutes(r.lateMinutes) : "-"}
+                          <td className="py-2 px-2 font-mono text-slate-600 whitespace-nowrap">
+                            {minutesOrDash(r.lunchMinutes)}
                           </td>
-                          <td className="py-2 px-3 text-center">
+                          <td className="py-2 px-2 font-bold text-slate-800 whitespace-nowrap">
+                            {r.workHours ? `${Number(r.workHours).toFixed(1)} h` : "-"}
+                          </td>
+                          <td className="py-2 px-2 font-mono text-amber-600 font-semibold whitespace-nowrap">
+                            {minutesOrDash(r.lateMinutes)}
+                          </td>
+                          <td className="py-2 px-2 text-center">
                             <span
-                              className={`inline-block px-2 py-0.5 rounded text-xs font-bold border ${
+                              className={`inline-block whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
                                 isPresent
                                   ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                   : isLate
@@ -283,7 +314,7 @@ export default function AttendanceReportPdfModal({
                                   : "bg-slate-100 text-slate-700 border-slate-200"
                               }`}
                             >
-                              {r.status?.replace(/_/g, " ")}
+                              {statusText(r.status)}
                             </span>
                           </td>
                         </tr>

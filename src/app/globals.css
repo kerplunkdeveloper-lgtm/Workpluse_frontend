@@ -978,3 +978,39 @@ table, .type-kpi { font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) {
   .wp-auth-float, .wp-auth-rise { animation: none; }
 }
+
+/* ── Pointer cursor on everything clickable ─────────────────────────────────
+   Tailwind's reset makes buttons use the default arrow. One rule here covers every current and future
+   control, so individual components do not need their own cursor-pointer. Disabled controls get the
+   "not allowed" cursor instead. Text inputs, textareas and range sliders keep their own cursors. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"],
+  [role="option"],
+  [role="menuitem"],
+  [role="switch"],
+  a[href],
+  summary,
+  select:not(:disabled),
+  label[for],
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  input[type="range"]:not(:disabled),
+  input[type="file"]:not(:disabled),
+  input[type="submit"]:not(:disabled),
+  input[type="button"]:not(:disabled),
+  input[type="color"]:not(:disabled),
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [role="button"][aria-disabled="true"],
+  select:disabled,
+  input:disabled,
+  a[aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+}

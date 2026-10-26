@@ -24,6 +24,7 @@ export interface DatePickerProps {
   id?: string;
   name?: string;
   ariaLabel?: string;
+  size?: "sm" | "md";
 }
 
 const MONTH_NAMES = [
@@ -101,6 +102,7 @@ export default function DatePicker({
   id,
   name,
   ariaLabel = "Select Date",
+  size = "md",
 }: DatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -322,7 +324,7 @@ export default function DatePicker({
         aria-label={ariaLabel}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
-        className={`group w-full flex items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-xl border text-sm transition-all duration-150 outline-none select-none ${
+        className={`group w-full flex items-center justify-between gap-2 ${size === "sm" ? "h-9 px-2.5 py-1 rounded-lg text-xs sm:text-sm" : "px-3.5 py-2.5 rounded-xl text-sm"} border transition-all duration-150 outline-none select-none ${
           isOpen
             ? "border-indigo-500 ring-2 ring-indigo-500/20 bg-white shadow-sm"
             : "border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50/50 shadow-2xs"
@@ -334,7 +336,7 @@ export default function DatePicker({
       >
         <div className="flex items-center gap-2.5 min-w-0">
           <div
-            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
+            className={`${size === "sm" ? "w-5 h-5 rounded" : "w-7 h-7 rounded-lg"} flex items-center justify-center transition-colors ${
               selectedDate
                 ? "bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100"
                 : "bg-slate-100 text-slate-500 group-hover:text-slate-700"

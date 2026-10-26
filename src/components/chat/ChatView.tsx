@@ -179,8 +179,10 @@ function Avatar({ label, channel = false, size = "md" }: { label: string; channe
 /* ── Component ──────────────────────────────────────────────────────────── */
 
 export default function ChatView() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const me = user?.id;
+  // Only admins and HR can create channels (the server enforces this too).
+  const canCreateChannel = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER";
 
   const [threads, setThreads] = useState<Thread[]>([]);
   const [workspaceSize, setWorkspaceSize] = useState(0);
@@ -507,14 +509,14 @@ export default function ChatView() {
           </h1>
           <p className="mt-1 text-sm text-slate-600">Direct messages and channels for your workforce</p>
         </div>
-        <button
+        {canCreateChannel && <button
           type="button"
           onClick={() => setChannelOpen(true)}
           className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-600/25 transition hover:bg-indigo-500 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
         >
           <Plus className="h-4 w-4" />
           New channel
-        </button>
+        </button>}
       </div>
 
       <div className="grid h-[calc(100dvh-210px)] min-h-[560px] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_24px_60px_-34px_rgba(15,23,42,0.4)] md:grid-cols-[340px_minmax(0,1fr)]">
@@ -582,17 +584,19 @@ export default function ChatView() {
                   <>
                     {sectionTitle(
                       "Channels",
-                      <button
-                        type="button"
-                        onClick={() => setChannelOpen(true)}
-                        aria-label="Create channel"
-                        className="rounded-md p-1 text-slate-500 transition hover:bg-slate-100 hover:text-indigo-600"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </button>,
+                      canCreateChannel ? (
+                        <button
+                          type="button"
+                          onClick={() => setChannelOpen(true)}
+                          aria-label="Create channel"
+                          className="rounded-md p-1 text-slate-500 transition hover:bg-slate-100 hover:text-indigo-600"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                      ) : undefined,
                     )}
                     {channels.length === 0 ? (
-                      <p className="px-3 py-2 text-xs text-slate-500">{q ? "No channels match." : "No channels yet. Create one for a team or project."}</p>
+                      <p className="px-3 py-2 text-xs text-slate-500">{q ? "No channels match." : canCreateChannel ? "No channels yet. Create one for a team or project." : "No channels yet. Admins and HR can create one for your team."}</p>
                     ) : (
                       <ul className="space-y-0.5">{channels.map(threadRow)}</ul>
                     )}
@@ -671,13 +675,13 @@ export default function ChatView() {
               <p className="mt-1.5 text-sm leading-6 text-slate-600">
                 Choose a channel or recent chat on the left, or search for any teammate to start a new one.
               </p>
-              <button
+              {canCreateChannel && <button
                 type="button"
                 onClick={() => setChannelOpen(true)}
                 className="mt-4 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-xs transition hover:bg-slate-50"
               >
                 <Plus className="h-4 w-4" /> Create a channel
-              </button>
+              </button>}
             </div>
           ) : (
             <>
@@ -809,7 +813,7 @@ export default function ChatView() {
         </section>
       </div>
 
-      {channelOpen && (
+      {channelOpen && canCreateChannel && (
         <NewChannelModal
           onClose={() => setChannelOpen(false)}
           onCreated={async (threadId) => {

@@ -104,7 +104,7 @@ export const FOOTER_COLUMNS = [
 
 export const WORKFLOW = [
   { number: "01", title: "Set the rules", body: "Create branches, working hours, geofences and payroll policies in one guided setup." },
-  { number: "02", title: "Keep every punch", body: "Employees clock in from their phone. Offline punches remain timestamped and sync later." },
+  { number: "02", title: "Keep every punch", body: "Employees punch in from their phone. Offline punches remain timestamped and sync later." },
   { number: "03", title: "Close the month", body: "Review attendance, approve leave and generate payroll-ready records without spreadsheet drift." },
 ] as const;
 

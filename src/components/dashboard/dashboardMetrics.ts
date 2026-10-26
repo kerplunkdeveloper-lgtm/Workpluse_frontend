@@ -1,4 +1,8 @@
-export type RosterStatus = "PRESENT" | "REMOTE" | "ON_LEAVE" | "LATE" | "ABSENT";
+/** OFF is a holiday or weekly off: the person is neither present nor absent. */
+export type RosterStatus = "PRESENT" | "REMOTE" | "ON_LEAVE" | "LATE" | "ABSENT" | "OFF";
+
+/** The statuses that have a KPI tile. Absent and day-off people are listed separately. */
+export type KpiStatus = Exclude<RosterStatus, "ABSENT" | "OFF">;
 
 interface AttendanceLike {
   status?: string;
@@ -9,7 +13,7 @@ interface AttendanceLike {
  * What the roster shows for one employee today. Only a real working status counts as
  * present: leave, holiday and week-off rows must not be listed as "Present".
  */
-export function rosterStatusFor(attendance: AttendanceLike | undefined, hasApprovedLeave: boolean): RosterStatus {
+export function rosterStatusFor(attendance: AttendanceLike | undefined, hasApprovedLeave: boolean, isDayOff = false): RosterStatus {
   if (attendance) {
     switch (attendance.status) {
       case "LATE":
@@ -20,13 +24,16 @@ export function rosterStatusFor(attendance: AttendanceLike | undefined, hasAppro
         return "ON_LEAVE";
       case "HOLIDAY":
       case "WEEK_OFF":
+        return "OFF";
       case "ABSENT":
         return "ABSENT";
       default:
         return attendance.isWfh ? "REMOTE" : "PRESENT";
     }
   }
-  return hasApprovedLeave ? "ON_LEAVE" : "ABSENT";
+  if (hasApprovedLeave) return "ON_LEAVE";
+  // No record on a company holiday: they were never expected, so they are not absent.
+  return isDayOff ? "OFF" : "ABSENT";
 }
 
 export interface DashboardCounts {

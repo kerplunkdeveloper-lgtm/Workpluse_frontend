@@ -74,8 +74,8 @@ export const formatShiftTime = (value?: string) => {
 };
 
 /**
- * Live milliseconds worked today: time since check-in minus completed breaks
- * and any break still running. After check-out the stored total is final.
+ * Live milliseconds worked today: time since punch-in minus completed breaks
+ * and any break still running. After punch-out the stored total is final.
  */
 export const liveWorkedMs = (attendance: Partial<Attendance> | undefined, isOnBreak: boolean, now: number) => {
   if (!attendance?.checkIn) return 0;
@@ -86,4 +86,27 @@ export const liveWorkedMs = (attendance: Partial<Attendance> | undefined, isOnBr
     if (breakStart) ms -= now - new Date(breakStart).getTime();
   }
   return Math.max(0, ms);
+};
+
+/** Shift a YYYY-MM-DD date key by N days (+1 for tomorrow, -1 for yesterday). */
+export const shiftDateKey = (dateKey: string, deltaDays: number): string => {
+  if (!dateKey) return localDateKey(new Date());
+  const [y, m, d] = dateKey.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  date.setDate(date.getDate() + deltaDays);
+  return localDateKey(date);
+};
+
+/** Format "YYYY-MM-DD" to human-readable "Sat, 24 Oct 2026". */
+export const formatHumanDate = (dateKey: string, withWeekday = true): string => {
+  if (!dateKey) return "";
+  const [y, m, d] = dateKey.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  if (isNaN(date.getTime())) return dateKey;
+  return date.toLocaleDateString("en-IN", {
+    ...(withWeekday ? { weekday: "short" } : {}),
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 };

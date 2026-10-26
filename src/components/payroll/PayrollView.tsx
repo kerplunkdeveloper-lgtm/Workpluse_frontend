@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { Payslip } from "@/types";
 import { payrollApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -268,6 +269,14 @@ export default function PayrollView() {
                 {" · "}
                 {cycle.days} days, {cycle.dayBasis === "FIXED_30" ? "fixed 30-day" : cycle.dayBasis === "WORKING_DAYS" ? "working-day" : "actual-day"} basis
                 {generateLocked && ` · generate after ${formatCycleDate(new Date(`${cycle.generateAfter}T00:00:00Z`))} ends`}
+                {isAdmin && (
+                  <>
+                    {" · "}
+                    <Link href="/policy" className="font-semibold text-indigo-600 underline hover:text-indigo-800">
+                      Change cycle (1–31, 20th–20th…)
+                    </Link>
+                  </>
+                )}
               </span>
             )}
 

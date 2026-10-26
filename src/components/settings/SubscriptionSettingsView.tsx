@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { authApi, billingApi, orgApi, apiKeysApi, employeesApi } from "@/lib/api";
+import { authApi, billingApi, orgApi, employeesApi } from "@/lib/api";
 import {
   Settings,
   Check,
@@ -12,6 +12,9 @@ import {
   Building,
   Shield,
   Download,
+  Globe,
+  Layers,
+  Webhook,
 } from "lucide-react";
 import { toast } from "sonner";
 import { unwrapList } from "@/lib/utils";
@@ -21,6 +24,18 @@ import WebhooksSettings from "@/components/settings/WebhooksSettings";
 import AdminTwoFactorPolicy from "@/components/settings/AdminTwoFactorPolicy";
 import { confirmDialog } from "@/components/ui/confirmDialog";
 import CompanyLogoSetting from "@/components/settings/CompanyLogoSetting";
+
+const COMMON_TIMEZONES: [string, string][] = [
+  ["Asia/Kolkata", "India (IST, UTC+5:30)"],
+  ["Asia/Dubai", "UAE (GST, UTC+4)"],
+  ["Asia/Singapore", "Singapore (UTC+8)"],
+  ["Europe/London", "UK (GMT/BST)"],
+  ["America/New_York", "US Eastern"],
+  ["America/Chicago", "US Central"],
+  ["America/Los_Angeles", "US Pacific"],
+  ["Australia/Sydney", "Sydney"],
+  ["UTC", "UTC"],
+];
 
 export default function SubscriptionSettingsView() {
   const { user, refreshUser } = useAuth();
@@ -63,17 +78,53 @@ export default function SubscriptionSettingsView() {
     phone: "",
     address: "",
     taxId: "",
+    timezone: "UTC",
   });
   const [isSavingOrg, setIsSavingOrg] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
-  const [apiKeys, setApiKeys] = useState<any[]>([]);
-  const [newApiKey, setNewApiKey] = useState<string | null>(null);
   const [activeEmployeesCount, setActiveEmployeesCount] = useState(0);
   const [cancelling, setCancelling] = useState(false);
-  const [keyName, setKeyName] = useState("Production");
   const [ssoForm, setSsoForm] = useState({ enabled: false, issuer: "", clientId: "", clientSecret: "", emailDomain: "" });
   const [ssoCallbackUrl, setSsoCallbackUrl] = useState("");
   const [isSavingSso, setIsSavingSso] = useState(false);
+
+  const isAdminUser = user?.role === "COMPANY_ADMIN" || user?.role === "SUPER_ADMIN";
+  // Only the sections this user can actually see appear in the left menu.
+  const settingsSections = [
+    { id: "overview", label: "Plan & usage", icon: Settings, show: true },
+    { id: "company", label: "Company profile", icon: Building, show: true },
+    { id: "timezone", label: "Timezone & region", icon: Globe, show: true },
+    { id: "sso", label: "Single sign-on", icon: Shield, show: isAdminUser },
+    { id: "plans", label: "Subscription plans", icon: Layers, show: true },
+    { id: "billing", label: "Billing history", icon: FileText, show: true },
+    { id: "security", label: "Admin security", icon: Shield, show: user?.role === "COMPANY_ADMIN" },
+    { id: "webhooks", label: "Webhooks", icon: Webhook, show: Boolean(user?.features?.hasApiAccess) },
+  ].filter((section) => section.show);
+  const [activeSection, setActiveSection] = useState("overview");
+
+  const goToSection = (id: string) => {
+    setActiveSection(id);
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  // Highlight the menu entry for the section currently under the top of the viewport.
+  const sectionKey = settingsSections.map((section) => section.id).join(",");
+  useEffect(() => {
+    const elements = sectionKey
+      .split(",")
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => Boolean(el));
+    if (elements.length === 0 || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible[0]) setActiveSection(visible[0].target.id);
+      },
+      { rootMargin: "-10% 0px -70% 0px" },
+    );
+    elements.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [sectionKey]);
 
   useEffect(() => {
     if (user?.organization) {
@@ -83,6 +134,7 @@ export default function SubscriptionSettingsView() {
         phone: user.organization.phone || "",
         address: user.organization.address || "",
         taxId: user.organization.taxId || "",
+        timezone: user.organization.timezone || "UTC",
       });
     }
   }, [user]);
@@ -111,7 +163,6 @@ export default function SubscriptionSettingsView() {
     }
     loadPlans();
     billingApi.orders().then((res) => setOrders(unwrapList(res).length ? unwrapList(res) : res?.data || [])).catch(() => {});
-    apiKeysApi.list().then((res) => setApiKeys(unwrapList(res).length ? unwrapList(res) : res?.data || [])).catch(() => {});
     employeesApi
       .list({ page: 1, limit: 1, status: "ACTIVE" })
       .then((res) => setActiveEmployeesCount(res?.total ?? unwrapList(res).length))
@@ -218,29 +269,6 @@ export default function SubscriptionSettingsView() {
     }
   };
 
-  const createApiKey = async () => {
-    try {
-      const res = await apiKeysApi.create(keyName.trim() || "Production");
-      const raw = res?.data?.apiKey;
-      if (raw) setNewApiKey(raw);
-      const list = await apiKeysApi.list();
-      setApiKeys(unwrapList(list).length ? unwrapList(list) : list?.data || []);
-      toast.success("API key created. Copy it now — it will not be shown again.");
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Could not create API key");
-    }
-  };
-
-  const revokeApiKey = async (id: string) => {
-    try {
-      await apiKeysApi.revoke(id);
-      setApiKeys((prev) => prev.map((k) => (k.id === id ? { ...k, isActive: false } : k)));
-      toast.success("API key revoked");
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Could not revoke key");
-    }
-  };
-
   const handleOrgSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSavingOrg(true);
@@ -341,8 +369,41 @@ export default function SubscriptionSettingsView() {
         </p>
       </div>
 
+      <div className="space-y-6">
+        {/* Top tab bar: sticky, one row that scrolls sideways when the screen is too narrow. */}
+        <nav
+          aria-label="Settings sections"
+          className="sticky top-2 z-20 -mx-1 rounded-2xl border border-slate-200/80 bg-white/85 p-1.5 shadow-[0_10px_30px_-18px_rgba(15,23,42,0.35)] backdrop-blur-xl"
+        >
+          <ul className="flex snap-x snap-mandatory gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {settingsSections.map((section) => {
+              const active = activeSection === section.id;
+              return (
+                <li key={section.id} className="shrink-0 snap-start">
+                  <button
+                    type="button"
+                    onClick={() => goToSection(section.id)}
+                    aria-current={active ? "true" : undefined}
+                    className={`group flex items-center gap-2 whitespace-nowrap rounded-xl px-3.5 py-2.5 text-[13px] font-semibold transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 ${
+                      active
+                        ? "bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-[0_8px_20px_-8px_rgba(79,70,229,0.7)]"
+                        : "text-slate-600 hover:bg-indigo-50 hover:text-indigo-700"
+                    }`}
+                  >
+                    <section.icon className={`h-4 w-4 shrink-0 transition-transform duration-200 ${active ? "" : "text-slate-400 group-hover:scale-110 group-hover:text-indigo-600"}`} />
+                    <span className="hidden min-[420px]:inline">{section.label}</span>
+                    {/* On very narrow phones only the active tab shows its name, so the row stays compact. */}
+                    {active && <span className="min-[420px]:hidden">{section.label}</span>}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+
+        <div className="min-w-0 space-y-8">
       {/* Current Active Plan Overview Card */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs relative overflow-hidden">
+      <div id="overview" className="scroll-mt-24 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs relative overflow-hidden">
         <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-indigo-50 to-sky-50 rounded-bl-full opacity-60 pointer-events-none" />
         <div className="flex flex-wrap items-center justify-between gap-6 relative">
           <div className="space-y-2">
@@ -402,7 +463,7 @@ export default function SubscriptionSettingsView() {
       </div>
 
       {/* Organization Profile */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs">
+      <div id="company" className="scroll-mt-24 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs">
         <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
           <div className="p-2.5 rounded-2xl bg-indigo-50 text-indigo-600">
             <Building className="w-5 h-5" />
@@ -483,8 +544,52 @@ export default function SubscriptionSettingsView() {
         </form>
       </div>
 
+      {/* Timezone & region */}
+      <div id="timezone" className="scroll-mt-24 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs">
+        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+          <div className="p-2.5 rounded-2xl bg-sky-50 text-sky-600">
+            <Globe className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-base font-semibold text-slate-900">Timezone & region</h3>
+            <p className="text-xs text-slate-500">Sets the clock your attendance, late marks and dashboard charts run on</p>
+          </div>
+        </div>
+        <form onSubmit={handleOrgSubmit} className="space-y-4">
+          <div className="space-y-1.5 max-w-md">
+            <label htmlFor="org-timezone" className="text-[13px] font-medium text-slate-700">Company timezone</label>
+            <select
+              id="org-timezone"
+              value={orgForm.timezone}
+              onChange={(e) => setOrgForm({ ...orgForm, timezone: e.target.value })}
+              className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-slate-900"
+            >
+              {COMMON_TIMEZONES.map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+              {!COMMON_TIMEZONES.some(([value]) => value === orgForm.timezone) && (
+                <option value={orgForm.timezone}>{orgForm.timezone}</option>
+              )}
+            </select>
+            <p className="text-[11px] text-slate-500">
+              Attendance days, punch-in times, late marks and the dashboard punch-in chart all use this timezone. Changes can take a few minutes to apply. Past attendance keeps the date it was recorded with.
+            </p>
+          </div>
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={isSavingOrg}
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold shadow-xs flex items-center gap-2 transition disabled:opacity-60"
+            >
+              {isSavingOrg ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {isSavingOrg ? "Saving..." : "Save timezone"}
+            </button>
+          </div>
+        </form>
+      </div>
+
       {user?.role === "COMPANY_ADMIN" || user?.role === "SUPER_ADMIN" ? (
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs">
+        <div id="sso" className="scroll-mt-24 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs">
           <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
             <div className="p-2.5 rounded-2xl bg-violet-50 text-violet-600"><Shield className="w-5 h-5" /></div>
             <div>
@@ -503,14 +608,14 @@ export default function SubscriptionSettingsView() {
               <input type="password" value={ssoForm.clientSecret} onChange={(e) => setSsoForm({ ...ssoForm, clientSecret: e.target.value })} placeholder="OIDC client secret (leave blank to keep)" className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 text-slate-900" autoComplete="new-password" />
               <input value={ssoForm.emailDomain} onChange={(e) => setSsoForm({ ...ssoForm, emailDomain: e.target.value })} placeholder="Allowed email domain (company.com)" className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 text-slate-900" />
             </div>
-            <p className="text-[11px] text-slate-500">Register this callback URL with your identity provider: <code className="rounded bg-slate-100 px-1.5 py-0.5">{ssoCallbackUrl || "Configure BACKEND_PUBLIC_URL on the API"}</code></p>
+            {/* <p className="text-[11px] text-slate-500">Register this callback URL with your identity provider: <code className="rounded bg-slate-100 px-1.5 py-0.5">{ssoCallbackUrl || "Configure BACKEND_PUBLIC_URL on the API"}</code></p> */}
             <div className="flex justify-end"><button type="submit" disabled={isSavingSso} className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold flex items-center gap-2 disabled:opacity-60">{isSavingSso ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}Save SSO Settings</button></div>
           </form>
         </div>
       ) : null}
 
       {/* Billing Cycle Switcher */}
-      <div className="flex flex-col items-center text-center space-y-3 pt-4">
+      <div id="plans" className="scroll-mt-24 flex flex-col items-center text-center space-y-3 pt-4">
         <h3 className="text-base font-semibold text-slate-900">Choose Your Subscription Tier</h3>
         <p className="text-xs text-slate-500 max-w-md">
           Scale effortlessly as your workforce grows. Save 20% with annual billing.
@@ -645,7 +750,7 @@ export default function SubscriptionSettingsView() {
       </div>
 
       {/* Billing History Section */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs">
+      <div id="billing" className="scroll-mt-24 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs">
         <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
           <div className="p-2.5 rounded-2xl bg-indigo-50 text-indigo-600">
             <FileText className="w-5 h-5" />
@@ -757,54 +862,10 @@ export default function SubscriptionSettingsView() {
         )}
       </div>
 
-      {user?.features?.hasApiAccess && (
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs">
-          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
-            <div className="p-2.5 rounded-2xl bg-indigo-50 text-indigo-600">
-              <Shield className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-base font-semibold text-slate-900">Integration API keys</h3>
-              <p className="text-xs text-slate-500">Scoped keys for attendance and employee read APIs. Shown once at creation.</p>
-            </div>
-          </div>
-          {newApiKey && (
-            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950 break-all">
-              <p className="font-bold mb-1">Copy this key now</p>
-              {newApiKey}
-            </div>
-          )}
-          <div className="flex gap-2 mb-4">
-            <input
-              value={keyName}
-              onChange={(e) => setKeyName(e.target.value)}
-              className="flex-1 px-3 py-2 rounded-xl text-xs border border-slate-200"
-              placeholder="Key name"
-            />
-            <button type="button" onClick={createApiKey} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold">
-              Create key
-            </button>
-          </div>
-          <div className="space-y-2">
-            {apiKeys.length === 0 && <p className="text-xs text-slate-400">No keys yet.</p>}
-            {apiKeys.map((key) => (
-              <div key={key.id} className="flex items-center justify-between text-xs border border-slate-100 rounded-xl px-3 py-2">
-                <div>
-                  <p className="font-semibold text-slate-800">{key.name} · {key.keyPrefix}…</p>
-                  <p className="text-slate-400">{key.isActive === false ? "Revoked" : "Active"}</p>
-                </div>
-                {key.isActive !== false && (
-                  <button type="button" onClick={() => revokeApiKey(key.id)} className="text-rose-600 font-semibold">
-                    Revoke
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {user?.role === "COMPANY_ADMIN" && <AdminTwoFactorPolicy />}
-      {user?.features?.hasApiAccess && <WebhooksSettings />}
+      {user?.role === "COMPANY_ADMIN" && <div id="security" className="scroll-mt-24"><AdminTwoFactorPolicy /></div>}
+      {user?.features?.hasApiAccess && <div id="webhooks" className="scroll-mt-24"><WebhooksSettings /></div>}
+      </div>
+      </div>
     </div>
   );
 }
