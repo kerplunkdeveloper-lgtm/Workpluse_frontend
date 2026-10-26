@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { CalendarRange, FileSearch, Pencil, Plus, RefreshCw } from "lucide-react";
+import { CalendarRange, ExternalLink, FileSearch, MapPin, Pencil, Plus, RefreshCw } from "lucide-react";
 import { attendanceApi, correctionsApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { formatTime, unwrapList } from "@/lib/utils";
@@ -11,6 +11,7 @@ import Pagination from "@/components/ui/Pagination";
 import RegularizationModal from "./RegularizationModal";
 import AdminMarkDialog, { type AdminMarkInitial } from "./AdminMarkDialog";
 import EmployeeCombobox, { type EmployeeOption } from "./EmployeeCombobox";
+import AttendanceDateFilter, { ATTENDANCE_RANGES, type AttendanceRangeValue } from "./AttendanceDateFilter";
 import { breakMinutesOf, formatHm, localDateKey, lunchMinutesOf, recordDateKey, statusMeta, workedMinutes } from "./attendanceUtils";
 
 const TEAM_ROLES = ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"];
@@ -19,9 +20,79 @@ const workModeDisplay = (row: Attendance) => {
   const isRemote = row.status === "WORK_FROM_HOME" || row.isWorkFromHome || Boolean(row.wfhNote);
   return {
     label: isRemote ? "Remote / WFH" : "Office",
-    note: row.checkInLocation || row.wfhNote || "",
+    note: row.wfhNote || "",
   };
 };
+
+/** Metres between two GPS points. */
+const metersBetween = (aLat: number, aLng: number, bLat: number, bLng: number) => {
+  const rad = (d: number) => (d * Math.PI) / 180;
+  const h = Math.sin(rad(bLat - aLat) / 2) ** 2 + Math.cos(rad(aLat)) * Math.cos(rad(bLat)) * Math.sin(rad(bLng - aLng) / 2) ** 2;
+  return 2 * 6371000 * Math.asin(Math.sqrt(h));
+};
+
+const mapsHref = (lat: unknown, lng: unknown, label?: string | null) => {
+  const la = Number(lat);
+  const ln = Number(lng);
+  if (lat != null && lng != null && Number.isFinite(la) && Number.isFinite(ln)) return `https://www.google.com/maps?q=${la},${ln}`;
+  return label ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(label)}` : null;
+};
+
+const formatMeters = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`);
+
+/**
+ * One punch (in or out): where it happened, a link to the map, and how far from the branch it was.
+ * Only admins and HR receive these fields; the server leaves them out for everyone else.
+ */
+function PunchPlace({ kind, happened, label, lat, lng, branch }: { kind: "In" | "Out"; happened: boolean; label?: string | null; lat?: unknown; lng?: unknown; branch?: Attendance["branch"] }) {
+  const href = mapsHref(lat, lng, label);
+  const la = Number(lat);
+  const ln = Number(lng);
+  const bLat = Number((branch as any)?.latitude);
+  const bLng = Number((branch as any)?.longitude);
+  const hasBoth = lat != null && lng != null && Number.isFinite(la) && Number.isFinite(ln) && Number.isFinite(bLat) && Number.isFinite(bLng);
+  const distance = hasBoth ? metersBetween(la, ln, bLat, bLng) : null;
+  const radius = Number(branch?.radiusMeters || 0);
+  const outside = distance != null && radius > 0 && distance > radius;
+  const text = label || (lat != null && lng != null && Number.isFinite(la) ? `${la.toFixed(4)}, ${ln.toFixed(4)}` : null);
+
+  return (
+    <div className="flex items-start gap-2">
+      <span className={`mt-0.5 inline-flex h-4 w-8 shrink-0 items-center justify-center rounded text-[10px] font-bold uppercase ${kind === "In" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>{kind}</span>
+      {!happened ? (
+        <span className="text-xs text-slate-400">—</span>
+      ) : !text ? (
+        <span className="text-xs text-slate-400">Not recorded</span>
+      ) : (
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <MapPin aria-hidden="true" className="h-3 w-3 shrink-0 text-rose-500" />
+            <span className="max-w-[13rem] truncate text-xs font-medium text-slate-800" title={text}>{text}</span>
+            {href && (
+              <a href={href} target="_blank" rel="noreferrer" aria-label={`Open punch-${kind.toLowerCase()} location in Maps`} title="Open in Maps" className="shrink-0 text-indigo-600 hover:text-indigo-800">
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+          </div>
+          {distance != null && (
+            <p className={`mt-0.5 text-[11px] ${outside ? "font-semibold text-amber-700" : "text-slate-500"}`}>
+              {outside ? `Outside range · ${formatMeters(distance)} from ${branch?.name || "branch"}` : `${formatMeters(distance)} from ${branch?.name || "branch"}`}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PunchLocations({ row }: { row: Attendance }) {
+  return (
+    <div className="space-y-1.5">
+      <PunchPlace kind="In" happened={Boolean(row.checkIn)} label={row.checkInLocation} lat={row.checkInLatitude} lng={row.checkInLongitude} branch={row.branch} />
+      <PunchPlace kind="Out" happened={Boolean(row.checkOut)} label={row.checkOutLocation} lat={row.checkOutLatitude} lng={row.checkOutLongitude} branch={row.branch} />
+    </div>
+  );
+}
 
 const STATUS_FILTERS = [
   { value: "ALL", label: "All" },
@@ -33,22 +104,26 @@ const STATUS_FILTERS = [
   { value: "ABSENT", label: "Absent" },
 ];
 
-const RANGES = [
-  { value: "today", label: "Today" },
-  { value: "7d", label: "Last 7 days" },
-  { value: "month", label: "This month" },
-  { value: "lastMonth", label: "Last month" },
-  { value: "all", label: "All time" },
-  { value: "custom", label: "Custom range" },
-] as const;
-type RangeValue = (typeof RANGES)[number]["value"];
-
-const rangeDates = (range: RangeValue, from: string, to: string): { from?: string; to?: string } => {
+const rangeDates = (
+  range: AttendanceRangeValue,
+  customFrom: string,
+  customTo: string,
+  singleDate: string
+): { from?: string; to?: string } => {
   const today = new Date();
   const key = localDateKey;
   switch (range) {
     case "today":
       return { from: key(today), to: key(today) };
+    case "yesterday": {
+      const y = new Date(today);
+      y.setDate(y.getDate() - 1);
+      return { from: key(y), to: key(y) };
+    }
+    case "single": {
+      const d = singleDate || key(today);
+      return { from: d, to: d };
+    }
     case "7d": {
       const start = new Date(today);
       start.setDate(start.getDate() - 6);
@@ -59,7 +134,7 @@ const rangeDates = (range: RangeValue, from: string, to: string): { from?: strin
     case "lastMonth":
       return { from: key(new Date(today.getFullYear(), today.getMonth() - 1, 1)), to: key(new Date(today.getFullYear(), today.getMonth(), 0)) };
     case "custom":
-      return { from: from || undefined, to: to || undefined };
+      return { from: customFrom || undefined, to: customTo || undefined };
     default:
       return {};
   }
@@ -74,7 +149,8 @@ export default function AttendanceHistoryView() {
   const params = useSearchParams();
 
   const status = (params?.get("status") || "ALL").toUpperCase();
-  const range = (RANGES.some((r) => r.value === params?.get("range")) ? params?.get("range") : "month") as RangeValue;
+  const range = (ATTENDANCE_RANGES.some((r) => r.value === params?.get("range")) ? params?.get("range") : "month") as AttendanceRangeValue;
+  const singleDate = params?.get("date") || params?.get("from") || localDateKey(new Date());
   const customFrom = params?.get("from") || "";
   const customTo = params?.get("to") || "";
   const employee: EmployeeOption | null = params?.get("employee")
@@ -106,7 +182,7 @@ export default function AttendanceHistoryView() {
     [params, pathname, router],
   );
 
-  const { from, to } = useMemo(() => rangeDates(range, customFrom, customTo), [range, customFrom, customTo]);
+  const { from, to } = useMemo(() => rangeDates(range, customFrom, customTo, singleDate), [range, customFrom, customTo, singleDate]);
 
   useEffect(() => {
     let active = true;
@@ -210,24 +286,27 @@ useEffect(() => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <label className="relative">
-            <span className="sr-only">Date range</span>
-            <CalendarRange className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-            <select
-              value={range}
-              onChange={(e) => setFilters({ range: e.target.value, ...(e.target.value !== "custom" ? { from: null, to: null } : {}) })}
-              className="h-9 appearance-none rounded-lg bg-white pl-8 pr-8 text-sm font-medium text-slate-700 ring-1 ring-slate-200 hover:ring-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              {RANGES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-            </select>
-          </label>
-          {range === "custom" && (
-            <div className="flex items-center gap-1.5">
-              <input type="date" aria-label="From date" value={customFrom} max={customTo || undefined} onChange={(e) => setFilters({ from: e.target.value })} className="h-9 rounded-lg px-2.5 text-sm text-slate-700 ring-1 ring-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-              <span className="text-xs text-slate-400">to</span>
-              <input type="date" aria-label="To date" value={customTo} min={customFrom || undefined} onChange={(e) => setFilters({ to: e.target.value })} className="h-9 rounded-lg px-2.5 text-sm text-slate-700 ring-1 ring-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-            </div>
-          )}
+          <AttendanceDateFilter
+            range={range}
+            singleDate={singleDate}
+            customFrom={customFrom}
+            customTo={customTo}
+            onChangeRange={(nextRange) => {
+              if (nextRange === "single") {
+                setFilters({ range: "single", date: singleDate || localDateKey(new Date()), from: null, to: null });
+              } else if (nextRange === "custom") {
+                setFilters({ range: "custom", date: null });
+              } else {
+                setFilters({ range: nextRange, date: null, from: null, to: null });
+              }
+            }}
+            onChangeSingleDate={(nextDate) => {
+              setFilters({ range: "single", date: nextDate, from: nextDate, to: nextDate });
+            }}
+            onChangeCustomRange={(nextFrom, nextTo) => {
+              setFilters({ range: "custom", from: nextFrom, to: nextTo, date: null });
+            }}
+          />
           {isTeamView && (
             <EmployeeCombobox
               value={employee}
@@ -246,9 +325,9 @@ useEffect(() => {
         loading={loading}
         failed={failed}
         isTeamView={isTeamView}
-        filtered={status !== "ALL" || Boolean(employee) || range !== "all"}
+        filtered={status !== "ALL" || Boolean(employee) || range !== "month"}
         onRetry={reload}
-        onClearFilters={() => setFilters({ status: null, range: "all", from: null, to: null, employee: null, employeeName: null })}
+        onClearFilters={() => setFilters({ status: null, range: "month", date: null, from: null, to: null, employee: null, employeeName: null })}
         onCorrect={openCorrection}
         correctionRequests={correctionRequests}
       />
@@ -327,8 +406,12 @@ const toHHmm = (iso: string) => {
 };
 
 const prettyRange = (from: string, to?: string) => {
-  const fmt = (k: string) => new Date(`${k}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-  return !to || from === to ? fmt(from) : `${fmt(from)} – ${fmt(to)}`;
+  const fmt = (k: string) => {
+    const [y, m, d] = k.split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    return isNaN(dt.getTime()) ? k : dt.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  };
+  return !to || from === to ? `${fmt(from)} (Particular day)` : `${fmt(from)} – ${fmt(to)}`;
 };
 
 const dayLabel = (row: Attendance) => {
@@ -448,7 +531,8 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
               <th className={`${th} hidden xl:table-cell`}>Break</th>
               <th className={`${th} hidden xl:table-cell`}>Lunch</th>
               <th className={`${th} hidden xl:table-cell`}>Overtime</th>
-              <th className={`${th} hidden lg:table-cell`}>{isTeamView ? "Correction reason" : "Location"}</th>
+              {isTeamView && <th className={`${th} hidden md:table-cell`}>Punch location</th>}
+              {isTeamView && <th className={`${th} hidden lg:table-cell`}>Correction reason</th>}
               <th className={th}>Status</th>
               <th className={`${th} pr-5 text-right`}><span className="sr-only">Actions</span></th>
             </tr>
@@ -457,7 +541,7 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
             {loading
               ? skeletonRows.map((_, i) => (
                   <tr key={i}>
-                    <td colSpan={isTeamView ? 12 : 11} className="px-5 py-3.5"><span className="skeleton-shimmer block h-5 rounded-md" /></td>
+                    <td colSpan={isTeamView ? 13 : 10} className="px-5 py-3.5"><span className="skeleton-shimmer block h-5 rounded-md" /></td>
                   </tr>
                 ))
               : rows.map((row) => {
@@ -493,11 +577,18 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
                       <td className="hidden whitespace-nowrap px-4 py-3 tabular-nums text-slate-500 xl:table-cell">{breakMinutesOf(row) ? formatHm(breakMinutesOf(row)) : "—"}</td>
                       <td className="hidden whitespace-nowrap px-4 py-3 tabular-nums text-slate-500 xl:table-cell">{lunchMinutesOf(row) ? formatHm(lunchMinutesOf(row)) : "—"}</td>
                       <td className="hidden whitespace-nowrap px-4 py-3 tabular-nums text-indigo-700 xl:table-cell">{row.overtimeMinutes ? formatHm(row.overtimeMinutes) : "—"}</td>
-                      <td className="hidden max-w-[18rem] px-4 py-3 lg:table-cell">
-                        {(isTeamView ? (row.correctionReason || correction?.reason) : (row.checkInLocation || row.branch?.name)) ? (
-                          <ReasonCell text={String(isTeamView ? (row.correctionReason || correction?.reason) : (row.checkInLocation || row.branch?.name))} maxW="max-w-[16rem]" />
-                        ) : <span className="text-xs text-slate-400">—</span>}
-                      </td>
+                      {isTeamView && (
+                        <td className="hidden min-w-[15rem] px-4 py-3 md:table-cell">
+                          <PunchLocations row={row} />
+                        </td>
+                      )}
+                      {isTeamView && (
+                        <td className="hidden max-w-[18rem] px-4 py-3 lg:table-cell">
+                          {(row.correctionReason || correction?.reason) ? (
+                            <ReasonCell text={String(row.correctionReason || correction?.reason)} maxW="max-w-[16rem]" />
+                          ) : <span className="text-xs text-slate-400">—</span>}
+                        </td>
+                      )}
 
                       <td className="whitespace-nowrap px-4 py-3"><StatusBadge status={row.status} /></td>
                       <td className="py-3 pl-4 pr-5 text-right">
@@ -534,7 +625,7 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
                       {isTeamView && <Avatar row={row} />}
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-slate-900">{isTeamView ? employeeName(row) : `${day.weekday}, ${day.date}`}</p>
-                        <p className="truncate text-xs text-slate-500">{isTeamView ? `${day.weekday}, ${day.date}` : row.checkInLocation || row.branch?.name || "—"}</p>
+                        <p className="truncate text-xs text-slate-500">{isTeamView ? `${day.weekday}, ${day.date}` : row.branch?.name || "—"}</p>
                         {isTeamView && <p className="mt-1 whitespace-normal break-words text-[11px] font-semibold leading-4 text-indigo-600">{workMode.label}{workMode.note ? ` · ${workMode.note}` : ""}</p>}
                       </div>
                     </div>
@@ -545,6 +636,12 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
                     <div><dt className="text-slate-500">Out</dt><dd className="mt-0.5 font-semibold tabular-nums text-slate-900">{row.checkIn && !row.checkOut ? "Working" : timeOrDash(row.checkOut)}</dd></div>
                     <div><dt className="text-slate-500">Worked</dt><dd className="mt-0.5 font-semibold tabular-nums text-slate-900">{mins ? formatHm(mins) : "—"}</dd></div>
                   </dl>
+                  {isTeamView && (
+                    <div className="mt-2 rounded-xl bg-white px-3 py-2.5 ring-1 ring-slate-200">
+                      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Punch location</p>
+                      <PunchLocations row={row} />
+                    </div>
+                  )}
 {(row.correctionReason || correction?.reason) && (
                     <div className="mt-2 rounded-xl bg-indigo-50/70 px-3 py-2 ring-1 ring-indigo-100">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-indigo-600">Correction reason</p>

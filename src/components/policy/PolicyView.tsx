@@ -6,6 +6,7 @@ import { unwrapItem } from "@/lib/utils";
 import { SlidersHorizontal, Loader2, CheckCircle2, Globe, Building2, Check, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
+import WeeklyOffCard from "./WeeklyOffCard";
 import { cyclePeriod, formatCycleDate, MONTH_NAMES } from "@/lib/payrollCycle";
 
 const CYCLE_PRESETS = [
@@ -43,6 +44,8 @@ export default function PolicyView() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isDefault, setIsDefault] = useState(false);
+  // The company weekly off saves on its own (it updates every shift), not with the main "Save policy" button.
+  const [weeklyOff, setWeeklyOff] = useState("0");
   const [customCycle, setCustomCycle] = useState(false);
   const [lateRules, setLateRules] = useState<any[]>([]);
   const [lateRuleForm, setLateRuleForm] = useState({ lateDays: "", lopDays: "1", graceMinutes: "15", isActive: true, remarks: "" });
@@ -144,6 +147,7 @@ export default function PolicyView() {
             payrollCycleEndDay: Number(policy.payrollCycleEndDay ?? DEFAULTS.payrollCycleEndDay),
             payrollDayBasis: String(policy.payrollDayBasis ?? DEFAULTS.payrollDayBasis),
           });
+          setWeeklyOff(String(policy.weeklyOffDays ?? "0"));
           setIsDefault(Boolean(policy.isDefault));
         }
       } catch (err: any) {
@@ -158,7 +162,7 @@ export default function PolicyView() {
     setForm((prev) => ({ ...prev, [key]: Number(value) }));
   };
 
-  // The check-in location rule applies to every employee at once, so it saves
+  // The punch-in location rule applies to every employee at once, so it saves
   // immediately instead of waiting for the main "Save policy" button.
   const [savingLocation, setSavingLocation] = useState(false);
   const setLocationRule = async (officeOnly: boolean) => {
@@ -170,14 +174,14 @@ export default function PolicyView() {
       const res = await policyApi.update({ geofenceStrict: officeOnly });
       if (res?.success === false) throw new Error(res?.message || "Save failed");
       setIsDefault(false);
-      toast.success(officeOnly ? "Office-only check-in is on" : "Check-in from anywhere is on", {
+      toast.success(officeOnly ? "Office-only punch-in is on" : "Punch-in from anywhere is on", {
         description: officeOnly
-          ? "Employees must be inside their branch radius to check in. Work From Home, Client Visit and Travel still work from anywhere."
-          : "All employees can now check in from any location.",
+          ? "Employees must be inside their branch radius to punch in. Work From Home, Client Visit and Travel still work from anywhere."
+          : "All employees can now punch in from any location.",
       });
     } catch (err: any) {
       setForm((prev) => ({ ...prev, geofenceStrict: previous }));
-      toast.error(err.response?.data?.message || err.message || "Couldn't update the check-in rule. Please try again.");
+      toast.error(err.response?.data?.message || err.message || "Couldn't update the punch-in rule. Please try again.");
     } finally {
       setSavingLocation(false);
     }
@@ -232,7 +236,7 @@ export default function PolicyView() {
           <form onSubmit={saveLateRule} className="mt-5 space-y-4">
             <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-800">Late days <span className="text-rose-500">*</span></span><input required type="number" min="1" step="1" value={lateRuleForm.lateDays} onChange={(e) => setLateRuleForm((p) => ({ ...p, lateDays: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm" /><span className="text-xs text-slate-400">Every this many late arrivals counts as LOP.</span></label>
             <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-800">LOP days <span className="text-rose-500">*</span></span><select required value={lateRuleForm.lopDays} onChange={(e) => setLateRuleForm((p) => ({ ...p, lopDays: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm"><option value="0.5">0.5 day</option><option value="1">1 day</option><option value="1.5">1.5 days</option><option value="2">2 days</option></select><span className="text-xs text-slate-400">LOP applied for each completed block of late days.</span></label>
-            <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-800">Grace (minutes)</span><input type="number" min="0" max="1440" value={lateRuleForm.graceMinutes} onChange={(e) => setLateRuleForm((p) => ({ ...p, graceMinutes: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm" /><span className="text-xs text-slate-400">Check-in after shift start + grace counts as late.</span></label>
+            <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-800">Grace (minutes)</span><input type="number" min="0" max="1440" value={lateRuleForm.graceMinutes} onChange={(e) => setLateRuleForm((p) => ({ ...p, graceMinutes: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm" /><span className="text-xs text-slate-400">Punch-in after shift start + grace counts as late.</span></label>
             <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-800">Status</span><select value={lateRuleForm.isActive ? "true" : "false"} onChange={(e) => setLateRuleForm((p) => ({ ...p, isActive: e.target.value === "true" }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm"><option value="true">Active</option><option value="false">Inactive</option></select></label>
             <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-800">Remarks</span><input value={lateRuleForm.remarks} onChange={(e) => setLateRuleForm((p) => ({ ...p, remarks: e.target.value }))} placeholder="Optional note" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm" /></label>
             <div className="flex gap-3 pt-1"><button disabled={lateRuleSaving} type="submit" className="inline-flex items-center gap-2 rounded-xl bg-cyan-500 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-600 disabled:opacity-60"><CheckCircle2 className="h-4 w-4" />{lateRuleSaving ? "Saving..." : editingLateRuleId ? "Update Rule" : "Save Policy"}</button>{editingLateRuleId && <button type="button" onClick={resetLateRuleForm} className="rounded-xl bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-600">Cancel</button>}</div>
@@ -244,10 +248,12 @@ export default function PolicyView() {
         </div>
       </section>
 
+      <WeeklyOffCard saved={weeklyOff} onSaved={(days) => { setWeeklyOff(days); setIsDefault(false); }} />
+
       <section className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4 shadow-xs" aria-labelledby="checkin-location-heading">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 id="checkin-location-heading" className="text-sm font-semibold text-slate-900">Where can employees check in?</h2>
+            <h2 id="checkin-location-heading" className="text-sm font-semibold text-slate-900">Where can employees punch in?</h2>
             <p className="text-xs text-slate-500">Applies to all employees right away. You can switch it back at any time.</p>
           </div>
           {savingLocation && <Loader2 className="w-4 h-4 animate-spin text-indigo-600 shrink-0" aria-label="Saving" />}
@@ -258,7 +264,7 @@ export default function PolicyView() {
               officeOnly: false,
               icon: Globe,
               title: "Anywhere",
-              body: "Employees can check in from any location. Their location is still recorded on each punch.",
+              body: "Employees can punch in from any location. Their location is still recorded on each punch.",
             },
             {
               officeOnly: true,
@@ -294,7 +300,7 @@ export default function PolicyView() {
         </div>
         {form.geofenceStrict && (
           <p className="text-xs text-slate-500">
-            Each branch&apos;s location and radius are set on the Branches page. Branches without a location don&apos;t restrict check-in.
+            Each branch&apos;s location and radius are set on the Branches page. Branches without a location don&apos;t restrict punch-in.
           </p>
         )}
       </section>

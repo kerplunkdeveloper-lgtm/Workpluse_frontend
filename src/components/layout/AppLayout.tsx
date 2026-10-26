@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import Brand from "@/components/ui/Brand";
 import { useAttendance } from "@/context/AttendanceContext";
@@ -48,7 +48,10 @@ import {
   Award,
   Command,
   Home,
+  Megaphone,
+  Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { employeesApi, notificationsApi } from "@/lib/api";
 import { NotificationItem } from "@/types";
@@ -202,13 +205,37 @@ function itemMatches(item: NavItem, query: string) {
   );
 }
 
+/** "just now", "5 min ago", "3 h ago", or the date once it is older than a day. */
+function timeAgo(value?: string) {
+  const time = value ? new Date(value).getTime() : NaN;
+  if (!Number.isFinite(time)) return "";
+  const minutes = Math.max(0, Math.round((Date.now() - time) / 60000));
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  if (minutes < 1440) return `${Math.round(minutes / 60)} h ago`;
+  return new Date(time).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+}
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, role, logout } = useAuth();
   const isPlatformOwner = role === "SUPER_ADMIN";
   const { todayStatus, checkIn, checkOut, startBreak, endBreak, isActionLoading, isWithinGeofence, locationLabel } = useAttendance();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMobileMenuOpen(false);
+    window.addEventListener("keydown", onKey);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previous;
+    };
+  }, [mobileMenuOpen]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notificationFilter, setNotificationFilter] = useState<"ALL" | "UNREAD">("ALL");
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
@@ -221,6 +248,46 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [pendingPunch, setPendingPunch] = useState<PunchConfirmAction | null>(null);
   const [openSections, setOpenSections] = useState<string[]>(["my-work", "pay", "people", "workplace", "insights"]);
   const [seatCount, setSeatCount] = useState<number | null>(null);
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
+  const [broadcastTitle, setBroadcastTitle] = useState("");
+  const [broadcastMessage, setBroadcastMessage] = useState("");
+  const [sendingBroadcast, setSendingBroadcast] = useState(false);
+
+  const handleSendBroadcast = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const title = broadcastTitle.trim();
+    const message = broadcastMessage.trim();
+    if (!title || !message) {
+      toast.error("Title and message are required");
+      return;
+    }
+    setSendingBroadcast(true);
+    try {
+      const res = await notificationsApi.broadcast({ title, message });
+      if (res?.success) {
+        toast.success(res.message || `Announcement dispatched to active employees`);
+        setBroadcastOpen(false);
+        setBroadcastTitle("");
+        setBroadcastMessage("");
+        try {
+          const updated = await notificationsApi.getAll();
+          const items = unwrapList<NotificationItem>(updated);
+          setNotifications(items);
+          setUnreadCount(
+            typeof updated?.unreadCount === "number"
+              ? updated.unreadCount
+              : items.filter((n) => !n.isRead).length
+          );
+        } catch {}
+      } else {
+        toast.error(res?.message || "Could not send broadcast notification");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || "Failed to broadcast");
+    } finally {
+      setSendingBroadcast(false);
+    }
+  };
 
   const desktopNavRef = useRef<HTMLDivElement>(null);
   const mobileNavRef = useRef<HTMLDivElement>(null);
@@ -336,7 +403,35 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
     loadNotifications();
     loadSeatCount();
+
+    // Reminders arrive while the app is open, so keep the bell current instead of loading it once.
+    const refresh = () => {
+      if (document.visibilityState === "visible") loadNotifications();
+    };
+    const timer = setInterval(refresh, 60000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+    };
   }, []);
+
+  const openNotification = async (n: NotificationItem) => {
+    if (!n.isRead) {
+      setNotifications((prev) => prev.map((item) => (item.id === n.id ? { ...item, isRead: true } : item)));
+      setUnreadCount((count) => Math.max(0, count - 1));
+      try {
+        await notificationsApi.markRead(n.id);
+      } catch {
+        // The next refresh puts the real state back.
+      }
+    }
+    // Punch reminders take you straight to where you punch.
+    if (n.type === "ATTENDANCE") {
+      setNotificationsOpen(false);
+      router.push("/attendance");
+    }
+  };
 
   const visibleSections = (isPlatformOwner ? PLATFORM_SECTIONS : NAV_SECTIONS).map((section) => ({
     ...section,
@@ -776,7 +871,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   }`}
                 />
                 <span className="font-semibold text-slate-800 text-xs">
-                  {isCheckedIn ? (isOnBreak ? "On Break" : "Clocked In") : "Clocked Out"}
+                  {isCheckedIn ? (isOnBreak ? "On Break" : "Punched In") : "Punched Out"}
                 </span>
                 <span className="text-slate-300">•</span>
                 <span className="text-xs text-slate-500 flex items-center gap-1">
@@ -858,7 +953,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.96 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-96 rounded-2xl bg-white border border-slate-200 shadow-2xl p-4 z-50 text-slate-800"
+                    className="fixed inset-x-3 top-20 sm:absolute sm:inset-auto sm:right-0 sm:mt-2 sm:w-96 max-h-[82dvh] flex flex-col rounded-2xl bg-white border border-slate-200 shadow-2xl p-4 z-50 text-slate-800"
                   >
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-2">
                       <div className="flex items-center gap-2">
@@ -920,9 +1015,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         </div>
                       ) : (
                         filteredNotifications.slice(0, 8).map((n) => (
-                          <div
+                          <button
+                            type="button"
                             key={n.id}
-                            className={`p-3 rounded-xl transition border ${
+                            onClick={() => openNotification(n)}
+                            className={`block w-full text-left p-3 rounded-xl transition border hover:border-indigo-200 ${
                               n.isRead
                                 ? "bg-slate-50/70 border-slate-100 text-slate-600"
                                 : "bg-indigo-50/50 border-indigo-100 text-slate-900 font-medium"
@@ -935,10 +1032,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                               )}
                             </div>
                             <p className="text-slate-600 text-xs leading-relaxed">{n.message}</p>
-                          </div>
+                            <p className="mt-1.5 text-[11px] text-slate-400">{timeAgo(n.createdAt)}</p>
+                          </button>
                         ))
                       )}
                     </div>
+
+                    {/* Admin and HR Announcement broadcast action */}
+                    {(role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER") && (
+                      <div className="pt-2.5 mt-2 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNotificationsOpen(false);
+                            setBroadcastOpen(true);
+                          }}
+                          className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100/80 text-indigo-700 text-xs font-semibold transition cursor-pointer"
+                        >
+                          <Megaphone className="w-3.5 h-3.5" />
+                          Send announcement to all employees
+                        </button>
+                      </div>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -1081,17 +1196,33 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Mobile Navigation Drawer */}
         <AnimatePresence>
           {mobileMenuOpen && (
+            <div className="lg:hidden fixed inset-0 z-50">
+            {/* Dimmed backdrop: the page stays visible on the right; tapping it closes the menu */}
             <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -50 }}
+              aria-hidden="true"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="wp-mobile-drawer lg:hidden fixed inset-0 z-50 bg-slate-950 text-slate-200 p-5 flex flex-col"
+              onClick={() => setMobileMenuOpen(false)}
+              className="absolute inset-0 bg-slate-950/55 backdrop-blur-[2px]"
+            />
+            <motion.aside
+              role="dialog"
+              aria-modal="true"
+              aria-label="Main menu"
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", damping: 32, stiffness: 340 }}
+              className="wp-mobile-drawer absolute inset-y-0 left-0 w-[80%] max-w-[360px] bg-slate-950 text-slate-200 p-5 pl-[max(1.25rem,env(safe-area-inset-left))] pb-[max(1.25rem,env(safe-area-inset-bottom))] flex flex-col rounded-r-3xl shadow-[24px_0_60px_-20px_rgba(0,0,0,0.6)]"
             >
               <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
                 <Brand href="/dashboard" inverse />
                 <button
+                  type="button"
                   onClick={() => setMobileMenuOpen(false)}
+                  aria-label="Close menu"
                   className="p-2 rounded-xl bg-white/[0.08] text-slate-300 hover:text-white"
                 >
                   <X className="w-5 h-5" />
@@ -1124,7 +1255,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     }}
                     className="px-3 py-1 text-xs font-semibold rounded-lg bg-indigo-600 text-white"
                   >
-                    Clock In
+                    Punch In
                   </button>
                 ) : (
                   <button
@@ -1134,7 +1265,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     }}
                     className="px-3 py-1 text-xs font-semibold rounded-lg bg-rose-600 text-white"
                   >
-                    Clock Out
+                    Punch Out
                   </button>
                 )}
               </div>
@@ -1234,12 +1365,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <LogOut className="w-4 h-4" />
                 </button>
               </div>
-            </motion.div>
+            </motion.aside>
+            </div>
           )}
         </AnimatePresence>
 
         {/* Main Application Canvas */}
-        <main className="wp-main-canvas min-w-0 flex-1 h-full overflow-y-auto p-3 sm:p-6 lg:p-8 bg-slate-50 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <main className="wp-main-canvas min-w-0 flex-1 h-full overflow-y-auto p-3 sm:p-6 lg:p-8 bg-slate-50 pb-[max(5rem,calc(env(safe-area-inset-bottom)+2rem))] sm:pb-8">
           <motion.div
             key={pathname}
             initial={{ opacity: 0, y: 6 }}
@@ -1287,6 +1419,87 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           if (ok) setPendingPunch(null);
         }}
       />
+
+      {/* Broadcast Announcement Modal for Admin and HR */}
+      {broadcastOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+          onClick={() => !sendingBroadcast && setBroadcastOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md max-h-[min(90dvh,calc(100dvh-4rem))] overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl transition-all text-slate-900"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                  <Megaphone className="h-5 w-5" />
+                </span>
+                <h3 className="text-base font-bold text-slate-900">Notify All Employees</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBroadcastOpen(false)}
+                disabled={sendingBroadcast}
+                className="rounded-lg p-1 text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+              Sends an instant in-app announcement to every active employee in your company.
+            </p>
+            <form onSubmit={handleSendBroadcast} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Title <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={broadcastTitle}
+                  onChange={(e) => setBroadcastTitle(e.target.value)}
+                  placeholder="e.g. Office Holiday Notice, Company Townhall, Policy Update..."
+                  maxLength={120}
+                  required
+                  className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Message <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  value={broadcastMessage}
+                  onChange={(e) => setBroadcastMessage(e.target.value)}
+                  placeholder="Type your company-wide notification here..."
+                  maxLength={1000}
+                  rows={4}
+                  required
+                  className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 resize-none"
+                />
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setBroadcastOpen(false)}
+                  disabled={sendingBroadcast}
+                  className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={sendingBroadcast || !broadcastTitle.trim() || !broadcastMessage.trim()}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-indigo-500 active:scale-95 disabled:opacity-50 cursor-pointer"
+                >
+                  {sendingBroadcast && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  {sendingBroadcast ? "Sending..." : "Send Announcement"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

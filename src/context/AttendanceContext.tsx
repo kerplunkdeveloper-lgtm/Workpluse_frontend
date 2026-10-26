@@ -4,6 +4,7 @@ import React, {
   createContext,
   useContext,
   useEffect,
+  useMemo,
   useState,
   ReactNode,
   useCallback,
@@ -45,6 +46,12 @@ interface AttendanceContextType {
   currentLocation: GeoCoordinates | null;
   locationLabel: string | null;
   locationError: string | null;
+  /** Where the GPS reading is: waiting for the browser, ready, blocked by the user, or failed. */
+  locationStatus: "locating" | "ready" | "denied" | "error";
+  /** The street or area name of the captured position, e.g. "Mudaliarpet, Puducherry". */
+  currentPlace: string | null;
+  /** Asks the browser for a fresh position again (after the user turns GPS on). Returns true when it worked. */
+  retryLocation: () => Promise<boolean>;
   distanceToBranch: number | null;
   isWithinGeofence: boolean;
   // Offline-aware state
@@ -74,8 +81,9 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
   const [currentLocation, setCurrentLocation] = useState<GeoCoordinates | null>(null);
   const [locationLabel, setLocationLabel] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [distanceToBranch, setDistanceToBranch] = useState<number | null>(null);
-  const [isWithinGeofence, setIsWithinGeofence] = useState<boolean>(true);
+  const [locationDenied, setLocationDenied] = useState(false);
+  const [currentPlace, setCurrentPlace] = useState<string | null>(null);
+  const placedAtRef = useRef<{ lat: number; lng: number } | null>(null);
 
   // ── Offline tracking ────────────────────────────────────────────────────────
   const [isOnline, setIsOnline] = useState<boolean>(
@@ -183,35 +191,29 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
     policyRef.current = todayStatus?.locationPolicy;
   });
 
-  const applyCoords = useCallback(
-    async (coords: GeoCoordinates) => {
-      setCurrentLocation(coords);
-      setLocationError(null);
-      const branch = userRef.current?.employee?.branch;
-      const policy = policyRef.current;
-      if (branch && branch.latitude && branch.longitude) {
-        const branchLat = typeof branch.latitude === "string" ? parseFloat(branch.latitude) : branch.latitude;
-        const branchLng = typeof branch.longitude === "string" ? parseFloat(branch.longitude) : branch.longitude;
-        const distance = calculateDistanceMeters(coords.latitude, coords.longitude, branchLat, branchLng);
-        const radius = Number(branch.radiusMeters || policy?.radiusMeters || 200);
-        setDistanceToBranch(distance);
-        setIsWithinGeofence(distance <= radius + Math.max(Number(coords.accuracy || 0), 0));
-      } else {
-        setDistanceToBranch(null);
-        setIsWithinGeofence(true);
-      }
-      const label = branch?.name || null;
-      if (label) setLocationLabel(label);
-      return label;
-    },
-    []
-  );
+  const applyCoords = useCallback(async (coords: GeoCoordinates) => {
+    setCurrentLocation(coords);
+    setLocationError(null);
+    setLocationDenied(false);
 
-  const requestBrowserLocation = useCallback((): Promise<GeoCoordinates | null> => {
+    // Name the place the person is standing in. Looked up only after moving about 100 m, so the 30-second
+    // refresh does not call the geocoder every time.
+    const last = placedAtRef.current;
+    const moved = !last || calculateDistanceMeters(coords.latitude, coords.longitude, last.lat, last.lng) > 100;
+    if (moved) {
+      placedAtRef.current = { lat: coords.latitude, lng: coords.longitude };
+      void reverseGeocodeLabel(coords.latitude, coords.longitude).then((place) => {
+        if (place) setCurrentPlace(place);
+      });
+    }
+    return userRef.current?.employee?.branch?.name || null;
+  }, []);
+
+  const requestBrowserLocation = useCallback((fresh = false): Promise<GeoCoordinates | null> => {
     return new Promise((resolve) => {
       if (typeof window === "undefined" || !navigator.geolocation) {
-        setIsWithinGeofence(false);
-        setLocationError("Geolocation is not supported by this browser.");
+        setCurrentLocation(null);
+        setLocationError("This browser cannot read your location. Use your phone or another browser to punch.");
         resolve(null);
         return;
       }
@@ -227,19 +229,21 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
           resolve(coords);
         },
         (error) => {
-          setDistanceToBranch(null);
-          setIsWithinGeofence(false);
+          // Never keep an old position after a failed read: it would look current and be punched with.
+          setCurrentLocation(null);
+          setLocationDenied(error.code === error.PERMISSION_DENIED);
           // Browser messages ("User denied Geolocation") aren't written for employees.
           setLocationError(
             error.code === error.PERMISSION_DENIED
-              ? "Location is turned off for this site. Allow location in your browser settings so your check-in can be verified."
+              ? "Location is turned off for this site. Allow location in your browser settings so your punch-in can be verified."
               : error.code === error.TIMEOUT
                 ? "Finding your location is taking too long. Move near a window or turn on GPS, then try again."
                 : "We couldn't find your location right now. Check that location services are on."
           );
           resolve(null);
         },
-        { enableHighAccuracy: true, timeout: 8000, maximumAge: 15000 }
+        // A punch must use the position right now. The background refresh may reuse one up to 15 s old.
+        { enableHighAccuracy: true, timeout: fresh ? 15000 : 8000, maximumAge: fresh ? 0 : 15000 }
       );
     });
   }, [applyCoords]);
@@ -247,6 +251,49 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
   const updateLocation = useCallback(() => {
     void requestBrowserLocation();
   }, [requestBrowserLocation]);
+
+  const retryLocation = useCallback(async () => {
+    const coords = await requestBrowserLocation(true);
+    return Boolean(coords);
+  }, [requestBrowserLocation]);
+
+  // When the person turns GPS on in the browser, pick it up straight away instead of at the next refresh.
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.permissions?.query) return;
+    let status: PermissionStatus | null = null;
+    const onChange = () => {
+      if (status?.state === "granted") void requestBrowserLocation(true);
+    };
+    navigator.permissions
+      .query({ name: "geolocation" as PermissionName })
+      .then((result) => {
+        status = result;
+        result.addEventListener("change", onChange);
+      })
+      .catch(() => {});
+    return () => status?.removeEventListener("change", onChange);
+  }, [requestBrowserLocation]);
+
+  // Distance from the employee's branch, worked out from the branch's real coordinates in today's status
+  // (the sign-in profile can lack them). Derived, so it is right whichever of position and branch arrives first.
+  const { distanceToBranch, isWithinGeofence } = useMemo(() => {
+    if (!currentLocation) return { distanceToBranch: null as number | null, isWithinGeofence: false };
+    const branch: any = todayStatus?.branch || user?.employee?.branch;
+    if (!branch || !branch.latitude || !branch.longitude) return { distanceToBranch: null as number | null, isWithinGeofence: true };
+    const branchLat = typeof branch.latitude === "string" ? parseFloat(branch.latitude) : branch.latitude;
+    const branchLng = typeof branch.longitude === "string" ? parseFloat(branch.longitude) : branch.longitude;
+    const distance = calculateDistanceMeters(currentLocation.latitude, currentLocation.longitude, branchLat, branchLng);
+    const radius = Number(branch.radiusMeters || todayStatus?.locationPolicy?.radiusMeters || 200);
+    return { distanceToBranch: distance, isWithinGeofence: distance <= radius + Math.max(Number(currentLocation.accuracy || 0), 0) };
+  }, [currentLocation, todayStatus?.branch, todayStatus?.locationPolicy?.radiusMeters, user?.employee?.branch]);
+
+  const locationStatus: "locating" | "ready" | "denied" | "error" = currentLocation
+    ? "ready"
+    : locationDenied
+      ? "denied"
+      : locationError
+        ? "error"
+        : "locating";
 
   const fetchTodayStatus = useCallback(async () => {
     if (!token || !isOnline) return;
@@ -283,6 +330,8 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
           totalPauseMinutes: raw.totalPauseMinutes || ((raw.attendance?.breakMinutes || 0) + (raw.attendance?.lunchMinutes || 0)),
           workedMinutesToday: raw.attendance?.workingMinutes || 0,
           shift: raw.employee?.shift || raw.shift,
+          branch: raw.employee?.branch || null,
+          dayOff: raw.dayOff || null,
           locationPolicy: raw.locationPolicy,
         });
         if (raw.attendance?.checkInLocation && !/^ward\s+\d+/i.test(raw.attendance.checkInLocation)) {
@@ -419,7 +468,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
         }
         const data = err.response?.data;
         const locationTitle: Record<string, string> = {
-          LOCATION_REQUIRED: "Turn on location to check in",
+          LOCATION_REQUIRED: "Turn on location (GPS) to punch",
           LOCATION_IMPRECISE: "Your location isn't precise enough",
           OUTSIDE_OFFICE: "You're outside the office area",
         };
@@ -438,14 +487,30 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
 
   // ── Individual punch actions ─────────────────────────────────────────────────
 
+  /**
+   * A punch needs a GPS reading taken right now. If there is none, tell the employee how to turn GPS on,
+   * and send nothing: the server would refuse it, and an offline copy would never be accepted.
+   */
+  const captureLocationForPunch = useCallback(
+    async (action: "in" | "out"): Promise<GeoCoordinates | null> => {
+      const coords = await requestBrowserLocation(true);
+      if (coords) return coords;
+      toast.error(`Turn on GPS to punch ${action}`, {
+        id: "gps-required",
+        duration: 12000,
+        description: "We save where you punched. Allow location for this site in your browser (the lock icon beside the address), switch on GPS, then try again.",
+        action: { label: "Try again", onClick: () => void requestBrowserLocation(true) },
+      });
+      return null;
+    },
+    [requestBrowserLocation],
+  );
+
   const checkIn = useCallback(
     async (options?: PunchOptions): Promise<boolean> => {
-      const coords = currentLocation || (await requestBrowserLocation()) || undefined;
-      const branchName = user?.employee?.branch?.name;
-      const resolvedLabel =
-        options?.locationLabel ||
-        options?.note?.trim() ||
-        (options?.workMode === "WORK_FROM_HOME" ? "Work from home" : branchName || "Office");
+      const coords = await captureLocationForPunch("in");
+      if (!coords) return false;
+      const resolvedLabel = options?.locationLabel || options?.note?.trim() || currentPlace || undefined;
       const modeLabel =
         options?.workMode === "SHOOT"
           ? "On-Site Shoot"
@@ -461,8 +526,8 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
         "CHECK_IN",
         () => attendanceApi.checkIn({ ...(coords || {}), ...options, locationLabel: resolvedLabel }),
         resolvedLabel
-          ? `Check-in confirmed from ${resolvedLabel}.`
-          : `Check-in Confirmed! Started shift in ${modeLabel} mode.`,
+          ? `Punch-in confirmed from ${resolvedLabel}.`
+          : `Punch-in Confirmed! Started shift in ${modeLabel} mode.`,
         coords,
         {
           workMode: options?.workMode,
@@ -472,21 +537,18 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
         }
       );
     },
-    [currentLocation, handlePunch, requestBrowserLocation, user?.employee?.branch?.name]
+    [captureLocationForPunch, currentPlace, handlePunch]
   );
 
   const checkOut = useCallback(
     async (options?: PunchOptions): Promise<boolean> => {
-      const coords = currentLocation || (await requestBrowserLocation()) || undefined;
-      const branchName = user?.employee?.branch?.name;
-      const resolvedLabel =
-        options?.locationLabel ||
-        options?.note?.trim() ||
-        (options?.workMode === "WORK_FROM_HOME" ? "Work from home" : branchName || "Office");
+      const coords = await captureLocationForPunch("out");
+      if (!coords) return false;
+      const resolvedLabel = options?.locationLabel || options?.note?.trim() || currentPlace || undefined;
       return handlePunch(
         "CHECK_OUT",
         () => attendanceApi.checkOut({ ...(coords || {}), ...options, locationLabel: resolvedLabel }),
-        resolvedLabel ? `Check-out confirmed from ${resolvedLabel}.` : "Check-out Confirmed! Shift concluded successfully.",
+        resolvedLabel ? `Punch-out confirmed from ${resolvedLabel}.` : "Punch-out Confirmed! Shift concluded successfully.",
         coords,
         {
           workMode: options?.workMode,
@@ -496,7 +558,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
         }
       );
     },
-    [currentLocation, handlePunch, requestBrowserLocation, user?.employee?.branch?.name]
+    [captureLocationForPunch, currentPlace, handlePunch]
   );
 
   const startBreak = useCallback(async (): Promise<boolean> => {
@@ -550,20 +612,20 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
           isWorkFromHome: true,
           isOfflinePunch: true,
         }));
-        toast.success("📴 WFH Clock-in saved offline — will sync automatically.", { duration: 4000 });
+        toast.success("📴 WFH Punch-in saved offline — will sync automatically.", { duration: 4000 });
         return true;
       }
       const res = await attendanceApi.wfhCheckIn(note);
       if (res?.success) {
-        toast.success("Remote WFH Clock-in successful!");
+        toast.success("Remote WFH Punch-in successful!");
         triggerCelebration();
         await fetchTodayStatus();
         return true;
       }
-      toast.error(res?.message || "WFH check-in failed");
+      toast.error(res?.message || "WFH punch-in failed");
       return false;
     } catch (err: any) {
-      toast.error(err.response?.data?.message || err.message || "WFH check-in failed");
+      toast.error(err.response?.data?.message || err.message || "WFH punch-in failed");
       return false;
     } finally {
       setIsActionLoading(false);
@@ -579,6 +641,9 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
         currentLocation,
         locationLabel,
         locationError,
+        locationStatus,
+        currentPlace,
+        retryLocation,
         distanceToBranch,
         isWithinGeofence,
         isOnline,

@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { CheckCircle2, Crosshair, ExternalLink, Loader2, Map as MapIcon, MapPin, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { PlaceResult, reverseGeocodeFull, searchPlaces } from "@/lib/geocode";
+import GoogleMapEmbed from "./GoogleMapEmbed";
 
 // Leaflet touches `window`, so the map only loads in the browser and only when opened.
 const MapPickerModal = dynamic(() => import("./MapPickerModal"), { ssr: false });
@@ -228,6 +229,14 @@ export default function LocationPicker({ value, radiusMeters, onChange }: Locati
               <X className="h-4 w-4" />
             </button>
           </div>
+          <GoogleMapEmbed
+            lat={value.lat}
+            lng={value.lng}
+            zoom={16}
+            title="Selected office location on Google Maps"
+            interactive={false}
+            className="mt-3 h-44 rounded-xl border border-emerald-200 sm:h-52"
+          />
           <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
             <p role="status" className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700">
               <CheckCircle2 aria-hidden="true" className="h-4 w-4" />

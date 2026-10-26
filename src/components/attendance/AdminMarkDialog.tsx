@@ -81,13 +81,13 @@ function AdminMarkForm({ initial, onClose, onSaved }: { initial?: AdminMarkIniti
   const field = "w-full rounded-lg bg-white px-3 py-2 text-sm text-slate-900 ring-1 ring-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-0 backdrop-blur-xs sm:items-center sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 sm:p-4 backdrop-blur-xs" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <form
         onSubmit={submit}
         role="dialog"
         aria-modal="true"
         aria-labelledby="admin-mark-title"
-        className="w-full max-w-md rounded-t-3xl bg-white p-6 shadow-2xl sm:rounded-3xl sm:p-7"
+        className="w-full max-w-md max-h-[min(88dvh,calc(100dvh-5rem))] overflow-y-auto rounded-[24px] bg-white p-5 shadow-2xl sm:rounded-3xl sm:p-7"
       >
         <div className="flex items-start justify-between gap-4">
           <div>

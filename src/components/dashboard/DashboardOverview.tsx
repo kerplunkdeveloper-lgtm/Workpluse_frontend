@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Activity,
   Award,
+  ChevronDown,
   ArrowRight,
   Building2,
   CalendarDays,
@@ -46,7 +48,7 @@ import PunchConfirmDialog, { PunchConfirmAction } from "@/components/attendance/
 import { formatHm, liveWorkedMs } from "@/components/attendance/attendanceUtils";
 import { formatTime, formatDurationMinutes, unwrapList, unwrapItem } from "@/lib/utils";
 
-import { dashboardCounts, rosterStatusFor, type RosterStatus } from "./dashboardMetrics";
+import { dashboardCounts, rosterStatusFor, type KpiStatus, type RosterStatus } from "./dashboardMetrics";
 
 interface RosterPerson {
   id: string;
@@ -55,7 +57,11 @@ interface RosterPerson {
   designation: string;
   department: string;
   checkInTime?: string;
+  checkOutTime?: string;
+  breakMinutes?: number;
+  lunchMinutes?: number;
   location?: string | null;
+  branchName?: string;
   status: RosterStatus;
 }
 
@@ -69,7 +75,7 @@ interface QuickAction {
 }
 
 const KPI_META: Record<
-  Exclude<RosterStatus, "ABSENT">,
+  KpiStatus,
   {
     label: string;
     hint: string;
@@ -83,7 +89,7 @@ const KPI_META: Record<
 > = {
   PRESENT: {
     label: "Present Today",
-    hint: "On site & clocked in",
+    hint: "On site & punched in",
     color: "text-emerald-700",
     ring: "ring-emerald-500 border-emerald-400 bg-emerald-50/30",
     bar: "bg-emerald-500",
@@ -113,7 +119,7 @@ const KPI_META: Record<
   },
   LATE: {
     label: "Late Arrivals",
-    hint: "Clocked after grace time",
+    hint: "Punched after grace time",
     color: "text-amber-700",
     ring: "ring-amber-500 border-amber-400 bg-amber-50/30",
     bar: "bg-amber-500",
@@ -209,8 +215,14 @@ export default function DashboardOverview() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [employeeTotal, setEmployeeTotal] = useState(0);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
-  const [activeBreakdownTab, setActiveBreakdownTab] = useState<Exclude<RosterStatus, "ABSENT"> | null>(null);
+  const [activeBreakdownTab, setActiveBreakdownTab] = useState<KpiStatus | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  // Branch filter for the staff list. The dashboard only preloads the first 200 people, so a chosen branch
+  // loads its own complete list from the server instead of trimming that partial one.
+  const [branchOptions, setBranchOptions] = useState<{ id: string; name: string }[]>([]);
+  const [branchFilter, setBranchFilter] = useState("ALL");
+  const [branchRoster, setBranchRoster] = useState<RosterPerson[] | null>(null);
+  const [branchRosterLoading, setBranchRosterLoading] = useState(false);
   const [allAttendance, setAllAttendance] = useState<any[]>([]);
   const [allLeaves, setAllLeaves] = useState<any[]>([]);
   const [allEmployees, setAllEmployees] = useState<any[]>([]);
@@ -302,6 +314,9 @@ export default function DashboardOverview() {
             { status: "fulfilled", value: null },
           ];
 
+      if (branchesRes.status === "fulfilled" && branchesRes.value) {
+        setBranchOptions(unwrapList(branchesRes.value).map((b: any) => ({ id: String(b.id), name: String(b.name) })).sort((a: any, b: any) => a.name.localeCompare(b.name)));
+      }
       setOrgCounts((current) => ({
         branches: branchesRes.status === "fulfilled" ? unwrapList(branchesRes.value).length : current.branches,
         departments: departmentsRes.status === "fulfilled" ? unwrapList(departmentsRes.value).length : current.departments,
@@ -378,11 +393,11 @@ export default function DashboardOverview() {
   const todayKey = typeof summary?.date === "string" ? summary.date : localDayKey;
 
   // Build live Roster
-  const roster: RosterPerson[] = useMemo(() => {
-    if (!allEmployees.length) return [];
+  const buildRoster = useCallback((employees: any[], attendanceRows: any[]): RosterPerson[] => {
+    if (!employees.length) return [];
 
     const attendanceByEmpId = new Map<string, any>();
-    allAttendance.forEach((att) => {
+    attendanceRows.forEach((att) => {
       if (isTodayRecord(att, todayKey)) {
         attendanceByEmpId.set(att.employeeId, att);
       }
@@ -396,12 +411,13 @@ export default function DashboardOverview() {
       }
     });
 
-    return allEmployees.map((emp) => {
+    return employees.map((emp) => {
       const att = attendanceByEmpId.get(emp.id);
       const leave = leaveByEmpId.get(emp.id);
 
-      const status = rosterStatusFor(att, Boolean(leave));
+      const status = rosterStatusFor(att, Boolean(leave), Boolean(summary?.isHoliday));
       const checkInTime = att?.checkIn ? formatTime(att.checkIn) : undefined;
+      const checkOutTime = att?.checkOut ? formatTime(att.checkOut) : undefined;
 
       return {
         id: emp.id,
@@ -410,11 +426,46 @@ export default function DashboardOverview() {
         designation: emp.designation || "Staff",
         department: emp.department?.name || (typeof emp.department === "string" ? emp.department : "General"),
         checkInTime,
+        checkOutTime,
+        breakMinutes: Number(att?.breakMinutes ?? att?.totalBreakMinutes ?? 0),
+        lunchMinutes: Number(att?.lunchMinutes ?? att?.totalLunchMinutes ?? 0),
         location: att?.checkInLocation || att?.location || null,
+        branchName: emp.branch?.name || undefined,
         status,
       };
     });
-  }, [allEmployees, allAttendance, allLeaves, todayKey]);
+  }, [allLeaves, todayKey, summary?.isHoliday]);
+
+  const roster: RosterPerson[] = useMemo(() => buildRoster(allEmployees, allAttendance), [buildRoster, allEmployees, allAttendance]);
+
+  // Choosing a branch loads everyone assigned to it and today's attendance for them.
+  useEffect(() => {
+    if (branchFilter === "ALL" || !canManage || !activeBreakdownTab) {
+      setBranchRoster(null);
+      return;
+    }
+    let cancelled = false;
+    setBranchRosterLoading(true);
+    Promise.all([
+      employeesApi.list({ page: 1, limit: 500, status: "WORKING", branchId: branchFilter }),
+      attendanceApi.getAllAttendance({ page: 1, limit: 500, employeeBranchId: branchFilter, ...(todayKey ? { date: todayKey } : {}) }),
+    ])
+      .then(([empRes, attRes]) => {
+        if (!cancelled) setBranchRoster(buildRoster(unwrapList(empRes), unwrapList(attRes)));
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setBranchRoster([]);
+          toast.error("Could not load that branch. Please try again.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setBranchRosterLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [branchFilter, canManage, activeBreakdownTab, todayKey, buildRoster]);
 
   const counts = dashboardCounts(summary, roster, employeeTotal || allEmployees.length);
   const totalEmployees = counts.total;
@@ -485,8 +536,8 @@ export default function DashboardOverview() {
   const todayCheckInTime = todayStatus?.attendance?.checkIn ? formatTime(todayStatus.attendance.checkIn) : null;
   const todayCheckOutTime = todayStatus?.attendance?.checkOut ? formatTime(todayStatus.attendance.checkOut) : null;
   const todayWorkingMinutes = (todayStatus?.attendance as any)?.workingMinutes ?? todayStatus?.attendance?.workMinutes;
-  // Worked minutes are only stored at check-out, so while the shift runs the
-  // figure is derived live from the check-in time (minus breaks).
+  // Worked minutes are only stored at punch-out, so while the shift runs the
+  // figure is derived live from the punch-in time (minus breaks).
   const todayShiftHours = isCheckedIn
     ? formatHm(liveWorkedMs(todayStatus?.attendance, Boolean(todayStatus?.isOnBreak), currentTime.getTime()) / 60000)
     : todayWorkingMinutes !== null && todayWorkingMinutes !== undefined
@@ -496,7 +547,8 @@ export default function DashboardOverview() {
   const filteredRoster = useMemo(() => {
     if (!activeBreakdownTab) return [];
     const q = searchQuery.trim().toLowerCase();
-    return roster.filter((person) => {
+    const source = branchFilter === "ALL" ? roster : branchRoster || [];
+    return source.filter((person) => {
       if (person.status !== activeBreakdownTab) return false;
       if (!q) return true;
       return (
@@ -505,7 +557,7 @@ export default function DashboardOverview() {
         (person.employeeCode || "").toLowerCase().includes(q)
       );
     });
-  }, [activeBreakdownTab, roster, searchQuery]);
+  }, [activeBreakdownTab, roster, branchRoster, branchFilter, searchQuery]);
 
   const hourlyData = useMemo(() => {
     // Two-hour windows (6-8am ... 8-10pm). Earlier and later punches fall into the first and last window.
@@ -621,7 +673,7 @@ export default function DashboardOverview() {
       icon: Clock,
       tone: "bg-indigo-50 text-indigo-600 border border-indigo-100",
       details: [
-        "View daily check-in and check-out records",
+        "View daily punch-in and punch-out records",
         "Review work hours and attendance history",
         "Track location and work-from-home punches",
       ],
@@ -848,19 +900,29 @@ export default function DashboardOverview() {
             </div>
 
             {/* Title & Organization Subtitle */}
-            <div>
-              <h1 className="text-[26px] sm:text-[32px] font-semibold tracking-[-0.035em] text-white flex items-center gap-3">
-                {greetingFor(currentTime)}, {displayName}
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-300 mt-2 max-w-2xl leading-relaxed">
-                Workforce operations, real-time presence, and team payroll — active for{" "}
-                <span className="inline-flex items-center align-middle gap-1.5 rounded-full bg-white/10 py-0.5 pl-0.5 pr-2.5 ring-1 ring-white/15 text-white font-semibold">
-                  <CompanyLogo name={user?.organization?.name || "Workspace"} logoUrl={user?.organization?.logoUrl} size="xs" className="!rounded-full" />
-                  <span>{user?.organization?.name || "Your Workspace"}</span>
-                </span>
-              </p>                                
-            </div>
+         <div>
+  <h1 className="text-[26px] sm:text-[32px] font-semibold tracking-[-0.035em] text-white flex items-center gap-3">
+    {greetingFor(currentTime)}, {displayName}
+  </h1>
 
+  <p className="text-xs sm:text-sm text-slate-300 mt-2 max-w-2xl leading-relaxed">
+    Workforce operations, real-time presence, and team payroll — active for
+  </p>
+
+  <div className="mt-2">
+    <span className="inline-flex items-center gap-2 rounded-full bg-white/10 py-1 pl-1 pr-3 ring-1 ring-white/15 text-white font-semibold text-sm">
+      <CompanyLogo
+        name={user?.organization?.name || "Workspace"}
+        logoUrl={user?.organization?.logoUrl}
+        size="xs"
+        className="!rounded-full"
+      />
+      <span>
+        {user?.organization?.name || "Your Workspace"}
+      </span>
+    </span>
+  </div>
+</div>
             {/* Metric Snapshot Chips */}
             <div className={`grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1 ${canManage ? "" : "hidden"}`}>
               {[
@@ -895,7 +957,7 @@ export default function DashboardOverview() {
                     const rawLoc = todayStatus?.attendance?.checkInLocation;
                     const cleanLoc = rawLoc && !/^ward\s+\d+/i.test(rawLoc) ? rawLoc : null;
                     if (isCheckedIn || hasCheckedOutToday) {
-                      return cleanLoc || user?.employee?.branch?.name || "Checked in";
+                      return cleanLoc || user?.employee?.branch?.name || "Punched in";
                     }
                     return user?.employee?.branch?.name
                       ? `${user.employee.branch.name}${isWithinGeofence ? " (In office zone)" : ""}`
@@ -924,11 +986,11 @@ export default function DashboardOverview() {
                 <dd className="mt-0.5 truncate text-sm font-semibold tabular-nums text-white">{todayShiftHours}</dd>
               </div>
               <div className="min-w-0 px-2.5 py-3">
-                <dt className="whitespace-nowrap text-[11px] font-medium text-slate-400">Clocked in</dt>
+                <dt className="whitespace-nowrap text-[11px] font-medium text-slate-400">Punched in</dt>
                 <dd className="mt-0.5 truncate text-sm font-semibold tabular-nums text-white">{todayCheckInTime || "—"}</dd>
               </div>
               <div className="min-w-0 px-2.5 py-3">
-                <dt className="whitespace-nowrap text-[11px] font-medium text-slate-400">Clocked out</dt>
+                <dt className="whitespace-nowrap text-[11px] font-medium text-slate-400">Punched out</dt>
                 <dd className="mt-0.5 truncate text-sm font-semibold tabular-nums text-white">{todayCheckOutTime || "—"}</dd>
               </div>
             </dl>
@@ -942,7 +1004,7 @@ export default function DashboardOverview() {
                 className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 text-white font-semibold text-sm shadow-lg shadow-indigo-600/30 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <Clock className="w-4 h-4" />
-                {hasCheckedOutToday ? "Shift completed" : "Clock in"}
+                {hasCheckedOutToday ? "Shift completed" : "Punch in"}
               </button>
             ) : (
               <button
@@ -952,7 +1014,7 @@ export default function DashboardOverview() {
                 className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-400 hover:to-rose-500 text-white font-semibold text-sm shadow-lg shadow-rose-600/30 transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 <Clock className="w-4 h-4" />
-                Clock out
+                Punch out
               </button>
             )}
 
@@ -1084,10 +1146,31 @@ export default function DashboardOverview() {
           className="overflow-hidden rounded-3xl border border-indigo-200 bg-white p-5 shadow-[0_18px_50px_-36px_rgba(79,70,229,0.5)] sm:p-6"
         >
           <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
-            <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">Selected workforce view</p><h2 className="mt-1 text-lg font-semibold text-slate-950">{KPI_META[activeBreakdownTab].label} staff</h2><p className="mt-1 text-xs text-slate-500">{filteredRoster.length} people match this status.</p></div>
-            <div className="relative w-full sm:max-w-xs"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search staff" className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-xs outline-none focus:border-indigo-500 focus:bg-white" /></div>
+            <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">Selected workforce view</p><h2 className="mt-1 text-lg font-semibold text-slate-950">{KPI_META[activeBreakdownTab].label} staff</h2><p className="mt-1 text-xs text-slate-500">{branchRosterLoading ? "Loading branch..." : `${filteredRoster.length} ${filteredRoster.length === 1 ? "person matches" : "people match"} this status${branchFilter !== "ALL" ? ` in ${branchOptions.find((b) => b.id === branchFilter)?.name || "this branch"}` : ""}.`}</p></div>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+            {branchOptions.length > 0 && (
+              <label className="relative block w-full sm:w-52">
+                <span className="sr-only">Filter by branch</span>
+                <Building2 aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <select
+                  value={branchFilter}
+                  onChange={(e) => setBranchFilter(e.target.value)}
+                  className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-8 text-xs font-semibold text-slate-700 outline-none focus:border-indigo-500 focus:bg-white"
+                >
+                  <option value="ALL">All branches</option>
+                  {branchOptions.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              </label>
+            )}
+            <div className="relative w-full sm:w-64"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search staff" className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-xs outline-none focus:border-indigo-500 focus:bg-white" /></div>
+            </div>
           </div>
-          {filteredRoster.length === 0 ? <p className="py-8 text-center text-xs text-slate-400">No staff members match this status.</p> : <div className="mt-4 grid max-h-80 grid-cols-1 gap-2.5 overflow-y-auto pr-1 md:grid-cols-2 xl:grid-cols-3">{filteredRoster.map((person) => <div key={person.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3"><div className="flex min-w-0 items-center gap-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-xs font-bold text-indigo-700">{person.name.slice(0, 2).toUpperCase()}</span><div className="min-w-0"><p className="truncate text-xs font-bold text-slate-800">{person.name}</p><p className="truncate text-xs text-slate-500">{person.designation} · {person.department}</p></div></div><div className="shrink-0 text-right"><p className="font-mono text-xs font-bold text-slate-700">{person.checkInTime || "Not in"}</p>{person.employeeCode && <p className="font-mono text-[10px] text-slate-400">{person.employeeCode}</p>}</div></div>)}</div>}
+          {filteredRoster.length === 0 ? <p className="py-8 text-center text-xs text-slate-400">No staff members match this status.</p> : <div className="mt-4 grid max-h-80 grid-cols-1 gap-2.5 overflow-y-auto pr-1 md:grid-cols-2 xl:grid-cols-3">{filteredRoster.map((person) => <div key={person.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3"><div className="flex min-w-0 items-center gap-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-xs font-bold text-indigo-700">{person.name.slice(0, 2).toUpperCase()}</span><div className="min-w-0"><p className="truncate text-xs font-bold text-slate-800">{person.name}</p><p className="truncate text-xs text-slate-500">{person.designation} · {person.department}{branchFilter === "ALL" && person.branchName ? ` · ${person.branchName}` : ""}</p></div></div><div className="shrink-0 text-right"><p className="font-mono text-xs font-bold text-slate-700">{person.checkInTime || "Not in"}</p>{person.employeeCode && <p className="font-mono text-[10px] text-slate-400">{person.employeeCode}</p>}</div></div>)}</div>}
         </motion.section>}
       </AnimatePresence>
 
@@ -1102,7 +1185,7 @@ export default function DashboardOverview() {
               <div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-white shadow-inner"><span className="text-2xl font-bold tabular-nums text-slate-950">{completionPercent}%</span><span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">turnout</span></div>
             </div>
             <div className="w-full min-w-0 flex-1 space-y-2.5 sm:w-auto">
-              {[{ label: "Present", value: presentCount, color: "bg-emerald-500" }, { label: "Remote", value: wfhCount, color: "bg-violet-500" }, { label: "On leave", value: leaveCount, color: "bg-sky-400" }, { label: "Late", value: lateCount, color: "bg-amber-400" }, { label: "Not started", value: absentCount, color: "bg-slate-300" }].map((item) => <div key={item.label} className="flex items-center justify-between gap-3 text-xs"><span className="flex min-w-0 items-center gap-2 text-slate-600"><span className={`h-2 w-2 shrink-0 rounded-full ${item.color}`} />{item.label}</span><span className="font-bold tabular-nums text-slate-900">{item.value}</span></div>)}
+              {[{ label: "Present", value: presentCount, color: "bg-emerald-500" }, { label: "Remote", value: wfhCount, color: "bg-violet-500" }, { label: "On leave", value: leaveCount, color: "bg-sky-400" }, { label: "Late", value: lateCount, color: "bg-amber-400" }, { label: "Not punched", value: absentCount, color: "bg-slate-300" }].map((item) => <div key={item.label} className="flex items-center justify-between gap-3 text-xs"><span className="flex min-w-0 items-center gap-2 text-slate-600"><span className={`h-2 w-2 shrink-0 rounded-full ${item.color}`} />{item.label}</span><span className="font-bold tabular-nums text-slate-900">{item.value}</span></div>)}
             </div>
           </div>
         </article>
@@ -1266,7 +1349,7 @@ export default function DashboardOverview() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex items-start gap-3">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/20"><Activity className="h-5 w-5" /></span>
-                  <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">Live workforce pulse</p><h3 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">Clock-in</h3><p className="mt-1 text-sm text-slate-500">When your team starts the workday today.</p></div>
+                  <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">Live workforce pulse</p><h3 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">Punch-in</h3><p className="mt-1 text-sm text-slate-500">When your team starts the workday today.</p></div>
                 </div>
                 <div className="flex items-center gap-2 self-start rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />Live distribution</div>
               </div>
@@ -1355,7 +1438,7 @@ export default function DashboardOverview() {
                 <div className="flex justify-between items-center p-1.5 rounded-xl bg-slate-50">
                   <span className="text-slate-600 font-medium flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-slate-300" />
-                    Not Clocked Yet
+                    Not Punched Yet
                   </span>
                   <span className="font-bold text-slate-900">{notStartedCount}</span>
                 </div>
@@ -1401,7 +1484,7 @@ export default function DashboardOverview() {
       <PunchConfirmDialog
         action={pendingPunch}
         loading={isActionLoading}
-
+        locationLabel={locationLabel}
         onCancel={() => setPendingPunch(null)}
         onConfirm={async (options) => {
           const ok = pendingPunch === "CHECK_OUT" ? await checkOut() : await checkIn(options);

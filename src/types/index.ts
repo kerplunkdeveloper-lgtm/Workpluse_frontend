@@ -53,6 +53,7 @@ export interface Organization {
   phone?: string;
   address?: string;
   taxId?: string;
+  timezone?: string;
   logoUrl?: string | null;
   requireAdminTwoFactor?: boolean;
   subscriptionPlan?: SubscriptionPlan;
@@ -123,6 +124,13 @@ export interface Employee {
   shiftId?: string;
   ctc?: number;
   gender?: "MALE" | "FEMALE" | null;
+  dateOfBirth?: string | null;
+  dateOfJoining?: string | null;
+  employmentType?: "FULL_TIME" | "PART_TIME" | "CONTRACT" | "INTERN" | null;
+  workEmail?: string | null;
+  address?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
   salaryStructure?: { annualCtc?: number | string | null; monthlyCtc?: number | string | null } | null;
   panNumber?: string;
   uanNumber?: string;
@@ -205,6 +213,25 @@ export interface Attendance {
   correctionStatus?: string | null;
   correctionReviewNote?: string | null;
 }
+/** Today is closed for punching: a weekly off, company holiday or company leave. */
+export interface DayOffInfo {
+  kind: "WEEK_OFF" | "HOLIDAY" | "COMPANY_LEAVE";
+  /** The weekday, holiday name or company-leave title. */
+  title: string;
+  reason?: string | null;
+  isPaid?: boolean;
+  /** The employee's request to work today, if they made one. */
+  workRequest?: {
+    id: string;
+    status: "PENDING" | "APPROVED" | "REJECTED";
+    reasonType: string;
+    note?: string | null;
+    reviewNote?: string | null;
+  } | null;
+  /** True once HR or an admin approved work today. */
+  canPunch: boolean;
+}
+
 export interface AttendanceTodayStatus {
   hasCheckedIn: boolean;
   hasCheckedOut: boolean;
@@ -218,14 +245,17 @@ export interface AttendanceTodayStatus {
   totalLunchMinutes?: number;
   totalPauseMinutes?: number;
   workedMinutesToday?: number;
+  dayOff?: DayOffInfo | null;
+  /** The employee's assigned branch, with its coordinates, so the browser can measure the distance. */
+  branch?: Branch | null;
   locationPolicy?: CheckInLocationPolicy;
 }
-/** Where the organization lets employees check in (Policy → "Where can employees check in?"). */
+/** Where the organization lets employees punch in (Policy → "Where can employees punch in?"). */
 export interface CheckInLocationPolicy {
   mode: "ANYWHERE" | "OFFICE_ONLY";
   allowWfh: boolean;
   branchName: string | null;
-  /** Null when the employee's branch has no location set, so it doesn't restrict check-in. */
+  /** Null when the employee's branch has no location set, so it doesn't restrict punch-in. */
   radiusMeters: number | null;
 }
 
@@ -329,15 +359,34 @@ export interface Payslip {
   employeeId: string;
   month: number;
   year: number;
+  workingDays?: number;
+  presentDays?: number;
+  paidLeaveDays?: number;
+  unpaidLeaveDays?: number;
+  overtimeHours?: number;
   basicSalary: number;
   hra: number;
-  allowances: number;
-  grossSalary: number;
-  totalDeductions: number;
-  lopDeduction: number;
+  transport?: number;
+  special?: number;
+  otherAllowance?: number;
+  allowances?: number;
+  allowancesTotal?: number;
   overtimePay: number;
+  grossSalary: number;
+  unpaidLeaveDeduction?: number;
+  lopDeduction: number;
+  lateDeduction?: number;
+  permissionDeduction?: number;
+  pfDeduction?: number;
+  esiDeduction?: number;
+  ptDeduction?: number;
+  tdsDeduction?: number;
+  loanRecovery?: number;
+  reimbursements?: number;
+  totalDeductions: number;
+  deductionsTotal?: number;
   netSalary: number;
-  status: "DRAFT" | "GENERATED" | "APPROVED" | "PAID" | "DISBURSED";
+  status: "DRAFT" | "GENERATED" | "APPROVED" | "PAID" | "DISBURSED" | "PENDING_APPROVAL" | "REJECTED";
   paidAt?: string;
   createdAt: string;
   employee?: Employee;

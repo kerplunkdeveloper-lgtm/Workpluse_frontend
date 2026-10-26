@@ -127,20 +127,59 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       let activeToken = authToken || getSessionAccessToken();
       if (!activeToken) {
-        const refreshed = await authApi.refreshSession();
-        activeToken = refreshed?.data?.accessToken || refreshed?.data?.token || null;
+        const storedRefresh =
+          typeof window !== "undefined"
+            ? localStorage.getItem("workpulse_refresh_token")
+            : null;
+        if (storedRefresh) {
+          try {
+            const refreshed = await authApi.refreshSession();
+            activeToken = refreshed?.data?.accessToken || refreshed?.data?.token || null;
+            const newRefresh = refreshed?.data?.refreshToken;
+            if (newRefresh && typeof window !== "undefined") {
+              localStorage.setItem("workpulse_refresh_token", newRefresh);
+            }
+          } catch {
+            // refresh attempt failed
+          }
+        }
       }
-      if (!activeToken) return;
+
+      if (!activeToken) {
+        if (operation !== authOperationRef.current) return;
+        setUser(null);
+        setToken(null);
+        return;
+      }
+
       setSessionAccessToken(activeToken);
       setToken(activeToken);
+
+      // Hydrate cached user profile immediately to prevent UI flash
+      if (typeof window !== "undefined") {
+        try {
+          const cachedUserStr = localStorage.getItem("workpulse_user");
+          if (cachedUserStr) {
+            const cachedUser = JSON.parse(cachedUserStr);
+            if (cachedUser && typeof cachedUser === "object") {
+              setUser(cachedUser);
+            }
+          }
+        } catch {}
+      }
+
       let res;
       try {
         res = await authApi.getMe();
       } catch (firstError) {
         // An access token may expire between visits. Re-issue it from the
-        // HTTP-only refresh cookie before treating the session as invalid.
+        // refresh token before treating the session as invalid.
         const refreshed = await authApi.refreshSession();
         const refreshedToken = refreshed?.data?.accessToken || refreshed?.data?.token || null;
+        const newRefresh = refreshed?.data?.refreshToken;
+        if (newRefresh && typeof window !== "undefined") {
+          localStorage.setItem("workpulse_refresh_token", newRefresh);
+        }
         if (!refreshedToken) throw firstError;
         activeToken = refreshedToken;
         setSessionAccessToken(activeToken);
@@ -150,6 +189,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const userData = res?.user || res?.data;
       if (!res?.success || !userData) throw new Error("Session user could not be restored");
       setUser(userData);
+      try {
+        localStorage.setItem("workpulse_user", JSON.stringify(userData));
+      } catch {}
       if (userData.employee?.id) {
         void registerWebDevice();
       }
@@ -193,9 +235,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   /** Everything that happens once credentials (and any second factor) are accepted. */
-  const finishLogin = (loggedUser: User, receivedToken: string) => {
+  const finishLogin = (loggedUser: User, receivedToken: string, receivedRefreshToken?: string) => {
     setSessionAccessToken(receivedToken);
     setToken(receivedToken);
+    if (receivedRefreshToken) {
+      try {
+        localStorage.setItem("workpulse_refresh_token", receivedRefreshToken);
+      } catch {}
+    }
+    try {
+      localStorage.setItem("workpulse_user", JSON.stringify(loggedUser));
+    } catch {}
     localStorage.setItem("workpulse_session_started_at", String(Date.now()));
     setUser(loggedUser);
     if (loggedUser.employee?.id) {
@@ -222,7 +272,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
       if (res?.success && (res?.data?.accessToken || res?.data?.token)) {
-        finishLogin(res.data.user, res.data.accessToken || res.data.token);
+        const at = res.data.accessToken || res.data.token;
+        const rt = res.data.refreshToken || res.data?.data?.refreshToken;
+        finishLogin(res.data.user, at, rt);
         return true;
       } else {
         toast.error(res?.message || "Login failed");
@@ -248,9 +300,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!challengeToken) throw new Error("Your sign-in challenge has expired. Please sign in again.");
       const res = await authApi.verifyTwoFactorLogin(challengeToken, code);
       const receivedToken = res?.data?.accessToken || res?.data?.token;
+      const receivedRefresh = res?.data?.refreshToken;
       if (!res?.success || !receivedToken) throw new Error(res?.message || "Two-step verification failed");
       sessionStorage.removeItem("workpulse_2fa_challenge");
-      finishLogin(res.data.user, receivedToken);
+      finishLogin(res.data.user, receivedToken, receivedRefresh);
       return true;
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Two-step verification failed"));
@@ -265,10 +318,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const res = await authApi.verifyEmail(email, code);
       const receivedToken = res?.data?.accessToken || res?.data?.token;
+      const receivedRefresh = res?.data?.refreshToken;
       if (res?.success && receivedToken) {
         setSessionAccessToken(receivedToken);
         setToken(receivedToken);
+        if (receivedRefresh) {
+          try { localStorage.setItem("workpulse_refresh_token", receivedRefresh); } catch {}
+        }
         setUser(res.data.user);
+        try { localStorage.setItem("workpulse_user", JSON.stringify(res.data.user)); } catch {}
         if (res.data.user?.employee?.id) {
           void registerWebDevice();
         }
@@ -300,11 +358,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const res = await authApi.loginWithGoogle(idToken);
       if (res?.success && (res?.data?.accessToken || res?.data?.token)) {
         const receivedToken = res.data.accessToken || res.data.token;
+        const receivedRefresh = res.data.refreshToken;
         const loggedUser = res.data.user;
 
         setSessionAccessToken(receivedToken);
         setToken(receivedToken);
+        if (receivedRefresh) {
+          try { localStorage.setItem("workpulse_refresh_token", receivedRefresh); } catch {}
+        }
         setUser(loggedUser);
+        try { localStorage.setItem("workpulse_user", JSON.stringify(loggedUser)); } catch {}
         if (loggedUser.employee?.id) {
           void registerWebDevice();
         }
@@ -337,12 +400,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       if (res?.success) {
         const receivedToken = res.data?.accessToken || res.data?.token;
+        const receivedRefresh = res.data?.refreshToken;
         const newUser = res.data?.user;
 
         if (receivedToken) {
           setSessionAccessToken(receivedToken);
           setToken(receivedToken);
+          if (receivedRefresh) {
+            try { localStorage.setItem("workpulse_refresh_token", receivedRefresh); } catch {}
+          }
           setUser(newUser);
+          try { localStorage.setItem("workpulse_user", JSON.stringify(newUser)); } catch {}
         }
 
         if (res.data?.requiresCheckout && res.data?.selectedPlan && res.data.selectedPlan !== "FREE_TRIAL") {

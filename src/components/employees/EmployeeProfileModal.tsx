@@ -20,10 +20,22 @@ import {
   Laptop,
   Box,
   Loader2,
+  Pencil,
 } from "lucide-react";
 import { formatDate, roleLabel } from "@/lib/utils";
 import { assetsApi, employeesApi } from "@/lib/api";
 import ProfilePhotoPicker from "@/components/profile/ProfilePhotoPicker";
+import EmployeeProfileFields from "./EmployeeProfileFields";
+import {
+  EMPLOYMENT_TYPES,
+  EMPTY_PROFILE,
+  firstErrorKey,
+  toProfilePayload,
+  validateProfile,
+  ymd,
+  type EmployeeProfileValues,
+  type ProfileErrors,
+} from "@/lib/employeeProfile";
 import { toast } from "sonner";
 import { Asset, AssetAssignment } from "@/types";
 
@@ -33,7 +45,39 @@ interface EmployeeProfileModalProps {
   initialTab?: "PROFILE" | "DOCUMENTS" | "ASSETS";
   onClose: () => void;
   isCurrentUserAdmin?: boolean;
+  /** Admin or HR: may edit the profile details. Everyone else sees them read-only. */
+  canEdit?: boolean;
+  branches?: { id: string; name: string }[];
+  departments?: { id: string; name: string }[];
+  shifts?: { id: string; name: string; startTime?: string; endTime?: string }[];
   onEmployeeUpdated?: (employee: Employee) => void;
+}
+
+const GENDER_LABELS: Record<string, string> = { MALE: "Male", FEMALE: "Female" };
+const EMPLOYMENT_LABELS: Record<string, string> = Object.fromEntries(EMPLOYMENT_TYPES.map((t) => [t.value, t.label]));
+
+function ProfileCard({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl p-5 border border-slate-200 bg-slate-50/70 space-y-4">
+      <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-2">
+        {icon}
+        {title}
+      </h3>
+      <div className="space-y-2.5 text-xs">{children}</div>
+    </div>
+  );
+}
+
+/** One label/value line. A missing value shows an em dash so a blank is visible, not silently hidden. */
+function Row({ label, value, mono, wrap }: { label: string; value?: string | null; mono?: boolean; wrap?: boolean }) {
+  return (
+    <div className={`flex justify-between gap-4 ${wrap ? "items-start" : ""}`}>
+      <span className="shrink-0 text-slate-500">{label}:</span>
+      <span className={`text-right text-slate-800 ${mono ? "font-mono" : "font-medium"} ${wrap ? "break-words" : ""}`}>
+        {value && String(value).trim() ? value : "—"}
+      </span>
+    </div>
+  );
 }
 
 export default function EmployeeProfileModal({
@@ -42,9 +86,20 @@ export default function EmployeeProfileModal({
   initialTab = "DOCUMENTS",
   onClose,
   isCurrentUserAdmin = true,
+  canEdit = false,
+  branches = [],
+  departments = [],
+  shifts = [],
   onEmployeeUpdated,
 }: EmployeeProfileModalProps) {
   const [activeTab, setActiveTab] = useState<"PROFILE" | "DOCUMENTS" | "ASSETS">(initialTab);
+  // The directory list leaves out PAN, bank and other personal fields, so the full record is fetched on open.
+  const [fullRecord, setFullRecord] = useState<Employee | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<EmployeeProfileValues>(EMPTY_PROFILE);
+  const [formErrors, setFormErrors] = useState<ProfileErrors>({});
   const [empAssets, setEmpAssets] = useState<{ assignedAssets: Asset[]; history: AssetAssignment[] } | null>(null);
   const [assetsLoading, setAssetsLoading] = useState(false);
   const [savingPhoto, setSavingPhoto] = useState(false);
@@ -67,7 +122,100 @@ export default function EmployeeProfileModal({
     }
   }, [employee?.id, activeTab]);
 
+  // Load the full record (PAN, bank, DOB, address...) once per employee, and drop any edit in progress.
+  React.useEffect(() => {
+    setEditing(false);
+    setFullRecord(null);
+    if (!isOpen || !employee?.id) return;
+    let cancelled = false;
+    setProfileLoading(true);
+    employeesApi
+      .getById(employee.id)
+      .then((res) => {
+        if (!cancelled && res?.success) setFullRecord(res.data);
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("Could not load the full profile. Some details may be missing.");
+      })
+      .finally(() => {
+        if (!cancelled) setProfileLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, employee?.id]);
+
   if (!isOpen || !employee) return null;
+
+  const view: Employee = { ...employee, ...(fullRecord || {}) };
+  const canEditProfile = canEdit;
+
+  const setField = (key: keyof EmployeeProfileValues, value: string) => {
+    setForm((current) => ({ ...current, [key]: value }));
+    setFormErrors((current) => (current[key] ? { ...current, [key]: undefined } : current));
+  };
+
+  const startEditing = () => {
+    setForm({
+      ...EMPTY_PROFILE,
+      firstName: view.firstName || "",
+      lastName: view.lastName || "",
+      phone: view.phone || "",
+      gender: view.gender || "",
+      dateOfBirth: ymd(view.dateOfBirth),
+      dateOfJoining: ymd(view.dateOfJoining) || ymd(view.createdAt),
+      designation: view.designation || "",
+      employmentType: view.employmentType || "",
+      branchId: view.branchId || "",
+      departmentId: view.departmentId || "",
+      shiftId: view.shiftId || "",
+      address: view.address || "",
+      emergencyContactName: view.emergencyContactName || "",
+      emergencyContactPhone: view.emergencyContactPhone || "",
+      bankName: view.bankName || "",
+      bankAccountNumber: view.bankAccountNumber || "",
+      bankIfsc: view.bankIfsc || "",
+      panNumber: view.panNumber || "",
+      uanNumber: view.uanNumber || "",
+      esiNumber: view.esiNumber || "",
+    });
+    setFormErrors({});
+    setEditing(true);
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    // Email (the login) and CTC (payroll) are not edited here.
+    const errors = validateProfile(form, { skip: ["email", "ctc"] });
+    setFormErrors(errors);
+    const firstKey = firstErrorKey(errors);
+    if (firstKey) {
+      toast.error("Please fix the highlighted fields.");
+      document
+        .querySelector<HTMLElement>(`[data-field="emp-${firstKey}"] input, [data-field="emp-${firstKey}"] select, [data-field="emp-${firstKey}"] button`)
+        ?.focus();
+      return;
+    }
+    const { email: _email, ctc: _ctc, ...payload } = toProfilePayload(form);
+    setSaving(true);
+    try {
+      const res = await employeesApi.update(view.id, payload);
+      if (res?.success === false) {
+        toast.error(res?.message || "Could not save the profile");
+        return;
+      }
+      const next = { ...view, ...res.data } as Employee;
+      setFullRecord(next);
+      onEmployeeUpdated?.(next);
+      setEditing(false);
+      toast.success("Profile updated");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || "Could not save the profile");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
@@ -206,85 +354,105 @@ export default function EmployeeProfileModal({
               isCurrentUserAdmin={isCurrentUserAdmin}
             />
           ) : activeTab === "PROFILE" ? (
+            editing ? (
+              <form onSubmit={handleSaveProfile} className="mx-auto max-w-2xl space-y-5" noValidate>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900">Edit profile details</h3>
+                    <p className="text-xs text-slate-500">All fields are required except PAN, PF UAN and ESI number.</p>
+                  </div>
+                </div>
+                <EmployeeProfileFields
+                  values={form}
+                  errors={formErrors}
+                  onChange={setField}
+                  branches={branches}
+                  departments={departments}
+                  shifts={shifts}
+                  hideEmail
+                  hideCtc
+                />
+                <div className="flex items-center justify-end gap-3 border-t border-slate-200 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setEditing(false)}
+                    disabled={saving}
+                    className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-60"
+                  >
+                    {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    {saving ? "Saving" : "Save changes"}
+                  </button>
+                </div>
+              </form>
+            ) : (
             <div className="space-y-6">
-              {/* Profile details grid */}
+              {canEditProfile && (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={startEditing}
+                    className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-600 hover:text-white"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    Edit profile
+                  </button>
+                </div>
+              )}
+              {profileLoading && (
+                <p className="flex items-center gap-2 text-xs text-slate-500">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading full profile...
+                </p>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="rounded-2xl p-5 border border-slate-200 bg-slate-50/70 space-y-4">
-                  <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-2">
-                    <Briefcase className="w-4 h-4 text-indigo-600" />
-                    Employment & Assignment
-                  </h3>
-                  <div className="space-y-2.5 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Employee ID:</span>
-                      <span className="text-indigo-700 font-mono font-semibold">{employee.employeeCode}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Designation:</span>
-                      <span className="text-slate-800 font-medium">{employee.designation || "Not assigned"}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Department:</span>
-                      <span className="text-slate-800 font-medium">{employee.department?.name || "General"}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Branch / Location:</span>
-                      <span className="text-slate-800 font-medium">{employee.branch?.name || "Main HQ"}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Shift Schedule:</span>
-                      <span className="text-slate-800 font-medium">{employee.shift?.name || "General Shift"}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">System Role:</span>
-                      <span className="text-indigo-700 font-semibold">{roleLabel(employee.user?.role || "EMPLOYEE")}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Joined On:</span>
-                      <span className="text-slate-800">{formatDate(employee.createdAt)}</span>
-                    </div>
-                  </div>
-                </div>
+                <ProfileCard icon={<User className="w-4 h-4 text-indigo-600" />} title="Personal Details">
+                  <Row label="Full name" value={`${view.firstName} ${view.lastName || ""}`.trim()} />
+                  <Row label="Gender" value={GENDER_LABELS[view.gender || ""]} />
+                  <Row label="Date of birth" value={view.dateOfBirth ? formatDate(ymd(view.dateOfBirth)) : ""} />
+                  <Row label="Phone" value={view.phone} />
+                  <Row label="Email" value={view.user?.email || view.workEmail} />
+                  <Row label="Address" value={view.address} wrap />
+                </ProfileCard>
 
-                <div className="rounded-2xl p-5 border border-slate-200 bg-slate-50/70 space-y-4">
-                  <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-2">
-                    <CreditCard className="w-4 h-4 text-emerald-600" />
-                    Statutory & Compliance Status
-                  </h3>
-                  <div className="space-y-2.5 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Account Status:</span>
-                      <span className="text-emerald-700 font-semibold">{employee.status}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">PAN:</span>
-                      <span className="text-slate-800 font-mono">{employee.panNumber || "—"}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">UAN:</span>
-                      <span className="text-slate-800 font-mono">{employee.uanNumber || "—"}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">ESI:</span>
-                      <span className="text-slate-800 font-mono">{employee.esiNumber || "—"}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Compliance Audit:</span>
-                      <span className="text-slate-800">Active Employment File</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Direct Document Access:</span>
-                      <button
-                        onClick={() => setActiveTab("DOCUMENTS")}
-                        className="text-indigo-600 font-semibold hover:underline"
-                      >
-                        Manage 10 Document Slots →
-                      </button>
-                    </div>
+                <ProfileCard icon={<Phone className="w-4 h-4 text-rose-600" />} title="Emergency Contact">
+                  <Row label="Contact name" value={view.emergencyContactName} />
+                  <Row label="Contact phone" value={view.emergencyContactPhone} />
+                </ProfileCard>
+
+                <ProfileCard icon={<Briefcase className="w-4 h-4 text-indigo-600" />} title="Employment & Assignment">
+                  <Row label="Employee ID" value={view.employeeCode} mono />
+                  <Row label="Designation" value={view.designation} />
+                  <Row label="Employment type" value={EMPLOYMENT_LABELS[view.employmentType || ""]} />
+                  <Row label="Department" value={view.department?.name} />
+                  <Row label="Branch / Location" value={view.branch?.name} />
+                  <Row label="Shift schedule" value={view.shift?.name} />
+                  <Row label="System role" value={roleLabel(view.user?.role || "EMPLOYEE")} />
+                  <Row label="Date of joining" value={formatDate(ymd(view.dateOfJoining) || ymd(view.createdAt))} />
+                </ProfileCard>
+
+                <ProfileCard icon={<CreditCard className="w-4 h-4 text-emerald-600" />} title="Bank & Statutory">
+                  <Row label="Bank" value={view.bankName} />
+                  <Row label="Account number" value={view.bankAccountNumber} mono />
+                  <Row label="IFSC" value={view.bankIfsc} mono />
+                  <Row label="PAN" value={view.panNumber} mono />
+                  <Row label="PF UAN" value={view.uanNumber} mono />
+                  <Row label="ESI number" value={view.esiNumber} mono />
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Documents:</span>
+                    <button onClick={() => setActiveTab("DOCUMENTS")} className="text-indigo-600 font-semibold hover:underline">
+                      Manage documents →
+                    </button>
                   </div>
-                </div>
+                </ProfileCard>
               </div>
             </div>
+            )
           ) : (
             /* ASSETS TAB */
             <div className="space-y-6">

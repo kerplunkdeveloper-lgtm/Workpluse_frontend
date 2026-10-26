@@ -110,7 +110,7 @@ export default function RegularizationModal({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
-                Corrected Clock-In Time
+                Corrected Punch-In Time
               </label>
               <input
                 type="time"
@@ -121,7 +121,7 @@ export default function RegularizationModal({
             </div>
             <div>
               <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
-                Corrected Clock-Out Time
+                Corrected Punch-Out Time
               </label>
               <input
                 type="time"

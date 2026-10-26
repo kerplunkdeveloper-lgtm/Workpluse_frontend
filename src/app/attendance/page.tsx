@@ -9,6 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useAttendance } from "@/context/AttendanceContext";
 import PunchClockCard from "@/components/attendance/PunchClockCard";
 import AttendanceHistoryView from "@/components/attendance/AttendanceHistoryView";
+import TeamPunchBoard from "@/components/attendance/TeamPunchBoard";
 import { MyAttendanceInsights, TeamToday } from "@/components/attendance/AttendanceInsights";
 
 const TEAM_ROLES = ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"];
@@ -62,6 +63,7 @@ function AttendanceWorkspace() {
 
       <PunchClockCard />
       {isTeam && <TeamToday />}
+      {isTeam && <TeamPunchBoard />}
       <MyAttendanceInsights />
 
       <Suspense fallback={<div className="skeleton-shimmer h-96 rounded-2xl" />}>

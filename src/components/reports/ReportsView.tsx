@@ -86,7 +86,7 @@ export default function ReportsView() {
 
   const handleExportDailyCSV = () => {
     const records = dailyReport?.records || dailyReport?.attendances || [];
-    const headers = ["Employee Code", "Name", "Department", "Date", "Status", "Check In", "Check Out", "Work Hours", "Late Minutes"];
+    const headers = ["Employee Code", "Name", "Department", "Date", "Status", "Punch In", "Punch Out", "Break (min)", "Lunch (min)", "Work Hours", "Late Minutes"];
     const rows = records.map((a: any) => [
       a.employee?.employeeCode || "WP-EMP",
       `"${a.employee?.firstName || ""} ${a.employee?.lastName || ""}"`.trim(),
@@ -95,6 +95,8 @@ export default function ReportsView() {
       a.status,
       a.checkIn ? formatTime(a.checkIn) : "-",
       a.checkOut ? formatTime(a.checkOut) : "-",
+      a.breakMinutes || "0",
+      a.lunchMinutes || "0",
       a.workHours ? Number(a.workHours).toFixed(1) : "0",
       a.lateMinutes || "0",
     ]);
@@ -477,8 +479,10 @@ export default function ReportsView() {
                   <th className="py-3.5 px-4">Code</th>
                   <th className="py-3.5 px-4">Employee</th>
                   <th className="py-3.5 px-4">Department</th>
-                  <th className="py-3.5 px-4">Check In</th>
-                  <th className="py-3.5 px-4">Check Out</th>
+                  <th className="py-3.5 px-4">Punch In</th>
+                  <th className="py-3.5 px-4">Punch Out</th>
+                  <th className="py-3.5 px-4">Break</th>
+                  <th className="py-3.5 px-4">Lunch</th>
                   <th className="py-3.5 px-4">Total Hours</th>
                   <th className="py-3.5 px-4">Late (Mins)</th>
                   <th className="py-3.5 px-4 text-center">Status</th>
@@ -487,13 +491,13 @@ export default function ReportsView() {
               <tbody className="divide-y divide-slate-100">
                 {loadingDaily ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-10 text-slate-500">
+                    <td colSpan={10} className="text-center py-10 text-slate-500">
                       Loading daily attendance register...
                     </td>
                   </tr>
                 ) : dailyRecords.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-12 text-slate-500">
+                    <td colSpan={10} className="text-center py-12 text-slate-500">
                       No attendance logs found matching the filter for {formatDate(selectedDate)}.
                     </td>
                   </tr>
@@ -522,6 +526,12 @@ export default function ReportsView() {
                         <td className="py-3.5 px-4 font-mono text-slate-700">
                           {a.checkOut ? formatTime(a.checkOut) : "-"}
                         </td>
+                        <td className="py-3.5 px-4 font-mono text-slate-600 whitespace-nowrap">
+                          {a.breakMinutes > 0 ? formatDurationMinutes(a.breakMinutes) : "-"}
+                        </td>
+                        <td className="py-3.5 px-4 font-mono text-slate-600 whitespace-nowrap">
+                          {a.lunchMinutes > 0 ? formatDurationMinutes(a.lunchMinutes) : "-"}
+                        </td>
                         <td className="py-3.5 px-4 font-bold text-indigo-700">
                           {a.workHours ? `${Number(a.workHours).toFixed(1)} hrs` : "-"}
                         </td>
@@ -530,7 +540,7 @@ export default function ReportsView() {
                         </td>
                         <td className="py-3.5 px-4 text-center">
                           <span
-                            className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                            className={`inline-block whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-bold border ${
                               isPresent
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                 : isLate

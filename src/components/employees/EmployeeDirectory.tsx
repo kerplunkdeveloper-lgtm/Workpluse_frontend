@@ -31,6 +31,15 @@ import { toast } from "sonner";
 import DatePicker from "@/components/ui/DatePicker";
 import confetti from "canvas-confetti";
 import EmployeeProfileModal from "./EmployeeProfileModal";
+import EmployeeProfileFields from "./EmployeeProfileFields";
+import {
+  EMPTY_PROFILE,
+  firstErrorKey,
+  toProfilePayload,
+  validateProfile,
+  type EmployeeProfileValues,
+  type ProfileErrors,
+} from "@/lib/employeeProfile";
 import dynamic from "next/dynamic";
 
 // Loaded on demand: pulls in the Excel parser, which most visits never need.
@@ -101,30 +110,24 @@ export default function EmployeeDirectory() {
   // Create / Invite Employee Modal State
   const [modalOpen, setModalOpen] = useState(false);
   const [inviteMode, setInviteMode] = useState<"INVITE" | "MANUAL">("INVITE");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
+  const [form, setForm] = useState<EmployeeProfileValues>(EMPTY_PROFILE);
+  const [formErrors, setFormErrors] = useState<ProfileErrors>({});
+  const setField = (key: keyof EmployeeProfileValues, value: string) => {
+    setForm((current) => ({ ...current, [key]: value }));
+    // Clear the message as soon as the person starts fixing that field.
+    setFormErrors((current) => (current[key] ? { ...current, [key]: undefined } : current));
+  };
   const [password, setPassword] = useState("");
-  const [phone, setPhone] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [employeeCode, setEmployeeCode] = useState("");
-  const [designation, setDesignation] = useState("");
   const [role, setRole] = useState("EMPLOYEE");
-  const [branchId, setBranchId] = useState("");
-  const [departmentId, setDepartmentId] = useState("");
   const [showCreateDepartment, setShowCreateDepartment] = useState(false);
   const [newDepartmentName, setNewDepartmentName] = useState("");
   const [creatingDepartment, setCreatingDepartment] = useState(false);
-  const [shiftId, setShiftId] = useState("");
-  const [ctc, setCtc] = useState("");
-  const [dateOfJoining, setDateOfJoining] = useState("");
-  const [gender, setGender] = useState("");
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [broadcastTitle, setBroadcastTitle] = useState("");
   const [broadcastMessage, setBroadcastMessage] = useState("");
   const [sendingBroadcast, setSendingBroadcast] = useState(false);
-  const [panNumber, setPanNumber] = useState("");
-  const [uanNumber, setUanNumber] = useState("");
-  const [esiNumber, setEsiNumber] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
 
@@ -209,50 +212,42 @@ export default function EmployeeDirectory() {
     }
   };
 
+  const openAddModal = (mode: "INVITE" | "MANUAL") => {
+    setInviteMode(mode);
+    setFormErrors({});
+    // Pre-pick the workspace defaults so the common case is one less click; the person can still change them.
+    setForm((current) => ({
+      ...current,
+      branchId: current.branchId || branches[0]?.id || "",
+      departmentId: current.departmentId || departments[0]?.id || "",
+      shiftId: current.shiftId || shifts[0]?.id || "",
+    }));
+    setModalOpen(true);
+  };
+
   const handleCreateEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Everything except PAN, UAN and ESI is required, for both manual entry and email invite.
+    const errors = validateProfile(form);
+    const badPassword = inviteMode === "MANUAL" && password.trim().length < 8;
+    setFormErrors(errors);
+    setPasswordError(badPassword ? "Temporary password must be at least 8 characters" : "");
+    const firstKey = firstErrorKey(errors);
+    if (firstKey || badPassword) {
+      toast.error("Please fix the highlighted fields.");
+      const target = firstKey ? `emp-${firstKey}` : "emp-password";
+      document.querySelector<HTMLElement>(`[data-field="${target}"] input, [data-field="${target}"] select, [data-field="${target}"] button`)?.focus();
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      let res;
-      if (inviteMode === "INVITE") {
-        res = await employeesApi.inviteEmployee({
-          firstName,
-          lastName,
-          email,
-          phone,
-          employeeCode: employeeCode || undefined,
-          designation: designation || undefined,
-          role,
-          branchId: branchId || undefined,
-          departmentId: departmentId || undefined,
-          shiftId: shiftId || undefined,
-          ctc: ctc ? Number(ctc) : undefined,
-          gender: gender || undefined,
-          panNumber: panNumber || undefined,
-          uanNumber: uanNumber || undefined,
-          esiNumber: esiNumber || undefined,
-        });
-      } else {
-        res = await employeesApi.create({
-          firstName,
-          lastName,
-          email,
-          password,
-          phone,
-          employeeCode: employeeCode || undefined,
-          designation: designation || undefined,
-          role,
-          branchId: branchId || undefined,
-          departmentId: departmentId || undefined,
-          shiftId: shiftId || undefined,
-          ctc: ctc ? Number(ctc) : undefined,
-          dateOfJoining: dateOfJoining || undefined,
-          gender: gender || undefined,
-          panNumber: panNumber || undefined,
-          uanNumber: uanNumber || undefined,
-          esiNumber: esiNumber || undefined,
-        });
-      }
+      // Blank PAN, UAN and ESI go through as empty, which the server stores as "not provided".
+      const payload = { ...toProfilePayload(form), employeeCode: employeeCode.trim() || undefined, role };
+      const res =
+        inviteMode === "INVITE"
+          ? await employeesApi.inviteEmployee(payload)
+          : await employeesApi.create({ ...payload, password: password.trim() });
 
       if (res?.success) {
         const createdId = res.data?.id || res.employee?.id;
@@ -264,25 +259,17 @@ export default function EmployeeDirectory() {
           }
         }
         if (inviteMode === "INVITE") {
-          toast.success(`Invitation dispatched! Credentials emailed to ${email}.`);
+          toast.success(`Invitation dispatched! Credentials emailed to ${payload.email}.`);
         } else {
           toast.success("Employee onboarded and account credentials created!");
         }
         confetti({ particleCount: 60, spread: 60 });
         setModalOpen(false);
-        // Reset form
-        setFirstName("");
-        setLastName("");
-        setEmail("");
-        setPhone("");
+        // Reset form, keeping nothing from this employee.
+        setForm(EMPTY_PROFILE);
+        setFormErrors({});
+        setPassword("");
         setEmployeeCode("");
-        setDesignation("");
-        setCtc("");
-        setDateOfJoining("");
-        setGender("");
-        setPanNumber("");
-        setUanNumber("");
-        setEsiNumber("");
         setPhotoFile(null);
         loadData();
       } else {
@@ -310,7 +297,7 @@ export default function EmployeeDirectory() {
       }
       const created = res.data;
       setDepartments((current) => [created, ...current]);
-      setDepartmentId(created.id);
+      setField("departmentId", created.id);
       setNewDepartmentName("");
       setShowCreateDepartment(false);
       toast.success(`${departmentName} department created and selected.`);
@@ -431,28 +418,19 @@ export default function EmployeeDirectory() {
             </button>
           )}
 
-          <button
-            onClick={() => {
-              setInviteMode("INVITE");
-              if (branches.length > 0 && !branchId) setBranchId(branches[0].id);
-              if (departments.length > 0 && !departmentId) setDepartmentId(departments[0].id);
-              if (shifts.length > 0 && !shiftId) setShiftId(shifts[0].id);
-              setModalOpen(true);
-            }}
-            className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm flex items-center gap-2 shadow-sm shadow-indigo-600/25 transition"
-          >
-            <Mail className="w-4 h-4" />
-            Invite employee
-          </button>
+          {/* The invite endpoint is admin-only; HR adds people with "Add manually". */}
+          {canManageAccess && (
+            <button
+              onClick={() => openAddModal("INVITE")}
+              className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm flex items-center gap-2 shadow-sm shadow-indigo-600/25 transition"
+            >
+              <Mail className="w-4 h-4" />
+              Invite employee
+            </button>
+          )}
 
           <button
-            onClick={() => {
-              setInviteMode("MANUAL");
-              if (branches.length > 0 && !branchId) setBranchId(branches[0].id);
-              if (departments.length > 0 && !departmentId) setDepartmentId(departments[0].id);
-              if (shifts.length > 0 && !shiftId) setShiftId(shifts[0].id);
-              setModalOpen(true);
-            }}
+            onClick={() => openAddModal("MANUAL")}
             className="px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm font-semibold text-sm flex items-center gap-2 transition"
           >
             <Plus className="w-4 h-4" />
@@ -950,62 +928,37 @@ export default function EmployeeDirectory() {
             <form onSubmit={handleCreateEmployee} className="space-y-4">
               <ProfilePhotoPicker
                 size="md"
-                initials={firstName?.[0] || "E"}
+                initials={form.firstName?.[0] || "E"}
                 hint="Add profile photo"
                 onFile={(file) => setPhotoFile(file)}
               />
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[13px] font-medium text-slate-700 mb-1">First Name *</label>
-                  <input
-                    type="text"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-[13px] font-medium text-slate-700 mb-1">Last Name</label>
-                  <input
-                    type="text"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-              </div>
 
-              <div className={inviteMode === "INVITE" ? "space-y-1" : "grid grid-cols-2 gap-3"}>
-                <div>
-                  <label className="block text-[13px] font-medium text-slate-700 mb-1">Email *</label>
+              {inviteMode === "MANUAL" && (
+                <div data-field="emp-password">
+                  <label htmlFor="emp-password" className="block text-[13px] font-medium text-slate-700 mb-1">Temporary password *</label>
                   <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="employee@company.com"
-                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
-                    required
+                    id="emp-password"
+                    type="text"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setPasswordError("");
+                    }}
+                    placeholder="At least 8 characters"
+                    aria-invalid={!!passwordError}
+                    className={`w-full bg-white border rounded-xl p-2.5 text-xs font-mono text-slate-900 focus:outline-none ${passwordError ? "border-rose-400" : "border-slate-200 focus:border-indigo-500"}`}
                   />
+                  {passwordError && <p role="alert" className="mt-1 text-[11px] font-medium text-rose-600">{passwordError}</p>}
                 </div>
-                {inviteMode === "MANUAL" && (
-                  <div>
-                    <label className="block text-[13px] font-medium text-slate-700 mb-1">Temporary Password *</label>
-                    <input
-                      type="text"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-indigo-500"
-                      required
-                    />
-                  </div>
-                )}
-              </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[13px] font-medium text-slate-700 mb-1">Employee / HR ID</label>
+                  <label htmlFor="emp-code" className="block text-[13px] font-medium text-slate-700 mb-1">
+                    Employee / HR ID <span className="font-normal text-slate-400">(auto if blank)</span>
+                  </label>
                   <input
+                    id="emp-code"
                     type="text"
                     value={employeeCode}
                     onChange={(e) => setEmployeeCode(e.target.value)}
@@ -1014,19 +967,9 @@ export default function EmployeeDirectory() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[13px] font-medium text-slate-700 mb-1">Designation</label>
-                  <input
-                    type="text"
-                    value={designation}
-                    onChange={(e) => setDesignation(e.target.value)}
-                    placeholder="e.g. Software Engineer"
-                    maxLength={120}
-                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[13px] font-medium text-slate-700 mb-1">System Role *</label>
+                  <label htmlFor="emp-role" className="block text-[13px] font-medium text-slate-700 mb-1">System Role *</label>
                   <select
+                    id="emp-role"
                     value={role}
                     onChange={(e) => setRole(e.target.value)}
                     className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
@@ -1038,162 +981,69 @@ export default function EmployeeDirectory() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[13px] font-medium text-slate-700 mb-1">Branch</label>
-                  <select
-                    value={branchId}
-                    onChange={(e) => setBranchId(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
-                  >
-                    <option value="">Select Branch...</option>
-                    {branches.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-[13px] font-medium text-slate-700">Department</label>
-                    <button
-                      type="button"
-                      onClick={() => setShowCreateDepartment((value) => !value)}
-                      className="text-xs font-semibold text-indigo-600 hover:text-indigo-800"
-                    >
-                      {showCreateDepartment ? "Choose existing" : "+ Create new"}
-                    </button>
-                  </div>
-                  {showCreateDepartment ? (
-                    <div className="flex gap-1.5">
-                      <input
-                        value={newDepartmentName}
-                        onChange={(e) => setNewDepartmentName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            void handleCreateDepartment();
-                          }
-                        }}
-                        placeholder="e.g. Engineering"
-                        maxLength={100}
-                        className="min-w-0 flex-1 bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
-                      />
+              <EmployeeProfileFields
+                values={form}
+                errors={formErrors}
+                onChange={setField}
+                branches={branches}
+                departments={departments}
+                shifts={shifts}
+                renderDepartment={() => (
+                  <div>
+                    <div className="mb-1 flex justify-end">
                       <button
                         type="button"
-                        onClick={() => void handleCreateDepartment()}
-                        disabled={creatingDepartment}
-                        className="px-2.5 rounded-xl bg-indigo-600 text-white disabled:opacity-50"
-                        title="Create department"
+                        onClick={() => setShowCreateDepartment((value) => !value)}
+                        className="text-xs font-semibold text-indigo-600 hover:text-indigo-800"
                       >
-                        {creatingDepartment ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                        {showCreateDepartment ? "Choose existing" : "+ Create new"}
                       </button>
                     </div>
-                  ) : (
-                    <select
-                      value={departmentId}
-                      onChange={(e) => setDepartmentId(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
-                    >
-                      <option value="">Select Department...</option>
-                      {departments.map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {d.name}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[13px] font-medium text-slate-700 mb-1">Shift Schedule</label>
-                  <select
-                    value={shiftId}
-                    onChange={(e) => setShiftId(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
-                  >
-                    <option value="">Select Shift...</option>
-                    {shifts.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name} ({s.startTime} - {s.endTime})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[13px] font-medium text-slate-700 mb-1">Gender</label>
-                  <select
-                    value={gender}
-                    onChange={(e) => setGender(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
-                  >
-                    <option value="">Select...</option>
-                    <option value="MALE">Male</option>
-                    <option value="FEMALE">Female</option>
-                    <option value="NOT_SPECIFIED">Not specified</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className={inviteMode === "MANUAL" ? "grid grid-cols-2 gap-3" : ""}>
-                {inviteMode === "MANUAL" && (
-                  <div>
-                    <label className="block text-[13px] font-medium text-slate-700 mb-1">Joining Date</label>
-                    <DatePicker
-                      value={dateOfJoining}
-                      onChange={setDateOfJoining}
-                      placeholder="Select joining date"
-                      ariaLabel="Joining date"
-                    />
+                    {showCreateDepartment ? (
+                      <div className="flex gap-1.5">
+                        <input
+                          value={newDepartmentName}
+                          onChange={(e) => setNewDepartmentName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              void handleCreateDepartment();
+                            }
+                          }}
+                          placeholder="e.g. Engineering"
+                          maxLength={100}
+                          className="min-w-0 flex-1 bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => void handleCreateDepartment()}
+                          disabled={creatingDepartment}
+                          className="px-2.5 rounded-xl bg-indigo-600 text-white disabled:opacity-50"
+                          title="Create department"
+                        >
+                          {creatingDepartment ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    ) : (
+                      <select
+                        id="emp-departmentId"
+                        value={form.departmentId}
+                        onChange={(e) => setField("departmentId", e.target.value)}
+                        aria-invalid={!!formErrors.departmentId}
+                        className={`w-full bg-white border rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none ${formErrors.departmentId ? "border-rose-400" : "border-slate-200 focus:border-indigo-500"}`}
+                      >
+                        <option value="">Select department...</option>
+                        {departments.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 )}
-                <div>
-                  <label className="block text-[13px] font-medium text-slate-700 mb-1">Annual CTC (INR)</label>
-                  <input
-                    type="number"
-                    value={ctc}
-                    onChange={(e) => setCtc(e.target.value)}
-                    placeholder="e.g. 900000"
-                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-              </div>
+              />
 
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-[13px] font-medium text-slate-700 mb-1">PAN</label>
-                  <input
-                    type="text"
-                    value={panNumber}
-                    onChange={(e) => setPanNumber(e.target.value.toUpperCase())}
-                    placeholder="ABCDE1234F"
-                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[13px] font-medium text-slate-700 mb-1">UAN</label>
-                  <input
-                    type="text"
-                    value={uanNumber}
-                    onChange={(e) => setUanNumber(e.target.value)}
-                    placeholder="PF UAN"
-                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[13px] font-medium text-slate-700 mb-1">ESI number</label>
-                  <input
-                    type="text"
-                    value={esiNumber}
-                    onChange={(e) => setEsiNumber(e.target.value)}
-                    placeholder="ESI IP"
-                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-              </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
                 <button
@@ -1316,6 +1166,11 @@ export default function EmployeeDirectory() {
           isOpen={profileModalOpen}
           initialTab="DOCUMENTS"
           isCurrentUserAdmin
+          // Admin and HR can edit profile details. HR is limited to plain employee accounts (the server enforces it too).
+          canEdit={canManageAccess || (viewerRole === "MANAGER" && (selectedEmployeeForProfile.user?.role || "EMPLOYEE") === "EMPLOYEE")}
+          branches={branches}
+          departments={departments}
+          shifts={shifts}
           onEmployeeUpdated={(updated) => {
             setSelectedEmployeeForProfile(updated);
             setEmployees((prev) => prev.map((row) => (row.id === updated.id ? { ...row, ...updated } : row)));

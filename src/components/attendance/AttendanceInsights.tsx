@@ -185,7 +185,7 @@ const SEGMENTS: { key: keyof TeamSummary; status: string | null; label: string; 
   { key: "wfh", status: "WORK_FROM_HOME", label: "Remote", color: "bg-sky-500" },
   { key: "halfDay", status: "HALF_DAY", label: "Half day", color: "bg-orange-400" },
   { key: "onLeave", status: "ON_LEAVE", label: "On leave", color: "bg-violet-500" },
-  { key: "absent", status: null, label: "Not in yet", color: "bg-slate-300" },
+  { key: "absent", status: null, label: "Not punched", color: "bg-slate-300" },
 ];
 
 export function TeamTodayView({ summary }: { summary: TeamSummary | null }) {
@@ -196,7 +196,7 @@ export function TeamTodayView({ summary }: { summary: TeamSummary | null }) {
         <div>
           <h2 id="team-today-title" className="text-sm font-semibold text-slate-900">Team today</h2>
           <p className="mt-0.5 text-xs text-slate-500">
-            {summary ? `${summary.currentlyClockedIn} of ${total} people are clocked in right now` : "Loading the team…"}
+            {summary ? `${summary.currentlyClockedIn} of ${total} people are punched in right now` : "Loading the team…"}
           </p>
         </div>
         <div className="text-right">

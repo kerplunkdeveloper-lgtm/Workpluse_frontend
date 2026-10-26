@@ -9,8 +9,9 @@ describe("rosterStatusFor", () => {
 
   it("never reports leave, holiday or week-off rows as present", () => {
     expect(rosterStatusFor({ status: "ON_LEAVE" }, false)).toBe("ON_LEAVE");
-    expect(rosterStatusFor({ status: "HOLIDAY" }, false)).toBe("ABSENT");
-    expect(rosterStatusFor({ status: "WEEK_OFF" }, false)).toBe("ABSENT");
+    // A holiday or weekly off is a day off, not an absence.
+    expect(rosterStatusFor({ status: "HOLIDAY" }, false)).toBe("OFF");
+    expect(rosterStatusFor({ status: "WEEK_OFF" }, false)).toBe("OFF");
   });
 
   it("maps late and remote punches, and falls back to approved leave", () => {
@@ -19,6 +20,12 @@ describe("rosterStatusFor", () => {
     expect(rosterStatusFor({ status: "PRESENT", isWfh: true }, false)).toBe("REMOTE");
     expect(rosterStatusFor(undefined, true)).toBe("ON_LEAVE");
     expect(rosterStatusFor(undefined, false)).toBe("ABSENT");
+    expect(rosterStatusFor({ status: "ABSENT" }, false)).toBe("ABSENT");
+  });
+
+  it("does not call someone absent when the whole company has the day off", () => {
+    expect(rosterStatusFor(undefined, false, true)).toBe("OFF");
+    expect(rosterStatusFor(undefined, true, true)).toBe("ON_LEAVE");
   });
 });
 

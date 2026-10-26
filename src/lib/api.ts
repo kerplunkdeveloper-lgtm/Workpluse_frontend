@@ -98,11 +98,27 @@ let accessRefreshPromise: Promise<string | null> | null = null;
 
 async function refreshAccessTokenSilently(): Promise<string | null> {
   if (!accessRefreshPromise) {
+    const storedRefresh =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("workpulse_refresh_token")
+        : null;
+
     accessRefreshPromise = api
-      .post("/auth/refresh", { client: "web" })
+      .post("/auth/refresh", {
+        client: "web",
+        refreshToken: storedRefresh || undefined,
+      })
       .then((response) => {
-        const nextToken = response.data?.data?.accessToken || response.data?.data?.token || null;
+        const nextToken =
+          response.data?.data?.accessToken || response.data?.data?.token || null;
+        const nextRefresh = response.data?.data?.refreshToken || null;
+
         if (nextToken) setSessionAccessToken(nextToken);
+        if (nextRefresh && typeof window !== "undefined") {
+          try {
+            window.localStorage.setItem("workpulse_refresh_token", nextRefresh);
+          } catch {}
+        }
         return nextToken;
       })
       .catch(() => null)
@@ -269,11 +285,31 @@ export const authApi = {
     return res.data;
   },
   logout: async () => {
-    const res = await api.post("/auth/logout", { client: "web" });
+    const storedRefresh =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("workpulse_refresh_token")
+        : null;
+    const res = await api.post("/auth/logout", {
+      client: "web",
+      refreshToken: storedRefresh || undefined,
+    });
     return res.data;
   },
   refreshSession: async () => {
-    const res = await api.post("/auth/refresh", { client: "web" });
+    const storedRefresh =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("workpulse_refresh_token")
+        : null;
+    const res = await api.post("/auth/refresh", {
+      client: "web",
+      refreshToken: storedRefresh || undefined,
+    });
+    const nextRefresh = res.data?.data?.refreshToken;
+    if (nextRefresh && typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem("workpulse_refresh_token", nextRefresh);
+      } catch {}
+    }
     return res.data;
   },
   getPlans: async () => {
@@ -376,6 +412,11 @@ export const attendanceApi = {
     const res = await api.get("/attendance/today", BACKGROUND_REQUEST);
     return res.data;
   },
+  /** Today's present / leave / off / absent counts for each branch. Admin and HR only. */
+  getBranchSummary: async () => {
+    const res = await api.get("/attendance/branch-summary", BACKGROUND_REQUEST);
+    return res.data;
+  },
   getLiveToday: async () => {
     const res = await api.get("/attendance/live-today", BACKGROUND_REQUEST);
     return res.data;
@@ -393,6 +434,7 @@ export const attendanceApi = {
   getHistory: async (params: {
     from?: string;
     to?: string;
+    date?: string;
     status?: string;
     employeeId?: string;
     page?: number;
@@ -435,8 +477,29 @@ export const attendanceApi = {
   },
 };
 
+export const dayOffWorkApi = {
+  /** Ask HR or an admin to approve working today, a weekly off, holiday or company leave. */
+  request: async (payload: { reasonType: string; note?: string }) => {
+    const res = await api.post("/attendance/day-off-work", payload);
+    return res.data;
+  },
+  getMine: async () => {
+    const res = await api.get("/attendance/day-off-work/my");
+    return res.data;
+  },
+  /** Admin and HR: requests for one status (or ALL), with per-status counts in `counts`. */
+  getRequests: async (params: { status?: "PENDING" | "APPROVED" | "REJECTED" | "ALL"; limit?: number } = {}) => {
+    const res = await api.get("/attendance/day-off-work", { params: { status: "PENDING", limit: 200, ...params } });
+    return res.data;
+  },
+  review: async (id: string, payload: { status: "APPROVED" | "REJECTED"; reviewNote?: string }) => {
+    const res = await api.post(`/attendance/day-off-work/${id}/review`, payload);
+    return res.data;
+  },
+};
+
 export const correctionsApi = {
-  request: async (payload: { attendanceId: string; date?: string; requestedCheckIn?: string; requestedCheckOut?: string; reason: string }) => {
+  request: async (payload: { attendanceId?: string; date?: string; requestedCheckIn?: string; requestedCheckOut?: string; reason: string }) => {
     const res = await api.post("/attendance/corrections/request", payload);
     return res.data;
   },
@@ -450,6 +513,11 @@ export const correctionsApi = {
   },
   getAllCorrections: async () => {
     const res = await api.get("/attendance/corrections", { params: { status: "ALL", limit: 500 } });
+    return res.data;
+  },
+  /** Requests for one status (or ALL), with per-status counts in `counts`. */
+  getCorrections: async (params: { status?: "PENDING" | "APPROVED" | "REJECTED" | "ALL"; limit?: number; page?: number; employeeId?: string } = {}) => {
+    const res = await api.get("/attendance/corrections", { params: { status: "PENDING", limit: 500, ...params } });
     return res.data;
   },
   review: async (id: string, payload: { status: "APPROVED" | "REJECTED"; reviewNote?: string }) => {
@@ -572,6 +640,12 @@ export const payrollApi = {
   },
   getPayslipDetails: async (id: string) => {
     const res = await api.get(`/payroll/payslips/${id}/details`);
+    return res.data;
+  },
+  downloadPayslipPdf: async (id: string) => {
+    const res = await api.get(`/payroll/payslips/${id}/pdf`, {
+      responseType: "blob",
+    });
     return res.data;
   },
   getSalaryStructure: async (employeeId: string) => {
