@@ -4,18 +4,10 @@ import React, { useState, useEffect } from "react";
 import { Employee, Shift } from "@/types";
 import { employeesApi, shiftsApi, shiftOverridesApi } from "@/lib/api";
 import { formatDate, unwrapList } from "@/lib/utils";
-import {
-  CalendarRange,
-  Clock,
-  Plus,
-  Users,
-  CheckCircle2,
-  Calendar,
-  Sparkles,
-  Loader2,
-  AlertCircle,
-} from "lucide-react";
+import { CalendarRange, Clock, Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import Select from "@/components/ui/Select";
+import Modal from "@/components/ui/Modal";
 
 export default function ShiftsAndRostersView() {
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -48,7 +40,7 @@ export default function ShiftsAndRostersView() {
     setLoading(true);
     try {
       const [shiftRes, empRes, ovRes] = await Promise.allSettled([
-        shiftsApi.list(),
+        shiftsApi.list({ fresh: true }),
         employeesApi.list({ page: 1, limit: 500, status: "WORKING" }),
         shiftOverridesApi.list(),
       ]);
@@ -278,7 +270,7 @@ export default function ShiftsAndRostersView() {
       <div className="bg-white rounded-3xl border border-slate-200 p-5 space-y-4">
         <h2 className="text-sm font-semibold text-slate-900">Day shift overrides</h2>
         <form onSubmit={handleOverride} className="grid grid-cols-1 sm:grid-cols-5 gap-2">
-          <select
+          <Select
             value={ovEmp}
             onChange={(e) => setOvEmp(e.target.value)}
             className="px-3 py-2 rounded-xl border border-slate-200 text-xs"
@@ -289,14 +281,14 @@ export default function ShiftsAndRostersView() {
                 {e.firstName} {e.lastName} ({e.employeeCode})
               </option>
             ))}
-          </select>
+          </Select>
           <input
             type="date"
             value={ovDate}
             onChange={(e) => setOvDate(e.target.value)}
             className="px-3 py-2 rounded-xl border border-slate-200 text-xs"
           />
-          <select
+          <Select
             value={ovShift}
             onChange={(e) => setOvShift(e.target.value)}
             className="px-3 py-2 rounded-xl border border-slate-200 text-xs"
@@ -305,7 +297,7 @@ export default function ShiftsAndRostersView() {
             {shifts.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
-          </select>
+          </Select>
           <input
             value={ovReason}
             onChange={(e) => setOvReason(e.target.value)}
@@ -397,7 +389,7 @@ export default function ShiftsAndRostersView() {
 
       {/* Create Shift Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <Modal>
           <div className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl">
             <h3 className="text-base font-semibold text-slate-900 mb-1">Create Shift Schedule</h3>
             <p className="text-xs text-slate-500 mb-4">
@@ -505,7 +497,7 @@ export default function ShiftsAndRostersView() {
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

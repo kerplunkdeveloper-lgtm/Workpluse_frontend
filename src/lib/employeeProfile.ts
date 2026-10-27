@@ -6,10 +6,13 @@
  * PAN, UAN and ESI are the only optional fields. Everything else is required.
  */
 
+import { INDIAN_MOBILE_REGEX, sanitizeIndianPhone, toE164India } from "../components/ui/PhoneInput";
+
 export interface EmployeeProfileValues {
   firstName: string;
   lastName: string;
   email: string;
+  personalEmail: string;
   phone: string;
   gender: string;
   dateOfBirth: string;
@@ -37,6 +40,7 @@ export const EMPTY_PROFILE: EmployeeProfileValues = {
   firstName: "",
   lastName: "",
   email: "",
+  personalEmail: "",
   phone: "",
   gender: "",
   dateOfBirth: "",
@@ -89,8 +93,9 @@ const REQUIRED: [keyof EmployeeProfileValues, string][] = [
 
 const FORMATS: Partial<Record<keyof EmployeeProfileValues, { pattern: RegExp; message: string; upper?: boolean; strip?: RegExp }>> = {
   email: { pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: "Enter a valid email address" },
-  phone: { pattern: /^\+?\d{10,15}$/, message: "Enter 10 to 15 digits", strip: /[\s\-()]/g },
-  emergencyContactPhone: { pattern: /^\+?\d{10,15}$/, message: "Enter 10 to 15 digits", strip: /[\s\-()]/g },
+  personalEmail: { pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: "Enter a valid personal email address" },
+  phone: { pattern: INDIAN_MOBILE_REGEX, message: "Enter a 10-digit mobile number starting with 6, 7, 8 or 9", strip: /\D/g },
+  emergencyContactPhone: { pattern: INDIAN_MOBILE_REGEX, message: "Enter a 10-digit mobile number starting with 6, 7, 8 or 9", strip: /\D/g },
   bankAccountNumber: { pattern: /^\d{6,20}$/, message: "Enter 6 to 20 digits", strip: /\s+/g },
   bankIfsc: { pattern: /^[A-Z]{4}0[A-Z0-9]{6}$/, message: "Like HDFC0001234", upper: true, strip: /\s+/g },
   panNumber: { pattern: /^[A-Z]{5}[0-9]{4}[A-Z]$/, message: "Like ABCDE1234F", upper: true, strip: /\s+/g },
@@ -121,7 +126,7 @@ export function validateProfile(
   for (const [key, rule] of Object.entries(FORMATS) as [keyof EmployeeProfileValues, NonNullable<(typeof FORMATS)[keyof typeof FORMATS]>][]) {
     if (skip.has(key) || errors[key]) continue;
     const raw = String(values[key] ?? "").trim();
-    if (!raw) continue; // optional fields (PAN, UAN, ESI) may stay blank
+    if (!raw) continue; // optional fields (personal email, PAN, UAN, ESI) may stay blank
     let value = rule.strip ? raw.replace(rule.strip, "") : raw;
     if (rule.upper) value = value.toUpperCase();
     if (!rule.pattern.test(value)) errors[key] = rule.message;
@@ -155,7 +160,8 @@ export function toProfilePayload(values: EmployeeProfileValues) {
     firstName: values.firstName.trim(),
     lastName: values.lastName.trim(),
     email: values.email.trim().toLowerCase(),
-    phone: clean("phone"),
+    personalEmail: values.personalEmail.trim().toLowerCase(),
+    phone: toE164India(sanitizeIndianPhone(values.phone)),
     gender: values.gender,
     dateOfBirth: values.dateOfBirth,
     dateOfJoining: values.dateOfJoining,
@@ -166,7 +172,7 @@ export function toProfilePayload(values: EmployeeProfileValues) {
     shiftId: values.shiftId,
     address: values.address.trim(),
     emergencyContactName: values.emergencyContactName.trim(),
-    emergencyContactPhone: clean("emergencyContactPhone"),
+    emergencyContactPhone: toE164India(sanitizeIndianPhone(values.emergencyContactPhone)),
     bankName: values.bankName.trim(),
     bankAccountNumber: clean("bankAccountNumber"),
     bankIfsc: clean("bankIfsc"),

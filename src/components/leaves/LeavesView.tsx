@@ -5,28 +5,21 @@ import { LeaveRequest, LeaveBalance, LeaveType } from "@/types";
 import { leavesApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { formatDate, unwrapList } from "@/lib/utils";
-import {
-  CalendarDays,
-  Plus,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  Sparkles,
-  Layers,
-  AlertCircle,
-  Loader2,
-  Calendar,
-} from "lucide-react";
+import { CalendarDays, Plus, AlertCircle, Loader2, Calendar } from "lucide-react";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import DatePicker from "@/components/ui/DatePicker";
 import PermissionRequestsPanel from "./PermissionRequestsPanel";
 import CompanyLeavePanel from "./CompanyLeavePanel";
+import WorkFromHomePanel from "./WorkFromHomePanel";
+import ShootRequestsPanel from "./ShootRequestsPanel";
 import { confirmDialog } from "@/components/ui/confirmDialog";
+import Select from "@/components/ui/Select";
+import Modal from "@/components/ui/Modal";
 
 export default function LeavesView() {
   const { user, role } = useAuth();
-  const [activeTab, setActiveTab] = useState<"MY_LEAVES" | "PERMISSIONS" | "COMPANY_LEAVE" | "APPROVALS">("MY_LEAVES");
+  const [activeTab, setActiveTab] = useState<"MY_LEAVES" | "PERMISSIONS" | "COMPANY_LEAVE" | "WORK_FROM_HOME" | "SHOOT_REQUESTS" | "APPROVALS">("MY_LEAVES");
   const [balances, setBalances] = useState<LeaveBalance[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
   const [myRequests, setMyRequests] = useState<LeaveRequest[]>([]);
@@ -50,7 +43,7 @@ export default function LeavesView() {
   const [reviewNote, setReviewNote] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
 
-  const canApprove = role === "COMPANY_ADMIN" || role === "SUPER_ADMIN" || role === "MANAGER";
+  const canApprove = role === "COMPANY_ADMIN" || role === "SUPER_ADMIN" || role === "MANAGER" || role === "HR";
 
   const loadData = async () => {
     setLoading(true);
@@ -327,6 +320,13 @@ export default function LeavesView() {
         </button>
 
         <button
+          onClick={() => setActiveTab("WORK_FROM_HOME")}
+          className="pb-3 px-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition"
+        >
+          Work From Home
+        </button>
+
+        <button
           onClick={() => setActiveTab("COMPANY_LEAVE")}
           className={`pb-3 px-4 text-sm font-semibold border-b-2 transition ${
             activeTab === "COMPANY_LEAVE"
@@ -337,6 +337,16 @@ export default function LeavesView() {
           Company leave
         </button>
 
+        <button
+          onClick={() => setActiveTab("SHOOT_REQUESTS")}
+          className={`pb-3 px-4 text-sm font-semibold border-b-2 transition ${
+            activeTab === "SHOOT_REQUESTS"
+              ? "border-indigo-600 text-indigo-600"
+              : "border-transparent text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          Shoot requests
+        </button>
         {canApprove && (
           <button
             onClick={() => setActiveTab("APPROVALS")}
@@ -358,6 +368,12 @@ export default function LeavesView() {
 
       {/* Tab Content: Permissions */}
       {activeTab === "PERMISSIONS" && <PermissionRequestsPanel canReview={canApprove} />}
+
+      {/* Tab Content: Work From Home */}
+      {activeTab === "WORK_FROM_HOME" && <WorkFromHomePanel canReview={canApprove} />}
+
+      {/* Tab Content: Shoot requests */}
+      {activeTab === "SHOOT_REQUESTS" && <ShootRequestsPanel canReview={canApprove} />}
 
       {/* Tab Content: Company leave */}
       {activeTab === "COMPANY_LEAVE" && <CompanyLeavePanel canManage={canApprove} />}
@@ -528,7 +544,7 @@ export default function LeavesView() {
 
       {/* Apply Leave Modal */}
       {applyModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+        <Modal>
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -552,7 +568,7 @@ export default function LeavesView() {
                 <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
                   Select Leave Category <span className="text-rose-500">*</span>
                 </label>
-                <select
+                <Select
                   value={selectedTypeId}
                   onChange={(e) => setSelectedTypeId(e.target.value)}
                   className="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900"
@@ -564,7 +580,7 @@ export default function LeavesView() {
                       {t.name} ({t.code}) - {t.daysAllowed} days quota
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -644,12 +660,12 @@ export default function LeavesView() {
               </div>
             </form>
           </motion.div>
-        </div>
+        </Modal>
       )}
 
       {/* Review Modal */}
       {reviewModalOpen && selectedRequest && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+        <Modal>
           <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl text-slate-900">
             <h3 className="text-base font-semibold text-slate-900 mb-2">
               {reviewAction === "APPROVED" ? "Approve Leave Request" : "Reject Leave Request"}
@@ -702,7 +718,7 @@ export default function LeavesView() {
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

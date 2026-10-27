@@ -26,7 +26,9 @@ import {
 import { formatDate, roleLabel } from "@/lib/utils";
 import { offboardingApi, assetsApi, employeesApi, branchesApi, authApi } from "@/lib/api";
 import ProfilePhotoPicker from "@/components/profile/ProfilePhotoPicker";
+import ProfileDateFields from "@/components/profile/ProfileDateFields";
 import { toast } from "sonner";
+import { PhoneFormField, toE164India, validateIndianPhone } from "@/components/ui/PhoneInput";
 import { unwrapList } from "@/lib/utils";
 import { Asset, AssetAssignment } from "@/types";
 
@@ -569,12 +571,27 @@ export default function ProfilePage() {
                   onSubmit={async (e) => {
                     e.preventDefault();
                     const fd = new FormData(e.currentTarget);
+                    const dob = String(fd.get("dateOfBirth") || "");
+                    const doj = String(fd.get("dateOfJoining") || "");
+                    if (dob && doj && doj < dob) {
+                      toast.error("Date of joining cannot be before date of birth");
+                      return;
+                    }
+                    const phoneError =
+                      validateIndianPhone(String(fd.get("phone") || ""), false) || validateIndianPhone(String(fd.get("emergencyContactPhone") || ""), false);
+                    if (phoneError) {
+                      toast.error(phoneError);
+                      return;
+                    }
                     try {
                       const res = await employeesApi.updateMe({
-                        phone: fd.get("phone"),
+                        // Disabled (already recorded) date fields are absent from FormData, so they are never re-sent.
+                        ...(dob ? { dateOfBirth: dob } : {}),
+                        ...(doj ? { dateOfJoining: doj } : {}),
+                        phone: toE164India(String(fd.get("phone") || "")),
                         address: fd.get("address"),
                         emergencyContactName: fd.get("emergencyContactName"),
-                        emergencyContactPhone: fd.get("emergencyContactPhone"),
+                        emergencyContactPhone: toE164India(String(fd.get("emergencyContactPhone") || "")),
                         bankName: fd.get("bankName"),
                         bankAccountNumber: fd.get("bankAccountNumber"),
                         bankIfsc: fd.get("bankIfsc"),
@@ -588,10 +605,15 @@ export default function ProfilePage() {
                     }
                   }}
                 >
-                  <input name="phone" defaultValue={employee?.phone || ""} placeholder="Phone" className="w-full px-3 py-2 rounded-xl border" />
+                  <ProfileDateFields
+                    key={`${(employee as any)?.dateOfBirth || ""}|${(employee as any)?.dateOfJoining || ""}`}
+                    dateOfBirth={(employee as any)?.dateOfBirth}
+                    dateOfJoining={(employee as any)?.dateOfJoining}
+                  />
+                  <PhoneFormField name="phone" defaultValue={employee?.phone} />
                   <input name="address" defaultValue={(employee as any)?.address || ""} placeholder="Address" className="w-full px-3 py-2 rounded-xl border" />
                   <input name="emergencyContactName" defaultValue={(employee as any)?.emergencyContactName || ""} placeholder="Emergency contact" className="w-full px-3 py-2 rounded-xl border" />
-                  <input name="emergencyContactPhone" defaultValue={(employee as any)?.emergencyContactPhone || ""} placeholder="Emergency phone" className="w-full px-3 py-2 rounded-xl border" />
+                  <PhoneFormField name="emergencyContactPhone" defaultValue={(employee as any)?.emergencyContactPhone} />
                   <input name="bankName" defaultValue={(employee as any)?.bankName || ""} placeholder="Bank name" className="w-full px-3 py-2 rounded-xl border" />
                   <input name="bankAccountNumber" defaultValue={(employee as any)?.bankAccountNumber || ""} placeholder="Account number" className="w-full px-3 py-2 rounded-xl border" />
                   <input name="bankIfsc" defaultValue={(employee as any)?.bankIfsc || ""} placeholder="IFSC" className="w-full px-3 py-2 rounded-xl border" />

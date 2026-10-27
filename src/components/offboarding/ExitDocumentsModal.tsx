@@ -2,19 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { offboardingApi } from "@/lib/api";
-import { formatCurrency, formatDate } from "@/lib/utils";
-import {
-  Printer,
-  Download,
-  X,
-  FileText,
-  ShieldCheck,
-  Award,
-  ScrollText,
-  Loader2,
-  Building2,
-  CheckCircle2,
-} from "lucide-react";
+
+import { Printer, X, FileText, ShieldCheck, Award, ScrollText, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface ExitDocumentsModalProps {

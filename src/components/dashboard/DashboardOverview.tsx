@@ -4,40 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Activity,
-  Award,
-  ChevronDown,
-  ArrowRight,
-  Building2,
-  CalendarDays,
-  Cake,
-  CheckCircle2,
-  Clock,
-  FileText,
-  Home,
-  Layers,
-  MapPin,
-  MessageSquare,
-  Receipt,
-  Search,
-  ShieldCheck,
-  TrendingDown,
-  TrendingUp,
-  Users,
-  X,
-  Lock,
-  UserPlus,
-  BarChart3,
-  BellRing,
-  Wallet,
-  Sparkles,
-  RefreshCw,
-  Compass,
-  ArrowUpRight,
-  Shield,
-  Briefcase,
-} from "lucide-react";
+import { Activity, Award, ChevronDown, ArrowRight, Building2, CalendarDays, Cake, CheckCircle2, Clock, FileText, Layers, MapPin, MessageSquare, Receipt, Search, ShieldCheck, TrendingDown, TrendingUp, Users, Lock, UserPlus, BarChart3, BellRing, Wallet, RefreshCw, ArrowUpRight } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useAttendance } from "@/context/AttendanceContext";
 import { attendanceApi, leavesApi, holidaysApi, employeesApi, branchesApi, departmentsApi, offboardingApi } from "@/lib/api";
@@ -48,154 +15,10 @@ import PunchConfirmDialog, { PunchConfirmAction } from "@/components/attendance/
 import { formatHm, liveWorkedMs } from "@/components/attendance/attendanceUtils";
 import { formatTime, formatDurationMinutes, unwrapList, unwrapItem } from "@/lib/utils";
 
-import { dashboardCounts, rosterStatusFor, type KpiStatus, type RosterStatus } from "./dashboardMetrics";
-
-interface RosterPerson {
-  id: string;
-  name: string;
-  employeeCode?: string;
-  designation: string;
-  department: string;
-  checkInTime?: string;
-  checkOutTime?: string;
-  breakMinutes?: number;
-  lunchMinutes?: number;
-  location?: string | null;
-  branchName?: string;
-  status: RosterStatus;
-}
-
-interface QuickAction {
-  href: string;
-  label: string;
-  hint: string;
-  icon: React.ElementType;
-  tone: string;
-  details: string[];
-}
-
-const KPI_META: Record<
-  KpiStatus,
-  {
-    label: string;
-    hint: string;
-    color: string;
-    ring: string;
-    bar: string;
-    iconBg: string;
-    gradient: string;
-    icon: React.ElementType;
-  }
-> = {
-  PRESENT: {
-    label: "Present Today",
-    hint: "On site & punched in",
-    color: "text-emerald-700",
-    ring: "ring-emerald-500 border-emerald-400 bg-emerald-50/30",
-    bar: "bg-emerald-500",
-    iconBg: "bg-emerald-100/80 text-emerald-700",
-    gradient: "from-emerald-500/15 via-emerald-500/5 to-transparent",
-    icon: Users,
-  },
-  REMOTE: {
-    label: "Remote / WFH",
-    hint: "Working off-site",
-    color: "text-violet-700",
-    ring: "ring-violet-500 border-violet-400 bg-violet-50/30",
-    bar: "bg-violet-500",
-    iconBg: "bg-violet-100/80 text-violet-700",
-    gradient: "from-violet-500/15 via-violet-500/5 to-transparent",
-    icon: Home,
-  },
-  ON_LEAVE: {
-    label: "On Leave",
-    hint: "Approved time-off",
-    color: "text-sky-700",
-    ring: "ring-sky-500 border-sky-400 bg-sky-50/30",
-    bar: "bg-sky-500",
-    iconBg: "bg-sky-100/80 text-sky-700",
-    gradient: "from-sky-500/15 via-sky-500/5 to-transparent",
-    icon: CalendarDays,
-  },
-  LATE: {
-    label: "Late Arrivals",
-    hint: "Punched after grace time",
-    color: "text-amber-700",
-    ring: "ring-amber-500 border-amber-400 bg-amber-50/30",
-    bar: "bg-amber-500",
-    iconBg: "bg-amber-100/80 text-amber-700",
-    gradient: "from-amber-500/15 via-amber-500/5 to-transparent",
-    icon: Clock,
-  },
-};
-
-function greetingFor(date: Date) {
-  const hour = date.getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
-}
-
-function timeContextBadge(date: Date) {
-  const hour = date.getHours();
-  if (hour < 12) return { text: "Morning Velocity", icon: "☀️", color: "text-amber-400 bg-amber-950/40 border-amber-500/30" };
-  if (hour < 17) return { text: "Afternoon Focus", icon: "🌤️", color: "text-sky-400 bg-sky-950/40 border-sky-500/30" };
-  return { text: "Evening Operations", icon: "🌙", color: "text-indigo-400 bg-indigo-950/40 border-indigo-500/30" };
-}
-
-function personName(employee: any) {
-  const first = employee?.firstName || employee?.user?.employee?.firstName || "";
-  const last = employee?.lastName || employee?.user?.employee?.lastName || "";
-  return `${first} ${last}`.trim() || employee?.workEmail || employee?.email || "Team member";
-}
-
-function isSameDay(value?: string | Date | null) {
-  if (!value) return false;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return false;
-  const now = new Date();
-  return (
-    date.getFullYear() === now.getFullYear() &&
-    date.getMonth() === now.getMonth() &&
-    date.getDate() === now.getDate()
-  );
-}
-
-/**
- * Attendance and leave dates are DATE columns serialised at UTC midnight, so the
- * "YYYY-MM-DD" prefix is the calendar day. Comparing prefixes against the
- * server's own "today" avoids the browser's timezone shifting a record a day.
- */
-function isTodayRecord(record: any, todayKey: string) {
-  if (typeof record?.date === "string") return record.date.slice(0, 10) === todayKey;
-  return isSameDay(record?.checkIn);
-}
-
-function leaveCoversDay(leave: any, todayKey: string) {
-  const start = String(leave?.startDate || "").slice(0, 10);
-  const end = String(leave?.endDate || leave?.startDate || "").slice(0, 10);
-  return Boolean(start) && start <= todayKey && todayKey <= end;
-}
-
-// Only this small component re-renders every second; the dashboard itself
-// ticks once a minute so its derived lists are not rebuilt 60 times a minute.
-function LiveClock() {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-  return (
-    <>
-      {now.toLocaleTimeString("en-IN", {
-        hour12: true,
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      })}
-    </>
-  );
-}
+import { dashboardCounts, rosterStatusFor, type KpiStatus } from "./dashboardMetrics";
+import { RosterPerson, QuickAction } from "./dashboardTypes";
+import { KPI_META, greetingFor, timeContextBadge, personName, isTodayRecord, leaveCoversDay } from "./dashboardUtils";
+import { LiveClock } from "./LiveClock";
 
 export default function DashboardOverview() {
   const { user, role, refreshUser } = useAuth();
@@ -1004,7 +827,7 @@ export default function DashboardOverview() {
                 className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 text-white font-semibold text-sm shadow-lg shadow-indigo-600/30 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <Clock className="w-4 h-4" />
-                {hasCheckedOutToday ? "Shift completed" : "Punch in"}
+                {hasCheckedOutToday ? "Shift completed" : todayStatus?.approvedShoot ? "Shoot In" : "Punch in"}
               </button>
             ) : (
               <button
@@ -1014,7 +837,7 @@ export default function DashboardOverview() {
                 className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-400 hover:to-rose-500 text-white font-semibold text-sm shadow-lg shadow-rose-600/30 transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 <Clock className="w-4 h-4" />
-                Punch out
+                {todayStatus?.approvedShoot ? "Shoot Out" : "Punch out"}
               </button>
             )}
 
@@ -1483,6 +1306,8 @@ export default function DashboardOverview() {
       {/* ======================================================== */}
       <PunchConfirmDialog
         action={pendingPunch}
+        initialWorkMode={todayStatus?.approvedShoot ? "SHOOT" : undefined}
+        forceWorkMode={pendingPunch === "CHECK_IN" && todayStatus?.approvedShoot ? "SHOOT" : undefined}
         loading={isActionLoading}
         locationLabel={locationLabel}
         onCancel={() => setPendingPunch(null)}
@@ -1509,7 +1334,5 @@ export default function DashboardOverview() {
     </div>
   );
 }
-
-
 
 

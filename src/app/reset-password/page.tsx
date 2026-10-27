@@ -4,19 +4,7 @@ import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import {
-  Lock,
-  Eye,
-  EyeOff,
-  CheckCircle2,
-  AlertCircle,
-  Loader2,
-  ArrowRight,
-  ArrowLeft,
-  KeyRound,
-  ShieldCheck,
-  HelpCircle,
-} from "lucide-react";
+import { Lock, Eye, EyeOff, CheckCircle2, AlertCircle, Loader2, ArrowRight, ArrowLeft, KeyRound, ShieldCheck } from "lucide-react";
 import { authApi } from "@/lib/api";
 import { toast } from "sonner";
 import Brand from "@/components/ui/Brand";

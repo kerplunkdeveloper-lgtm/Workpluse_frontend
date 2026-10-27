@@ -113,7 +113,7 @@ export default function LoginPage() {
     <AuthShell
       eyebrow="Sign in"
       title="Welcome back"
-      description="Use your work email or employee code to open your workspace."
+      description="Sign in with your office email, personal email or employee code."
       footer={
         <>
           New organization?{" "}
@@ -125,7 +125,7 @@ export default function LoginPage() {
     >
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label htmlFor="login-email" className={authLabel}>Work email or employee code</label>
+          <label htmlFor="login-email" className={authLabel}>Office email, personal email or employee code</label>
           <div className={authInputWrap()}>
             <Mail className={authIcon} />
             <input

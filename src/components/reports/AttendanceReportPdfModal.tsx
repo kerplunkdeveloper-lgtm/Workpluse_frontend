@@ -2,19 +2,9 @@
 
 import React, { useRef, useState } from "react";
 import { formatDate, formatTime, formatDurationMinutes } from "@/lib/utils";
-import {
-  Printer,
-  Download,
-  X,
-  Building2,
-  CheckCircle2,
-  Clock,
-  Home,
-  XCircle,
-  CalendarDays,
-  ShieldCheck,
-  Filter,
-} from "lucide-react";
+import { Printer, Download, X, ShieldCheck, Filter, MapPin } from "lucide-react";
+import Select from "@/components/ui/Select";
+import Modal from "@/components/ui/Modal";
 
 interface AttendanceReportPdfModalProps {
   isOpen: boolean;
@@ -48,11 +38,62 @@ export default function AttendanceReportPdfModal({
 }: AttendanceReportPdfModalProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
+  const [branchFilter, setBranchFilter] = useState<string>("ALL");
 
   if (!isOpen) return null;
 
+  // The sheet is printed from its own hidden page. Printing the app itself would drag the sidebar, header and
+  // the page behind this dialog into the PDF, and they overlap the report.
   const handlePrint = () => {
-    window.print();
+    const sheet = printRef.current;
+    if (!sheet) return;
+    const branchSlug = activeBranch ? `-${activeBranch.name.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "")}` : "";
+    const fileTitle =
+      (type === "DAILY"
+        ? `Daily-Attendance-${String(selectedDate || dailyData?.date || "").split("T")[0] || "report"}`
+        : `Monthly-Attendance-${selectedMonth || monthlyData?.month || ""}-${selectedYear || monthlyData?.year || ""}`) + branchSlug;
+
+    const frame = document.createElement("iframe");
+    frame.setAttribute("aria-hidden", "true");
+    frame.tabIndex = -1;
+    frame.style.cssText = "position:fixed;left:-10000px;top:0;width:1123px;height:794px;border:0;visibility:hidden;";
+    document.body.appendChild(frame);
+    const doc = frame.contentDocument;
+    const win = frame.contentWindow;
+    if (!doc || !win) {
+      frame.remove();
+      return;
+    }
+
+    const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      .map((node) => node.outerHTML)
+      .join("");
+    doc.open();
+    doc.write(
+      `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${fileTitle}</title><base href="${document.baseURI}">${styles}<style>
+        @page { size: A4 landscape; margin: 10mm; }
+        html, body { margin: 0; background: #fff !important; color: #0f172a; }
+        * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        table { min-width: 0 !important; width: 100% !important; }
+        tr { break-inside: avoid; }
+        thead { display: table-header-group; }
+        .overflow-x-auto { overflow: visible !important; }
+      </style></head><body>${sheet.outerHTML}</body></html>`,
+    );
+    doc.close();
+
+    let started = false;
+    const start = () => {
+      if (started) return;
+      started = true;
+      win.focus();
+      win.print();
+    };
+    win.addEventListener("afterprint", () => frame.remove());
+    win.addEventListener("load", () => setTimeout(start, 250));
+    // The load event can already have fired for a document written this way; never leave the button doing nothing.
+    setTimeout(start, 1500);
+    setTimeout(() => frame.remove(), 120000);
   };
 
   const monthNames = [
@@ -71,71 +112,144 @@ export default function AttendanceReportPdfModal({
     monthlyData?.organizationName ||
     "WorkPluse Enterprise Workforce";
 
-  // Filter daily records if filter chosen
-  const rawRecords = dailyData?.records || dailyData?.attendances || [];
+  const allDailyRecords: any[] = dailyData?.records || dailyData?.attendances || [];
+  const allMonthlyRecords: any[] = monthlyData?.report || [];
+
+  // The branch an employee belongs to (not the one a punch happened to match).
+  const branchOfDaily = (r: any): { id: string; name: string } | null => {
+    const b = r.employeeBranch || r.branch;
+    return b?.id ? { id: String(b.id), name: String(b.name || "Branch") } : null;
+  };
+  const branchMap = new Map<string, string>();
+  if (type === "DAILY") {
+    allDailyRecords.forEach((r) => {
+      const b = branchOfDaily(r);
+      if (b) branchMap.set(b.id, b.name);
+    });
+  } else {
+    allMonthlyRecords.forEach((m) => {
+      if (m.branchId) branchMap.set(String(m.branchId), String(m.branch || "Branch"));
+    });
+  }
+  const branchOptions = Array.from(branchMap, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  const activeBranch = branchOptions.find((b) => b.id === branchFilter) || null;
+  const branchLabel = activeBranch ? activeBranch.name : "All branches";
+
+  const rawRecords = activeBranch ? allDailyRecords.filter((r) => branchOfDaily(r)?.id === activeBranch.id) : allDailyRecords;
+  const monthlyRecords = activeBranch ? allMonthlyRecords.filter((m) => String(m.branchId) === activeBranch.id) : allMonthlyRecords;
+
+  // The counts follow the chosen branch, so the cards always match the rows below.
+  const countOf = (status: string) => rawRecords.filter((r) => r.status === status).length;
+  const summary = {
+    totalEmployees: rawRecords.length,
+    present: countOf("PRESENT"),
+    late: countOf("LATE"),
+    absent: countOf("ABSENT"),
+    onLeave: countOf("ON_LEAVE"),
+    wfh: countOf("WORK_FROM_HOME"),
+  };
+
   const filteredDailyRecords = rawRecords.filter((r: any) => {
     if (filterStatus === "ALL") return true;
     return r.status === filterStatus;
   });
 
-  const monthlyRecords = monthlyData?.report || [];
-
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-      <style>{`@media print { @page { size: A4 landscape; margin: 10mm; } tr { break-inside: avoid; } thead { display: table-header-group; } }`}</style>
-      <div className="w-full max-w-6xl bg-white text-slate-900 rounded-3xl p-6 sm:p-10 shadow-2xl relative my-6 print:p-0 print:m-0 print:shadow-none print:w-full print:max-w-none">
-        {/* Top Control Bar (Hidden on Print) */}
-        <div className="flex flex-wrap items-center justify-between pb-5 border-b border-slate-200 mb-6 gap-4 print:hidden">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-              {type === "DAILY" ? "Daily Attendance Register PDF" : "Monthly Overall Attendance PDF"}
+    <Modal onClose={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={type === "DAILY" ? "Daily attendance report" : "Monthly attendance report"}
+        onClick={(e) => e.stopPropagation()}
+        className="flex max-h-[96dvh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white text-slate-900 shadow-2xl sm:rounded-3xl"
+      >
+        {/* Top control bar: stays in view while the report scrolls */}
+        <div className="shrink-0 flex flex-col gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-4">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+            <span className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">
+              {type === "DAILY" ? "Daily Attendance Register" : "Monthly Attendance Register"}
             </span>
-            <span className="text-xs text-slate-500 font-medium">
+            <span className="text-xs font-medium text-slate-500">
               {type === "DAILY"
-                ? `Date: ${formatDate(selectedDate || dailyData?.date || new Date().toISOString())}`
-                : `Period: ${monthString} ${yearString}`}
+                ? formatDate(selectedDate || dailyData?.date || new Date().toISOString())
+                : `${monthString} ${yearString}`}
             </span>
+
+            {/* Branch-wise report: pick one branch and the cards, rows and PDF all follow it */}
+            {branchOptions.length > 1 && (
+              <label className="flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
+                <span className="sr-only">Branch</span>
+                <Select
+                  value={activeBranch ? activeBranch.id : "ALL"}
+                  onChange={(e) => setBranchFilter(e.target.value)}
+                  className="max-w-[11rem] rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs font-medium text-slate-700"
+                >
+                  <option value="ALL">All branches</option>
+                  {branchOptions.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+            )}
 
             {/* Quick Filter for Daily */}
             {type === "DAILY" && (
-              <div className="flex items-center gap-1.5 ml-2">
+              <div className="flex items-center gap-1.5">
                 <Filter className="w-3.5 h-3.5 text-slate-400" />
-                <select
+                <Select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 bg-slate-50 font-medium"
+                  aria-label="Filter the report by status"
+                  className="max-w-[11rem] rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs font-medium text-slate-700"
                 >
                   <option value="ALL">All Records ({rawRecords.length})</option>
-                  <option value="PRESENT">Present Only ({dailyData?.summary?.present || 0})</option>
-                  <option value="LATE">Late Arrivals ({dailyData?.summary?.late || 0})</option>
-                  <option value="ABSENT">Absent Only ({dailyData?.summary?.absent || 0})</option>
-                  <option value="ON_LEAVE">On Leave ({dailyData?.summary?.onLeave || 0})</option>
-                  <option value="WORK_FROM_HOME">Remote WFH ({dailyData?.summary?.wfh || 0})</option>
-                </select>
+                  <option value="PRESENT">Present Only ({summary.present || 0})</option>
+                  <option value="LATE">Late Arrivals ({summary.late || 0})</option>
+                  <option value="ABSENT">Absent Only ({summary.absent || 0})</option>
+                  <option value="ON_LEAVE">On Leave ({summary.onLeave || 0})</option>
+                  <option value="WORK_FROM_HOME">Remote WFH ({summary.wfh || 0})</option>
+                </Select>
               </div>
             )}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2">
             <button
+              type="button"
               onClick={handlePrint}
-              className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm flex items-center gap-2 shadow-lg shadow-indigo-600/25 transition cursor-pointer"
+              title="Opens the print window. Choose Save as PDF to download."
+              className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition hover:bg-indigo-700 active:scale-[0.98] sm:flex-none cursor-pointer"
             >
-              <Printer className="w-4 h-4" />
-              Download / Print PDF
+              <Download className="h-4 w-4" />
+              Download PDF
             </button>
             <button
-              onClick={onClose}
-              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
-              title="Close Preview"
+              type="button"
+              onClick={handlePrint}
+              aria-label="Print"
+              title="Print"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 cursor-pointer"
             >
-              <X className="w-5 h-5" />
+              <Printer className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close preview"
+              title="Close"
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-800 cursor-pointer"
+            >
+              <X className="h-5 w-5" />
             </button>
           </div>
         </div>
 
-        {/* Printable Sheet Container */}
-        <div ref={printRef} className="space-y-6 text-slate-800">
+        {/* The report scrolls here; its own page is what gets printed */}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-slate-50 px-3 py-4 sm:px-8 sm:py-6">
+        <div ref={printRef} className="space-y-6 rounded-2xl bg-white p-4 text-slate-800 shadow-sm ring-1 ring-slate-200 sm:p-8">
           {/* Official Letterhead Header */}
           <div className="flex items-start justify-between pb-6 border-b-2 border-slate-900">
             <div>
@@ -164,6 +278,10 @@ export default function AttendanceReportPdfModal({
                   ? formatDate(selectedDate || dailyData?.date || new Date().toISOString())
                   : `${monthString} ${yearString}`}
               </p>
+              <p className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-slate-700">
+                <MapPin className="h-3 w-3 text-slate-400" aria-hidden="true" />
+                {branchLabel}
+              </p>
               <p className="text-xs text-slate-400 mt-1 font-mono">
                 Generated: {new Date().toLocaleString("en-IN")}
               </p>
@@ -175,27 +293,27 @@ export default function AttendanceReportPdfModal({
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5 p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-center">
               <div className="p-2 rounded-xl bg-white border border-slate-100">
                 <span className="text-xs uppercase font-bold text-slate-400 block">Total Staff</span>
-                <span className="text-lg font-bold text-slate-900">{dailyData?.summary?.totalEmployees || rawRecords.length}</span>
+                <span className="text-lg font-bold text-slate-900">{summary.totalEmployees}</span>
               </div>
               <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-100">
                 <span className="text-xs uppercase font-bold text-emerald-700 block">Present</span>
-                <span className="text-lg font-bold text-emerald-700">{dailyData?.summary?.present || 0}</span>
+                <span className="text-lg font-bold text-emerald-700">{summary.present || 0}</span>
               </div>
               <div className="p-2 rounded-xl bg-amber-50 border border-amber-100">
                 <span className="text-xs uppercase font-bold text-amber-700 block">Late</span>
-                <span className="text-lg font-bold text-amber-700">{dailyData?.summary?.late || 0}</span>
+                <span className="text-lg font-bold text-amber-700">{summary.late || 0}</span>
               </div>
               <div className="p-2 rounded-xl bg-rose-50 border border-rose-100">
                 <span className="text-xs uppercase font-bold text-rose-700 block">Absent</span>
-                <span className="text-lg font-bold text-rose-700">{dailyData?.summary?.absent || 0}</span>
+                <span className="text-lg font-bold text-rose-700">{summary.absent || 0}</span>
               </div>
               <div className="p-2 rounded-xl bg-indigo-50 border border-indigo-100">
                 <span className="text-xs uppercase font-bold text-indigo-700 block">On Leave</span>
-                <span className="text-lg font-bold text-indigo-700">{dailyData?.summary?.onLeave || 0}</span>
+                <span className="text-lg font-bold text-indigo-700">{summary.onLeave || 0}</span>
               </div>
               <div className="p-2 rounded-xl bg-sky-50 border border-sky-100">
                 <span className="text-xs uppercase font-bold text-sky-700 block">WFH</span>
-                <span className="text-lg font-bold text-sky-700">{dailyData?.summary?.wfh || 0}</span>
+                <span className="text-lg font-bold text-sky-700">{summary.wfh || 0}</span>
               </div>
             </div>
           ) : (
@@ -230,7 +348,7 @@ export default function AttendanceReportPdfModal({
           {/* Table Data */}
           <div className="overflow-x-auto rounded-xl border border-slate-200">
             {type === "DAILY" ? (
-              <table className="w-full table-fixed text-left text-[12px] border-collapse">
+              <table className="w-full min-w-[880px] table-fixed text-left text-[12px] border-collapse">
                 <colgroup>
                   <col style={{ width: "3%" }} />
                   <col style={{ width: "8%" }} />
@@ -324,7 +442,7 @@ export default function AttendanceReportPdfModal({
                 </tbody>
               </table>
             ) : (
-              <table className="w-full text-left text-[13px] border-collapse">
+              <table className="w-full min-w-[760px] text-left text-[13px] border-collapse">
                 <thead className="bg-slate-100 text-slate-700 text-xs uppercase font-bold tracking-wider border-b border-slate-300">
                   <tr>
                     <th className="py-2.5 px-3">#</th>
@@ -419,7 +537,8 @@ export default function AttendanceReportPdfModal({
             </div>
           </div>
         </div>
+        </div>
       </div>
-    </div>
+    </Modal>
   );
 }

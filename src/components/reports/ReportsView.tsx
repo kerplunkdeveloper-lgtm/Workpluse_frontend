@@ -3,26 +3,11 @@
 import React, { useState, useEffect } from "react";
 import { reportsApi } from "@/lib/api";
 import { formatDate, formatTime, formatDurationMinutes, todayLocalKey } from "@/lib/utils";
-import {
-  BarChart3,
-  Download,
-  Calendar,
-  Filter,
-  CheckCircle2,
-  Clock,
-  Home,
-  XCircle,
-  CalendarDays,
-  Printer,
-  FileText,
-  Search,
-  RefreshCw,
-  TrendingUp,
-  ShieldCheck,
-} from "lucide-react";
+import { BarChart3, Download, Calendar, CheckCircle2, Clock, Home, XCircle, CalendarDays, Printer, Search, RefreshCw, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import AttendanceReportPdfModal from "./AttendanceReportPdfModal";
 import DatePicker from "@/components/ui/DatePicker";
+import Select from "@/components/ui/Select";
 
 export default function ReportsView() {
   const [activeTab, setActiveTab] = useState<"DAILY" | "MONTHLY">("DAILY");
@@ -232,7 +217,7 @@ export default function ReportsView() {
           ) : (
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-semibold text-slate-600">Select Period:</span>
-              <select
+              <Select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(Number(e.target.value))}
                 className="rounded-xl px-3 py-1.5 text-xs text-slate-800 bg-white border border-slate-200 focus:outline-none focus:border-indigo-500"
@@ -242,9 +227,9 @@ export default function ReportsView() {
                     {name}
                   </option>
                 ))}
-              </select>
+              </Select>
 
-              <select
+              <Select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
                 className="rounded-xl px-3 py-1.5 text-xs text-slate-800 bg-white border border-slate-200 focus:outline-none focus:border-indigo-500"
@@ -254,7 +239,7 @@ export default function ReportsView() {
                     {y}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           )}
 

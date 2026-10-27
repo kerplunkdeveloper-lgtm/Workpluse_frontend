@@ -6,6 +6,7 @@ import { auditApi } from "@/lib/api";
 import { unwrapList } from "@/lib/utils";
 import PageHeader from "@/components/ui/PageHeader";
 import Pagination from "@/components/ui/Pagination";
+import Select from "@/components/ui/Select";
 
 interface AuditEntry {
   id: string;
@@ -122,17 +123,17 @@ export default function AuditLogView() {
       <div className={`${CARD} flex flex-wrap items-end gap-3 p-4`} role="search" aria-label="Filter the audit log">
         <label className="space-y-1">
           <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Area</span>
-          <select value={entity} onChange={changeFilter(setEntity)} className={SELECT}>
+          <Select value={entity} onChange={changeFilter(setEntity)} className={SELECT}>
             <option value="">All areas</option>
             {ENTITIES.map((value) => <option key={value} value={value}>{label(value)}</option>)}
-          </select>
+          </Select>
         </label>
         <label className="space-y-1">
           <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Action</span>
-          <select value={action} onChange={changeFilter(setAction)} className={SELECT}>
+          <Select value={action} onChange={changeFilter(setAction)} className={SELECT}>
             <option value="">All actions</option>
             {ACTIONS.map((value) => <option key={value} value={value}>{label(value)}</option>)}
-          </select>
+          </Select>
         </label>
         <label className="space-y-1">
           <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">From</span>

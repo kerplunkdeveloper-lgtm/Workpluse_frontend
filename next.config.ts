@@ -28,7 +28,7 @@ const nextConfig: NextConfig = {
         key: "Content-Security-Policy",
         // accounts.google.com serves the Google Identity Services script, its
         // button iframe and stylesheet used on the login page.
-        value: `default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval' " : ""}https://checkout.razorpay.com https://accounts.google.com https://maps.googleapis.com https://maps.gstatic.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https: wss:; frame-src https://checkout.razorpay.com https://api.razorpay.com https://accounts.google.com https://www.google.com https://maps.google.com; worker-src 'self' blob:`,
+        value: `default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval' " : ""}https://checkout.razorpay.com https://accounts.google.com https://maps.googleapis.com https://maps.gstatic.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https: wss:; frame-src https://res.cloudinary.com https://checkout.razorpay.com https://api.razorpay.com https://accounts.google.com https://www.google.com https://maps.google.com; worker-src 'self' blob:`,
       },
     ];
     if (!isDev) {

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Loader2, X } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { attendanceApi } from "@/lib/api";
 import type { AttendanceStatus } from "@/types";
@@ -9,6 +9,8 @@ import DatePicker from "@/components/ui/DatePicker";
 import TimeSelect from "@/components/ui/TimeSelect";
 import EmployeeCombobox, { type EmployeeOption } from "./EmployeeCombobox";
 import { localDateKey } from "./attendanceUtils";
+import Select from "@/components/ui/Select";
+import Modal from "@/components/ui/Modal";
 
 const STATUSES: { value: AttendanceStatus; label: string }[] = [
   { value: "PRESENT", label: "Present" },
@@ -81,72 +83,61 @@ function AdminMarkForm({ initial, onClose, onSaved }: { initial?: AdminMarkIniti
   const field = "w-full rounded-lg bg-white px-3 py-2 text-sm text-slate-900 ring-1 ring-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 sm:p-4 backdrop-blur-xs" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <form
-        onSubmit={submit}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="admin-mark-title"
-        className="w-full max-w-md max-h-[min(88dvh,calc(100dvh-5rem))] overflow-y-auto rounded-[24px] bg-white p-5 shadow-2xl sm:rounded-3xl sm:p-7"
-      >
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h3 id="admin-mark-title" className="text-base font-semibold text-slate-900">{initial?.employee ? "Correct attendance" : "Mark attendance"}</h3>
-            <p className="mt-1 text-xs leading-5 text-slate-500">Add or correct a day for an employee. This skips location rules and is recorded in the audit log.</p>
-          </div>
-          <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Close">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="mt-6 space-y-4">
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-700">Employee</label>
-            <EmployeeCombobox value={employee} onChange={setEmployee} placeholder="Search by name or code" allowClear={false} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-slate-700">Date</label>
-              <DatePicker value={date} onChange={setDate} placeholder="Select date" required />
-            </div>
-            <div>
-              <label htmlFor="admin-mark-status" className="mb-1.5 block text-xs font-medium text-slate-700">Status</label>
-              <select id="admin-mark-status" value={status} onChange={(e) => setStatus(e.target.value as AttendanceStatus)} className={field}>
-                {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {needsTimes && (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-700">Punch in</label>
-                <TimeSelect value={inTime} onChange={setInTime} defaultPeriod="AM" ariaLabel="Punch in time" />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-700">Punch out</label>
-                <TimeSelect value={outTime} onChange={setOutTime} defaultPeriod="PM" ariaLabel="Punch out time" />
-              </div>
-            </div>
-          )}
-
-          <div>
-            <label htmlFor="admin-mark-reason" className="mb-1.5 block text-xs font-medium text-slate-700">Reason</label>
-            <input id="admin-mark-reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Forgot to punch, confirmed by manager" maxLength={200} className={field} />
-          </div>
-
-          {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-xs leading-5 text-rose-700" role="alert">{error}</p>}
-        </div>
-
-        <div className="mt-6 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Cancel</button>
-          <button type="submit" disabled={saving} className="keep-white inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold shadow-sm hover:bg-indigo-500 disabled:opacity-60">
+    <Modal
+      onClose={onClose}
+      onSubmit={submit}
+      busy={saving}
+      title={initial?.employee ? "Correct attendance" : "Mark attendance"}
+      description="Add or correct a day for an employee. This skips location rules and is recorded in the audit log."
+      footer={
+        <>
+          <button type="button" onClick={onClose} disabled={saving} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-50">Cancel</button>
+          <button type="submit" disabled={saving} className="keep-white inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold shadow-sm hover:bg-indigo-500 disabled:opacity-60">
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
             Save attendance
           </button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-slate-700">Employee</label>
+          <EmployeeCombobox value={employee} onChange={setEmployee} placeholder="Search by name or code" allowClear={false} />
         </div>
-      </form>
-    </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-slate-700">Date</label>
+            <DatePicker value={date} onChange={setDate} placeholder="Select date" required />
+          </div>
+          <div>
+            <label htmlFor="admin-mark-status" className="mb-1.5 block text-xs font-medium text-slate-700">Status</label>
+            <Select id="admin-mark-status" value={status} onChange={(e) => setStatus(e.target.value as AttendanceStatus)} className={field}>
+              {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </Select>
+          </div>
+        </div>
+
+        {needsTimes && (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-slate-700">Punch in</label>
+              <TimeSelect value={inTime} onChange={setInTime} defaultPeriod="AM" ariaLabel="Punch in time" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-slate-700">Punch out</label>
+              <TimeSelect value={outTime} onChange={setOutTime} defaultPeriod="PM" ariaLabel="Punch out time" />
+            </div>
+          </div>
+        )}
+
+        <div>
+          <label htmlFor="admin-mark-reason" className="mb-1.5 block text-xs font-medium text-slate-700">Reason</label>
+          <input id="admin-mark-reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Forgot to punch, confirmed by manager" maxLength={200} className={field} />
+        </div>
+
+        {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-xs leading-5 text-rose-700" role="alert">{error}</p>}
+      </div>
+    </Modal>
   );
 }

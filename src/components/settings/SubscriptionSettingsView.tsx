@@ -17,6 +17,7 @@ import {
   Webhook,
 } from "lucide-react";
 import { toast } from "sonner";
+import PhoneInput, { sanitizeIndianPhone, toE164India, validateIndianPhone } from "@/components/ui/PhoneInput";
 import { unwrapList } from "@/lib/utils";
 import { trialDaysLabel, trialDaysRemaining } from "@/components/billing/WorkspaceBilling";
 import type { SubscriptionPlanOption } from "@/types";
@@ -24,6 +25,7 @@ import WebhooksSettings from "@/components/settings/WebhooksSettings";
 import AdminTwoFactorPolicy from "@/components/settings/AdminTwoFactorPolicy";
 import { confirmDialog } from "@/components/ui/confirmDialog";
 import CompanyLogoSetting from "@/components/settings/CompanyLogoSetting";
+import Select from "@/components/ui/Select";
 
 const COMMON_TIMEZONES: [string, string][] = [
   ["Asia/Kolkata", "India (IST, UTC+5:30)"],
@@ -131,7 +133,7 @@ export default function SubscriptionSettingsView() {
       setOrgForm({
         name: user.organization.name || "",
         email: user.organization.email || user.email || "",
-        phone: user.organization.phone || "",
+        phone: sanitizeIndianPhone(user.organization.phone || ""),
         address: user.organization.address || "",
         taxId: user.organization.taxId || "",
         timezone: user.organization.timezone || "UTC",
@@ -273,7 +275,12 @@ export default function SubscriptionSettingsView() {
     e.preventDefault();
     setIsSavingOrg(true);
     try {
-      const res = await orgApi.update(orgForm);
+      const phoneError = validateIndianPhone(orgForm.phone, false);
+      if (phoneError) {
+        toast.error(phoneError);
+        return;
+      }
+      const res = await orgApi.update({ ...orgForm, phone: toE164India(orgForm.phone) });
       if (res?.success) {
         toast.success("Organization profile saved successfully!");
         await refreshUser();
@@ -501,13 +508,7 @@ export default function SubscriptionSettingsView() {
             </div>
             <div className="space-y-1.5">
               <label className="text-[13px] font-medium text-slate-700">Phone Number</label>
-              <input
-                type="text"
-                value={orgForm.phone}
-                onChange={(e) => setOrgForm({ ...orgForm, phone: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-slate-900 placeholder-slate-400"
-                placeholder="+1 (555) 000-0000"
-              />
+              <PhoneInput value={orgForm.phone} onChange={(digits) => setOrgForm({ ...orgForm, phone: digits })} />
             </div>
             <div className="space-y-1.5">
               <label className="text-[13px] font-medium text-slate-700">Tax ID / VAT Number</label>
@@ -558,7 +559,7 @@ export default function SubscriptionSettingsView() {
         <form onSubmit={handleOrgSubmit} className="space-y-4">
           <div className="space-y-1.5 max-w-md">
             <label htmlFor="org-timezone" className="text-[13px] font-medium text-slate-700">Company timezone</label>
-            <select
+            <Select
               id="org-timezone"
               value={orgForm.timezone}
               onChange={(e) => setOrgForm({ ...orgForm, timezone: e.target.value })}
@@ -570,7 +571,7 @@ export default function SubscriptionSettingsView() {
               {!COMMON_TIMEZONES.some(([value]) => value === orgForm.timezone) && (
                 <option value={orgForm.timezone}>{orgForm.timezone}</option>
               )}
-            </select>
+            </Select>
             <p className="text-[11px] text-slate-500">
               Attendance days, punch-in times, late marks and the dashboard punch-in chart all use this timezone. Changes can take a few minutes to apply. Past attendance keeps the date it was recorded with.
             </p>

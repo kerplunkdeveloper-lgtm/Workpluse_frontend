@@ -5,20 +5,11 @@ import { ExpenseClaim } from "@/types";
 import { expensesApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import {
-  Wallet,
-  Plus,
-  Receipt,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  Upload,
-  Loader2,
-  DollarSign,
-  TrendingUp,
-} from "lucide-react";
+import { Wallet, Plus, CheckCircle2, XCircle, Clock, Loader2, DollarSign } from "lucide-react";
 import { toast } from "sonner";
-import confetti from "canvas-confetti";
+import { confetti } from "@/lib/confetti";
+import Select from "@/components/ui/Select";
+import Modal from "@/components/ui/Modal";
 
 export default function ExpenseClaimsView() {
   const { user, role } = useAuth();
@@ -268,7 +259,7 @@ export default function ExpenseClaimsView() {
 
       {/* Submit Claim Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <Modal>
           <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl">
             <h3 className="text-base font-semibold text-slate-900 mb-1">Submit Expense Claim</h3>
             <p className="text-xs text-slate-500 mb-4">
@@ -278,7 +269,7 @@ export default function ExpenseClaimsView() {
             <form onSubmit={handleSubmitClaim} className="space-y-4">
               <div>
                 <label className="block text-[13px] font-medium text-slate-700 mb-1">Expense Category *</label>
-                <select
+                <Select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
@@ -289,7 +280,7 @@ export default function ExpenseClaimsView() {
                   <option value="INTERNET">Internet / Phone / Utilities</option>
                   <option value="LEARNING">Learning / Courses / Books</option>
                   <option value="OTHER">Other / Office Supplies</option>
-                </select>
+                </Select>
               </div>
 
               <div>
@@ -344,7 +335,7 @@ export default function ExpenseClaimsView() {
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

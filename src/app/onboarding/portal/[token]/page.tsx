@@ -21,7 +21,8 @@ import {
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import confetti from "canvas-confetti";
+import { confetti } from "@/lib/confetti";
+import Select from "@/components/ui/Select";
 
 const steps = ["Profile", "Offer", "Documents", "Ready"];
 
@@ -173,7 +174,7 @@ export default function CandidatePortalPage() {
           <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
             <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-indigo-600">Step 3</p><h2 className="mt-2 text-xl font-semibold tracking-tight">Submit your documents</h2><p className="mt-2 text-sm leading-6 text-slate-500">Upload clear files so HR can verify your onboarding details.</p></div><FileCheck2 className="h-6 w-6 text-slate-300" /></div>
             <form onSubmit={uploadDocument} className="mt-6 space-y-4">
-              <label className="block text-xs font-bold text-slate-600">Document type<select value={docType} onChange={(e) => setDocType(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10">{documentTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+              <label className="block text-xs font-bold text-slate-600">Document type<Select value={docType} onChange={(e) => setDocType(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10">{documentTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select></label>
               <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-5 py-8 text-center transition hover:border-indigo-400 hover:bg-indigo-50/40"><CloudUpload className="h-7 w-7 text-indigo-500" /><span className="mt-3 text-sm font-semibold text-slate-800">{selectedFile ? selectedFile.name : "Choose a file to upload"}</span><span className="mt-1 text-xs text-slate-500">PDF, PNG or JPG up to the allowed file size</span><input type="file" accept=".pdf,.png,.jpg,.jpeg" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} className="sr-only" /></label>
               <button type="submit" disabled={isUploading || !selectedFile} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-[.99] disabled:cursor-not-allowed disabled:opacity-40">{isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Upload document</button>
             </form>

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
 import WeeklyOffCard from "./WeeklyOffCard";
 import { cyclePeriod, formatCycleDate, MONTH_NAMES } from "@/lib/payrollCycle";
+import Select from "@/components/ui/Select";
 
 const CYCLE_PRESETS = [
   { label: "Calendar month (1st to last day)", startDay: 1, endDay: 31 },
@@ -235,9 +236,9 @@ export default function PolicyView() {
           <p className="mt-1 text-xs text-slate-500">Create a rule for every completed block of late arrivals in a payroll cycle.</p>
           <form onSubmit={saveLateRule} className="mt-5 space-y-4">
             <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-800">Late days <span className="text-rose-500">*</span></span><input required type="number" min="1" step="1" value={lateRuleForm.lateDays} onChange={(e) => setLateRuleForm((p) => ({ ...p, lateDays: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm" /><span className="text-xs text-slate-400">Every this many late arrivals counts as LOP.</span></label>
-            <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-800">LOP days <span className="text-rose-500">*</span></span><select required value={lateRuleForm.lopDays} onChange={(e) => setLateRuleForm((p) => ({ ...p, lopDays: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm"><option value="0.5">0.5 day</option><option value="1">1 day</option><option value="1.5">1.5 days</option><option value="2">2 days</option></select><span className="text-xs text-slate-400">LOP applied for each completed block of late days.</span></label>
+            <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-800">LOP days <span className="text-rose-500">*</span></span><Select required value={lateRuleForm.lopDays} onChange={(e) => setLateRuleForm((p) => ({ ...p, lopDays: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm"><option value="0.5">0.5 day</option><option value="1">1 day</option><option value="1.5">1.5 days</option><option value="2">2 days</option></Select><span className="text-xs text-slate-400">LOP applied for each completed block of late days.</span></label>
             <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-800">Grace (minutes)</span><input type="number" min="0" max="1440" value={lateRuleForm.graceMinutes} onChange={(e) => setLateRuleForm((p) => ({ ...p, graceMinutes: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm" /><span className="text-xs text-slate-400">Punch-in after shift start + grace counts as late.</span></label>
-            <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-800">Status</span><select value={lateRuleForm.isActive ? "true" : "false"} onChange={(e) => setLateRuleForm((p) => ({ ...p, isActive: e.target.value === "true" }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm"><option value="true">Active</option><option value="false">Inactive</option></select></label>
+            <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-800">Status</span><Select value={lateRuleForm.isActive ? "true" : "false"} onChange={(e) => setLateRuleForm((p) => ({ ...p, isActive: e.target.value === "true" }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm"><option value="true">Active</option><option value="false">Inactive</option></Select></label>
             <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-800">Remarks</span><input value={lateRuleForm.remarks} onChange={(e) => setLateRuleForm((p) => ({ ...p, remarks: e.target.value }))} placeholder="Optional note" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm" /></label>
             <div className="flex gap-3 pt-1"><button disabled={lateRuleSaving} type="submit" className="inline-flex items-center gap-2 rounded-xl bg-cyan-500 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-600 disabled:opacity-60"><CheckCircle2 className="h-4 w-4" />{lateRuleSaving ? "Saving..." : editingLateRuleId ? "Update Rule" : "Save Policy"}</button>{editingLateRuleId && <button type="button" onClick={resetLateRuleForm} className="rounded-xl bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-600">Cancel</button>}</div>
           </form>
@@ -315,7 +316,7 @@ export default function PolicyView() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label className="space-y-1.5">
             <span className="text-xs font-semibold text-slate-600 uppercase">Cycle</span>
-            <select
+            <Select
               value={selectedPreset}
               onChange={(e) => applyPreset(e.target.value)}
               className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white"
@@ -326,11 +327,11 @@ export default function PolicyView() {
                 </option>
               ))}
               <option value="custom">Custom days</option>
-            </select>
+            </Select>
           </label>
           <label className="space-y-1.5">
             <span className="text-xs font-semibold text-slate-600 uppercase">Day basis for deductions</span>
-            <select
+            <Select
               value={form.payrollDayBasis}
               onChange={(e) => setForm((prev) => ({ ...prev, payrollDayBasis: e.target.value }))}
               className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white"
@@ -340,7 +341,7 @@ export default function PolicyView() {
                   {option.label}
                 </option>
               ))}
-            </select>
+            </Select>
             <span className="text-xs text-slate-400">Sets the daily rate used for loss-of-pay and permission deductions.</span>
           </label>
         </div>

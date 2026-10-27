@@ -31,18 +31,25 @@ interface PhoneInputProps {
   required?: boolean;
   disabled?: boolean;
   id?: string;
+  /** An error from the owning form (for example after a failed submit). Takes the place of the on-blur check. */
+  error?: string;
+  /** Reaches the visible input, so a form can label it and point its error text at it. */
+  describedBy?: string;
+  className?: string;
 }
 
-export default function PhoneInput({ value, onChange, required, disabled, id }: PhoneInputProps) {
+export default function PhoneInput({ value, onChange, required, disabled, id, error: formError, describedBy, className = "" }: PhoneInputProps) {
   const [touched, setTouched] = React.useState(false);
-  const error = touched ? validateIndianPhone(value, required) : null;
+  const error = formError || (touched ? validateIndianPhone(value, required) : null);
+  // The owning form already prints its own message under the field, so only the border reacts to it.
+  const showMessage = !formError && !!error;
 
   return (
     <div>
       <div
         className={`flex items-center bg-white border rounded-xl overflow-hidden focus-within:border-indigo-500 ${
           error ? "border-red-400" : "border-slate-200"
-        }`}
+        } ${className}`}
       >
         <span className="select-none px-3 py-2.5 text-xs font-medium text-slate-600 bg-slate-50 border-r border-slate-200">
           +91
@@ -59,10 +66,23 @@ export default function PhoneInput({ value, onChange, required, disabled, id }: 
           onBlur={() => setTouched(true)}
           placeholder="98765 43210"
           aria-invalid={!!error}
+          aria-describedby={describedBy}
+          maxLength={14}
           className="w-full bg-transparent p-2.5 text-xs text-slate-900 focus:outline-none"
         />
       </div>
-      {error && <p className="mt-1 text-[11px] text-red-500">{error}</p>}
+      {showMessage && <p className="mt-1 text-[11px] text-red-500">{error}</p>}
     </div>
+  );
+}
+
+/** For plain forms read with FormData: keeps its own digits and submits them under `name`. */
+export function PhoneFormField({ name, defaultValue, required, disabled }: { name: string; defaultValue?: string | null; required?: boolean; disabled?: boolean }) {
+  const [digits, setDigits] = React.useState(() => sanitizeIndianPhone(defaultValue || ""));
+  return (
+    <>
+      <PhoneInput value={digits} onChange={setDigits} required={required} disabled={disabled} />
+      <input type="hidden" name={name} value={digits} />
+    </>
   );
 }

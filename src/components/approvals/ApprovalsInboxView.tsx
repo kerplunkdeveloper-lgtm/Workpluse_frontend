@@ -17,7 +17,7 @@ import {
   CalendarOff,
 } from "lucide-react";
 import { toast } from "sonner";
-import confetti from "canvas-confetti";
+import { confetti } from "@/lib/confetti";
 
 type ApprovalCategory = "CORRECTIONS" | "LEAVES" | "OVERTIME" | "EXPENSES" | "COMPOFF" | "DAYOFF";
 

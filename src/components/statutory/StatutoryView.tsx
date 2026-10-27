@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import PageHeader from "@/components/ui/PageHeader";
 import { FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import Select from "@/components/ui/Select";
 
 function ExportHistory() {
   const [rows, setRows] = useState<any[]>([]);
@@ -159,7 +160,7 @@ export default function StatutoryView() {
       />
 
       {isAdmin && (
-        <select
+        <Select
           value={employeeId}
           onChange={(e) => {
             setEmployeeId(e.target.value);
@@ -172,20 +173,20 @@ export default function StatutoryView() {
               {e.firstName} {e.lastName} ({e.employeeCode})
             </option>
           ))}
-        </select>
+        </Select>
       )}
 
       <div className="grid lg:grid-cols-2 gap-5">
         <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
           <h2 className="text-sm font-semibold">IT declaration · FY {fy}</h2>
-          <select
+          <Select
             value={declaration.regime}
             onChange={(e) => setDeclaration({ ...declaration, regime: e.target.value })}
             className="px-3 py-2 rounded-xl border border-slate-200 text-xs"
           >
             <option value="NEW">New regime (default)</option>
             <option value="OLD">Old regime (80C / HRA)</option>
-          </select>
+          </Select>
           <div className="grid grid-cols-2 gap-3">
             {field("section80C", "80C")}
             {field("section80D", "80D")}

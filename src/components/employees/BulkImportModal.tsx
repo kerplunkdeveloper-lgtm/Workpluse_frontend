@@ -16,7 +16,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
-import confetti from "canvas-confetti";
+import { confetti } from "@/lib/confetti";
 import { employeesApi } from "@/lib/api";
 
 interface BulkImportModalProps {

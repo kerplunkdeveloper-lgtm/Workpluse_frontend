@@ -3,19 +3,11 @@
 import React, { useState, useEffect } from "react";
 import { compOffApi, overtimeApi } from "@/lib/api";
 import { formatDate, unwrapList, unwrapItem } from "@/lib/utils";
-import {
-  Layers,
-  Clock,
-  Plus,
-  CheckCircle2,
-  Calendar,
-  Sparkles,
-  Loader2,
-  AlertCircle,
-} from "lucide-react";
+import { Layers, Clock, Plus, CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import confetti from "canvas-confetti";
+import { confetti } from "@/lib/confetti";
 import DatePicker from "@/components/ui/DatePicker";
+import Modal from "@/components/ui/Modal";
 
 export default function OvertimeAndCompOffView() {
   const [balance, setBalance] = useState<number>(0);
@@ -215,7 +207,7 @@ export default function OvertimeAndCompOffView() {
 
       {/* Redeem Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <Modal>
           <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl">
             <h3 className="text-base font-semibold text-slate-900 mb-1">Redeem Comp-Off Leave</h3>
             <p className="text-xs text-slate-500 mb-4">
@@ -280,7 +272,7 @@ export default function OvertimeAndCompOffView() {
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

@@ -1,4 +1,5 @@
 import axios from "axios";
+import { cachedFetch, clearQueryCache, invalidate } from "./queryCache";
 import { getSessionAccessToken, isSessionHydrated, setSessionAccessToken } from "./sessionToken";
 export { getSessionAccessToken, markSessionHydrated, setSessionAccessToken } from "./sessionToken";
 
@@ -289,11 +290,15 @@ export const authApi = {
       typeof window !== "undefined"
         ? window.localStorage.getItem("workpulse_refresh_token")
         : null;
-    const res = await api.post("/auth/logout", {
-      client: "web",
-      refreshToken: storedRefresh || undefined,
-    });
-    return res.data;
+    try {
+      const res = await api.post("/auth/logout", {
+        client: "web",
+        refreshToken: storedRefresh || undefined,
+      });
+      return res.data;
+    } finally {
+      clearQueryCache();
+    }
   },
   refreshSession: async () => {
     const storedRefresh =
@@ -488,7 +493,7 @@ export const dayOffWorkApi = {
     return res.data;
   },
   /** Admin and HR: requests for one status (or ALL), with per-status counts in `counts`. */
-  getRequests: async (params: { status?: "PENDING" | "APPROVED" | "REJECTED" | "ALL"; limit?: number } = {}) => {
+  getRequests: async (params: { status?: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | "ALL"; limit?: number } = {}) => {
     const res = await api.get("/attendance/day-off-work", { params: { status: "PENDING", limit: 200, ...params } });
     return res.data;
   },
@@ -498,6 +503,14 @@ export const dayOffWorkApi = {
   },
 };
 
+export const shootRequestsApi = {
+  create: async (payload: { date: string; startTime: string; endTime: string; shootName: string; location: string; employeeIds?: string[]; note?: string }) => (await api.post("/attendance/shoot-requests", payload)).data,
+  getMine: async () => (await api.get("/attendance/shoot-requests/my")).data,
+  getAll: async (params: { status?: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | "CANCELLATION_PENDING" | "ALL" } = {}) => (await api.get("/attendance/shoot-requests", { params: { status: "PENDING", limit: 200, ...params } })).data,
+  review: async (id: string, payload: { status: "APPROVED" | "REJECTED"; reviewNote?: string }) => (await api.post(`/attendance/shoot-requests/${id}/review`, payload)).data,
+  cancel: async (id: string) => (await api.post(`/attendance/shoot-requests/${id}/cancel`)).data,
+  cancelReview: async (id: string, payload: { status: "APPROVED" | "REJECTED"; reviewNote?: string }) => (await api.post(`/attendance/shoot-requests/${id}/cancel-review`, payload)).data,
+};
 export const correctionsApi = {
   request: async (payload: { attendanceId?: string; date?: string; requestedCheckIn?: string; requestedCheckOut?: string; reason: string }) => {
     const res = await api.post("/attendance/corrections/request", payload);
@@ -516,7 +529,7 @@ export const correctionsApi = {
     return res.data;
   },
   /** Requests for one status (or ALL), with per-status counts in `counts`. */
-  getCorrections: async (params: { status?: "PENDING" | "APPROVED" | "REJECTED" | "ALL"; limit?: number; page?: number; employeeId?: string } = {}) => {
+  getCorrections: async (params: { status?: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | "ALL"; limit?: number; page?: number; employeeId?: string } = {}) => {
     const res = await api.get("/attendance/corrections", { params: { status: "PENDING", limit: 500, ...params } });
     return res.data;
   },
@@ -579,6 +592,12 @@ export const leavesApi = {
   },
 };
 
+export const workFromHomeApi = {
+  create: async (payload: { startDate: string; endDate: string; reason: string }) => (await api.post("/work-from-home", payload)).data,
+  getMy: async () => (await api.get("/work-from-home/my")).data,
+  getAll: async (params?: { status?: string }) => (await api.get("/work-from-home", { params })).data,
+  review: async (id: string, payload: { status: "APPROVED" | "REJECTED"; reviewNote?: string }) => (await api.post("/work-from-home/" + id + "/review", payload)).data,
+};
 export const companyLeavesApi = {
   list: async (params?: { from?: string; to?: string }) => {
     const res = await api.get("/company-leaves", { params });
@@ -1115,6 +1134,10 @@ export const employeesApi = {
     const res = await api.delete(`/employees/${id}`);
     return res.data;
   },
+  bulkDelete: async (ids: string[]) => {
+    const res = await api.post("/employees/bulk-delete", { ids });
+    return res.data;
+  },
   bulkSetAccess: async (ids: string[], action: "DEACTIVATE" | "ACTIVATE") => {
     const res = await api.post("/employees/bulk-access", { ids, action });
     return res.data;
@@ -1179,62 +1202,68 @@ export const employeesApi = {
 
 
 export const branchesApi = {
-  list: async () => {
-    const res = await api.get("/branches");
-    return res.data;
-  },
+  /** Cached for a minute and shared between screens. Pass `fresh` on a screen that edits the list. */
+  list: (options?: { fresh?: boolean }) =>
+    cachedFetch("branches:list", async () => (await api.get("/branches")).data, { fresh: options?.fresh }),
   create: async (payload: any) => {
     const res = await api.post("/branches", payload);
+    invalidate("branches:");
     return res.data;
   },
   update: async (id: string, payload: any) => {
     const res = await api.put(`/branches/${id}`, payload);
+    invalidate("branches:");
     return res.data;
   },
   remove: async (id: string) => {
     const res = await api.delete(`/branches/${id}`);
+    invalidate("branches:");
     return res.data;
   },
 };
 
 export const departmentsApi = {
-  list: async () => {
-    const res = await api.get("/departments");
-    return res.data;
-  },
+  list: (options?: { fresh?: boolean }) =>
+    cachedFetch("departments:list", async () => (await api.get("/departments")).data, { fresh: options?.fresh }),
   create: async (payload: any) => {
     const res = await api.post("/departments", payload);
+    invalidate("departments:");
     return res.data;
   },
   update: async (id: string, payload: any) => {
     const res = await api.put(`/departments/${id}`, payload);
+    invalidate("departments:");
     return res.data;
   },
   remove: async (id: string) => {
     const res = await api.delete(`/departments/${id}`);
+    invalidate("departments:");
     return res.data;
   },
 };
 
 export const shiftsApi = {
-  list: async () => {
-    const res = await api.get("/shifts");
-    return res.data;
-  },
+  /** Cached for a minute and shared between screens. Pass `fresh` on a screen that edits the list. */
+  list: (options?: { fresh?: boolean }) =>
+    cachedFetch("shifts:list", async () => (await api.get("/shifts")).data, { fresh: options?.fresh }),
   create: async (payload: any) => {
     const res = await api.post("/shifts", payload);
+    invalidate("shifts:");
     return res.data;
   },
   update: async (id: string, payload: any) => {
     const res = await api.put(`/shifts/${id}`, payload);
+    invalidate("shifts:");
     return res.data;
   },
   remove: async (id: string) => {
     const res = await api.delete(`/shifts/${id}`);
+    invalidate("shifts:");
     return res.data;
   },
   assign: async (id: string, employeeIds: string[]) => {
     const res = await api.post(`/shifts/${id}/assign`, { employeeIds });
+    invalidate("shifts:");
     return res.data;
   },
 };

@@ -3,17 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { departmentsApi } from "@/lib/api";
 import { unwrapList } from "@/lib/utils";
-import {
-  FolderTree,
-  Loader2,
-  Pencil,
-  Plus,
-  Search,
-  Trash2,
-  Users,
-  Image as ImageIcon,
-  Sparkles,
-} from "lucide-react";
+import { FolderTree, Loader2, Pencil, Plus, Search, Trash2, Users, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
 import DepartmentModal from "./DepartmentModal";
@@ -58,7 +48,7 @@ export default function DepartmentsView() {
   const load = async () => {
     setLoading(true);
     try {
-      const res = await departmentsApi.list();
+      const res = await departmentsApi.list({ fresh: true });
       setDepartments(unwrapList(res) as Department[]);
       setCustomStyles(getStoredDepartmentStyles());
     } catch {

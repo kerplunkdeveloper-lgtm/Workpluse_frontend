@@ -3,33 +3,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Employee } from "@/types";
-import { employeesApi, branchesApi, departmentsApi, shiftsApi, notificationsApi } from "@/lib/api";
-import { formatCurrency, formatDate, roleLabel, unwrapList } from "@/lib/utils";
-import {
-  Users,
-  Search,
-  Plus,
-  Mail,
-  Phone,
-  Building2,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  Loader2,
-  UserX,
-  UserCheck,
-  Edit,
-  Sparkles,
-  Send,
-  FileCheck2,
-  FileSpreadsheet,
-  Megaphone,
-  KeyRound,
-  Download,
-} from "lucide-react";
+import { employeesApi, branchesApi, departmentsApi, shiftsApi, notificationsApi, orgApi } from "@/lib/api";
+import { formatCurrency, roleLabel, unwrapList } from "@/lib/utils";
+import { Users, Search, Eye, Trash2, Plus, Mail, Loader2, UserX, UserCheck, Send, FileCheck2, FileSpreadsheet, Megaphone, KeyRound, Download } from "lucide-react";
 import { toast } from "sonner";
-import DatePicker from "@/components/ui/DatePicker";
-import confetti from "canvas-confetti";
+
+import { confetti } from "@/lib/confetti";
 import EmployeeProfileModal from "./EmployeeProfileModal";
 import EmployeeProfileFields from "./EmployeeProfileFields";
 import {
@@ -46,6 +25,8 @@ import dynamic from "next/dynamic";
 const BulkImportModal = dynamic(() => import("./BulkImportModal"), { ssr: false });
 import ProfilePhotoPicker from "@/components/profile/ProfilePhotoPicker";
 import Pagination from "@/components/ui/Pagination";
+import Select from "@/components/ui/Select";
+import Modal from "@/components/ui/Modal";
 
 export default function EmployeeDirectory() {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -55,9 +36,11 @@ export default function EmployeeDirectory() {
   const [loading, setLoading] = useState(true);
   const [resendingInviteId, setResendingInviteId] = useState<string | null>(null);
   const { user, role: viewerRole } = useAuth();
-  const canManageAccess = viewerRole === "SUPER_ADMIN" || viewerRole === "COMPANY_ADMIN";
+  const [hrRolesAccess, setHrRolesAccess] = useState(true);
+  useEffect(() => { if (viewerRole === "MANAGER" || viewerRole === "HR") orgApi.get().then((res) => setHrRolesAccess(res?.data?.hrAccess?.ROLES !== false)).catch(() => setHrRolesAccess(true)); }, [viewerRole]);
+  const canManageAccess = viewerRole === "SUPER_ADMIN" || viewerRole === "COMPANY_ADMIN" || ((viewerRole === "MANAGER" || viewerRole === "HR") && hrRolesAccess);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [pendingAction, setPendingAction] = useState<"DEACTIVATE" | "ACTIVATE" | null>(null);
+  const [pendingAction, setPendingAction] = useState<"DEACTIVATE" | "ACTIVATE" | "DELETE" | null>(null);
   const [updating, setUpdating] = useState(false);
   const selectAllRef = useRef<HTMLInputElement>(null);
   const cancelDeleteRef = useRef<HTMLButtonElement>(null);
@@ -72,6 +55,7 @@ export default function EmployeeDirectory() {
   const [pageSize, setPageSize] = useState(20);
   const [totalPages, setTotalPages] = useState(1);
   const [totalEmployees, setTotalEmployees] = useState(0);
+  const designationOptions = Array.from(new Set(employees.map((employee) => employee.designation?.trim()).filter((value): value is string => Boolean(value)))).sort((a, b) => a.localeCompare(b));
 
   // Profile & Documents Modal State
   const [selectedEmployeeForProfile, setSelectedEmployeeForProfile] = useState<Employee | null>(null);
@@ -309,6 +293,19 @@ export default function EmployeeDirectory() {
   };
 
   const filteredEmployees = employees;
+  const canEditEmployee = (emp: Employee) =>
+    canManageAccess || (viewerRole === "MANAGER" && (emp.user?.role || "EMPLOYEE") === "EMPLOYEE");
+
+  const updateEmployeeFromTable = async (employeeId: string, payload: Record<string, unknown>, message: string) => {
+    try {
+      const res = await employeesApi.update(employeeId, payload);
+      if (res?.success === false) throw new Error(res?.message || "Could not update employee");
+      setEmployees((current) => current.map((row) => (row.id === employeeId ? { ...row, ...res.data } : row)));
+      toast.success(message);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || "Could not update employee");
+    }
+  };
 
   // The signed-in user's own row can never be selected (you cannot lock yourself out).
   const isSelectable = (emp: Employee) => canManageAccess && emp.userId !== user?.id;
@@ -346,7 +343,7 @@ export default function EmployeeDirectory() {
   const isLoginOn = (e: Employee) => e.status !== "INACTIVE" && e.status !== "TERMINATED";
   const activeSelected = selectedEmployees.filter(isLoginOn);
   const inactiveSelected = selectedEmployees.filter((e) => e.status === "INACTIVE");
-  const dialogTargets = pendingAction === "ACTIVATE" ? inactiveSelected : activeSelected;
+  const dialogTargets = pendingAction === "ACTIVATE" ? inactiveSelected : pendingAction === "DELETE" ? selectedEmployees : activeSelected;
 
   const closeDialog = () => {
     if (!updating) setPendingAction(null);
@@ -356,23 +353,35 @@ export default function EmployeeDirectory() {
     if (!pendingAction || dialogTargets.length === 0) return;
     setUpdating(true);
     try {
-      const res = await employeesApi.bulkSetAccess(
-        dialogTargets.map((e) => e.id),
-        pendingAction,
-      );
-      const result = res?.data || {};
-      if ((result.changedCount || 0) > 0) {
-        const verb = pendingAction === "ACTIVATE" ? "Reactivated" : "Deactivated";
-        toast.success(`${verb} ${result.changedCount} employee${result.changedCount === 1 ? "" : "s"}.`);
+      if (pendingAction === "DELETE") {
+        const ids = dialogTargets.map((e) => e.id);
+        const res = await employeesApi.bulkDelete(ids);
+        const result = res?.data || {};
+        if ((result.deletedCount || 0) > 0) {
+          toast.success(`Deleted ${result.deletedCount} employee${result.deletedCount === 1 ? "" : "s"} successfully.`);
+        }
+        (result.failed || []).forEach((f: { name?: string; reason: string }) =>
+          toast.warning(`${f.name ? f.name + ": " : ""}${f.reason}`),
+        );
+      } else {
+        const res = await employeesApi.bulkSetAccess(
+          dialogTargets.map((e) => e.id),
+          pendingAction,
+        );
+        const result = res?.data || {};
+        if ((result.changedCount || 0) > 0) {
+          const verb = pendingAction === "ACTIVATE" ? "Reactivated" : "Deactivated";
+          toast.success(`${verb} ${result.changedCount} employee${result.changedCount === 1 ? "" : "s"}.`);
+        }
+        (result.failed || []).forEach((f: { name?: string; reason: string }) =>
+          toast.warning(`${f.name ? f.name + ": " : ""}${f.reason}`),
+        );
       }
-      (result.failed || []).forEach((f: { name?: string; reason: string }) =>
-        toast.warning(`${f.name ? f.name + ": " : ""}${f.reason}`),
-      );
       setSelectedIds(new Set());
       setPendingAction(null);
       await loadData();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Employees could not be updated. Please try again.");
+      toast.error(err?.response?.data?.message || "Operation could not be completed. Please try again.");
     } finally {
       setUpdating(false);
     }
@@ -504,7 +513,7 @@ export default function EmployeeDirectory() {
               },
             ] as const
           ).map((f) => (
-            <select
+            <Select
               key={f.key}
               value={filters[f.key]}
               onChange={(e) => setFilter(f.key, e.target.value)}
@@ -521,7 +530,7 @@ export default function EmployeeDirectory() {
                   {o.text}
                 </option>
               ))}
-            </select>
+            </Select>
           ))}
           <p className="ml-auto text-[11px] text-slate-500" aria-live="polite">
             {totalEmployees} {totalEmployees === 1 ? "employee" : "employees"}
@@ -561,16 +570,27 @@ export default function EmployeeDirectory() {
               <button
                 type="button"
                 onClick={() => setPendingAction("DEACTIVATE")}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-rose-500 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-50 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-600 cursor-pointer"
               >
                 <UserX className="h-3.5 w-3.5" />
                 Deactivate login ({activeSelected.length})
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => setPendingAction("DELETE")}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-rose-500 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 cursor-pointer"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete selected ({selectedEmployees.length})
+            </button>
           </div>
         </div>
       )}
 
+      <datalist id="employee-designation-options">
+        {designationOptions.map((designation) => <option key={designation} value={designation} />)}
+      </datalist>
       {/* Directory Table */}
       <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
@@ -590,16 +610,16 @@ export default function EmployeeDirectory() {
                     />
                   </th>
                 )}
-                <th className="py-3.5 px-4">Employee</th>
-                <th className="py-3.5 px-4">Code</th>
-                <th className="py-3.5 px-4">Designation</th>
-                <th className="py-3.5 px-4">Department</th>
-                <th className="py-3.5 px-4">Branch</th>
-                <th className="py-3.5 px-4">Shift</th>
-                <th className="py-3.5 px-4">Salary (Annual)</th>
-                <th className="py-3.5 px-4">Role</th>
-                <th className="py-3.5 px-4">Status</th>
-                <th className="py-3.5 px-4 text-right">Actions</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Employee</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Code</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Designation</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Department</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Branch</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Shift</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Salary (Annual)</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Role</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">Status</th>
+                <th className="py-3.5 px-4 text-right whitespace-nowrap w-[220px] min-w-[220px]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -696,13 +716,36 @@ export default function EmployeeDirectory() {
                       {emp.employeeCode}
                     </td>
                     <td className="py-3.5 px-4 text-slate-700">
-                      {emp.designation || <span className="text-slate-400">Not assigned</span>}
+                      {canEditEmployee(emp) ? (
+                        <input
+                          value={emp.designation || ""}
+                          list="employee-designation-options"
+                          placeholder="Select or enter"
+                          aria-label="Employee designation"
+                          onChange={(e) => setEmployees((current) => current.map((row) => row.id === emp.id ? { ...row, designation: e.target.value } : row))}
+                          onBlur={(e) => {
+                            const value = e.target.value.trim();
+                            void updateEmployeeFromTable(emp.id, { designation: value || null }, "Designation updated");
+                          }}
+                          className="w-[150px] rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                        />
+                      ) : emp.designation || <span className="text-slate-400">Not assigned</span>}
                     </td>
                     <td className="py-3.5 px-4 text-slate-600">
-                      {emp.department?.name || "-"}
+                      {canEditEmployee(emp) ? (
+                        <Select
+                          value={emp.departmentId || ""}
+                          aria-label="Employee department"
+                          onChange={(e) => void updateEmployeeFromTable(emp.id, { departmentId: e.target.value || null }, "Department updated")}
+                          className="max-w-[160px] bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-800"
+                        >
+                          <option value="">No department</option>
+                          {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                        </Select>
+                      ) : emp.department?.name || "-"}
                     </td>
                     <td className="py-3.5 px-4 text-slate-600">
-                      <select
+                      <Select
                         value={emp.branchId || ""}
                         onChange={(e) => {
                           const next = e.target.value;
@@ -724,7 +767,7 @@ export default function EmployeeDirectory() {
                             {b.name}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                     </td>
                     <td className="py-3.5 px-4 text-slate-500">
                       {emp.shift?.name || "General Shift"}
@@ -743,12 +786,12 @@ export default function EmployeeDirectory() {
                         <span className="text-slate-400">Not set</span>
                       )}
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       <span className="px-2 py-0.5 rounded text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
                         {roleLabel(emp.user?.role || "EMPLOYEE")}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       <span
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${
                           emp.status === "ACTIVE" || emp.status === "PROBATION"
@@ -766,18 +809,18 @@ export default function EmployeeDirectory() {
                         </span>
                       )}
                     </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="py-3 px-4 text-right whitespace-nowrap w-[116px] min-w-[116px]">
+                      <div className="inline-flex items-center justify-end gap-2 whitespace-nowrap">
                         <button
+                          type="button"
                           onClick={() => {
                             setSelectedEmployeeForProfile(emp);
                             setProfileModalOpen(true);
                           }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 text-xs font-semibold transition shadow-xs cursor-pointer"
+                          className="group inline-flex items-center justify-center h-9 w-9 rounded-xl bg-indigo-50/70 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200/80 hover:border-indigo-600 shadow-2xs hover:shadow-indigo-500/20 hover:shadow-sm transition-all duration-150 active:scale-95 cursor-pointer"
                           title="View Employee Profile & Manage Documents"
                         >
-                          <FileCheck2 className="w-3.5 h-3.5" />
-                          Profile & Docs
+                          <Eye className="w-4 h-4 text-indigo-500 group-hover:text-white transition-colors duration-150" />
                         </button>
                         {canManageAccess && (emp.user as any)?.mustChangePassword && (
                           <button
@@ -794,12 +837,29 @@ export default function EmployeeDirectory() {
                                 setResendingInviteId(null);
                               }
                             }}
-                            className="inline-flex items-center gap-1 rounded-xl border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-800 disabled:opacity-50"
+                            className="inline-flex items-center gap-1 whitespace-nowrap shrink-0 h-8 px-2.5 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-xs font-semibold text-amber-800 disabled:opacity-50 cursor-pointer active:scale-95 transition"
                             title="Resend temporary credentials"
                           >
-                            {resendingInviteId === emp.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />}
-                            Resend
+                            {resendingInviteId === emp.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5 shrink-0" />}
+                            <span>Resend</span>
                           </button>
+                        )}
+                        {canManageAccess && (
+                          emp.userId !== user?.id ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedIds(new Set([emp.id]));
+                                setPendingAction("DELETE");
+                              }}
+                              className="group inline-flex items-center justify-center h-9 w-9 rounded-xl border border-rose-200/80 bg-rose-50/50 hover:bg-rose-600 text-rose-600 hover:text-white shadow-2xs hover:shadow-rose-500/20 hover:shadow-sm transition-all duration-150 active:scale-95 cursor-pointer"
+                              title={`Delete ${emp.firstName} ${emp.lastName || ""}`}
+                            >
+                              <Trash2 className="w-4 h-4 text-rose-500 group-hover:text-white transition-colors duration-150" />
+                            </button>
+                          ) : (
+                            <span className="w-9 shrink-0" aria-hidden="true" />
+                          )
                         )}
                       </div>
                     </td>
@@ -825,7 +885,7 @@ export default function EmployeeDirectory() {
 
       {/* Notify all employees */}
       {broadcastOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+        <Modal>
           <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
             <h3 className="text-base font-semibold text-slate-900 mb-1">Notify all employees</h3>
             <p className="text-xs text-slate-500 mb-4">
@@ -872,7 +932,7 @@ export default function EmployeeDirectory() {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Add Employee Modal */}
@@ -968,7 +1028,7 @@ export default function EmployeeDirectory() {
                 </div>
                 <div>
                   <label htmlFor="emp-role" className="block text-[13px] font-medium text-slate-700 mb-1">System Role *</label>
-                  <select
+                  <Select
                     id="emp-role"
                     value={role}
                     onChange={(e) => setRole(e.target.value)}
@@ -977,7 +1037,7 @@ export default function EmployeeDirectory() {
                     <option value="EMPLOYEE">Employee</option>
                     <option value="MANAGER">HR</option>
                     {canManageAccess && <option value="COMPANY_ADMIN">Company admin</option>}
-                  </select>
+                  </Select>
                 </div>
               </div>
 
@@ -988,6 +1048,7 @@ export default function EmployeeDirectory() {
                 branches={branches}
                 departments={departments}
                 shifts={shifts}
+                designations={designationOptions}
                 renderDepartment={() => (
                   <div>
                     <div className="mb-1 flex justify-end">
@@ -1025,7 +1086,7 @@ export default function EmployeeDirectory() {
                         </button>
                       </div>
                     ) : (
-                      <select
+                      <Select
                         id="emp-departmentId"
                         value={form.departmentId}
                         onChange={(e) => setField("departmentId", e.target.value)}
@@ -1038,7 +1099,7 @@ export default function EmployeeDirectory() {
                             {d.name}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                     )}
                   </div>
                 )}
@@ -1103,23 +1164,34 @@ export default function EmployeeDirectory() {
             <div className="flex items-start gap-3">
               <span
                 className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${
-                  pendingAction === "ACTIVATE" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
+                  pendingAction === "ACTIVATE"
+                    ? "bg-emerald-50 text-emerald-600"
+                    : pendingAction === "DELETE"
+                    ? "bg-rose-100 text-rose-600"
+                    : "bg-amber-50 text-amber-600"
                 }`}
               >
                 {pendingAction === "ACTIVATE" ? (
                   <UserCheck aria-hidden="true" className="h-5 w-5" />
+                ) : pendingAction === "DELETE" ? (
+                  <Trash2 aria-hidden="true" className="h-5 w-5" />
                 ) : (
                   <UserX aria-hidden="true" className="h-5 w-5" />
                 )}
               </span>
               <div className="min-w-0">
                 <h2 id="access-dialog-title" className="text-base font-semibold text-slate-900">
-                  {pendingAction === "ACTIVATE" ? "Reactivate" : "Deactivate"} {dialogTargets.length} login
-                  {dialogTargets.length === 1 ? "" : "s"}?
+                  {pendingAction === "ACTIVATE"
+                    ? `Reactivate ${dialogTargets.length} login${dialogTargets.length === 1 ? "" : "s"}?`
+                    : pendingAction === "DELETE"
+                    ? `Delete ${dialogTargets.length} employee${dialogTargets.length === 1 ? "" : "s"}?`
+                    : `Deactivate ${dialogTargets.length} login${dialogTargets.length === 1 ? "" : "s"}?`}
                 </h2>
                 <p id="access-dialog-desc" className="mt-1 text-sm leading-6 text-slate-600">
                   {pendingAction === "ACTIVATE"
                     ? "They will be able to sign in again, and each one uses a seat on your plan."
+                    : pendingAction === "DELETE"
+                    ? "This will remove the employee from the active directory and deactivate their account. Their seat will be freed up on your plan. Historical payroll, attendance, and tax records are securely preserved for audit compliance."
                     : "They will not be able to sign in, and anyone already signed in is locked out on their next action. All records are kept, and you can reactivate them at any time."}
                 </p>
               </div>
@@ -1153,7 +1225,7 @@ export default function EmployeeDirectory() {
                 }`}
               >
                 {updating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                {updating ? "Saving" : pendingAction === "ACTIVATE" ? "Reactivate" : "Deactivate"}
+                {updating ? "Saving" : pendingAction === "ACTIVATE" ? "Reactivate" : pendingAction === "DELETE" ? `Delete ${dialogTargets.length === 1 ? "employee" : `${dialogTargets.length} employees`}` : "Deactivate"}
               </button>
             </div>
           </div>
@@ -1168,9 +1240,17 @@ export default function EmployeeDirectory() {
           isCurrentUserAdmin
           // Admin and HR can edit profile details. HR is limited to plain employee accounts (the server enforces it too).
           canEdit={canManageAccess || (viewerRole === "MANAGER" && (selectedEmployeeForProfile.user?.role || "EMPLOYEE") === "EMPLOYEE")}
+          canEditRole={canManageAccess}
           branches={branches}
           departments={departments}
           shifts={shifts}
+          designations={designationOptions}
+          onDeleteEmployee={async (empToDelete) => {
+            setProfileModalOpen(false);
+            setSelectedEmployeeForProfile(null);
+            setSelectedIds(new Set([empToDelete.id]));
+            setPendingAction("DELETE");
+          }}
           onEmployeeUpdated={(updated) => {
             setSelectedEmployeeForProfile(updated);
             setEmployees((prev) => prev.map((row) => (row.id === updated.id ? { ...row, ...updated } : row)));

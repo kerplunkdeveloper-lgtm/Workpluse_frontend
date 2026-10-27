@@ -6,6 +6,7 @@ import { attendanceApi } from "@/lib/api";
 import { formatTime } from "@/lib/utils";
 import { mapsSearchUrl } from "@/lib/reverseGeocode";
 import { useAuth } from "@/context/AuthContext";
+import Select from "@/components/ui/Select";
 
 export interface TeamPunchPerson {
   employeeId: string;
@@ -118,27 +119,27 @@ export default function TeamPunchBoard() {
               className={`${selectClass} w-full pl-8`}
             />
           </div>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)} aria-label="Filter by status" className={selectClass}>
+          <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)} aria-label="Filter by status" className={selectClass}>
             <option value="ALL">All status</option>
             <option value="ON_SHIFT">On shift</option>
             <option value="CLOCKED_OUT">Punched out</option>
             <option value="NOT_IN">Not punched in</option>
-          </select>
+          </Select>
           {branchOptions.length > 1 && (
-            <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} aria-label="Filter by branch" className={selectClass}>
+            <Select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} aria-label="Filter by branch" className={selectClass}>
               <option value="ALL">All branches</option>
               {branchOptions.map((b) => (
                 <option key={b} value={b}>{b}</option>
               ))}
-            </select>
+            </Select>
           )}
           {departmentOptions.length > 1 && (
-            <select value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)} aria-label="Filter by department" className={selectClass}>
+            <Select value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)} aria-label="Filter by department" className={selectClass}>
               <option value="ALL">All departments</option>
               {departmentOptions.map((d) => (
                 <option key={d} value={d}>{d}</option>
               ))}
-            </select>
+            </Select>
           )}
           {filtersActive && (
             <button type="button" onClick={clearFilters} className="inline-flex items-center gap-1 rounded-xl px-2.5 py-2 text-xs font-bold text-indigo-600 hover:bg-indigo-50">
