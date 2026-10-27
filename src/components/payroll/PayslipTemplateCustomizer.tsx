@@ -2,34 +2,10 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { payslipTemplatesApi } from "@/lib/api";
-import { formatCurrency, formatDate } from "@/lib/utils";
-import {
-  Palette,
-  Upload,
-  Sparkles,
-  Check,
-  Save,
-  RotateCcw,
-  Printer,
-  Building2,
-  FileCode,
-  ShieldCheck,
-  Eye,
-  CheckCircle2,
-  FileText,
-  Sliders,
-  Image as ImageIcon,
-  Stamp,
-  Code2,
-  Trash2,
-  Layers,
-  ChevronRight,
-  Loader2,
-  QrCode,
-  AlertCircle,
-} from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
+import { Palette, Upload, Sparkles, Save, RotateCcw, Printer, Building2, FileCode, Eye, CheckCircle2, Sliders, Image as ImageIcon, Stamp, Code2, Layers, Loader2, QrCode } from "lucide-react";
 import { toast } from "sonner";
-import confetti from "canvas-confetti";
+import { confetti } from "@/lib/confetti";
 
 interface PresetItem {
   key: string;

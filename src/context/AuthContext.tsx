@@ -70,21 +70,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Browsers cap setTimeout at roughly 24.8 days, so schedule the expiry in
   // safe chunks instead of passing the full 30-day duration at once.
   useEffect(() => {
-    if (!user) return;
+    if (!user || user.role === "SUPER_ADMIN") return;
 
     const key = "workpulse_session_started_at";
-    const maxAge =
-      user.role === "SUPER_ADMIN"
-        ? 30 * 60 * 1000
-        : user.role === "COMPANY_ADMIN"
-          ? 15 * 24 * 60 * 60 * 1000
-          : 30 * 24 * 60 * 60 * 1000;
-    const sessionLabel =
-      user.role === "SUPER_ADMIN"
-        ? "30-minute owner"
-        : user.role === "COMPANY_ADMIN"
-          ? "15-day admin"
-          : "30-day";
+    const maxAge = 30 * 24 * 60 * 60 * 1000;
+    const sessionLabel = "30-day";
     const maxTimerDelay = 2_000_000_000;
     const saved = Number(localStorage.getItem(key));
     const startedAt = Number.isFinite(saved) && saved > 0 ? saved : Date.now();

@@ -147,7 +147,7 @@ export default function CommandPalette({
       // Workspace
       { id: "nav-dashboard", label: "Dashboard", category: "Workspace", hint: "Executive summary, KPIs, and live attendance metrics", href: "/dashboard", icon: LayoutDashboard, keywords: ["home", "kpi", "overview"] },
       { id: "nav-attendance", label: "Attendance & Punches", category: "Workspace", hint: "Punch clock, geolocation logs, timesheets", href: "/attendance", icon: Clock, keywords: ["clock", "punch", "timesheet", "history"] },
-      { id: "nav-leaves", label: "Leaves & Time Off", category: "Workspace", hint: "Apply for leaves, view balances, upcoming holidays", href: "/leaves", icon: CalendarDays, keywords: ["vacation", "sick", "casual", "time off"] },
+      { id: "nav-leaves", label: "Leaves & Time Off", category: "Workspace", hint: "Apply leave, request shoots, view balances, and upcoming holidays", href: "/leaves", icon: CalendarDays, keywords: ["vacation", "sick", "casual", "time off"] },
       { id: "nav-chat", label: "Team Messages & Chat", category: "Workspace", hint: "Internal workplace messaging and announcements", href: "/chat", icon: MessageSquare, keywords: ["inbox", "message", "conversation"] },
       { id: "nav-profile", label: "My Profile & Documents", category: "Workspace", hint: "Personal data, bank accounts, identity proofs", href: "/profile", icon: CircleUser, keywords: ["account", "me", "kyc", "documents"] },
 

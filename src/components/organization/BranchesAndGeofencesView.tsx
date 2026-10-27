@@ -18,6 +18,7 @@ import {
 import { toast } from "sonner";
 import LocationPicker, { PickedLocation } from "./LocationPicker";
 import { confirmDialog } from "@/components/ui/confirmDialog";
+import Modal from "@/components/ui/Modal";
 
 // Leaflet touches `window`, so the card maps load in the browser only.
 const BranchMapPreview = dynamic(() => import("./BranchMapPreview"), {
@@ -58,7 +59,7 @@ export default function BranchesAndGeofencesView() {
   const loadBranches = async () => {
     setLoading(true);
     try {
-      const [brRes, empRes] = await Promise.allSettled([branchesApi.list(), employeesApi.list({ page: 1, limit: 500, status: "WORKING" })]);
+      const [brRes, empRes] = await Promise.allSettled([branchesApi.list({ fresh: true }), employeesApi.list({ page: 1, limit: 500, status: "WORKING" })]);
       if (brRes.status === "fulfilled") setBranches(unwrapList<Branch>(brRes.value));
       if (empRes.status === "fulfilled") setEmployees(unwrapList(empRes.value));
     } catch (err) {
@@ -310,7 +311,7 @@ export default function BranchesAndGeofencesView() {
       </div>
 
       {modalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <Modal>
           <div className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl max-h-[92vh] overflow-y-auto">
             <h3 className="text-base font-semibold text-slate-900 mb-1">{editingId ? "Edit location" : "Add location & set as branch"}</h3>
             <p className="text-xs text-slate-500 mb-4">Capture GPS at the office, then save. You can assign people after saving.</p>
@@ -360,7 +361,7 @@ export default function BranchesAndGeofencesView() {
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
 
       {viewBranch && Number.isFinite(Number(viewBranch.latitude)) && Number.isFinite(Number(viewBranch.longitude)) && (
@@ -380,7 +381,7 @@ export default function BranchesAndGeofencesView() {
       )}
 
       {assignBranch && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <Modal>
           <div className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl max-h-[92vh] overflow-y-auto">
             <div className="flex items-start justify-between gap-3 mb-4">
               <div>
@@ -425,7 +426,7 @@ export default function BranchesAndGeofencesView() {
               </div>
             )}
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

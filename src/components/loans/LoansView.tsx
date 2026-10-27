@@ -7,6 +7,8 @@ import { loansApi, employeesApi } from "@/lib/api";
 import { formatCurrency, unwrapList } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import PageHeader from "@/components/ui/PageHeader";
+import Select from "@/components/ui/Select";
+import Modal from "@/components/ui/Modal";
 
 interface LoanRow {
   id: string;
@@ -260,19 +262,19 @@ function RequestForm({ isReviewer, employees, onDone }: { isReviewer: boolean; e
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {isReviewer && (
           <Field label="For" hint="Leave blank to request for yourself">
-            <select value={form.employeeId} onChange={set("employeeId")} className={INPUT}>
+            <Select value={form.employeeId} onChange={set("employeeId")} className={INPUT}>
               <option value="">Myself</option>
               {employees.map((emp) => (
                 <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName} ({emp.employeeCode})</option>
               ))}
-            </select>
+            </Select>
           </Field>
         )}
         <Field label="Type">
-          <select value={form.type} onChange={set("type")} className={INPUT}>
+          <Select value={form.type} onChange={set("type")} className={INPUT}>
             <option value="ADVANCE">Salary advance</option>
             <option value="LOAN">Loan</option>
-          </select>
+          </Select>
         </Field>
         <Field label="Amount (₹)">
           <input type="number" min={1} inputMode="decimal" required value={form.amount} onChange={set("amount")} placeholder="e.g. 10000" className={INPUT} />
@@ -333,7 +335,7 @@ function ApproveDialog({ row, onClose, onDone }: { row: LoanRow; onClose: () => 
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" onClick={onClose}>
+    <Modal z={60} onClose={onClose}>
       <div role="dialog" aria-modal="true" aria-labelledby="approve-title" onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
         <h2 id="approve-title" className="text-base font-semibold text-slate-950">Approve {money(amount)}</h2>
         <p className="mt-1 text-sm text-slate-500">Choose how much is deducted from each payroll until it is repaid.</p>
@@ -351,6 +353,6 @@ function ApproveDialog({ row, onClose, onDone }: { row: LoanRow; onClose: () => 
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

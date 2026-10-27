@@ -8,34 +8,12 @@ import { useAuth } from "@/context/AuthContext";
 /** Readable pipeline status: who has to act next while a resignation is pending. */
 const exitStatusLabel = (status: string) =>
   status === "RESIGNED" ? "AWAITING HR" : status === "UNDER_HR_REVIEW" ? "AWAITING ADMIN" : status.replace(/_/g, " ");
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import ExitDocumentsModal from "./ExitDocumentsModal";
-import {
-  UserMinus,
-  Search,
-  Plus,
-  Clock,
-  CheckCircle2,
-  AlertTriangle,
-  FileText,
-  DollarSign,
-  ShieldCheck,
-  Building2,
-  Calendar,
-  X,
-  ChevronRight,
-  Loader2,
-  Calculator,
-  Printer,
-  Award,
-  ScrollText,
-  MessageSquare,
-  Sparkles,
-  RefreshCw,
-  Send,
-  UserCheck,
-} from "lucide-react";
+import { UserMinus, Search, Plus, Clock, CheckCircle2, FileText, DollarSign, ShieldCheck, Calendar, X, ChevronRight, Loader2, Calculator, Printer, Award, ScrollText, MessageSquare, RefreshCw, UserCheck } from "lucide-react";
 import { toast } from "sonner";
+import Select from "@/components/ui/Select";
+import Modal from "@/components/ui/Modal";
 
 export default function OffboardingView() {
   const { role } = useAuth();
@@ -668,7 +646,7 @@ export default function OffboardingView() {
 
       {/* ─── INITIATE EXIT MODAL ──────────────────────────────────────────────── */}
       {initiateModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <Modal>
           <div className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-2xl">
             <div className="flex items-center justify-between pb-4 border-b border-slate-200">
               <div className="flex items-center gap-2.5">
@@ -691,7 +669,7 @@ export default function OffboardingView() {
             <form onSubmit={handleInitiateSubmit} className="space-y-4 mt-4 text-xs">
               <div>
                 <label className="block font-medium text-slate-700 mb-1">Select Employee *</label>
-                <select
+                <Select
                   value={initiateEmployeeId}
                   onChange={(e) => setInitiateEmployeeId(e.target.value)}
                   required
@@ -703,13 +681,13 @@ export default function OffboardingView() {
                       {emp.firstName} {emp.lastName || ""} ({emp.employeeCode}) • {emp.department?.name || "General"}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-medium text-slate-700 mb-1">Exit Type</label>
-                  <select
+                  <Select
                     value={initiateExitType}
                     onChange={(e) => setInitiateExitType(e.target.value)}
                     className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 focus:outline-none focus:border-rose-500"
@@ -718,7 +696,7 @@ export default function OffboardingView() {
                     <option value="TERMINATION">Involuntary Termination</option>
                     <option value="MUTUAL_SEPARATION">Mutual Separation</option>
                     <option value="RETIREMENT">Retirement</option>
-                  </select>
+                  </Select>
                 </div>
 
                 <div>
@@ -784,7 +762,7 @@ export default function OffboardingView() {
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* ─── EXIT DETAIL DRAWER / MODAL ───────────────────────────────────────── */}
@@ -1090,7 +1068,7 @@ export default function OffboardingView() {
 
                           {/* Status and Recovery Controls */}
                           <div className="flex items-center gap-2">
-                            <select
+                            <Select
                               value={clearance.status}
                               onChange={(e) =>
                                 handleClearanceChange(
@@ -1106,7 +1084,7 @@ export default function OffboardingView() {
                               <option value="CLEARED">Cleared & Verified</option>
                               <option value="RECOVERABLE_DUE">Dues / Recovery Charge</option>
                               <option value="WAIVED">Waived</option>
-                            </select>
+                            </Select>
 
                             {clearance.status === "RECOVERABLE_DUE" && (
                               <input
@@ -1311,7 +1289,7 @@ export default function OffboardingView() {
                 <form onSubmit={handleSaveInterview} className="space-y-4 max-w-2xl text-xs">
                   <div>
                     <label className="block font-medium text-slate-700 mb-1">Primary Exit Factor</label>
-                    <select
+                    <Select
                       value={reasonCategoryInput}
                       onChange={(e) => setReasonCategoryInput(e.target.value)}
                       className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800"
@@ -1322,7 +1300,7 @@ export default function OffboardingView() {
                       <option value="PERSONAL">Personal or Family Reasons</option>
                       <option value="RELOCATION">Geographical Relocation</option>
                       <option value="WORK_CULTURE">Workplace Culture & Dynamics</option>
-                    </select>
+                    </Select>
                   </div>
 
                   <div className="grid grid-cols-3 gap-3">
@@ -1481,7 +1459,7 @@ export default function OffboardingView() {
 
       {/* ─── DISBURSE SETTLEMENT & TERMINATE MODAL ────────────────────────────── */}
       {disburseModalOpen && selectedExit && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <Modal>
           <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl space-y-4">
             <div className="flex items-center gap-3 border-b border-slate-200 pb-3">
               <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200">
@@ -1546,7 +1524,7 @@ export default function OffboardingView() {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* ─── PRINTABLE DOCUMENTS MODAL ────────────────────────────────────────── */}

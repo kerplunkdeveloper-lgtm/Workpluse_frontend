@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Clock, AlertCircle, X, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatDate } from "@/lib/utils";
+import Modal from "@/components/ui/Modal";
 
 interface RegularizationModalProps {
   attendance: Attendance | null;
@@ -74,7 +75,7 @@ export default function RegularizationModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+    <Modal>
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -165,6 +166,6 @@ export default function RegularizationModal({
           </div>
         </form>
       </motion.div>
-    </div>
+    </Modal>
   );
 }

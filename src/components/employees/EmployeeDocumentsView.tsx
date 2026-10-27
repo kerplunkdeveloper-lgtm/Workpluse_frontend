@@ -9,31 +9,10 @@ import {
 } from "@/types";
 import { employeesApi } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import {
-  FileText,
-  Upload,
-  Eye,
-  Download,
-  Trash2,
-  CheckCircle2,
-  Clock,
-  XCircle,
-  AlertTriangle,
-  RefreshCw,
-  Calendar,
-  ShieldCheck,
-  Bell,
-  Search,
-  Check,
-  X,
-  ExternalLink,
-  Plus,
-  Loader2,
-  FileCheck2,
-  Info,
-} from "lucide-react";
+import { FileText, Upload, Eye, Download, Trash2, CheckCircle2, Clock, XCircle, AlertTriangle, RefreshCw, Calendar, Bell, Search, Check, X, ExternalLink, Loader2, FileCheck2 } from "lucide-react";
 import { toast } from "sonner";
 import { confirmDialog } from "@/components/ui/confirmDialog";
+import Modal from "@/components/ui/Modal";
 
 interface EmployeeDocumentsViewProps {
   employeeId: string;
@@ -653,7 +632,7 @@ export default function EmployeeDocumentsView({
 
       {/* ─── Upload / Replace Modal ──────────────────────────────────────────────── */}
       {uploadModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <Modal>
           <div className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-2xl">
             <div className="flex items-center justify-between pb-4 border-b border-slate-200">
               <div className="flex items-center gap-2.5">
@@ -768,12 +747,12 @@ export default function EmployeeDocumentsView({
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* ─── Preview Modal ──────────────────────────────────────────────────────── */}
       {previewDoc && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <Modal>
           <div className="w-full max-w-4xl max-h-[90vh] bg-white border border-slate-200 rounded-3xl overflow-hidden flex flex-col shadow-2xl">
             <div className="flex shrink-0 items-center justify-between p-4 px-6 border-b border-slate-200 bg-slate-50">
               <div className="flex items-center gap-3">
@@ -824,7 +803,7 @@ export default function EmployeeDocumentsView({
 
             {/* Document Content View */}
             <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-slate-100 min-h-[400px]">
-              {previewDoc.fileUrl.endsWith(".pdf") || previewDoc.mimeType === "application/pdf" ? (
+              {previewDoc.mimeType === "application/pdf" || previewDoc.fileUrl.split(/[?#]/)[0].toLowerCase().endsWith(".pdf") ? (
                 <iframe
                   src={previewDoc.fileUrl}
                   className="w-full h-[650px] rounded-xl border border-slate-200"
@@ -839,12 +818,12 @@ export default function EmployeeDocumentsView({
               )}
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* ─── Reject Reason Modal ────────────────────────────────────────────────── */}
       {rejectModalDoc && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <Modal>
           <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl">
             <div className="flex items-center gap-3 pb-3 border-b border-slate-200">
               <span className="p-2 rounded-xl bg-rose-50 text-rose-600 border border-rose-200">
@@ -888,7 +867,7 @@ export default function EmployeeDocumentsView({
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

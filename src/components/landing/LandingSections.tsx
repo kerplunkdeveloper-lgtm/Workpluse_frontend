@@ -2,32 +2,7 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import Brand from "@/components/ui/Brand";
-import {
-  ArrowRight,
-  ArrowUpRight,
-  Bell,
-  CalendarCheck,
-  Check,
-  CheckCircle2,
-  ChevronRight,
-  CircleCheck,
-  Clock3,
-  Globe2,
-  KeyRound,
-  LayoutDashboard,
-  Lock,
-  MapPin,
-  Plus,
-  RefreshCw,
-  Search,
-  ShieldCheck,
-  Signal,
-  Sparkles,
-  Users,
-  Wallet,
-  WifiOff,
-  Zap,
-} from "lucide-react";
+import { ArrowRight, ArrowUpRight, Bell, CalendarCheck, Check, CheckCircle2, ChevronRight, CircleCheck, Clock3, Globe2, KeyRound, LayoutDashboard, Lock, MapPin, Plus, RefreshCw, Search, ShieldCheck, Users, Wallet, WifiOff } from "lucide-react";
 import type { SubscriptionPlanOption } from "@/types";
 import {
   FAQ as FAQ_ITEMS,

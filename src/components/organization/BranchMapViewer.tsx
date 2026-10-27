@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { ExternalLink, MapPin, Pencil, Satellite, Map as MapIcon, X, Plus, Minus } from "lucide-react";
+import Modal from "@/components/ui/Modal";
 
 interface BranchMapViewerProps {
   name: string;
@@ -135,7 +136,7 @@ export default function BranchMapViewer({ name, address, lat, lng, radiusMeters,
   const zoomOut = () => mapRef.current?.zoomOut();
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm sm:p-6" onClick={onClose}>
+    <Modal z={60} onClose={onClose}>
       <div
         role="dialog"
         aria-modal="true"
@@ -233,6 +234,6 @@ export default function BranchMapViewer({ name, address, lat, lng, radiusMeters,
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

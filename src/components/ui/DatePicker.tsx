@@ -1,15 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import {
-  Calendar as CalendarIcon,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  X,
-  Sparkles,
-  Check,
-} from "lucide-react";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronDown, X } from "lucide-react";
 
 export interface DatePickerProps {
   value?: string; // Format: "YYYY-MM-DD"

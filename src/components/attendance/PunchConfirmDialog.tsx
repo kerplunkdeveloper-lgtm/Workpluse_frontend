@@ -32,6 +32,8 @@ interface PunchConfirmDialogProps {
   onCancel: () => void;
   /** Receives the work mode and optional note the employee picked before punch-in. */
   onConfirm: (options?: PunchOptions) => void;
+  initialWorkMode?: CheckInWorkMode;
+  forceWorkMode?: CheckInWorkMode;
 }
 
 const NOTE_LIMIT = 160;
@@ -165,7 +167,7 @@ function GpsPanel({ status, place, accuracy, branchName, distance, inRange, hasR
   );
 }
 
-function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm }: PunchConfirmDialogProps & { action: PunchConfirmAction }) {
+function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm, initialWorkMode, forceWorkMode }: PunchConfirmDialogProps & { action: PunchConfirmAction }) {
   const { todayStatus, isWithinGeofence, distanceToBranch, currentLocation, locationStatus, currentPlace, retryLocation, locationError } = useAttendance();
   const [retrying, setRetrying] = useState(false);
   // The clock when the dialog opened: reading the time while rendering is not allowed, and a popup lives for seconds.
@@ -181,7 +183,7 @@ function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm 
   };
   const policy = todayStatus?.locationPolicy;
   const isCheckIn = action === "CHECK_IN";
-  const [workMode, setWorkMode] = useState<CheckInWorkMode>("OFFICE");
+  const [workMode, setWorkMode] = useState<CheckInWorkMode>(initialWorkMode || "OFFICE");
   const [note, setNote] = useState("");
   const cancelRef = useRef<HTMLButtonElement>(null);
 
@@ -193,6 +195,7 @@ function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm 
   const modes: { value: CheckInWorkMode; label: string; hint: string; icon: typeof Building2 }[] = [
     { value: "OFFICE", label: "Office", hint: "At your assigned office", icon: Building2 },
     ...(policy?.allowWfh !== false ? [{ value: "WORK_FROM_HOME" as const, label: "Remote", hint: "Work from home", icon: Home }] : []),
+    ...(todayStatus?.approvedShoot ? [{ value: "SHOOT" as const, label: "Shoot", hint: `${todayStatus.approvedShoot.startTime}–${todayStatus.approvedShoot.endTime}`, icon: BriefcaseBusiness }] : []),
     { value: "CLIENT_VISIT" as const, label: "Other", hint: "Client visit, travel, shoot", icon: BriefcaseBusiness },
   ];
 
@@ -248,7 +251,7 @@ function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm 
             </span>
             <div className="min-w-0 pr-8">
               <h3 id="punch-confirm-title" className="text-lg font-semibold tracking-tight text-slate-950">
-                {isCheckIn ? "Ready to punch in?" : "Ready to punch out?"}
+                {isCheckIn ? "Ready to punch in?" : todayStatus?.approvedShoot ? "Ready to shoot out?" : "Ready to punch out?"}
               </h3>
               <p className="mt-0.5 flex items-center gap-1.5 text-sm font-semibold text-slate-600">
                 <Clock aria-hidden="true" className="h-3.5 w-3.5 text-slate-400" />
@@ -263,7 +266,9 @@ function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm 
                 : workMode === "CLIENT_VISIT"
                   ? "Add a short reason so your team knows where you are working."
                   : "We will check that you are at your assigned office before starting your shift."
-              : "Your shift ends now and today's hours are saved to your timesheet."}
+              : todayStatus?.approvedShoot
+                ? "This will end your approved shoot and save the shoot hours to your timesheet."
+                : "Your shift ends now and today's hours are saved to your timesheet."}
           </p>
         </div>
 
@@ -297,7 +302,7 @@ function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm 
               <fieldset className="space-y-2">
                 <legend className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Where are you working today?</legend>
                 <div className={`grid gap-2 ${modes.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
-                  {modes.map((mode) => {
+                  {modes.filter((mode) => !forceWorkMode || mode.value === forceWorkMode).map((mode) => {
                     const selected = workMode === mode.value;
                     return (
                       <label

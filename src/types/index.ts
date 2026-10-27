@@ -1,4 +1,4 @@
-export type UserRole = "SUPER_ADMIN" | "COMPANY_ADMIN" | "MANAGER" | "EMPLOYEE";
+export type UserRole = "SUPER_ADMIN" | "COMPANY_ADMIN" | "MANAGER" | "HR" | "EMPLOYEE";
 
 export type AttendanceStatus =
   | "PRESENT"
@@ -113,6 +113,8 @@ export interface Employee {
   organizationId: string;
   userId?: string;
   employeeCode: string;
+  reportingManagerId?: string | null;
+  reportingManager?: { id: string; firstName: string; lastName?: string | null; employeeCode?: string } | null;
   firstName: string;
   lastName: string;
   phone?: string;
@@ -128,6 +130,7 @@ export interface Employee {
   dateOfJoining?: string | null;
   employmentType?: "FULL_TIME" | "PART_TIME" | "CONTRACT" | "INTERN" | null;
   workEmail?: string | null;
+  personalEmail?: string | null;
   address?: string | null;
   emergencyContactName?: string | null;
   emergencyContactPhone?: string | null;
@@ -246,8 +249,10 @@ export interface AttendanceTodayStatus {
   totalPauseMinutes?: number;
   workedMinutesToday?: number;
   dayOff?: DayOffInfo | null;
+  approvedShoot?: { id: string; shootName: string; location: string; startTime: string; endTime: string } | null;
   /** The employee's assigned branch, with its coordinates, so the browser can measure the distance. */
   branch?: Branch | null;
+  department?: { id: string; name: string } | null;
   locationPolicy?: CheckInLocationPolicy;
 }
 /** Where the organization lets employees punch in (Policy → "Where can employees punch in?"). */

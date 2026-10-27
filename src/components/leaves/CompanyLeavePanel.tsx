@@ -6,6 +6,7 @@ import { formatCycleDate } from "@/lib/payrollCycle";
 import { unwrapList } from "@/lib/utils";
 import { CalendarOff, Loader2, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import Select from "@/components/ui/Select";
 
 type CompanyLeave = {
   id: string;
@@ -218,7 +219,7 @@ export default function CompanyLeavePanel({ canManage }: { canManage: boolean })
 
           <label className="block space-y-1">
             <span className="text-xs font-semibold text-slate-600 uppercase">Applies to</span>
-            <select
+            <Select
               value={branchId}
               onChange={(e) => setBranchId(e.target.value)}
               className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white"
@@ -229,7 +230,7 @@ export default function CompanyLeavePanel({ canManage }: { canManage: boolean })
                   Only {b.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
 
           <label className="block space-y-1">

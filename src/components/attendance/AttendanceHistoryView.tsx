@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { CalendarRange, ExternalLink, FileSearch, MapPin, Pencil, Plus, RefreshCw } from "lucide-react";
+import { ExternalLink, FileSearch, MapPin, Pencil, Plus, RefreshCw } from "lucide-react";
 import { attendanceApi, correctionsApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { formatTime, unwrapList } from "@/lib/utils";
@@ -17,10 +17,12 @@ import { breakMinutesOf, formatHm, localDateKey, lunchMinutesOf, recordDateKey, 
 const TEAM_ROLES = ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"];
 
 const workModeDisplay = (row: Attendance) => {
-  const isRemote = row.status === "WORK_FROM_HOME" || row.isWorkFromHome || Boolean(row.wfhNote);
+  const rawNote = row.wfhNote || "";
+  const isShoot = rawNote.toUpperCase().startsWith("SHOOT:");
+  const isRemote = !isShoot && (row.status === "WORK_FROM_HOME" || row.isWorkFromHome || Boolean(rawNote));
   return {
-    label: isRemote ? "Remote / WFH" : "Office",
-    note: row.wfhNote || "",
+    label: isShoot ? "Shoot" : isRemote ? "Remote / WFH" : "Office",
+    note: isShoot ? rawNote.replace(/^SHOOT:\s*/i, "") : rawNote,
   };
 };
 

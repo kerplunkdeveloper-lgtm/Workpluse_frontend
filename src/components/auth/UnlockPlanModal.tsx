@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lock, Key, Loader2, CheckCircle2, X, Mail, AlertCircle } from "lucide-react";
+import { Lock, Key, Loader2, X, Mail, AlertCircle } from "lucide-react";
 import { authApi } from "@/lib/api";
 import { toast } from "sonner";
 

@@ -23,7 +23,7 @@ import { useAuth } from "./AuthContext";
 import { calculateDistanceMeters } from "@/lib/utils";
 import { reverseGeocodeLabel } from "@/lib/reverseGeocode";
 import { toast } from "sonner";
-import confetti from "canvas-confetti";
+import { confetti } from "@/lib/confetti";
 
 interface GeoCoordinates {
   latitude: number;
@@ -284,7 +284,10 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
     const branchLng = typeof branch.longitude === "string" ? parseFloat(branch.longitude) : branch.longitude;
     const distance = calculateDistanceMeters(currentLocation.latitude, currentLocation.longitude, branchLat, branchLng);
     const radius = Number(branch.radiusMeters || todayStatus?.locationPolicy?.radiusMeters || 200);
-    return { distanceToBranch: distance, isWithinGeofence: distance <= radius + Math.max(Number(currentLocation.accuracy || 0), 0) };
+    // GPS accuracy tolerance capped at 50m to avoid coarse IP positioning (e.g. 200km accuracy) falsely passing geofence
+    const accuracy = Number(currentLocation.accuracy || 0);
+    const accuracyBuffer = accuracy > 0 && accuracy <= 100 ? Math.min(accuracy, 50) : 0;
+    return { distanceToBranch: distance, isWithinGeofence: distance <= radius + accuracyBuffer };
   }, [currentLocation, todayStatus?.branch, todayStatus?.locationPolicy?.radiusMeters, user?.employee?.branch]);
 
   const locationStatus: "locating" | "ready" | "denied" | "error" = currentLocation
@@ -318,6 +321,12 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
           raw.attendance?.wfhNote?.toLowerCase().includes("home")
         );
 
+        const checkInTime = raw.attendance?.checkIn ? new Date(raw.attendance.checkIn).getTime() : null;
+        const totalPauseMinutes = raw.totalPauseMinutes || ((raw.attendance?.breakMinutes || 0) + (raw.attendance?.lunchMinutes || 0));
+        const workedMinutesToday = hasCheckedOut
+          ? (raw.attendance?.workingMinutes || 0)
+          : (checkInTime ? Math.max(0, Math.round((Date.now() - checkInTime) / 60000 - totalPauseMinutes)) : 0);
+
         setTodayStatus({
           hasCheckedIn,
           hasCheckedOut,
@@ -327,10 +336,11 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
           attendance: raw.attendance,
           totalBreakMinutes: raw.totalBreakMinutes || raw.attendance?.breakMinutes || 0,
           totalLunchMinutes: raw.totalLunchMinutes || raw.attendance?.lunchMinutes || 0,
-          totalPauseMinutes: raw.totalPauseMinutes || ((raw.attendance?.breakMinutes || 0) + (raw.attendance?.lunchMinutes || 0)),
-          workedMinutesToday: raw.attendance?.workingMinutes || 0,
+          totalPauseMinutes,
+          workedMinutesToday,
           shift: raw.employee?.shift || raw.shift,
           branch: raw.employee?.branch || null,
+          department: raw.employee?.department || null,
           dayOff: raw.dayOff || null,
           locationPolicy: raw.locationPolicy,
         });

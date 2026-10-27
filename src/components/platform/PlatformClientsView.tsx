@@ -22,6 +22,7 @@ import Pagination from "@/components/ui/Pagination";
 import PlatformNav from "@/components/platform/PlatformNav";
 import OwnerActionDialog from "@/components/platform/OwnerActionDialog";
 import AttentionPanel from "@/components/platform/AttentionPanel";
+import Select from "@/components/ui/Select";
 
 interface Client {
   id: string;
@@ -323,20 +324,20 @@ export default function PlatformClientsView() {
               className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-sm text-slate-900 placeholder-slate-500 transition focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-50"
             />
           </div>
-          <select value={plan} onChange={(e) => { setPlan(e.target.value); setPage(1); }} aria-label="Filter by plan" className={selectClass}>
+          <Select value={plan} onChange={(e) => { setPlan(e.target.value); setPage(1); }} aria-label="Filter by plan" className={selectClass}>
             <option value="">All plans</option>
             {Object.entries(PLAN_LABEL).map(([k, v]) => (
               <option key={k} value={k}>{v}</option>
             ))}
-          </select>
-          <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} aria-label="Filter by status" className={selectClass}>
+          </Select>
+          <Select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} aria-label="Filter by status" className={selectClass}>
             <option value="">All statuses</option>
             <option value="ACTIVE">Active</option>
             <option value="TRIALING">On trial</option>
             <option value="PAST_DUE">Past due</option>
             <option value="EXPIRED">Expired</option>
             <option value="CANCELED">Canceled</option>
-          </select>
+          </Select>
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-medium text-slate-700">
             <input type="checkbox" checked={expiring} onChange={(e) => { setExpiring(e.target.checked); setPage(1); }} className="h-4 w-4 accent-indigo-600" />
             Ending within 14 days

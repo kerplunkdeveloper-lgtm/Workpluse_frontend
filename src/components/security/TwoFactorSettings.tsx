@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import QRCode from "qrcode";
+
 import { toast } from "sonner";
 import { authApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -26,7 +26,8 @@ export default function TwoFactorSettings({ eyebrow, description }: { eyebrow: s
       setQrCode(null);
       return;
     }
-    QRCode.toDataURL(setup.otpauthUrl, { width: 240, margin: 2, errorCorrectionLevel: "M" })
+    import("qrcode")
+      .then((module) => module.default.toDataURL(setup.otpauthUrl, { width: 240, margin: 2, errorCorrectionLevel: "M" }))
       .then((url) => { if (!cancelled) setQrCode(url); })
       .catch(() => { if (!cancelled) setQrCode(null); });
     return () => { cancelled = true; };

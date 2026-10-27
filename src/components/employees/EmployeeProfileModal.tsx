@@ -3,25 +3,7 @@
 import React, { useState } from "react";
 import { Employee } from "@/types";
 import EmployeeDocumentsView from "./EmployeeDocumentsView";
-import {
-  User,
-  FileCheck2,
-  Mail,
-  Phone,
-  Building2,
-  Clock,
-  Shield,
-  Briefcase,
-  Calendar,
-  X,
-  CreditCard,
-  MapPin,
-  Sparkles,
-  Laptop,
-  Box,
-  Loader2,
-  Pencil,
-} from "lucide-react";
+import { User, FileCheck2, Trash2, Mail, AtSign, Phone, Building2, Briefcase, X, CreditCard, Laptop, Box, Loader2, Pencil } from "lucide-react";
 import { formatDate, roleLabel } from "@/lib/utils";
 import { assetsApi, employeesApi } from "@/lib/api";
 import ProfilePhotoPicker from "@/components/profile/ProfilePhotoPicker";
@@ -37,7 +19,9 @@ import {
   type ProfileErrors,
 } from "@/lib/employeeProfile";
 import { toast } from "sonner";
+import { sanitizeIndianPhone } from "@/components/ui/PhoneInput";
 import { Asset, AssetAssignment } from "@/types";
+import DatePicker from "@/components/ui/DatePicker";
 
 interface EmployeeProfileModalProps {
   employee: Employee | null;
@@ -47,10 +31,13 @@ interface EmployeeProfileModalProps {
   isCurrentUserAdmin?: boolean;
   /** Admin or HR: may edit the profile details. Everyone else sees them read-only. */
   canEdit?: boolean;
+  canEditRole?: boolean;
   branches?: { id: string; name: string }[];
   departments?: { id: string; name: string }[];
   shifts?: { id: string; name: string; startTime?: string; endTime?: string }[];
+  designations?: string[];
   onEmployeeUpdated?: (employee: Employee) => void;
+  onDeleteEmployee?: (employee: Employee) => void;
 }
 
 const GENDER_LABELS: Record<string, string> = { MALE: "Male", FEMALE: "Female" };
@@ -58,12 +45,12 @@ const EMPLOYMENT_LABELS: Record<string, string> = Object.fromEntries(EMPLOYMENT_
 
 function ProfileCard({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl p-5 border border-slate-200 bg-slate-50/70 space-y-4">
-      <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-2">
-        {icon}
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs transition-shadow hover:shadow-sm space-y-4">
+      <h3 className="flex items-center gap-2.5 border-b border-slate-100 pb-3 text-sm font-semibold text-slate-900">
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-50 ring-1 ring-slate-200">{icon}</span>
         {title}
       </h3>
-      <div className="space-y-2.5 text-xs">{children}</div>
+      <div className="space-y-3 text-xs">{children}</div>
     </div>
   );
 }
@@ -72,8 +59,8 @@ function ProfileCard({ icon, title, children }: { icon: React.ReactNode; title: 
 function Row({ label, value, mono, wrap }: { label: string; value?: string | null; mono?: boolean; wrap?: boolean }) {
   return (
     <div className={`flex justify-between gap-4 ${wrap ? "items-start" : ""}`}>
-      <span className="shrink-0 text-slate-500">{label}:</span>
-      <span className={`text-right text-slate-800 ${mono ? "font-mono" : "font-medium"} ${wrap ? "break-words" : ""}`}>
+      <span className="shrink-0 text-slate-500">{label}</span>
+      <span className={`min-w-0 break-words text-right ${mono ? "font-mono" : "font-medium"} ${value && String(value).trim() ? "text-slate-900" : "text-slate-300"} ${wrap ? "" : "truncate"}`}>
         {value && String(value).trim() ? value : "—"}
       </span>
     </div>
@@ -87,16 +74,22 @@ export default function EmployeeProfileModal({
   onClose,
   isCurrentUserAdmin = true,
   canEdit = false,
+  canEditRole = false,
   branches = [],
   departments = [],
   shifts = [],
   onEmployeeUpdated,
+  onDeleteEmployee,
 }: EmployeeProfileModalProps) {
   const [activeTab, setActiveTab] = useState<"PROFILE" | "DOCUMENTS" | "ASSETS">(initialTab);
   // The directory list leaves out PAN, bank and other personal fields, so the full record is fetched on open.
   const [fullRecord, setFullRecord] = useState<Employee | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [editingEmployment, setEditingEmployment] = useState(false);
+  const [employmentSaving, setEmploymentSaving] = useState(false);
+  const [employmentForm, setEmploymentForm] = useState({ employeeCode: "", designation: "", employmentType: "", branchId: "", departmentId: "", shiftId: "", dateOfJoining: "", role: "EMPLOYEE" });
+
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<EmployeeProfileValues>(EMPTY_PROFILE);
   const [formErrors, setFormErrors] = useState<ProfileErrors>({});
@@ -161,7 +154,8 @@ export default function EmployeeProfileModal({
       ...EMPTY_PROFILE,
       firstName: view.firstName || "",
       lastName: view.lastName || "",
-      phone: view.phone || "",
+      personalEmail: view.personalEmail || "",
+      phone: sanitizeIndianPhone(view.phone || ""),
       gender: view.gender || "",
       dateOfBirth: ymd(view.dateOfBirth),
       dateOfJoining: ymd(view.dateOfJoining) || ymd(view.createdAt),
@@ -172,7 +166,7 @@ export default function EmployeeProfileModal({
       shiftId: view.shiftId || "",
       address: view.address || "",
       emergencyContactName: view.emergencyContactName || "",
-      emergencyContactPhone: view.emergencyContactPhone || "",
+      emergencyContactPhone: sanitizeIndianPhone(view.emergencyContactPhone || ""),
       bankName: view.bankName || "",
       bankAccountNumber: view.bankAccountNumber || "",
       bankIfsc: view.bankIfsc || "",
@@ -184,10 +178,38 @@ export default function EmployeeProfileModal({
     setEditing(true);
   };
 
+
+  const startEditingEmployment = () => {
+    setEmploymentForm({ employeeCode: view.employeeCode || "", designation: view.designation || "", employmentType: view.employmentType || "", branchId: view.branchId || "", departmentId: view.departmentId || "", shiftId: view.shiftId || "", dateOfJoining: ymd(view.dateOfJoining) || ymd(view.createdAt), role: view.user?.role === "MANAGER" ? "MANAGER" : "EMPLOYEE" });
+    setEditingEmployment(true);
+  };
+
+  const saveEmployment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (Object.values(employmentForm).some((value) => !value.trim())) { toast.error("Complete all Employment & Assignment fields before saving."); return; }
+    setEmploymentSaving(true);
+    try {
+      const res = await employeesApi.update(view.id, employmentForm);
+      if (res?.success === false) throw new Error(res?.message || "Could not save Employment & Assignment");
+      const next = { ...view, ...res.data } as Employee; setFullRecord(next); onEmployeeUpdated?.(next); setEditingEmployment(false); toast.success("Employment & Assignment updated");
+    } catch (err: any) { toast.error(err?.response?.data?.message || err?.message || "Could not save Employment & Assignment"); } finally { setEmploymentSaving(false); }
+  };
+
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     // Email (the login) and CTC (payroll) are not edited here.
-    const errors = validateProfile(form, { skip: ["email", "ctc"] });
+    const errors = validateProfile(form, {
+  skip: [
+    "email",
+    "ctc",
+    "bankName",
+    "bankAccountNumber",
+    "bankIfsc",
+    "panNumber",
+    "uanNumber",
+    "esiNumber",
+  ],
+});
     setFormErrors(errors);
     const firstKey = firstErrorKey(errors);
     if (firstKey) {
@@ -221,15 +243,9 @@ export default function EmployeeProfileModal({
     <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
       <div className="w-full max-w-5xl bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-2xl flex flex-col my-auto max-h-[92vh]">
         {/* Modal Top Header Banner */}
-        <div className="relative shrink-0 bg-slate-50 border-b border-slate-200 p-6">
-          <button
-            onClick={onClose}
-            className="absolute top-5 right-5 p-2 rounded-xl bg-white hover:bg-rose-50 hover:text-rose-600 text-slate-500 border border-slate-200 transition"
-          >
-            <X className="w-4 h-4" />
-          </button>
-
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="shrink-0 bg-slate-50/90 border-b border-slate-200 p-6 sm:p-7">
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 min-w-0 flex-1">
             {isCurrentUserAdmin ? (
               <ProfilePhotoPicker
                 size="md"
@@ -288,10 +304,16 @@ export default function EmployeeProfileModal({
               </div>
 
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-slate-600">
-                <span className="flex items-center gap-1.5">
+                <span className="flex items-center gap-1.5" title="Office email (login)">
                   <Mail className="w-3.5 h-3.5 text-slate-400" />
                   {employee.user?.email || "No email assigned"}
                 </span>
+                {view.personalEmail && (
+                  <span className="flex items-center gap-1.5" title="Personal email (also works for login)">
+                    <AtSign className="w-3.5 h-3.5 text-slate-400" />
+                    {view.personalEmail}
+                  </span>
+                )}
                 {employee.phone && (
                   <span className="flex items-center gap-1.5">
                     <Phone className="w-3.5 h-3.5 text-slate-400" />
@@ -306,41 +328,52 @@ export default function EmployeeProfileModal({
             </div>
           </div>
 
+          {/* Header Action Buttons */}
+          <div className="flex items-center gap-2 shrink-0 self-end md:self-start">
+            {canEdit && onDeleteEmployee && (
+              <button
+                type="button"
+                onClick={() => onDeleteEmployee(employee)}
+                className="group inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl border border-rose-200 hover:border-rose-600 bg-white hover:bg-rose-600 text-rose-600 hover:text-white text-xs font-semibold shadow-2xs transition-all duration-150 active:scale-95 cursor-pointer"
+                title="Delete this employee"
+              >
+                <Trash2 className="w-3.5 h-3.5 transition-colors duration-150" />
+                <span>Delete employee</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="h-9 w-9 rounded-xl bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200 flex items-center justify-center transition shadow-2xs cursor-pointer active:scale-95"
+              aria-label="Close modal"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
           {/* Navigation Tabs */}
-          <div className="flex items-center gap-2 mt-6 border-t border-slate-200 pt-4">
-            <button
-              onClick={() => setActiveTab("DOCUMENTS")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition ${
-                activeTab === "DOCUMENTS"
-                  ? "bg-indigo-600 text-white shadow-xs"
-                  : "bg-white text-slate-600 hover:text-slate-900 border border-slate-200"
-              }`}
-            >
-              <FileCheck2 className="w-4 h-4" />
-              Documents & Compliance
-            </button>
-            <button
-              onClick={() => setActiveTab("PROFILE")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition ${
-                activeTab === "PROFILE"
-                  ? "bg-indigo-600 text-white shadow-xs"
-                  : "bg-white text-slate-600 hover:text-slate-900 border border-slate-200"
-              }`}
-            >
-              <User className="w-4 h-4" />
-              Profile Details
-            </button>
-            <button
-              onClick={() => setActiveTab("ASSETS")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition ${
-                activeTab === "ASSETS"
-                  ? "bg-indigo-600 text-white shadow-xs"
-                  : "bg-white text-slate-600 hover:text-slate-900 border border-slate-200"
-              }`}
-            >
-              <Laptop className="w-4 h-4" />
-              Assigned Equipment
-            </button>
+          <div role="tablist" aria-label="Employee sections" className="mt-6 inline-flex max-w-full gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-slate-100/80 p-1">
+            {([
+              { key: "DOCUMENTS", label: "Documents & Compliance", icon: <FileCheck2 className="w-4 h-4" /> },
+              { key: "PROFILE", label: "Profile Details", icon: <User className="w-4 h-4" /> },
+              { key: "ASSETS", label: "Assigned Equipment", icon: <Laptop className="w-4 h-4" /> },
+            ] as const).map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex shrink-0 cursor-pointer items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold transition-all duration-150 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100 ${
+                  activeTab === tab.key
+                    ? "bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -358,8 +391,8 @@ export default function EmployeeProfileModal({
               <form onSubmit={handleSaveProfile} className="mx-auto max-w-2xl space-y-5" noValidate>
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-900">Edit profile details</h3>
-                    <p className="text-xs text-slate-500">All fields are required except PAN, PF UAN and ESI number.</p>
+                    <h3 className="text-base font-semibold text-slate-900">Edit profile details</h3>
+                    <p className="text-xs text-slate-500">All fields are required except personal email, PAN, PF UAN and ESI number.</p>
                   </div>
                 </div>
                 <EmployeeProfileFields
@@ -372,19 +405,19 @@ export default function EmployeeProfileModal({
                   hideEmail
                   hideCtc
                 />
-                <div className="flex items-center justify-end gap-3 border-t border-slate-200 pt-4">
+                <div className="sticky bottom-0 -mx-6 -mb-6 flex items-center justify-end gap-3 border-t border-slate-200 bg-white/90 px-6 py-4 backdrop-blur">
                   <button
                     type="button"
                     onClick={() => setEditing(false)}
                     disabled={saving}
-                    className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+                    className="cursor-pointer rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-2xs transition hover:bg-slate-50 hover:text-slate-900 disabled:opacity-60"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={saving}
-                    className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-60"
+                    className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-200 disabled:opacity-60"
                   >
                     {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                     {saving ? "Saving" : "Save changes"}
@@ -416,7 +449,8 @@ export default function EmployeeProfileModal({
                   <Row label="Gender" value={GENDER_LABELS[view.gender || ""]} />
                   <Row label="Date of birth" value={view.dateOfBirth ? formatDate(ymd(view.dateOfBirth)) : ""} />
                   <Row label="Phone" value={view.phone} />
-                  <Row label="Email" value={view.user?.email || view.workEmail} />
+                  <Row label="Office email" value={view.user?.email || view.workEmail} />
+                  <Row label="Personal email" value={view.personalEmail} />
                   <Row label="Address" value={view.address} wrap />
                 </ProfileCard>
 
@@ -425,16 +459,9 @@ export default function EmployeeProfileModal({
                   <Row label="Contact phone" value={view.emergencyContactPhone} />
                 </ProfileCard>
 
-                <ProfileCard icon={<Briefcase className="w-4 h-4 text-indigo-600" />} title="Employment & Assignment">
-                  <Row label="Employee ID" value={view.employeeCode} mono />
-                  <Row label="Designation" value={view.designation} />
-                  <Row label="Employment type" value={EMPLOYMENT_LABELS[view.employmentType || ""]} />
-                  <Row label="Department" value={view.department?.name} />
-                  <Row label="Branch / Location" value={view.branch?.name} />
-                  <Row label="Shift schedule" value={view.shift?.name} />
-                  <Row label="System role" value={roleLabel(view.user?.role || "EMPLOYEE")} />
-                  <Row label="Date of joining" value={formatDate(ymd(view.dateOfJoining) || ymd(view.createdAt))} />
-                </ProfileCard>
+                <div className="rounded-2xl p-5 border border-slate-200 bg-slate-50/70 space-y-4">
+                  <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-2"><h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2"><Briefcase className="w-4 h-4 text-indigo-600" />Employment & Assignment</h3>{canEditProfile && !editingEmployment && <button type="button" onClick={startEditingEmployment} className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-600 hover:text-white"><Pencil className="h-3 w-3" /> Edit</button>}</div>
+                  {editingEmployment ? <form onSubmit={saveEmployment} className="space-y-3" noValidate><label className="block text-xs font-medium text-slate-600">Employee ID<input className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono" value={employmentForm.employeeCode} onChange={(e) => setEmploymentForm((f) => ({ ...f, employeeCode: e.target.value.toUpperCase() }))} required /></label><label className="block text-xs font-medium text-slate-600">System role<select className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" value={employmentForm.role} onChange={(e) => setEmploymentForm((f) => ({ ...f, role: e.target.value }))} disabled={!canEditRole} required><option value="EMPLOYEE">Employee</option>{canEditRole && <option value="MANAGER">HR</option>}</select></label><label className="block text-xs font-medium text-slate-600">Designation<input className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" value={employmentForm.designation} onChange={(e) => setEmploymentForm((f) => ({ ...f, designation: e.target.value }))} required /></label><label className="block text-xs font-medium text-slate-600">Employment type<select className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" value={employmentForm.employmentType} onChange={(e) => setEmploymentForm((f) => ({ ...f, employmentType: e.target.value }))} required><option value="">Select type...</option>{EMPLOYMENT_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}</select></label><label className="block text-xs font-medium text-slate-600">Branch<select className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" value={employmentForm.branchId} onChange={(e) => setEmploymentForm((f) => ({ ...f, branchId: e.target.value }))} required><option value="">Select branch...</option>{branches.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}</select></label><label className="block text-xs font-medium text-slate-600">Department<select className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" value={employmentForm.departmentId} onChange={(e) => setEmploymentForm((f) => ({ ...f, departmentId: e.target.value }))} required><option value="">Select department...</option>{departments.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}</select></label><label className="block text-xs font-medium text-slate-600">Shift schedule<select className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" value={employmentForm.shiftId} onChange={(e) => setEmploymentForm((f) => ({ ...f, shiftId: e.target.value }))} required><option value="">Select shift...</option>{shifts.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}</select></label><label className="block text-xs font-medium text-slate-600">Date of joining<DatePicker id="employment-dateOfJoining" value={employmentForm.dateOfJoining} onChange={(value) => setEmploymentForm((f) => ({ ...f, dateOfJoining: value }))} placeholder="Select joining date" ariaLabel="Date of joining" /></label><div className="flex justify-end gap-2 border-t border-slate-200 pt-3"><button type="button" onClick={() => setEditingEmployment(false)} disabled={employmentSaving} className="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600">Cancel</button><button type="submit" disabled={employmentSaving} className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60">{employmentSaving ? "Saving..." : "Save changes"}</button></div></form> : <div className="space-y-2.5 text-xs"><Row label="Employee ID" value={view.employeeCode} mono /><Row label="Designation" value={view.designation} /><Row label="Employment type" value={EMPLOYMENT_LABELS[view.employmentType || ""]} /><Row label="Department" value={view.department?.name} /><Row label="Branch / Location" value={view.branch?.name} /><Row label="Shift schedule" value={view.shift?.name} /><Row label="System role" value={roleLabel(view.user?.role || "EMPLOYEE")} /><Row label="Date of joining" value={formatDate(ymd(view.dateOfJoining) || ymd(view.createdAt))} /></div>}</div>
 
                 <ProfileCard icon={<CreditCard className="w-4 h-4 text-emerald-600" />} title="Bank & Statutory">
                   <Row label="Bank" value={view.bankName} />

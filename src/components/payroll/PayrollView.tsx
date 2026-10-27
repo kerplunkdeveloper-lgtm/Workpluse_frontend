@@ -7,28 +7,14 @@ import { payrollApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { formatCurrency, unwrapList } from "@/lib/utils";
 import { formatCycleDate } from "@/lib/payrollCycle";
-import {
-  Receipt,
-  Sparkles,
-  Calculator,
-  Send,
-  Download,
-  Eye,
-  CheckCircle2,
-  AlertCircle,
-  Loader2,
-  DollarSign,
-  TrendingUp,
-  Palette,
-  Layers,
-} from "lucide-react";
+import { Receipt, Calculator, Send, Download, Eye, CheckCircle2, AlertCircle, Loader2, DollarSign, TrendingUp, Palette, Layers } from "lucide-react";
 import PayslipModal from "./PayslipModal";
 import dynamic from "next/dynamic";
 
 const PayslipTemplateCustomizer = dynamic(() => import("./PayslipTemplateCustomizer"), { ssr: false });
 import SalaryStructuresView from "./SalaryStructuresView";
 import { toast } from "sonner";
-import confetti from "canvas-confetti";
+import { confetti } from "@/lib/confetti";
 
 export default function PayrollView() {
   const { role } = useAuth();

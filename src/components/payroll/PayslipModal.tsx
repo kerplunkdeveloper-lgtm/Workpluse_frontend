@@ -4,24 +4,7 @@ import React, { useRef, useState, useEffect } from "react";
 import { Payslip } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { payrollApi } from "@/lib/api";
-import {
-  Printer,
-  Download,
-  X,
-  Building2,
-  ShieldCheck,
-  QrCode,
-  CheckCircle2,
-  Clock,
-  Loader2,
-  HelpCircle,
-  AlertCircle,
-  FileText,
-  Calendar,
-  Wallet,
-  ArrowDownCircle,
-  ArrowUpCircle,
-} from "lucide-react";
+import { Printer, Download, X, QrCode, Loader2, HelpCircle, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface PayslipModalProps {

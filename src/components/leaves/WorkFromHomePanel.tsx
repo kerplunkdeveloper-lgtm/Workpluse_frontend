@@ -1,0 +1,41 @@
+"use client";
+import React, { useEffect, useState } from "react";
+import { CheckCircle2, Clock3, Home, Loader2, Plus, XCircle } from "lucide-react";
+import { toast } from "sonner";
+import DatePicker from "@/components/ui/DatePicker";
+import { workFromHomeApi } from "@/lib/api";
+import { formatDate, unwrapList } from "@/lib/utils";
+
+type WfhRequest = { id: string; startDate: string; endDate: string; reason: string; status: "PENDING" | "APPROVED" | "REJECTED"; reviewNote?: string | null; employee?: { firstName?: string; lastName?: string; employeeCode?: string } };
+const statusClass = (status: string) => status === "APPROVED" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : status === "REJECTED" ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-amber-50 text-amber-700 border-amber-200";
+
+export default function WorkFromHomePanel({ canReview }: { canReview: boolean }) {
+  const [mine, setMine] = useState<WfhRequest[]>([]), [team, setTeam] = useState<WfhRequest[]>([]);
+  const [open, setOpen] = useState(false), [startDate, setStartDate] = useState(""), [endDate, setEndDate] = useState(""), [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false), [reviewing, setReviewing] = useState<string | null>(null);
+  const load = async () => {
+    try {
+      const [mineRes, teamRes] = await Promise.all([workFromHomeApi.getMy(), canReview ? workFromHomeApi.getAll({ status: "PENDING" }) : Promise.resolve(null)]);
+      setMine(unwrapList(mineRes)); if (teamRes) setTeam(unwrapList(teamRes));
+    } catch (error: any) { toast.error(error?.response?.data?.message || "Could not load WFH requests"); }
+  };
+  useEffect(() => { void load(); }, [canReview]);
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!startDate || !endDate || reason.trim().length < 3) return toast.error("Select dates and explain why you need WFH.");
+    setBusy(true);
+    try { const res = await workFromHomeApi.create({ startDate, endDate, reason: reason.trim() }); if (!res?.success) throw new Error(res?.message || "Could not submit WFH request"); toast.success("WFH request sent for approval"); setOpen(false); setStartDate(""); setEndDate(""); setReason(""); await load(); }
+    catch (error: any) { toast.error(error?.response?.data?.message || error?.message || "Could not submit WFH request"); } finally { setBusy(false); }
+  };
+  const review = async (request: WfhRequest, status: "APPROVED" | "REJECTED") => {
+    setReviewing(request.id);
+    try { const res = await workFromHomeApi.review(request.id, { status }); if (!res?.success) throw new Error(res?.message || "Could not review request"); toast.success("WFH request " + status.toLowerCase()); await load(); }
+    catch (error: any) { toast.error(error?.response?.data?.message || error?.message || "Could not review request"); } finally { setReviewing(null); }
+  };
+  return <div className="space-y-5">
+    <div className="rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-sky-50 p-6 shadow-xs"><div className="flex flex-wrap items-start justify-between gap-4"><div className="flex gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-600 text-white"><Home className="h-5 w-5" /></span><div><h2 className="text-base font-bold text-slate-900">Work From Home</h2><p className="mt-1 max-w-xl text-xs leading-5 text-slate-600">Request remote work approval and check in with the WFH attendance option on approved dates.</p></div></div><button type="button" onClick={() => setOpen(true)} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-indigo-500"><Plus className="h-4 w-4" /> Request WFH</button></div></div>
+    {open && <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><div className="mb-4 flex items-center justify-between"><div><h3 className="text-sm font-bold text-slate-900">New WFH request</h3><p className="mt-1 text-xs text-slate-500">Maximum 30 days; dates cannot overlap leave.</p></div><button type="button" onClick={() => setOpen(false)}><XCircle className="h-5 w-5 text-slate-400" /></button></div><form onSubmit={submit} className="grid gap-4 md:grid-cols-2"><label className="text-xs font-semibold text-slate-600">From<DatePicker id="wfh-start" value={startDate} onChange={setStartDate} placeholder="Select start date" ariaLabel="WFH start date" /></label><label className="text-xs font-semibold text-slate-600">To<DatePicker id="wfh-end" value={endDate} onChange={setEndDate} placeholder="Select end date" ariaLabel="WFH end date" /></label><label className="text-xs font-semibold text-slate-600 md:col-span-2">Reason<textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={500} rows={3} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="Why do you need to work from home?" /></label><div className="flex justify-end gap-2 md:col-span-2"><button type="button" onClick={() => setOpen(false)} className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600">Cancel</button><button type="submit" disabled={busy} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white disabled:opacity-60">{busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Submit request</button></div></form></div>}
+    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xs"><div className="border-b border-slate-100 px-5 py-4"><h3 className="text-sm font-bold text-slate-900">My WFH requests</h3></div>{mine.length === 0 ? <p className="px-5 py-10 text-center text-xs text-slate-500">No WFH requests yet.</p> : <div className="divide-y divide-slate-100">{mine.map((request) => <div key={request.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4"><div><p className="text-sm font-semibold text-slate-900">{formatDate(request.startDate)} – {formatDate(request.endDate)}</p><p className="mt-1 text-xs text-slate-500">{request.reason}</p>{request.reviewNote && <p className="mt-1 text-xs italic text-slate-400">Review note: {request.reviewNote}</p>}</div><span className={"inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold " + statusClass(request.status)}>{request.status === "APPROVED" ? <CheckCircle2 className="h-3.5 w-3.5" /> : request.status === "REJECTED" ? <XCircle className="h-3.5 w-3.5" /> : <Clock3 className="h-3.5 w-3.5" />}{request.status}</span></div>)}</div>}</div>
+    {canReview && <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xs"><div className="border-b border-slate-100 px-5 py-4"><h3 className="text-sm font-bold text-slate-900">Pending WFH approvals</h3></div>{team.length === 0 ? <p className="px-5 py-10 text-center text-xs text-slate-500">No pending WFH approvals.</p> : <div className="divide-y divide-slate-100">{team.map((request) => <div key={request.id} className="flex flex-wrap items-center justify-between gap-4 px-5 py-4"><div><p className="text-sm font-semibold text-slate-900">{request.employee?.firstName} {request.employee?.lastName} <span className="font-mono text-xs text-slate-400">{request.employee?.employeeCode}</span></p><p className="mt-1 text-xs text-slate-500">{formatDate(request.startDate)} – {formatDate(request.endDate)} · {request.reason}</p></div><div className="flex gap-2"><button type="button" disabled={reviewing === request.id} onClick={() => void review(request, "REJECTED")} className="rounded-xl border border-rose-200 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 disabled:opacity-60">Reject</button><button type="button" disabled={reviewing === request.id} onClick={() => void review(request, "APPROVED")} className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-60">Approve</button></div></div>)}</div>}</div>}
+  </div>;
+}

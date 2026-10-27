@@ -14,12 +14,16 @@ import {
   Loader2,
   Mail,
   DollarSign,
+  FileText,
   ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
-import confetti from "canvas-confetti";
+import { confetti } from "@/lib/confetti";
 import Link from "next/link";
 import PhoneInput, { toE164India, validateIndianPhone } from "@/components/ui/PhoneInput";
+import Select from "@/components/ui/Select";
+import Modal from "@/components/ui/Modal";
+import CandidateDocumentsModal from "./CandidateDocumentsModal";
 
 const STAGES = [
   { id: "INVITED", label: "Invited", statuses: ["INVITED"], color: "border-slate-200 bg-slate-50/70" },
@@ -61,6 +65,7 @@ export default function OnboardingView() {
 
   // Invite Modal
   const [modalOpen, setModalOpen] = useState<boolean>(false);
+  const [docsFor, setDocsFor] = useState<{ id: string; name: string } | null>(null);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -281,6 +286,19 @@ export default function OnboardingView() {
                         )}
                       </div>
 
+                      {/* Uploaded documents (Aadhaar, PAN, certificates...) */}
+                      <button
+                        type="button"
+                        onClick={() => setDocsFor({ id: cand.id, name: `${cand.firstName} ${cand.lastName || ""}`.trim() })}
+                        className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <FileText className="h-3.5 w-3.5 text-slate-400" />
+                          Documents
+                        </span>
+                        <span className="rounded-full bg-white px-2 py-0.5 text-[11px] tabular-nums ring-1 ring-slate-200">{((cand as any).documents || []).length}</span>
+                      </button>
+
                       {/* Portal Link */}
                       {(cand.token || cand.portalToken) && (
                         <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
@@ -335,7 +353,7 @@ export default function OnboardingView() {
 
       {/* Invite Joiner Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <Modal>
           <div className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl">
             <h3 className="text-base font-semibold text-slate-900 mb-1">Invite New Joiner to Pipeline</h3>
             <p className="text-xs text-slate-500 mb-4">
@@ -410,7 +428,7 @@ export default function OnboardingView() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[13px] font-medium text-slate-700 mb-1">Branch</label>
-                  <select
+                  <Select
                     value={branchId}
                     onChange={(e) => setBranchId(e.target.value)}
                     className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
@@ -421,11 +439,11 @@ export default function OnboardingView() {
                         {b.name}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
                 <div>
                   <label className="block text-[13px] font-medium text-slate-700 mb-1">Department</label>
-                  <select
+                  <Select
                     value={departmentId}
                     onChange={(e) => setDepartmentId(e.target.value)}
                     className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
@@ -436,7 +454,7 @@ export default function OnboardingView() {
                         {d.name}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
               </div>
 
@@ -470,8 +488,10 @@ export default function OnboardingView() {
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
+
+      {docsFor && <CandidateDocumentsModal candidateId={docsFor.id} candidateName={docsFor.name} onClose={() => setDocsFor(null)} />}
     </div>
   );
 }

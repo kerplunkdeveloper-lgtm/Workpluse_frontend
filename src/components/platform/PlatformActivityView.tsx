@@ -5,6 +5,7 @@ import { History } from "lucide-react";
 import { platformApi } from "@/lib/api";
 import Pagination from "@/components/ui/Pagination";
 import PlatformNav from "@/components/platform/PlatformNav";
+import Select from "@/components/ui/Select";
 
 interface Entry {
   id: string;
@@ -98,7 +99,7 @@ export default function PlatformActivityView() {
         <label htmlFor="activity-filter" className="sr-only">
           Filter by action
         </label>
-        <select
+        <Select
           id="activity-filter"
           value={action}
           onChange={(e) => {
@@ -113,7 +114,7 @@ export default function PlatformActivityView() {
           <option value="PERIOD_EXTENDED">Paid period extended</option>
           <option value="SUSPENDED">Suspended</option>
           <option value="REACTIVATED">Reactivated</option>
-        </select>
+        </Select>
         <p className="text-xs text-slate-500" aria-live="polite">
           {total.toLocaleString("en-IN")} {total === 1 ? "entry" : "entries"}
         </p>

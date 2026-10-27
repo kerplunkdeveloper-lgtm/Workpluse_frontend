@@ -6,6 +6,7 @@ import { formatCycleDate, PERMISSION_HOUR_OPTIONS } from "@/lib/payrollCycle";
 import { Clock, Loader2, Send, Trash2, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { todayLocalKey } from "@/lib/utils";
+import Select from "@/components/ui/Select";
 
 type PermissionRequest = {
   id: string;
@@ -198,7 +199,7 @@ export default function PermissionRequestsPanel({ canReview }: { canReview: bool
             </label>
             <label className="block space-y-1">
               <span className="text-xs font-semibold text-slate-600 uppercase">Hours</span>
-              <select
+              <Select
                 value={hours}
                 onChange={(e) => setHours(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white"
@@ -208,7 +209,7 @@ export default function PermissionRequestsPanel({ canReview }: { canReview: bool
                     {option} {option === 1 ? "hour" : "hours"}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label className="block space-y-1">
               <span className="text-xs font-semibold text-slate-600 uppercase">Reason</span>

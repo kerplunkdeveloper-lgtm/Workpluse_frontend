@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { announcementsApi } from "@/lib/api";
 import { todayLocalKey, unwrapList } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import Modal from "@/components/ui/Modal";
 
 interface Announcement {
   id: string;
@@ -50,6 +51,16 @@ export default function AnnouncementsCard() {
 
   useEffect(() => {
     void load();
+
+    // Keep an already-open employee dashboard current after HR/admin posts a notice.
+    const refreshOnFocus = () => void load();
+    const refreshTimer = window.setInterval(() => void load(), 30000);
+    window.addEventListener("focus", refreshOnFocus);
+
+    return () => {
+      window.clearInterval(refreshTimer);
+      window.removeEventListener("focus", refreshOnFocus);
+    };
   }, [load]);
 
   const togglePin = async (item: Announcement) => {
@@ -190,7 +201,7 @@ function Composer({ onClose, onPosted }: { onClose: () => void; onPosted: () => 
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" onClick={onClose}>
+    <Modal z={60} onClose={onClose}>
       <form onSubmit={submit} role="dialog" aria-modal="true" aria-labelledby="compose-title" onClick={(e) => e.stopPropagation()} className="w-full max-w-lg space-y-4 rounded-3xl bg-white p-6 shadow-2xl">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -223,6 +234,6 @@ function Composer({ onClose, onPosted }: { onClose: () => void; onPosted: () => 
           </button>
         </div>
       </form>
-    </div>
+    </Modal>
   );
 }

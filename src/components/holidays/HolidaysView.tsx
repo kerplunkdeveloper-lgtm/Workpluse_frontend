@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
 import DatePicker from "@/components/ui/DatePicker";
 import { confirmDialog } from "@/components/ui/confirmDialog";
+import Select from "@/components/ui/Select";
 
 export default function HolidaysView() {
   const { role } = useAuth();
@@ -201,7 +202,7 @@ export default function HolidaysView() {
           description="Company and government holidays used by leave counting and attendance."
         />
         <div className="flex items-center gap-3">
-          <select
+          <Select
             value={year}
             onChange={(e) => setYear(Number(e.target.value))}
             className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
@@ -209,7 +210,7 @@ export default function HolidaysView() {
             {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map((y) => (
               <option key={y} value={y}>{y}</option>
             ))}
-          </select>
+          </Select>
           {canManage && (
             <div className="flex items-center gap-2">
               {canBulkImport && (
@@ -317,7 +318,7 @@ export default function HolidaysView() {
               placeholder="Holiday date"
               required
             />
-            <select
+            <Select
               value={type}
               onChange={(e) => setType(e.target.value)}
               className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs"
@@ -325,8 +326,8 @@ export default function HolidaysView() {
               <option value="GOVERNMENT">Government</option>
               <option value="COMPANY">Company</option>
               <option value="OPTIONAL">Optional</option>
-            </select>
-            <select
+            </Select>
+            <Select
               value={branchId}
               onChange={(e) => setBranchId(e.target.value)}
               className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs"
@@ -335,7 +336,7 @@ export default function HolidaysView() {
               {branches.map((b) => (
                 <option key={b.id} value={b.id}>{b.name}</option>
               ))}
-            </select>
+            </Select>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
