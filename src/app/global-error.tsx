@@ -1,10 +1,13 @@
 "use client";
 
+import { logClientError } from "@/lib/clientLogger";
+
 /**
  * Last-resort fallback when the root layout itself fails. It replaces the whole
  * document, so it cannot rely on globals.css or shared components.
  */
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  logClientError("app.global_render_failed", { digest: error.digest });
   return (
     <html lang="en">
       <body style={{ margin: 0, minHeight: "100dvh", display: "grid", placeItems: "center", background: "#f6f7fb", color: "#131931", fontFamily: "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif" }}>

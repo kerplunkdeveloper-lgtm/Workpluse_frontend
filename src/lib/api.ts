@@ -541,7 +541,7 @@ export const correctionsApi = {
 
 export const leavesApi = {
   getTypes: async () => {
-    const res = await api.get("/leaves/types");
+    const res = await api.get("/leaves/types", { skipGlobalError: true });
     return res.data;
   },
   createType: async (payload: any) => {
@@ -561,11 +561,11 @@ export const leavesApi = {
     return res.data;
   },
   getBalances: async () => {
-    const res = await api.get("/leaves/balances");
+    const res = await api.get("/leaves/balances", { skipGlobalError: true });
     return res.data;
   },
   getEligibility: async () => {
-    const res = await api.get("/leaves/eligibility");
+    const res = await api.get("/leaves/eligibility", { skipGlobalError: true });
     return res.data;
   },
   apply: async (payload: {
@@ -579,11 +579,11 @@ export const leavesApi = {
     return res.data;
   },
   getMyLeaves: async () => {
-    const res = await api.get("/leaves/my");
+    const res = await api.get("/leaves/my", { skipGlobalError: true });
     return res.data;
   },
   getAllLeaves: async (params?: any) => {
-    const res = await api.get("/leaves", { params });
+    const res = await api.get("/leaves", { params, skipGlobalError: true });
     return res.data;
   },
   review: async (id: string, payload: { status: "APPROVED" | "REJECTED"; reviewNote?: string }) => {

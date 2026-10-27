@@ -2,11 +2,12 @@
 
 import { useEffect } from "react";
 import { ErrorCard } from "@/components/ui/ErrorBoundary";
+import { logClientError } from "@/lib/clientLogger";
 
 /** Route-level fallback for pages outside the app shell (auth, public pages). */
 export default function RouteError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
-    console.error("[WorkPluse] Route failed:", error);
+    logClientError("route.render_failed", { route: "unknown", digest: error.digest });
   }, [error]);
 
   return (
