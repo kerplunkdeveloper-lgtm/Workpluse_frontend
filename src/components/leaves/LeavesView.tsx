@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { formatDate, unwrapList } from "@/lib/utils";
 import { CalendarDays, Plus, AlertCircle, Loader2, Calendar } from "lucide-react";
 import { toast } from "sonner";
+import { logClientError } from "@/lib/clientLogger";
 import { motion } from "framer-motion";
 import DatePicker from "@/components/ui/DatePicker";
 import PermissionRequestsPanel from "./PermissionRequestsPanel";
@@ -26,6 +27,7 @@ export default function LeavesView() {
   const [teamRequests, setTeamRequests] = useState<LeaveRequest[]>([]);
   const [eligibility, setEligibility] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Apply Modal state
   const [applyModalOpen, setApplyModalOpen] = useState(false);
@@ -47,6 +49,7 @@ export default function LeavesView() {
 
   const loadData = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const [typesRes, balRes, myRes, eligibilityRes] = await Promise.allSettled([
         leavesApi.getTypes(),
@@ -54,6 +57,12 @@ export default function LeavesView() {
         leavesApi.getMyLeaves(),
         leavesApi.getEligibility(),
       ]);
+
+      const failedCoreRequests = [typesRes, balRes, myRes, eligibilityRes].filter((result) => result.status === "rejected");
+      if (failedCoreRequests.length === 4) {
+        setLoadError("Leaves are temporarily unavailable. Please try again.");
+        logClientError("leaves.load_failed", { failedRequests: failedCoreRequests.length });
+      }
 
       if (typesRes.status === "fulfilled") {
         setLeaveTypes(unwrapList(typesRes.value));
@@ -69,11 +78,17 @@ export default function LeavesView() {
       }
 
       if (canApprove) {
-        const teamRes = await leavesApi.getAllLeaves();
-        setTeamRequests(unwrapList(teamRes));
+        try {
+          const teamRes = await leavesApi.getAllLeaves();
+          setTeamRequests(unwrapList(teamRes));
+        } catch (err) {
+          setLoadError("Team leave approvals are temporarily unavailable. Your personal leave data is still safe.");
+          logClientError("leaves.approvals_load_failed", { error: err });
+        }
       }
     } catch (err) {
-      console.error("Failed to load leaves:", err);
+      setLoadError("Leaves are temporarily unavailable. Please try again.");
+      logClientError("leaves.load_failed", { error: err });
     } finally {
       setLoading(false);
     }
@@ -142,6 +157,16 @@ export default function LeavesView() {
   };
 
   const pendingApprovals = teamRequests.filter((r) => r.status === "PENDING");
+
+  if (loadError && loading === false && myRequests.length === 0 && leaveTypes.length === 0 && balances.length === 0) {
+    return (
+      <div role="alert" className="rounded-3xl border border-amber-200 bg-amber-50 p-8 text-center">
+        <h2 className="text-lg font-semibold text-amber-950">Leaves could not be loaded</h2>
+        <p className="mt-2 text-sm text-amber-800">{loadError}</p>
+        <button type="button" onClick={loadData} className="mt-5 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Try again</button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
