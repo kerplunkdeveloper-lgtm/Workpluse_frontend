@@ -96,7 +96,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: "Shifts", href: "/shifts", icon: CalendarRange, hint: "Shift schedules, rotations, and rosters", keywords: ["roster", "schedule"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
       { label: "Branches", href: "/branches", icon: MapPin, hint: "Office locations with GPS geofencing radius", keywords: ["office", "location", "geo"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN"] },
       { label: "Holidays", href: "/holidays", icon: Calendar, hint: "Public holiday and company off calendar", keywords: ["holiday"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
-      { label: "Policy", href: "/policy", icon: SlidersHorizontal, hint: "Attendance rules, grace limits, and deduction policy", keywords: ["rules", "settings"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN"] },
+      { label: "Policy", href: "/policy", icon: SlidersHorizontal, hint: "Attendance rules, leave eligibility, and deduction policy", keywords: ["rules", "settings", "leave eligibility"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
       { label: "Assets", href: "/assets", icon: Laptop, hint: "Hardware inventory and laptop assignments", keywords: ["laptop", "device", "inventory"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
     ],
   },

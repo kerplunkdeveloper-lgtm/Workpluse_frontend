@@ -10,8 +10,8 @@ export const revalidate = 300;
 const jsonLd = (data: object) => JSON.stringify(data).replace(/</g, "\\u003c");
 
 export const metadata: Metadata = {
-  title: "Workforce attendance, leave and payroll",
-  description: "WorkPluse keeps Indian teams in rhythm with geofenced attendance, offline punches, leave and payroll in one focused workspace.",
+  title: "WorkPluse | One powerful platform for your workplace",
+  description: "Make attendance, leave, payroll, and everyday HR effortless with WorkPluse.",
   alternates: { canonical: "/" },
 };
 

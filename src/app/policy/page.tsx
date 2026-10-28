@@ -6,7 +6,7 @@ import PolicyView from "@/components/policy/PolicyView";
 
 export default function PolicyPage() {
   return (
-    <ProtectedRoute allowedRoles={["SUPER_ADMIN", "COMPANY_ADMIN"]}>
+    <ProtectedRoute allowedRoles={["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"]}>
       <AppLayout>
         <PolicyView />
       </AppLayout>

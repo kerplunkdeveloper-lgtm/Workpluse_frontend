@@ -7,6 +7,7 @@ import {
   Play,
   RefreshCw,
   Square,
+  Utensils,
   Wifi,
   WifiOff,
 } from "lucide-react";
@@ -183,7 +184,7 @@ export function TodayPanel({ firstName, attendance, shift, hasCheckedIn, hasChec
               </button>
               {working && !isOnBreak && (
                 <button type="button" onClick={onStartLunch} disabled={busy} className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl sm:w-auto bg-indigo-400/15 px-5 text-sm font-medium text-indigo-100 ring-1 ring-indigo-300/30 hover:bg-indigo-400/25 disabled:opacity-50">
-                  <Coffee className="h-4 w-4 text-indigo-200" /> Start lunch
+                  <Utensils className="h-4 w-4 text-indigo-200" /> <span aria-hidden="true">🍽️</span> Start lunch
                 </button>
               )}
               {working && (
@@ -193,7 +194,8 @@ export function TodayPanel({ firstName, attendance, shift, hasCheckedIn, hasChec
                   disabled={busy}
                   className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl sm:w-auto bg-white/[0.06] px-5 text-sm font-medium text-slate-100 ring-1 ring-white/15 backdrop-blur transition duration-200 hover:bg-white/10 hover:ring-white/25 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:opacity-50"
                 >
-                  <Coffee className="h-4 w-4 text-amber-300" />
+                  {activePauseType === "LUNCH" ? <Utensils className="h-4 w-4 text-indigo-200" /> : <Coffee className="h-4 w-4 text-amber-300" />}
+                  <span aria-hidden="true">{activePauseType === "LUNCH" ? "🍽️" : "☕"}</span>
                   {isOnBreak ? (activePauseType === "LUNCH" ? "End lunch" : "End break") : "Start break"}
                 </button>
               )}
@@ -213,8 +215,8 @@ export function TodayPanel({ firstName, attendance, shift, hasCheckedIn, hasChec
         <dl className="mt-9 grid grid-cols-2 divide-white/10 overflow-hidden rounded-2xl bg-white/[0.04] ring-1 ring-white/10 backdrop-blur sm:grid-cols-4 sm:divide-x">
           <Fact label="Punch in" value={attendance?.checkIn ? formatTime(attendance.checkIn) : "—"} />
           <Fact label="Punch out" value={attendance?.checkOut ? formatTime(attendance.checkOut) : "—"} />
-          <Fact label="Break" value={formatHm(breakMinutes)} />
-          <Fact label="Lunch" value={formatHm(lunchMinutes)} />
+          <Fact label="☕ Break" value={formatHm(breakMinutes)} />
+          <Fact label="🍽️ Lunch" value={formatHm(lunchMinutes)} />
           <Fact
             label="Arrival"
             value={!attendance?.checkIn ? "—" : late > 0 ? `${formatHm(late)} late` : "On time"}
