@@ -111,9 +111,16 @@ export default function LoginPage() {
 
   return (
     <AuthShell
-      eyebrow="Sign in"
-      title="Welcome back"
-      description="Sign in with your office email, personal email or employee code."
+      eyebrow="Welcome back"
+      title="Sign in to WorkPluse"
+      description="Use your work email, personal email, or employee code to continue to your workspace."
+      asideTitle="Everything your workplace needs, in rhythm."
+      asideDescription="Check attendance, approve leave, and keep payroll-ready records moving from one beautifully simple workspace."
+      points={[
+        "Attendance with GPS and offline punch sync",
+        "Leave, people, and shifts in one workspace",
+        "Payroll-ready records with a clear audit trail",
+      ]}
       footer={
         <>
           New organization?{" "}
@@ -125,7 +132,7 @@ export default function LoginPage() {
     >
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label htmlFor="login-email" className={authLabel}>Office email, personal email or employee code</label>
+          <label htmlFor="login-email" className={authLabel}>Work email or employee code</label>
           <div className={authInputWrap()}>
             <Mail className={authIcon} />
             <input

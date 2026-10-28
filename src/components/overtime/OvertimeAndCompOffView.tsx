@@ -21,6 +21,11 @@ export default function OvertimeAndCompOffView() {
   const [days, setDays] = useState(1);
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const overtimeMinutes = (request: any) => Number(request.approvedMinutes ?? request.requestedMinutes ?? 0);
+  const overtimeLabel = (minutes: number) => {
+    const total = Math.max(0, Math.round(minutes));
+    return `${Math.floor(total / 60)}h ${String(total % 60).padStart(2, "0")}m`;
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -123,9 +128,9 @@ export default function OvertimeAndCompOffView() {
             Overtime Accrued
           </p>
           <p className="text-3xl font-bold text-indigo-600">
-            {myOvertimes.reduce((acc, o) => acc + (Number(o.hours) || 0), 0)} Hours
+            {(myOvertimes.reduce((acc, request) => acc + overtimeMinutes(request), 0) / 60).toFixed(1)} Hours
           </p>
-          <p className="text-xs text-slate-400 mt-1">Beyond standard 9 hr shifts</p>
+          <p className="text-xs text-slate-400 mt-1">Approved and requested overtime</p>
         </div>
 
         <div className="rounded-2xl p-5 border border-slate-200 bg-white shadow-sm">
@@ -200,6 +205,21 @@ export default function OvertimeAndCompOffView() {
                   </tr>
                 ))
               )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+        <div className="p-4 border-b border-slate-200">
+          <h3 className="font-semibold text-sm text-slate-900">Overtime approval requests</h3>
+          <p className="mt-1 text-xs text-slate-500">Only approved minutes are included in payroll and your payslip.</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-[13px] text-slate-700">
+            <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200 font-semibold"><tr><th className="py-3.5 px-4">Date</th><th className="py-3.5 px-4">Requested</th><th className="py-3.5 px-4">Approved</th><th className="py-3.5 px-4">Reason</th><th className="py-3.5 px-4">Status</th></tr></thead>
+            <tbody className="divide-y divide-slate-100">
+              {loading ? <tr><td colSpan={5} className="py-8 text-center text-slate-500">Loading requests...</td></tr> : myOvertimes.length === 0 ? <tr><td colSpan={5} className="py-8 text-center text-slate-500">No overtime requests yet. Overtime is raised after you punch out when approval is required.</td></tr> : myOvertimes.map((request) => <tr key={request.id} className="hover:bg-slate-50"><td className="px-4 py-3.5 font-semibold text-slate-900">{formatDate(request.attendance?.date || request.createdAt)}</td><td className="px-4 py-3.5">{overtimeLabel(Number(request.requestedMinutes || 0))}</td><td className="px-4 py-3.5 font-semibold text-emerald-700">{request.status === "APPROVED" ? overtimeLabel(overtimeMinutes(request)) : "—"}</td><td className="max-w-xs truncate px-4 py-3.5 text-slate-500">{request.reason || "Overtime after scheduled shift"}</td><td className="px-4 py-3.5"><span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${request.status === "APPROVED" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : request.status === "REJECTED" ? "border-rose-200 bg-rose-50 text-rose-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>{request.status}</span></td></tr>)}
             </tbody>
           </table>
         </div>

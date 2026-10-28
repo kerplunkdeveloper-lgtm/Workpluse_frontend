@@ -98,10 +98,12 @@ interface GpsPanelProps {
   error: string | null;
   retrying: boolean;
   onRetry: () => void;
+  officeCheck: boolean;
+  workModeLabel?: string;
 }
 
 /** What the punch will record: where you are right now, or how to turn GPS on if it is off. */
-function GpsPanel({ status, place, accuracy, branchName, distance, inRange, hasRange, error, retrying, onRetry }: GpsPanelProps) {
+function GpsPanel({ status, place, accuracy, branchName, distance, inRange, hasRange, error, retrying, onRetry, officeCheck, workModeLabel }: GpsPanelProps) {
   if (status === "locating") {
     return (
       <div role="status" className="flex items-center gap-2.5 rounded-2xl bg-amber-50 px-3.5 py-3 text-xs font-semibold text-amber-800 ring-1 ring-amber-200">
@@ -160,7 +162,7 @@ function GpsPanel({ status, place, accuracy, branchName, distance, inRange, hasR
           ? inRange
             ? `Inside office range · ${distanceLabel(distance)} from ${branchName || "your office"}`
             : `Outside office range · ${distanceLabel(distance)} from ${branchName || "your office"}`
-          : "No office range applies to you"}
+          : officeCheck ? "No office range is configured for this branch" : `${workModeLabel || "This work mode"} uses your current location; office range does not apply`}
         {accuracy != null && <span> · accurate to about {distanceLabel(accuracy)}</span>}
       </p>
     </div>
@@ -188,6 +190,8 @@ function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm,
   const cancelRef = useRef<HTMLButtonElement>(null);
 
   const officeBlocked = isCheckIn && workMode === "OFFICE" && !isWithinGeofence;
+  const officeCheck = isCheckIn && workMode === "OFFICE";
+  const workModeLabel = workMode === "WORK_FROM_HOME" ? "Remote" : workMode === "CLIENT_VISIT" ? "Client visit / travel" : workMode === "TRAVEL" ? "Travel" : workMode === "SHOOT" ? "Shoot" : "Office";
   const shootInProgress = todayStatus?.attendance?.wfhNote?.startsWith("SHOOT:") === true;
   const customNoteRequired = isCheckIn && workMode === "CLIENT_VISIT" && !note.trim();
   // No punch without a captured GPS position: it is what the attendance record says about where you were.
@@ -282,10 +286,12 @@ function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm,
             branchName={policy?.branchName}
             distance={distanceToBranch}
             inRange={isWithinGeofence}
-            hasRange={policy?.radiusMeters != null && distanceToBranch != null}
+            hasRange={officeCheck && policy?.radiusMeters != null && distanceToBranch != null}
             error={locationError}
             retrying={retrying}
             onRetry={tryGpsAgain}
+            officeCheck={officeCheck}
+            workModeLabel={workModeLabel}
           />
           {isCheckIn ? (
             <>
@@ -297,7 +303,7 @@ function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm,
               )}
               <div className="grid grid-cols-2 gap-2.5">
                 <Stat icon={CalendarDays} label="Shift" value={shift ? `${shift.startTime} – ${shift.endTime}` : "Not assigned"} />
-                <Stat icon={Building2} label="Office" value={policy?.branchName || "Not assigned"} />
+                <Stat icon={officeCheck ? Building2 : MapPin} label={officeCheck ? "Office" : "Current location"} value={officeCheck ? (policy?.branchName || "Not assigned") : (currentPlace || "Your current position")} />
               </div>
 
               <fieldset className="space-y-2">

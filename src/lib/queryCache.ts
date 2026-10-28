@@ -80,6 +80,8 @@ const subscribe = (key: string, fn: () => void) => {
   set.add(fn);
   return () => {
     set!.delete(fn);
+    // Do not retain an empty listener set for every key ever used by the app.
+    if (set!.size === 0 && listeners.get(key) === set) listeners.delete(key);
   };
 };
 

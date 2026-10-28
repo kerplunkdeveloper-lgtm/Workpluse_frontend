@@ -41,7 +41,7 @@ export function SiteHeader() {
           <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
             {NAV_LINKS.map((l) => (
               <a
-                key={l.href}
+                key={`${l.href}-${l.label}`}
                 href={l.href}
                 className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-900/[0.04] hover:text-slate-950"
               >
@@ -58,10 +58,16 @@ export function SiteHeader() {
               Sign in
             </Link>
             <Link
+              href="/register?intent=demo"
+              className="hidden rounded-lg px-3 py-1.5 text-sm font-medium text-indigo-600 transition-colors hover:bg-indigo-50 sm:inline-flex"
+            >
+              Book a demo
+            </Link>
+            <Link
               href="/register"
               className="group relative inline-flex h-9 items-center gap-1.5 overflow-hidden rounded-full bg-slate-950 px-4 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(15,23,42,0.25),inset_0_1px_0_rgba(255,255,255,0.2)] transition-all duration-200 hover:bg-slate-800 active:scale-[0.98]"
             >
-              <span>Start free</span>
+              <span>Get started</span>
               <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden="true" />
             </Link>
             <button
@@ -87,7 +93,7 @@ export function SiteHeader() {
             <div className="space-y-1 border-t border-slate-900/[0.06] px-3 pb-3 pt-2">
               {NAV_LINKS.map((l) => (
                 <a
-                  key={l.href}
+                  key={`${l.href}-${l.label}`}
                   href={l.href}
                   tabIndex={open ? 0 : -1}
                   onClick={() => setOpen(false)}
@@ -102,6 +108,13 @@ export function SiteHeader() {
                 className="block rounded-lg px-3 py-2 text-[15px] font-medium text-slate-700 hover:bg-slate-900/[0.04] hover:text-slate-950"
               >
                 Sign in
+              </Link>
+              <Link
+                href="/register?intent=demo"
+                tabIndex={open ? 0 : -1}
+                className="block rounded-lg px-3 py-2 text-[15px] font-semibold text-indigo-600 hover:bg-indigo-50"
+              >
+                Book a demo
               </Link>
             </div>
           </nav>

@@ -25,6 +25,7 @@ type ApprovalCategory = "CORRECTIONS" | "LEAVES" | "PERMISSIONS" | "OVERTIME" | 
 const DAY_KIND_LABEL: Record<string, string> = { WEEK_OFF: "Weekly off", HOLIDAY: "Holiday", COMPANY_LEAVE: "Company leave" };
 const DAY_REASON_LABEL: Record<string, string> = { SHOOT: "Shoot", TRAVEL: "Travel", CLIENT_VISIT: "Client visit", OTHER: "Other company work" };
 type CorrectionFilter = "PENDING" | "APPROVED" | "REJECTED" | "ALL";
+type RequestFilter = "PENDING" | "APPROVED" | "REJECTED" | "ALL";
 
 const CORRECTION_FILTERS: { value: CorrectionFilter; label: string }[] = [
   { value: "PENDING", label: "Pending" },
@@ -137,6 +138,7 @@ const rowClass = "align-middle transition-colors hover:bg-indigo-50/[0.32]";
 export default function ApprovalsInboxView() {
   const [activeTab, setActiveTab] = useState<ApprovalCategory>("CORRECTIONS");
   const [corrFilter, setCorrFilter] = useState<CorrectionFilter>("PENDING");
+  const [requestFilter, setRequestFilter] = useState<RequestFilter>("ALL");
   const [corrRows, setCorrRows] = useState<any[]>([]);
   const [corrCounts, setCorrCounts] = useState<Record<string, number>>({});
   const [corrLoading, setCorrLoading] = useState(false);
@@ -148,6 +150,7 @@ export default function ApprovalsInboxView() {
   const [compOffs, setCompOffs] = useState<any[]>([]);
   const [dayOffWork, setDayOffWork] = useState<any[]>([]);
   const [shoots, setShoots] = useState<any[]>([]);
+  const [approvedOvertimeMinutes, setApprovedOvertimeMinutes] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const { role } = useAuth();
   const isReviewer = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER" || role === "HR";
@@ -173,19 +176,19 @@ export default function ApprovalsInboxView() {
     try {
       const [, leaveRes, permissionRes, otRes, expRes, compRes, dayOffRes, shootRes] = await Promise.allSettled([
         loadCorrections(),
-        leavesApi.getAllLeaves({ status: "PENDING", limit: 200 }),
-        isReviewer ? permissionsApi.list({ status: "PENDING" }) : permissionsApi.my(),
+        leavesApi.getAllLeaves({ status: "ALL", limit: 200 }),
+        isReviewer ? permissionsApi.list({ status: "ALL" }) : permissionsApi.my(),
         overtimeApi.getPending(),
         expensesApi.getAllClaims(),
         compOffApi.getPending(),
         dayOffWorkApi.getRequests({ status: "PENDING" }),
-        isReviewer ? shootRequestsApi.getAll({ status: "PENDING" }) : shootRequestsApi.getMine(),
+        isReviewer ? shootRequestsApi.getAll({ status: "ALL" }) : shootRequestsApi.getMine(),
       ]);
 
       if (leaveRes.status === "fulfilled") {
-        setLeaves(unwrapList(leaveRes.value).filter((l: any) => l.status === "PENDING"));
+        setLeaves(unwrapList(leaveRes.value));
       }
-      if (permissionRes.status === "fulfilled") setPermissions(unwrapList(permissionRes.value).filter((request: any) => isReviewer ? request.status === "PENDING" : true));
+      if (permissionRes.status === "fulfilled") setPermissions(unwrapList(permissionRes.value));
       if (otRes.status === "fulfilled") {
         setOvertimes(unwrapList(otRes.value));
       }
@@ -196,7 +199,7 @@ export default function ApprovalsInboxView() {
       }
       if (compRes.status === "fulfilled") setCompOffs(unwrapList(compRes.value));
       if (dayOffRes.status === "fulfilled") setDayOffWork(unwrapList(dayOffRes.value));
-      if (shootRes.status === "fulfilled") setShoots(unwrapList(shootRes.value).filter((request: any) => isReviewer ? request.status === "PENDING" : true));
+      if (shootRes.status === "fulfilled") setShoots(unwrapList(shootRes.value));
     } catch (err) {
       console.error("Failed to load approvals inbox:", err);
     } finally {
@@ -279,12 +282,20 @@ export default function ApprovalsInboxView() {
       true,
     );
 
-  const handleReviewOvertime = (id: string, status: "APPROVED" | "REJECTED") =>
+  const handleReviewOvertime = (id: string, status: "APPROVED" | "REJECTED", requestedMinutes?: number) =>
     review(
       "ot-act",
       "Processing overtime approval...",
       (s) => `Overtime request ${s}!`,
-      () => overtimeApi.review(id, { status, reviewNote: "Reviewed by HR or admin" }),
+      () => {
+        const raw = approvedOvertimeMinutes[id];
+        const numericApprovedMinutes = raw !== undefined && raw !== "" ? Number(raw) : NaN;
+        if (status === "APPROVED" && (!Number.isInteger(numericApprovedMinutes) || numericApprovedMinutes < 0 || numericApprovedMinutes > Number(requestedMinutes || 0))) {
+          throw new Error(`Approved minutes must be between 0 and ${requestedMinutes || 0}.`);
+        }
+        const approvedMinutes = status === "APPROVED" ? numericApprovedMinutes : undefined;
+        return overtimeApi.review(id, { status, approvedMinutes, reviewNote: "Reviewed by HR or admin" });
+      },
       status,
     );
 
@@ -324,17 +335,28 @@ export default function ApprovalsInboxView() {
       status,
     );
 
-  const totalPending = pendingCorrections + leaves.length + permissions.length + overtimes.length + expenses.length + compOffs.length + dayOffWork.length + shoots.length;
+  const totalPending = pendingCorrections + leaves.filter((row) => row.status === "PENDING").length + permissions.filter((row) => row.status === "PENDING").length + overtimes.length + expenses.length + compOffs.length + dayOffWork.length + shoots.filter((row) => row.status === "PENDING").length;
+
+  const filterRequests = (rows: any[]) => requestFilter === "ALL" ? rows : rows.filter((row) => row.status === requestFilter);
+  const visibleLeaves = filterRequests(leaves);
+  const visiblePermissions = filterRequests(permissions);
+  const visibleShoots = filterRequests(shoots);
+  const requestFilters: { value: RequestFilter; label: string }[] = [
+    { value: "ALL", label: "All" },
+    { value: "PENDING", label: "Pending" },
+    { value: "APPROVED", label: "Approved" },
+    { value: "REJECTED", label: "Rejected" },
+  ];
 
   const tabs: { key: ApprovalCategory; label: string; icon: React.ElementType; count: number }[] = [
     { key: "CORRECTIONS", label: "Punch & Shoot Time", icon: Clock, count: pendingCorrections },
-    { key: "LEAVES", label: "Leave Requests", icon: CalendarDays, count: leaves.length },
-    { key: "PERMISSIONS", label: "Permission approvals", icon: Clock, count: permissions.length },
+    { key: "LEAVES", label: "Leave Requests", icon: CalendarDays, count: leaves.filter((row) => row.status === "PENDING").length },
+    { key: "PERMISSIONS", label: "Permission approvals", icon: Clock, count: permissions.filter((row) => row.status === "PENDING").length },
     { key: "OVERTIME", label: "Overtime Credits", icon: Layers, count: overtimes.length },
     { key: "EXPENSES", label: "Expense Claims", icon: Wallet, count: expenses.length },
     { key: "COMPOFF", label: "Comp-Off", icon: Sparkles, count: compOffs.length },
     { key: "DAYOFF", label: "Day-off work", icon: CalendarOff, count: dayOffWork.length },
-    { key: "SHOOTS", label: isReviewer ? "Shoot requests" : "My shoot requests", icon: Sparkles, count: shoots.length },
+    { key: "SHOOTS", label: isReviewer ? "Shoot requests" : "My shoot requests", icon: Sparkles, count: shoots.filter((row) => row.status === "PENDING").length },
   ];
 
   const emptyNote = (text: string) => <div className="py-12 text-center text-xs text-slate-500">{text}</div>;
@@ -379,6 +401,22 @@ export default function ApprovalsInboxView() {
 
       {/* Tab Panels */}
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        {activeTab !== "CORRECTIONS" && activeTab !== "OVERTIME" && activeTab !== "EXPENSES" && activeTab !== "COMPOFF" && activeTab !== "DAYOFF" && (
+          <div className="mb-4 flex flex-wrap items-center gap-2" role="tablist" aria-label="Request status filter">
+            {requestFilters.map((filter) => (
+              <button
+                key={filter.value}
+                type="button"
+                role="tab"
+                aria-selected={requestFilter === filter.value}
+                onClick={() => setRequestFilter(filter.value)}
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${requestFilter === filter.value ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+        )}
         {loading ? (
           <div className="py-16 text-center text-slate-500">
             <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-indigo-500" />
@@ -462,11 +500,11 @@ export default function ApprovalsInboxView() {
             )}
           </div>
         ) : activeTab === "LEAVES" ? (
-          leaves.length === 0 ? (
-            emptyNote("No pending leave requests awaiting your decision.")
+          visibleLeaves.length === 0 ? (
+            emptyNote(requestFilter === "PENDING" ? "No pending leave requests awaiting your decision." : "No leave requests found for this filter.")
           ) : (
-            <TableShell heads={["Employee", "Leave type", "Dates", "Reason", "Action"]}>
-              {leaves.map((leave) => (
+            <TableShell heads={["Employee", "Leave type", "Dates", "Reason", requestFilter === "PENDING" ? "Action" : "Status"]}>
+              {visibleLeaves.map((leave) => (
                 <tr key={leave.id} className={rowClass}>
                   <PersonCell emp={leave.employee} />
                   <td className="whitespace-nowrap px-4 py-4 text-xs font-medium text-slate-700">{leave.leaveType?.name || "Leave"}</td>
@@ -478,7 +516,7 @@ export default function ApprovalsInboxView() {
                     </span>
                   </td>
                   <ReasonCell text={leave.reason} />
-                  <ActionCell onApprove={() => handleReviewLeave(leave.id, "APPROVED")} onReject={() => handleReviewLeave(leave.id, "REJECTED")} />
+                  {leave.status === "PENDING" ? <ActionCell onApprove={() => handleReviewLeave(leave.id, "APPROVED")} onReject={() => handleReviewLeave(leave.id, "REJECTED")} /> : <td className="whitespace-nowrap px-4 py-4 text-right"><StatusBadge status={leave.status} /></td>}
                 </tr>
               ))}
             </TableShell>
@@ -487,14 +525,26 @@ export default function ApprovalsInboxView() {
           overtimes.length === 0 ? (
             emptyNote("No pending overtime accumulation claims.")
           ) : (
-            <TableShell heads={["Employee", "Date", "Overtime requested", "Reason", "Action"]}>
+            <TableShell heads={["Employee", "Date", "Overtime requested", "Approve minutes", "Reason", "Action"]}>
               {overtimes.map((ot) => (
                 <tr key={ot.id} className={rowClass}>
                   <PersonCell emp={ot.employee} />
                   <td className="whitespace-nowrap px-4 py-4 text-xs font-medium text-slate-700">{dayOf(ot.attendance?.date || ot.createdAt)}</td>
                   <td className="whitespace-nowrap px-4 py-4 text-xs font-semibold text-slate-900">{minutesLabel(ot.requestedMinutes)}</td>
+                  <td className="px-4 py-4">
+                    <input
+                      type="number"
+                      min={0}
+                      max={Number(ot.requestedMinutes || 0)}
+                      step={1}
+                      value={approvedOvertimeMinutes[ot.id] ?? String(ot.requestedMinutes || 0)}
+                      onChange={(event) => setApprovedOvertimeMinutes((current) => ({ ...current, [ot.id]: event.target.value }))}
+                      className="w-24 rounded-lg border border-slate-200 px-2.5 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                      aria-label={`Approved overtime minutes for ${ot.employee?.firstName || "employee"}`}
+                    />
+                  </td>
                   <ReasonCell text={ot.reason} />
-                  <ActionCell onApprove={() => handleReviewOvertime(ot.id, "APPROVED")} onReject={() => handleReviewOvertime(ot.id, "REJECTED")} />
+                  <ActionCell onApprove={() => handleReviewOvertime(ot.id, "APPROVED", Number(ot.requestedMinutes || 0))} onReject={() => handleReviewOvertime(ot.id, "REJECTED", Number(ot.requestedMinutes || 0))} />
                 </tr>
               ))}
             </TableShell>
@@ -519,35 +569,35 @@ export default function ApprovalsInboxView() {
             </TableShell>
           )
         ) : activeTab === "PERMISSIONS" ? (
-          permissions.length === 0 ? (
-            emptyNote(isReviewer ? "No pending permission approvals." : "No permission requests yet.")
+          visiblePermissions.length === 0 ? (
+            emptyNote(requestFilter === "PENDING" ? "No pending permission approvals." : "No permission requests found for this filter.")
           ) : (
-            <TableShell heads={["Employee", "Date", "Time", "Total", "Reason", "Action"]}>
-              {permissions.map((request) => (
+            <TableShell heads={["Employee", "Date", "Time", "Total", "Reason", requestFilter === "PENDING" ? "Action" : "Status"]}>
+              {visiblePermissions.map((request) => (
                 <tr key={request.id} className={rowClass}>
                   <PersonCell emp={request.employee} />
                   <td className="whitespace-nowrap px-4 py-4 text-xs font-medium text-slate-700">{dayOf(request.date)}</td>
                   <td className="whitespace-nowrap px-4 py-4 text-xs font-semibold text-slate-900">{request.startTime && request.endTime ? `${request.startTime} - ${request.endTime}` : "Legacy hours-only"}</td>
                   <td className="whitespace-nowrap px-4 py-4 text-xs font-semibold text-slate-900">{Number(request.hours || 0)}h</td>
                   <ReasonCell text={request.reason} />
-                  <ActionCell onApprove={() => handleReviewPermission(request.id, "APPROVED")} onReject={() => handleReviewPermission(request.id, "REJECTED")} />
+                  {request.status === "PENDING" ? <ActionCell onApprove={() => handleReviewPermission(request.id, "APPROVED")} onReject={() => handleReviewPermission(request.id, "REJECTED")} /> : <td className="whitespace-nowrap px-4 py-4 text-right"><StatusBadge status={request.status} /></td>}
                 </tr>
               ))}
             </TableShell>
           )
         ) : activeTab === "SHOOTS" ? (
-          shoots.length === 0 ? (
-            emptyNote(isReviewer ? "No pending shoot requests." : "No shoot requests yet.")
+          visibleShoots.length === 0 ? (
+            emptyNote(requestFilter === "PENDING" ? "No pending shoot requests." : "No shoot requests found for this filter.")
           ) : (
-            <TableShell heads={["Employee", "Shoot", "Date", "Location", "People", isReviewer ? "Action" : "Status"]}>
-              {shoots.map((req) => (
+            <TableShell heads={["Employee", "Shoot", "Date", "Location", "People", requestFilter === "PENDING" ? "Action" : "Status"]}>
+              {visibleShoots.map((req) => (
                 <tr key={req.id} className={rowClass}>
                   <PersonCell emp={req.employee} />
                   <td className="px-4 py-4 text-xs font-semibold text-slate-900">{req.shootName}</td>
                   <td className="whitespace-nowrap px-4 py-4 text-xs font-medium text-slate-700">{dayOf(req.date)}</td>
                   <td className="px-4 py-4 text-xs text-slate-600">{req.location}</td>
                   <td className="px-4 py-4 text-xs text-slate-600">{(req.participants || []).map((p: any) => personName(p.employee)).join(", ") || personName(req.employee)}</td>
-                  {isReviewer ? <ActionCell onApprove={() => handleReviewShoot(req.id, "APPROVED")} onReject={() => handleReviewShoot(req.id, "REJECTED")} /> : <td className="whitespace-nowrap px-4 py-4 text-right"><StatusBadge status={req.status} /></td>}
+                  {req.status === "PENDING" ? <ActionCell onApprove={() => handleReviewShoot(req.id, "APPROVED")} onReject={() => handleReviewShoot(req.id, "REJECTED")} /> : <td className="whitespace-nowrap px-4 py-4 text-right"><StatusBadge status={req.status} /></td>}
                 </tr>
               ))}
             </TableShell>

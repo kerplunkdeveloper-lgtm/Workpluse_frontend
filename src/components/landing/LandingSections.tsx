@@ -525,6 +525,7 @@ function ProductPreview() {
 export function ProofBar() {
   return (
     <section
+      id="solutions"
       aria-label="Who WorkPluse is built for"
       className="border-y border-slate-200/80 bg-slate-50/80 py-12 text-slate-600"
     >
@@ -882,7 +883,7 @@ const STEP_DETAIL = [
 
 export function Workflow() {
   return (
-    <section className="bg-[#f8fafc] py-20 sm:py-28 relative isolate border-t border-slate-200/80">
+    <section id="workflow" className="scroll-mt-24 bg-[#f8fafc] py-20 sm:py-28 relative isolate border-t border-slate-200/80">
       <div className={WRAP}>
         <SectionHeading
           center

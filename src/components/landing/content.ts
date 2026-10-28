@@ -19,21 +19,22 @@ import {
 
 /** All marketing copy lives here so sections stay presentational and easy to change. */
 export const NAV_LINKS = [
+  { href: "#features", label: "Product" },
   { href: "#features", label: "Features" },
-  { href: "#offline", label: "Offline" },
+  { href: "#workflow", label: "How it works" },
+  { href: "#solutions", label: "Solutions" },
   { href: "#pricing", label: "Pricing" },
-  { href: "#security", label: "Security" },
-  { href: "#faq", label: "FAQ" },
+  { href: "#security", label: "Resources" },
 ] as const;
 
 export const HERO = {
-  eyebrow: "Attendance, leave and payroll for Indian teams",
-  headline: ["Run the workday", "without losing the people."],
+  eyebrow: "The calmer way to run your workplace",
+  headline: ["Your people. Your workplace.", "One powerful platform."],
   subhead:
-    "Stop buddy punching with GPS boundary checks. Keep teams clocking in even without internet. Automate salary breakdowns, statutory deductions and invitations.",
-  primaryCta: { label: "Start free, 14 days", href: "/register" },
-  secondaryCta: { label: "Sign in to your workspace", href: "/login" },
-  trustPoints: ["GPS geofencing", "Works offline", "PF, ESI and TDS ready", "Up to 10,000 people"],
+    "Make attendance, leave, payroll, and everyday HR effortless. Manage your entire workforce from one beautifully simple workspace.",
+  primaryCta: { label: "Get started", href: "/register" },
+  secondaryCta: { label: "Explore WorkPluse", href: "#features" },
+  trustPoints: ["GPS attendance", "Offline-ready punches", "Leave workflows", "Payroll-ready records"],
 } as const;
 
 export const INDUSTRIES: { icon: LucideIcon; label: string }[] = [
@@ -80,7 +81,8 @@ export const FOOTER_COLUMNS = [
     title: "Product",
     links: [
       { href: "#features", label: "Features" },
-      { href: "#offline", label: "Offline punches" },
+      { href: "#workflow", label: "How it works" },
+      { href: "#solutions", label: "Solutions" },
       { href: "#pricing", label: "Pricing" },
       { href: "#security", label: "Security" },
     ],

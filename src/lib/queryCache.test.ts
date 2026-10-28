@@ -46,4 +46,5 @@ describe("cachedFetch", () => {
     await cachedFetch("k", fetcher);
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
+
 });

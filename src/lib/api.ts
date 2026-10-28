@@ -1487,7 +1487,7 @@ export const overtimeApi = {
     const res = await api.get("/overtime/my");
     return res.data;
   },
-  review: async (id: string, payload: { status: "APPROVED" | "REJECTED"; reviewNote?: string }) => {
+  review: async (id: string, payload: { status: "APPROVED" | "REJECTED"; approvedMinutes?: number; reviewNote?: string }) => {
     const res = await api.patch(`/overtime/${id}/review`, payload);
     return res.data;
   },

@@ -32,6 +32,7 @@ const DEFAULTS = {
   probationMonths: 3,
   monthlyPermissionHours: 3,
   permissionRequiresProbation: true,
+  leaveEligibilityActive: true,
   halfDayThresholdMinutes: 240,
   maxLatesBeforeDeduction: 3,
   lateDeductionPercent: 0.25,
@@ -72,8 +73,8 @@ export default function PolicyView() {
     setEditingLateRuleId(null);
   };
 
-  const saveLateRule = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const saveLateRule = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     setLateRuleSaving(true);
     try {
       const payload = { ...lateRuleForm, lateDays: Number(lateRuleForm.lateDays), lopDays: Number(lateRuleForm.lopDays), graceMinutes: Number(lateRuleForm.graceMinutes) };
@@ -138,6 +139,7 @@ export default function PolicyView() {
             probationMonths: Number(policy.probationMonths ?? DEFAULTS.probationMonths),
             monthlyPermissionHours: Number(policy.monthlyPermissionHours ?? DEFAULTS.monthlyPermissionHours),
             permissionRequiresProbation: Boolean(policy.permissionRequiresProbation ?? DEFAULTS.permissionRequiresProbation),
+            leaveEligibilityActive: Boolean(policy.leaveEligibilityActive ?? policy.permissionRequiresProbation ?? DEFAULTS.leaveEligibilityActive),
             halfDayThresholdMinutes: Number(policy.halfDayThresholdMinutes ?? DEFAULTS.halfDayThresholdMinutes),
             maxLatesBeforeDeduction: Number(policy.maxLatesBeforeDeduction ?? DEFAULTS.maxLatesBeforeDeduction),
             lateDeductionPercent: Number(policy.lateDeductionPercent ?? DEFAULTS.lateDeductionPercent),
@@ -234,14 +236,14 @@ export default function PolicyView() {
         <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs">
           <h2 className="text-lg font-semibold text-slate-950">Company Late-coming LOP Policy</h2>
           <p className="mt-1 text-xs text-slate-500">Create a rule for every completed block of late arrivals in a payroll cycle.</p>
-          <form onSubmit={saveLateRule} className="mt-5 space-y-4">
+          <div className="mt-5 space-y-4">
             <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-800">Late days <span className="text-rose-500">*</span></span><input required type="number" min="1" step="1" value={lateRuleForm.lateDays} onChange={(e) => setLateRuleForm((p) => ({ ...p, lateDays: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm" /><span className="text-xs text-slate-400">Every this many late arrivals counts as LOP.</span></label>
             <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-800">LOP days <span className="text-rose-500">*</span></span><Select required value={lateRuleForm.lopDays} onChange={(e) => setLateRuleForm((p) => ({ ...p, lopDays: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm"><option value="0.5">0.5 day</option><option value="1">1 day</option><option value="1.5">1.5 days</option><option value="2">2 days</option></Select><span className="text-xs text-slate-400">LOP applied for each completed block of late days.</span></label>
             <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-800">Grace (minutes)</span><input type="number" min="0" max="1440" value={lateRuleForm.graceMinutes} onChange={(e) => setLateRuleForm((p) => ({ ...p, graceMinutes: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm" /><span className="text-xs text-slate-400">Punch-in after shift start + grace counts as late.</span></label>
             <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-800">Status</span><Select value={lateRuleForm.isActive ? "true" : "false"} onChange={(e) => setLateRuleForm((p) => ({ ...p, isActive: e.target.value === "true" }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm"><option value="true">Active</option><option value="false">Inactive</option></Select></label>
             <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-800">Remarks</span><input value={lateRuleForm.remarks} onChange={(e) => setLateRuleForm((p) => ({ ...p, remarks: e.target.value }))} placeholder="Optional note" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm" /></label>
-            <div className="flex gap-3 pt-1"><button disabled={lateRuleSaving} type="submit" className="inline-flex items-center gap-2 rounded-xl bg-cyan-500 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-600 disabled:opacity-60"><CheckCircle2 className="h-4 w-4" />{lateRuleSaving ? "Saving..." : editingLateRuleId ? "Update Rule" : "Save Policy"}</button>{editingLateRuleId && <button type="button" onClick={resetLateRuleForm} className="rounded-xl bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-600">Cancel</button>}</div>
-          </form>
+            <div className="flex gap-3 pt-1"><button disabled={lateRuleSaving} type="button" onClick={() => void saveLateRule()} className="inline-flex items-center gap-2 rounded-xl bg-cyan-500 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-600 disabled:opacity-60"><CheckCircle2 className="h-4 w-4" />{lateRuleSaving ? "Saving..." : editingLateRuleId ? "Update Rule" : "Save Policy"}</button>{editingLateRuleId && <button type="button" onClick={resetLateRuleForm} className="rounded-xl bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-600">Cancel</button>}</div>
+          </div>
         </div>
         <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs overflow-x-auto">
           <h2 className="text-lg font-semibold text-slate-950">Late-coming LOP Rules</h2>
@@ -440,10 +442,21 @@ export default function PolicyView() {
           />
           Allow work-from-home punch
         </label>
-        <label className="flex items-center gap-2 text-sm text-slate-800 sm:col-span-2">
-          <input type="checkbox" checked={form.permissionRequiresProbation} onChange={(e) => setForm((p) => ({ ...p, permissionRequiresProbation: e.target.checked }))} />
-          Require probation completion before paid leave and monthly permissions
-        </label>
+        <div className="sm:col-span-2 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4" aria-labelledby="leave-eligibility-heading">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p id="leave-eligibility-heading" className="text-sm font-semibold text-slate-900">Leave eligibility</p>
+              <p className="mt-1 max-w-xl text-xs leading-5 text-slate-600">When active, paid leave and monthly permissions unlock after the employee completes the configured {form.probationMonths}-month eligibility period. Unpaid leave remains available for exceptional cases.</p>
+            </div>
+            <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${form.leaveEligibilityActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>{form.leaveEligibilityActive ? "Active" : "Inactive"}</span>
+          </div>
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2" role="radiogroup" aria-labelledby="leave-eligibility-heading">
+            {[{ active: true, title: "Active", body: "Use the eligibility waiting period before paid leave opens." }, { active: false, title: "Inactive", body: "Open paid leave and monthly permissions immediately." }].map((option) => {
+              const selected = form.leaveEligibilityActive === option.active;
+              return <button key={option.title} type="button" role="radio" aria-checked={selected} onClick={() => setForm((p) => ({ ...p, leaveEligibilityActive: option.active, permissionRequiresProbation: option.active }))} className={`rounded-xl border p-3 text-left transition ${selected ? "border-indigo-500 bg-white ring-1 ring-indigo-500" : "border-indigo-100 bg-white/60 hover:border-indigo-300"}`}><span className="flex items-center justify-between gap-2"><span className="text-sm font-semibold text-slate-900">{option.title}</span>{selected && <Check className="h-4 w-4 text-indigo-600" aria-hidden="true" />}</span><span className="mt-1 block text-xs leading-5 text-slate-500">{option.body}</span></button>;
+            })}
+          </div>
+        </div>
         <label className="flex items-center gap-2 text-sm text-slate-800 sm:col-span-2">
           <input
             type="checkbox"

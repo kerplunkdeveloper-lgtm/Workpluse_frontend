@@ -71,10 +71,7 @@ export default function DashboardOverview() {
   const [employeeHolidays, setEmployeeHolidays] = useState<any[]>([]);
   const [employeeLeaves, setEmployeeLeaves] = useState<any[]>([]);
 
-  /**
-   * `silent` is the once-a-minute live refresh: it only re-reads today's summary
-   * and punches, and escalates to a full reload when the server's day rolls over.
-   */
+  
   const loadDashboardData = async (silent = false): Promise<void> => {
     if (silent && !canManage) return;
     if (!silent) {
@@ -82,9 +79,7 @@ export default function DashboardOverview() {
       setLoadError(null);
     }
     try {
-      // Render the shell from the small, high-value requests first. The summary
-      // is manager-only (employees would just get a 403), and it is the source of
-      // truth for the tenant's "today".
+       
       const [summaryRes, historyRes] = await Promise.allSettled([
         canManage ? attendanceApi.getSummary(undefined, undefined, { background: silent }) : Promise.resolve(null),
         silent ? Promise.resolve(null) : attendanceApi.getMyAttendance({ limit: 5, page: 1 }),
@@ -387,12 +382,12 @@ export default function DashboardOverview() {
     const buckets = [
       { time: "6-8am", hour: 6, count: 0 },
       { time: "8-10am", hour: 8, count: 0 },
-      { time: "10-12pm", hour: 10, count: 0 },
-      { time: "12-2pm", hour: 12, count: 0 },
-      { time: "2-4pm", hour: 14, count: 0 },
-      { time: "4-6pm", hour: 16, count: 0 },
-      { time: "6-8pm", hour: 18, count: 0 },
-      { time: "8-10pm", hour: 20, count: 0 },
+      { time: "10am–12pm", hour: 10, count: 0 },
+      { time: "12–2pm", hour: 12, count: 0 },
+      { time: "2–4pm", hour: 14, count: 0 },
+      { time: "4–6pm", hour: 16, count: 0 },
+      { time: "6–8pm", hour: 18, count: 0 },
+      { time: "8–10pm", hour: 20, count: 0 },
     ];
     const addClockIns = (hour: number, count: number) => {
       const index = Math.min(buckets.length - 1, Math.max(0, Math.floor((hour - 6) / 2)));
@@ -436,6 +431,7 @@ export default function DashboardOverview() {
     }).join(", ");
   })();
 
+  const peakWindow = hourlyData.find((item) => item.peak);
   const trendPoints = hourlyData.map((item, index) => {
     const max = Math.max(...hourlyData.map((entry) => entry.count), 1);
     const x = (index / Math.max(hourlyData.length - 1, 1)) * 560 + 20;
@@ -1014,9 +1010,26 @@ export default function DashboardOverview() {
         </article>
 
         <article className="min-w-0 rounded-3xl border border-slate-200/90 bg-white p-5 shadow-[0_18px_50px_-36px_rgba(15,23,42,0.35)] sm:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">Punch activity</p><h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">When your team clocks in</h2></div><Link href="/reports" className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700">Full reports <ArrowUpRight className="h-3.5 w-3.5" /></Link></div>
-          <div className="mt-5 overflow-x-auto rounded-2xl bg-slate-50/80 p-2 sm:p-3"><svg viewBox="0 0 600 180" role="img" aria-label="Punch activity by time of day" className="h-44 w-full min-w-[520px]"><defs><linearGradient id="attendance-area" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#6366f1" stopOpacity=".25" /><stop offset="1" stopColor="#6366f1" stopOpacity="0" /></linearGradient></defs>{[35, 70, 105, 140].map((y) => <line key={y} x1="20" x2="580" y1={y} y2={y} style={{ stroke: "var(--color-slate-200)" }} strokeDasharray="3 5" />)}<polyline points={`20,142 ${trendPoints} 580,142`} fill="url(#attendance-area)" stroke="none" /><polyline points={trendPoints} fill="none" stroke="#4f46e5" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />{hourlyData.map((item, index) => { const max = Math.max(...hourlyData.map((entry) => entry.count), 1); const x = (index / Math.max(hourlyData.length - 1, 1)) * 560 + 20; const y = 142 - (item.count / max) * 106; return <g key={item.time}><circle cx={x} cy={y} r={item.peak ? 5 : 3.5} fill={item.peak ? "#10b981" : "#4f46e5"} stroke="white" strokeWidth="2" /><text x={x} y="170" textAnchor="middle" fontSize="10" fontWeight="600" style={{ fill: "var(--color-slate-400)" }}>{item.time}</text></g>; })}{clockInsToday === 0 && <text x="300" y="100" textAnchor="middle" fontSize="12" fontWeight="600" style={{ fill: "var(--color-slate-400)" }}>No clock-ins yet today</text>}</svg></div>
-          <div className="mt-4 grid grid-cols-3 gap-2"><div className="rounded-xl bg-emerald-50 p-3"><p className="text-[10px] font-semibold text-emerald-700">Peak window</p><p className="mt-1 text-sm font-bold text-emerald-900">{hourlyData.find((item) => item.peak)?.time || "—"}</p></div><div className="rounded-xl bg-indigo-50 p-3"><p className="text-[10px] font-semibold text-indigo-700">Clock-ins today</p><p className="mt-1 text-sm font-bold text-indigo-900">{clockInsToday}</p></div><div className="rounded-xl bg-amber-50 p-3"><p className="text-[10px] font-semibold text-amber-700">Pending leave</p><p className="mt-1 text-sm font-bold text-amber-900">{pendingLeaves}</p></div></div>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">Punch activity</p>
+              <h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">When your team clocks in</h2>
+            </div>
+            <Link href="/reports" className="inline-flex items-center gap-1.5 rounded-xl px-2 py-1 text-xs font-bold text-indigo-600 transition hover:bg-indigo-50 hover:text-indigo-700">Full reports <ArrowUpRight className="h-3.5 w-3.5" /></Link>
+          </div>
+
+          <div className="mt-5 overflow-x-auto rounded-2xl bg-slate-50/80 p-2 sm:p-3">
+            <svg viewBox="0 0 600 180" role="img" aria-label="Punch activity by time of day" className="h-44 w-full min-w-[520px]">
+              <defs><linearGradient id="attendance-area" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#6366f1" stopOpacity=".24" /><stop offset="1" stopColor="#6366f1" stopOpacity="0" /></linearGradient></defs>
+              {[35, 70, 105, 140].map((y) => <line key={y} x1="20" x2="580" y1={y} y2={y} style={{ stroke: "var(--color-slate-200)" }} strokeDasharray="3 5" />)}
+              <polyline points={`20,142 ${trendPoints} 580,142`} fill="url(#attendance-area)" stroke="none" />
+              <polyline points={trendPoints} fill="none" stroke="#4f46e5" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3.5" />
+              {hourlyData.map((item, index) => { const max = Math.max(...hourlyData.map((entry) => entry.count), 1); const x = (index / Math.max(hourlyData.length - 1, 1)) * 560 + 20; const y = 142 - (item.count / max) * 106; return <g key={item.time}><title>{`${item.time}: ${item.count} ${item.count === 1 ? "clock-in" : "clock-ins"}`}</title><circle cx={x} cy={y} r={item.peak ? 5.5 : 3.5} fill={item.peak ? "#10b981" : "#4f46e5"} stroke="white" strokeWidth="2" /><text x={x} y="170" textAnchor="middle" fontSize="10" fontWeight="600" style={{ fill: "var(--color-slate-400)" }}>{item.time}</text></g>; })}
+              {clockInsToday === 0 && <text x="300" y="100" textAnchor="middle" fontSize="12" fontWeight="600" style={{ fill: "var(--color-slate-400)" }}>No clock-ins yet today</text>}
+            </svg>
+          </div>
+
+          <div className="mt-4 grid grid-cols-3 gap-2"><div className="rounded-xl bg-emerald-50 p-3"><p className="text-[10px] font-semibold text-emerald-700">Peak window</p><p className="mt-1 text-sm font-bold text-emerald-900">{peakWindow?.time || "—"}</p></div><div className="rounded-xl bg-indigo-50 p-3"><p className="text-[10px] font-semibold text-indigo-700">Clock-ins today</p><p className="mt-1 text-sm font-bold text-indigo-900">{clockInsToday}</p></div><div className="rounded-xl bg-amber-50 p-3"><p className="text-[10px] font-semibold text-amber-700">Pending leave</p><p className="mt-1 text-sm font-bold text-amber-900">{pendingLeaves}</p></div></div>
         </article>
 
         <article className="min-w-0 rounded-3xl border border-slate-200/90 bg-white p-5 shadow-[0_18px_50px_-36px_rgba(15,23,42,0.35)] sm:col-span-2 sm:p-6">
@@ -1165,30 +1178,7 @@ export default function DashboardOverview() {
       <section className={`grid grid-cols-1 gap-5 ${canManage ? "" : "hidden"}`}>
         {/* Left Column (8 cols): Hourly Attendance Rhythm & Functions */}
         <div className="space-y-5">
-          {/* Premium hourly punch rhythm */}
-          <div className="relative overflow-hidden rounded-[28px] border border-slate-200/90 bg-white shadow-[0_20px_60px_-42px_rgba(15,23,42,0.5)]">
-            <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-indigo-100/50 blur-3xl" />
-            <div className="relative border-b border-slate-100 p-5 sm:p-6">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="flex items-start gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/20"><Activity className="h-5 w-5" /></span>
-                  <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">Live workforce pulse</p><h3 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">Punch-in</h3><p className="mt-1 text-sm text-slate-500">When your team starts the workday today.</p></div>
-                </div>
-                <div className="flex items-center gap-2 self-start rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />Live distribution</div>
-              </div>
-              <div className="mt-5 grid grid-cols-3 gap-2 sm:max-w-md"><div className="rounded-2xl bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Clock-ins today</p><p className="mt-1 text-lg font-bold tabular-nums text-slate-900">{clockInsToday}</p></div><div className="rounded-2xl bg-indigo-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-500">Peak window</p><p className="mt-1 text-lg font-bold text-indigo-900">{hourlyData.find((item) => item.peak)?.time || "No peak"}</p></div><div className="rounded-2xl bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Coverage</p><p className="mt-1 text-lg font-bold tabular-nums text-slate-900">{completionPercent}%</p></div></div>
-            </div>
-            <div className="relative p-5 sm:p-6">
-              <div className="pointer-events-none absolute inset-x-5 top-8 bottom-12 flex flex-col justify-between sm:inset-x-6"><span className="border-t border-dashed border-slate-100" /><span className="border-t border-dashed border-slate-100" /><span className="border-t border-dashed border-slate-100" /><span className="border-t border-dashed border-slate-100" /></div>
-              <div className="relative flex h-56 items-end gap-2 sm:h-64 sm:gap-4">
-                {hourlyData.map((item) => {
-                  const maxVal = Math.max(...hourlyData.map((d) => d.count), 4);
-                  const height = Math.max(item.count > 0 ? 12 : 5, Math.round((item.count / maxVal) * 100));
-                  return <div key={item.time} className="group flex h-full min-w-0 flex-1 flex-col items-center justify-end"><div className="mb-2 flex h-5 items-end"><span className={`text-[11px] font-bold tabular-nums transition ${item.peak ? "text-indigo-600" : "text-slate-400 opacity-0 group-hover:opacity-100"}`}>{item.count}</span></div><div className={`relative w-full max-w-[52px] rounded-t-2xl transition-all duration-500 group-hover:-translate-y-1 ${item.peak ? "bg-indigo-600 shadow-[0_12px_24px_-10px_rgba(79,70,229,0.8)]" : "bg-slate-200 group-hover:bg-indigo-200"}`} style={{ height: `${height}%` }}><span className={`absolute inset-x-1 top-1 h-1 rounded-full ${item.peak ? "bg-white/35" : "bg-white/70"}`} /></div><span className={`mt-3 whitespace-nowrap text-[10px] font-semibold sm:text-[11px] ${item.peak ? "text-indigo-700" : "text-slate-500"}`}>{item.time}</span></div>;
-                })}
-              </div>
-            </div>
-          </div>
+          
 
           {/* People moments: birthdays and work anniversaries */}
           <section className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm">
