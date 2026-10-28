@@ -6,7 +6,7 @@ import ApprovalsInboxView from "@/components/approvals/ApprovalsInboxView";
 
 export default function ApprovalsPage() {
   return (
-    <ProtectedRoute allowedRoles={["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"]}>
+    <ProtectedRoute allowedRoles={["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"]}>
       <AppLayout>
         <ApprovalsInboxView />
       </AppLayout>

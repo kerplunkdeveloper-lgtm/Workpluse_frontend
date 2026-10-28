@@ -66,7 +66,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Payroll", href: "/payroll", icon: Receipt, hint: "Automated payroll runs and payslip distribution", keywords: ["salary", "payslip", "pay"], feature: "hasPayroll", badge: "Auto", badgeColor: "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30" },
       { label: "Loans", href: "/loans", icon: HandCoins, hint: "Salary advances and EMI deductions", keywords: ["advance", "loan"] },
-      { label: "Statutory", href: "/statutory", icon: Landmark, hint: "PF, ESI, Professional Tax, and compliance registers", keywords: ["pf", "esi", "tax", "compliance"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"], feature: "hasPayroll" },
+      { label: "Statutory", href: "/statutory", icon: Landmark, hint: "PF, ESI, Professional Tax, and compliance registers", keywords: ["pf", "esi", "tax", "compliance"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"], feature: "hasPayroll" },
       { label: "Expenses", href: "/expenses", icon: CreditCard, hint: "Employee reimbursements and receipt claims", keywords: ["claim", "reimburse"] },
       { label: "Overtime", href: "/overtime", icon: Layers, hint: "Extra working hours and comp-off balances", keywords: ["ot", "comp off"] },
       { label: "Appraisals", href: "/appraisals", icon: Award, hint: "Periodic reviews, ratings, and performance goals", keywords: ["review", "performance"] },
@@ -79,11 +79,11 @@ export const NAV_SECTIONS: NavSection[] = [
     dot: "bg-violet-400",
     glow: "rgba(139, 92, 246, 0.4)",
     items: [
-      { label: "Approvals", href: "/approvals", icon: ShieldCheck, hint: "HR clearance inbox for leaves and expenses", keywords: ["inbox", "requests"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"], badge: "Inbox", badgeColor: "bg-amber-500/20 text-amber-300 border border-amber-500/30" },
-      { label: "Employees", href: "/employees", icon: Users, hint: "Full employee directory and staff directory", keywords: ["employee", "staff", "directory"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"] },
+      { label: "Approvals", href: "/approvals", icon: ShieldCheck, hint: "HR clearance inbox for leaves and expenses", keywords: ["inbox", "requests"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"], badge: "Inbox", badgeColor: "bg-amber-500/20 text-amber-300 border border-amber-500/30" },
+      { label: "Employees", href: "/employees", icon: Users, hint: "Full employee directory and staff directory", keywords: ["employee", "staff", "directory"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
       { label: "Departments", href: "/departments", icon: FolderTree, hint: "Organizational structure and teams", keywords: ["team", "org"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN"] },
-      { label: "Onboarding", href: "/onboarding", icon: UserPlus, hint: "New hire workflows and document collection", keywords: ["hire", "joining"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"] },
-      { label: "Offboarding", href: "/offboarding", icon: UserMinus, hint: "Exit clearance, checklist, and resignation handover", keywords: ["exit", "resign"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"] },
+      { label: "Onboarding", href: "/onboarding", icon: UserPlus, hint: "New hire workflows and document collection", keywords: ["hire", "joining"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
+      { label: "Offboarding", href: "/offboarding", icon: UserMinus, hint: "Exit clearance, checklist, and resignation handover", keywords: ["exit", "resign"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
     ],
   },
   {
@@ -93,11 +93,11 @@ export const NAV_SECTIONS: NavSection[] = [
     dot: "bg-amber-400",
     glow: "rgba(245, 158, 11, 0.4)",
     items: [
-      { label: "Shifts", href: "/shifts", icon: CalendarRange, hint: "Shift schedules, rotations, and rosters", keywords: ["roster", "schedule"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"] },
+      { label: "Shifts", href: "/shifts", icon: CalendarRange, hint: "Shift schedules, rotations, and rosters", keywords: ["roster", "schedule"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
       { label: "Branches", href: "/branches", icon: MapPin, hint: "Office locations with GPS geofencing radius", keywords: ["office", "location", "geo"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN"] },
-      { label: "Holidays", href: "/holidays", icon: Calendar, hint: "Public holiday and company off calendar", keywords: ["holiday"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"] },
+      { label: "Holidays", href: "/holidays", icon: Calendar, hint: "Public holiday and company off calendar", keywords: ["holiday"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
       { label: "Policy", href: "/policy", icon: SlidersHorizontal, hint: "Attendance rules, grace limits, and deduction policy", keywords: ["rules", "settings"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN"] },
-      { label: "Assets", href: "/assets", icon: Laptop, hint: "Hardware inventory and laptop assignments", keywords: ["laptop", "device", "inventory"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"] },
+      { label: "Assets", href: "/assets", icon: Laptop, hint: "Hardware inventory and laptop assignments", keywords: ["laptop", "device", "inventory"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
     ],
   },
   {
@@ -107,7 +107,7 @@ export const NAV_SECTIONS: NavSection[] = [
     dot: "bg-sky-400",
     glow: "rgba(14, 165, 233, 0.4)",
     items: [
-      { label: "Reports", href: "/reports", icon: BarChart3, hint: "Daily logs and monthly muster roll PDF exports", keywords: ["analytics", "export"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"], badge: "PDF", badgeColor: "bg-sky-500/20 text-sky-300 border border-sky-500/30" },
+      { label: "Reports", href: "/reports", icon: BarChart3, hint: "Daily logs and monthly muster roll PDF exports", keywords: ["analytics", "export"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"], badge: "PDF", badgeColor: "bg-sky-500/20 text-sky-300 border border-sky-500/30" },
       { label: "Settings", href: "/settings", icon: Settings, hint: "Organization profile, subscription tier, and API keys", keywords: ["plan", "billing", "company"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN"] },
       { label: "Audit log", href: "/audit", icon: History, hint: "Who changed what, and when, across your workspace", keywords: ["history", "activity", "security", "changes", "log"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN"] },
       { label: "Permissions", href: "/permissions", icon: KeyRound, hint: "Granular role access controls and privileges", keywords: ["access", "roles", "security"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN"] },

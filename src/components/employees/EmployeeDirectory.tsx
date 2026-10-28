@@ -1035,7 +1035,7 @@ export default function EmployeeDirectory() {
                     className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
                   >
                     <option value="EMPLOYEE">Employee</option>
-                    <option value="MANAGER">HR</option>
+                    <option value="MANAGER">HR / Manager</option>
                     {canManageAccess && <option value="COMPANY_ADMIN">Company admin</option>}
                   </Select>
                 </div>

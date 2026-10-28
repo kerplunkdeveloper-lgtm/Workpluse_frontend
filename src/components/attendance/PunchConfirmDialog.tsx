@@ -188,6 +188,7 @@ function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm,
   const cancelRef = useRef<HTMLButtonElement>(null);
 
   const officeBlocked = isCheckIn && workMode === "OFFICE" && !isWithinGeofence;
+  const shootInProgress = todayStatus?.attendance?.wfhNote?.startsWith("SHOOT:") === true;
   const customNoteRequired = isCheckIn && workMode === "CLIENT_VISIT" && !note.trim();
   // No punch without a captured GPS position: it is what the attendance record says about where you were.
   const blocked = Boolean(loading) || !gpsReady || officeBlocked || customNoteRequired;
@@ -195,7 +196,7 @@ function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm,
   const modes: { value: CheckInWorkMode; label: string; hint: string; icon: typeof Building2 }[] = [
     { value: "OFFICE", label: "Office", hint: "At your assigned office", icon: Building2 },
     ...(policy?.allowWfh !== false ? [{ value: "WORK_FROM_HOME" as const, label: "Remote", hint: "Work from home", icon: Home }] : []),
-    ...(todayStatus?.approvedShoot ? [{ value: "SHOOT" as const, label: "Shoot", hint: `${todayStatus.approvedShoot.startTime}–${todayStatus.approvedShoot.endTime}`, icon: BriefcaseBusiness }] : []),
+    ...(todayStatus?.approvedShoot ? [{ value: "SHOOT" as const, label: "Shoot", hint: "Approved for today", icon: BriefcaseBusiness }] : []),
     { value: "CLIENT_VISIT" as const, label: "Other", hint: "Client visit, travel, shoot", icon: BriefcaseBusiness },
   ];
 
@@ -251,7 +252,7 @@ function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm,
             </span>
             <div className="min-w-0 pr-8">
               <h3 id="punch-confirm-title" className="text-lg font-semibold tracking-tight text-slate-950">
-                {isCheckIn ? "Ready to punch in?" : todayStatus?.approvedShoot ? "Ready to shoot out?" : "Ready to punch out?"}
+                {isCheckIn ? "Ready to punch in?" : (todayStatus?.approvedShoot || shootInProgress) ? "Ready to shoot out?" : "Ready to punch out?"}
               </h3>
               <p className="mt-0.5 flex items-center gap-1.5 text-sm font-semibold text-slate-600">
                 <Clock aria-hidden="true" className="h-3.5 w-3.5 text-slate-400" />

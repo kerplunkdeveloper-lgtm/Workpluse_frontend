@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { correctionsApi, leavesApi, overtimeApi, expensesApi, compOffApi, dayOffWorkApi } from "@/lib/api";
+import { correctionsApi, leavesApi, permissionsApi, overtimeApi, expensesApi, compOffApi, dayOffWorkApi, shootRequestsApi } from "@/lib/api";
 import { formatDate, formatTime, formatCurrency, unwrapList } from "@/lib/utils";
 import {
   ShieldCheck,
@@ -17,9 +17,10 @@ import {
   CalendarOff,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
 import { confetti } from "@/lib/confetti";
 
-type ApprovalCategory = "CORRECTIONS" | "LEAVES" | "OVERTIME" | "EXPENSES" | "COMPOFF" | "DAYOFF";
+type ApprovalCategory = "CORRECTIONS" | "LEAVES" | "PERMISSIONS" | "OVERTIME" | "EXPENSES" | "COMPOFF" | "DAYOFF" | "SHOOTS";
 
 const DAY_KIND_LABEL: Record<string, string> = { WEEK_OFF: "Weekly off", HOLIDAY: "Holiday", COMPANY_LEAVE: "Company leave" };
 const DAY_REASON_LABEL: Record<string, string> = { SHOOT: "Shoot", TRAVEL: "Travel", CLIENT_VISIT: "Client visit", OTHER: "Other company work" };
@@ -44,6 +45,7 @@ const minutesLabel = (minutes?: number | null) => {
 };
 
 const personName = (emp: any) => `${emp?.firstName || ""} ${emp?.lastName || ""}`.trim() || "Unknown employee";
+const isShootCorrection = (correction: any) => String(correction?.attendance?.wfhNote || "").toUpperCase().startsWith("SHOOT:");
 
 function StatusBadge({ status }: { status?: string }) {
   const tone =
@@ -140,11 +142,15 @@ export default function ApprovalsInboxView() {
   const [corrLoading, setCorrLoading] = useState(false);
   const [corrSearch, setCorrSearch] = useState("");
   const [leaves, setLeaves] = useState<any[]>([]);
+  const [permissions, setPermissions] = useState<any[]>([]);
   const [overtimes, setOvertimes] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [compOffs, setCompOffs] = useState<any[]>([]);
   const [dayOffWork, setDayOffWork] = useState<any[]>([]);
+  const [shoots, setShoots] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { role } = useAuth();
+  const isReviewer = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER" || role === "HR";
 
   const pendingCorrections = corrCounts.PENDING ?? 0;
 
@@ -165,18 +171,21 @@ export default function ApprovalsInboxView() {
   const loadAllPending = async () => {
     setLoading(true);
     try {
-      const [, leaveRes, otRes, expRes, compRes, dayOffRes] = await Promise.allSettled([
+      const [, leaveRes, permissionRes, otRes, expRes, compRes, dayOffRes, shootRes] = await Promise.allSettled([
         loadCorrections(),
         leavesApi.getAllLeaves({ status: "PENDING", limit: 200 }),
+        isReviewer ? permissionsApi.list({ status: "PENDING" }) : permissionsApi.my(),
         overtimeApi.getPending(),
         expensesApi.getAllClaims(),
         compOffApi.getPending(),
         dayOffWorkApi.getRequests({ status: "PENDING" }),
+        isReviewer ? shootRequestsApi.getAll({ status: "PENDING" }) : shootRequestsApi.getMine(),
       ]);
 
       if (leaveRes.status === "fulfilled") {
         setLeaves(unwrapList(leaveRes.value).filter((l: any) => l.status === "PENDING"));
       }
+      if (permissionRes.status === "fulfilled") setPermissions(unwrapList(permissionRes.value).filter((request: any) => isReviewer ? request.status === "PENDING" : true));
       if (otRes.status === "fulfilled") {
         setOvertimes(unwrapList(otRes.value));
       }
@@ -187,6 +196,7 @@ export default function ApprovalsInboxView() {
       }
       if (compRes.status === "fulfilled") setCompOffs(unwrapList(compRes.value));
       if (dayOffRes.status === "fulfilled") setDayOffWork(unwrapList(dayOffRes.value));
+      if (shootRes.status === "fulfilled") setShoots(unwrapList(shootRes.value).filter((request: any) => isReviewer ? request.status === "PENDING" : true));
     } catch (err) {
       console.error("Failed to load approvals inbox:", err);
     } finally {
@@ -197,7 +207,7 @@ export default function ApprovalsInboxView() {
   useEffect(() => {
     loadAllPending();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isReviewer]);
 
   const changeCorrectionFilter = (filter: CorrectionFilter) => {
     setCorrFilter(filter);
@@ -249,6 +259,15 @@ export default function ApprovalsInboxView() {
       true,
     );
 
+  const handleReviewPermission = (id: string, status: "APPROVED" | "REJECTED") =>
+    review(
+      "permission-act",
+      "Processing permission approval...",
+      (s) => `Permission request ${s.toLowerCase()}!`,
+      () => permissionsApi.review(id, { status, note: "Reviewed in approvals inbox" }),
+      status,
+    );
+
   const handleReviewLeave = (id: string, status: "APPROVED" | "REJECTED") =>
     review(
       "leave-act",
@@ -287,6 +306,15 @@ export default function ApprovalsInboxView() {
       status,
     );
 
+  const handleReviewShoot = (id: string, status: "APPROVED" | "REJECTED") =>
+    review(
+      "shoot-act",
+      "Saving shoot decision...",
+      (st) => `Shoot request ${st.toLowerCase()}!`,
+      () => shootRequestsApi.review(id, { status, reviewNote: "Reviewed in approvals inbox" }),
+      status,
+    );
+
   const handleReviewDayOff = (id: string, status: "APPROVED" | "REJECTED") =>
     review(
       "dayoff-act",
@@ -296,15 +324,17 @@ export default function ApprovalsInboxView() {
       status,
     );
 
-  const totalPending = pendingCorrections + leaves.length + overtimes.length + expenses.length + compOffs.length + dayOffWork.length;
+  const totalPending = pendingCorrections + leaves.length + permissions.length + overtimes.length + expenses.length + compOffs.length + dayOffWork.length + shoots.length;
 
   const tabs: { key: ApprovalCategory; label: string; icon: React.ElementType; count: number }[] = [
-    { key: "CORRECTIONS", label: "Punch Regularization", icon: Clock, count: pendingCorrections },
+    { key: "CORRECTIONS", label: "Punch & Shoot Time", icon: Clock, count: pendingCorrections },
     { key: "LEAVES", label: "Leave Requests", icon: CalendarDays, count: leaves.length },
+    { key: "PERMISSIONS", label: "Permission approvals", icon: Clock, count: permissions.length },
     { key: "OVERTIME", label: "Overtime Credits", icon: Layers, count: overtimes.length },
     { key: "EXPENSES", label: "Expense Claims", icon: Wallet, count: expenses.length },
     { key: "COMPOFF", label: "Comp-Off", icon: Sparkles, count: compOffs.length },
     { key: "DAYOFF", label: "Day-off work", icon: CalendarOff, count: dayOffWork.length },
+    { key: "SHOOTS", label: isReviewer ? "Shoot requests" : "My shoot requests", icon: Sparkles, count: shoots.length },
   ];
 
   const emptyNote = (text: string) => <div className="py-12 text-center text-xs text-slate-500">{text}</div>;
@@ -319,7 +349,7 @@ export default function ApprovalsInboxView() {
             Approvals inbox
           </h1>
           <p className="mt-1 text-xs text-slate-500">
-            Centralized decision hub for employee regularization, leave, overtime, and reimbursement requests
+            Centralized decision hub for employee regularization, shoot-time corrections, leave, overtime, and reimbursement requests
           </p>
         </div>
 
@@ -404,12 +434,15 @@ export default function ApprovalsInboxView() {
                     : "No requests found for this filter.",
               )
             ) : (
-              <TableShell heads={["Employee", "Date", "Requested time", "Reason", corrFilter === "PENDING" ? "Action" : "Status"]}>
+              <TableShell heads={["Employee", "Date", "Request type", "Requested time", "Reason", corrFilter === "PENDING" ? "Action" : "Status"]}>
                 {visibleCorrections.map((corr) => (
                   <tr key={corr.id} className={rowClass}>
                     <PersonCell emp={corr.employee} />
                     {/* The day being corrected, not the day the request was filed */}
                     <td className="whitespace-nowrap px-4 py-4 text-xs font-medium text-slate-700">{dayOf(corr.date || corr.attendance?.date)}</td>
+                    <td className="whitespace-nowrap px-4 py-4">
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold ${isShootCorrection(corr) ? "bg-violet-50 text-violet-700 ring-1 ring-violet-200" : "bg-slate-100 text-slate-600 ring-1 ring-slate-200"}`}>{isShootCorrection(corr) ? "Shoot time" : "Attendance"}</span>
+                    </td>
                     <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-600">
                       <span className="font-medium text-slate-900">In</span> {corr.requestedCheckIn ? formatTime(corr.requestedCheckIn) : "—"}
                       <span className="mx-1 text-slate-300">/</span>
@@ -481,6 +514,40 @@ export default function ApprovalsInboxView() {
                   </td>
                   <td className="whitespace-nowrap px-4 py-4 text-xs font-bold text-slate-900">{formatCurrency(Number(claim.amount || 0))}</td>
                   <ActionCell onApprove={() => handleReviewExpense(claim.id, "APPROVED")} onReject={() => handleReviewExpense(claim.id, "REJECTED")} />
+                </tr>
+              ))}
+            </TableShell>
+          )
+        ) : activeTab === "PERMISSIONS" ? (
+          permissions.length === 0 ? (
+            emptyNote(isReviewer ? "No pending permission approvals." : "No permission requests yet.")
+          ) : (
+            <TableShell heads={["Employee", "Date", "Time", "Total", "Reason", "Action"]}>
+              {permissions.map((request) => (
+                <tr key={request.id} className={rowClass}>
+                  <PersonCell emp={request.employee} />
+                  <td className="whitespace-nowrap px-4 py-4 text-xs font-medium text-slate-700">{dayOf(request.date)}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-xs font-semibold text-slate-900">{request.startTime && request.endTime ? `${request.startTime} - ${request.endTime}` : "Legacy hours-only"}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-xs font-semibold text-slate-900">{Number(request.hours || 0)}h</td>
+                  <ReasonCell text={request.reason} />
+                  <ActionCell onApprove={() => handleReviewPermission(request.id, "APPROVED")} onReject={() => handleReviewPermission(request.id, "REJECTED")} />
+                </tr>
+              ))}
+            </TableShell>
+          )
+        ) : activeTab === "SHOOTS" ? (
+          shoots.length === 0 ? (
+            emptyNote(isReviewer ? "No pending shoot requests." : "No shoot requests yet.")
+          ) : (
+            <TableShell heads={["Employee", "Shoot", "Date", "Location", "People", isReviewer ? "Action" : "Status"]}>
+              {shoots.map((req) => (
+                <tr key={req.id} className={rowClass}>
+                  <PersonCell emp={req.employee} />
+                  <td className="px-4 py-4 text-xs font-semibold text-slate-900">{req.shootName}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-xs font-medium text-slate-700">{dayOf(req.date)}</td>
+                  <td className="px-4 py-4 text-xs text-slate-600">{req.location}</td>
+                  <td className="px-4 py-4 text-xs text-slate-600">{(req.participants || []).map((p: any) => personName(p.employee)).join(", ") || personName(req.employee)}</td>
+                  {isReviewer ? <ActionCell onApprove={() => handleReviewShoot(req.id, "APPROVED")} onReject={() => handleReviewShoot(req.id, "REJECTED")} /> : <td className="whitespace-nowrap px-4 py-4 text-right"><StatusBadge status={req.status} /></td>}
                 </tr>
               ))}
             </TableShell>

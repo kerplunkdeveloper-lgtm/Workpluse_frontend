@@ -146,7 +146,7 @@ export function roleLabel(role?: string | null): string {
     case "COMPANY_ADMIN":
       return "Company admin";
     case "MANAGER":
-      return "HR";
+      return "HR / Manager";
     case "EMPLOYEE":
       return "Employee";
     default:

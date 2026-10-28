@@ -111,7 +111,7 @@ export default function LeavesView() {
         leaveTypeId: selectedTypeId,
         startDate,
         endDate,
-        isHalfDay,
+        totalDays: isHalfDay ? 0.5 : undefined,
         reason,
       });
 
@@ -581,14 +581,14 @@ export default function LeavesView() {
                 Apply for Leave
               </h3>
               <button
-                onClick={() => setApplyModalOpen(false)}
+                onClick={() => { setApplyModalOpen(false); setSelectedTypeId(""); setStartDate(""); setEndDate(""); setIsHalfDay(false); setReason(""); }}
                 className="text-slate-400 hover:text-slate-700"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleApplySubmit} className="space-y-4">
+            <form onSubmit={handleApplySubmit} autoComplete="off" className="space-y-4">
               <div>
                 <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
                   Select Leave Category <span className="text-rose-500">*</span>
@@ -669,7 +669,7 @@ export default function LeavesView() {
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
                 <button
                   type="button"
-                  onClick={() => setApplyModalOpen(false)}
+                  onClick={() => { setApplyModalOpen(false); setSelectedTypeId(""); setStartDate(""); setEndDate(""); setIsHalfDay(false); setReason(""); }}
                   className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
                 >
                   Cancel

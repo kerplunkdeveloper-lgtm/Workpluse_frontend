@@ -7,6 +7,7 @@ export type KpiStatus = Exclude<RosterStatus, "ABSENT" | "OFF">;
 interface AttendanceLike {
   status?: string;
   isWfh?: boolean;
+  checkIn?: string | Date | null;
 }
 
 /**

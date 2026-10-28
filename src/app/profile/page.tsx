@@ -163,6 +163,7 @@ export default function ProfilePage() {
 
   const employee = user?.employee;
   const isSuperOrAdmin = ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"].includes(user?.role || "");
+  const canEditBranch = ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"].includes(user?.role || "");
 
   return (
     <ProtectedRoute>
@@ -230,11 +231,15 @@ export default function ProfilePage() {
             </div>
 
             {/* Tab navigation pills */}
-            <div role="tablist" aria-label="Profile sections" className="flex max-w-full flex-wrap items-center gap-1 rounded-2xl border border-slate-200 bg-slate-100/80 p-1 shadow-inner lg:flex-nowrap">
+            <div
+              role="tablist"
+              aria-label="Profile sections"
+              className="flex max-w-full min-w-0 items-center gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-slate-100/80 p-1 shadow-inner [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
               <button
                 onClick={() => setActiveTab("DOCUMENTS")}
                 aria-selected={activeTab === "DOCUMENTS"}
-                role="tab" className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 ${
+                role="tab" className={`flex shrink-0 items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 ${
                   activeTab === "DOCUMENTS"
                     ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
                     : "text-slate-600 hover:bg-white hover:text-slate-900"
@@ -246,7 +251,7 @@ export default function ProfilePage() {
               <button
                 onClick={() => setActiveTab("PROFILE")}
                 aria-selected={activeTab === "PROFILE"}
-                role="tab" className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 ${
+                role="tab" className={`flex shrink-0 items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 ${
                   activeTab === "PROFILE"
                     ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
                     : "text-slate-600 hover:bg-white hover:text-slate-900"
@@ -258,7 +263,7 @@ export default function ProfilePage() {
               <button
                 onClick={() => setActiveTab("EXIT")}
                 aria-selected={activeTab === "EXIT"}
-                role="tab" className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 ${
+                role="tab" className={`flex shrink-0 items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 ${
                   activeTab === "EXIT"
                     ? "bg-rose-600 text-white shadow-md shadow-rose-600/20"
                     : "text-slate-600 hover:bg-white hover:text-slate-900"
@@ -270,7 +275,7 @@ export default function ProfilePage() {
               <button
                 onClick={() => setActiveTab("ASSETS")}
                 aria-selected={activeTab === "ASSETS"}
-                role="tab" className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 ${
+                role="tab" className={`flex shrink-0 items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 ${
                   activeTab === "ASSETS"
                     ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
                     : "text-slate-600 hover:bg-white hover:text-slate-900"
@@ -505,7 +510,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="flex justify-between items-center py-1 border-b border-slate-100 gap-3">
                   <span className="text-slate-500 shrink-0">Work Location / Branch:</span>
-                  {branches.length > 0 ? (
+                  {canEditBranch && branches.length > 0 ? (
                     <select
                       disabled={savingBranch}
                       value={employee?.branchId || employee?.branch?.id || ""}
@@ -589,6 +594,8 @@ export default function ProfilePage() {
                         ...(dob ? { dateOfBirth: dob } : {}),
                         ...(doj ? { dateOfJoining: doj } : {}),
                         phone: toE164India(String(fd.get("phone") || "")),
+                        workEmail: String(fd.get("workEmail") || "").trim(),
+                        personalEmail: String(fd.get("personalEmail") || "").trim(),
                         address: fd.get("address"),
                         emergencyContactName: fd.get("emergencyContactName"),
                         emergencyContactPhone: toE164India(String(fd.get("emergencyContactPhone") || "")),
@@ -610,6 +617,16 @@ export default function ProfilePage() {
                     dateOfBirth={(employee as any)?.dateOfBirth}
                     dateOfJoining={(employee as any)?.dateOfJoining}
                   />
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <label className="block text-xs font-medium text-slate-600">
+                      Office email
+                      <input name="workEmail" type="email" defaultValue={(employee as any)?.workEmail || ""} placeholder="name@company.com" className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" />
+                    </label>
+                    <label className="block text-xs font-medium text-slate-600">
+                      Personal email
+                      <input name="personalEmail" type="email" defaultValue={(employee as any)?.personalEmail || ""} placeholder="name@gmail.com" className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" />
+                    </label>
+                  </div>
                   <PhoneFormField name="phone" defaultValue={employee?.phone} />
                   <input name="address" defaultValue={(employee as any)?.address || ""} placeholder="Address" className="w-full px-3 py-2 rounded-xl border" />
                   <input name="emergencyContactName" defaultValue={(employee as any)?.emergencyContactName || ""} placeholder="Emergency contact" className="w-full px-3 py-2 rounded-xl border" />

@@ -12,7 +12,7 @@ import AttendanceHistoryView from "@/components/attendance/AttendanceHistoryView
 import TeamPunchBoard from "@/components/attendance/TeamPunchBoard";
 import { MyAttendanceInsights, TeamToday } from "@/components/attendance/AttendanceInsights";
 
-const TEAM_ROLES = ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"];
+const TEAM_ROLES = ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"];
 
 export default function AttendancePage() {
   return (
