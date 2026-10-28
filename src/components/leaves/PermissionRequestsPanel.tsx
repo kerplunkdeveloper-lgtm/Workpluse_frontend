@@ -2,11 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import { permissionsApi } from "@/lib/api";
-import { formatCycleDate, PERMISSION_HOUR_OPTIONS } from "@/lib/payrollCycle";
+import { formatCycleDate } from "@/lib/payrollCycle";
 import { Clock, Loader2, Send, Trash2, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { todayLocalKey } from "@/lib/utils";
-import Select from "@/components/ui/Select";
 
 type PermissionRequest = {
   id: string;
@@ -15,6 +14,8 @@ type PermissionRequest = {
   reason: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
   reviewNote?: string | null;
+  startTime?: string;
+  endTime?: string;
   employee?: { firstName: string; lastName?: string | null; employeeCode: string };
 };
 
@@ -39,6 +40,23 @@ const parseDay = (value: string) => {
 };
 
 const todayKey = () => todayLocalKey();
+const durationHours = (start: string, end: string) => {
+  const [sh, sm] = start.split(":").map(Number);
+  const [eh, em] = end.split(":").map(Number);
+  if (![sh, sm, eh, em].every(Number.isFinite)) return 0;
+  return Math.round(((eh * 60 + em) - (sh * 60 + sm)) / 60 * 100) / 100;
+};
+
+const formatClock = (value: string) => {
+  const [hour, minute] = value.split(":").map(Number);
+  const suffix = hour >= 12 ? "PM" : "AM";
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}:${String(minute).padStart(2, "0")} ${suffix}`;
+};
+
+const timeRangeLabel = (request: PermissionRequest) => request.startTime && request.endTime
+  ? `${formatClock(request.startTime)} - ${formatClock(request.endTime)} (${Number(request.hours)} ${Number(request.hours) === 1 ? "hour" : "hours"})`
+  : `${Number(request.hours)}h`;
 
 export default function PermissionRequestsPanel({ canReview }: { canReview: boolean }) {
   const [requests, setRequests] = useState<PermissionRequest[]>([]);
@@ -46,7 +64,8 @@ export default function PermissionRequestsPanel({ canReview }: { canReview: bool
   const [queue, setQueue] = useState<PermissionRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState("");
-  const [hours, setHours] = useState("1");
+  const [startTime, setStartTime] = useState("09:00");
+  const [endTime, setEndTime] = useState("10:00");
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -84,16 +103,19 @@ export default function PermissionRequestsPanel({ canReview }: { canReview: bool
     e.preventDefault();
     if (!date) return toast.error("Pick the date for the permission");
     if (!reason.trim()) return toast.error("Give a reason for the permission");
+    const totalHours = durationHours(startTime, endTime);
+    if (totalHours <= 0) return toast.error("End time must be after start time");
 
     setSubmitting(true);
     try {
-      const res = await permissionsApi.apply({ date, hours: Number(hours), reason: reason.trim() });
+      const res = await permissionsApi.apply({ date, startTime, endTime, reason: reason.trim() });
       if (res?.success) {
         toast.success("Permission request submitted");
         setDate("");
         setReason("");
-        setHours("1");
-        await loadMine();
+        setStartTime("09:00");
+        setEndTime("10:00");
+        await Promise.all([loadMine(), loadQueue()]);
       } else {
         toast.error(res?.message || "Could not submit the request");
       }
@@ -121,7 +143,7 @@ export default function PermissionRequestsPanel({ canReview }: { canReview: bool
 
   const handleReview = async (request: PermissionRequest, status: "APPROVED" | "REJECTED") => {
     const who = request.employee ? `${request.employee.firstName} ${request.employee.lastName || ""}`.trim() : "this employee";
-    if (!window.confirm(`${status === "APPROVED" ? "Approve" : "Reject"} ${Number(request.hours)} hour(s) for ${who} on ${request.date.slice(0, 10)}?`)) {
+    if (!window.confirm(`${status === "APPROVED" ? "Approve" : "Reject"} ${timeRangeLabel(request)} for ${who} on ${request.date.slice(0, 10)}?`)) {
       return;
     }
     setBusyId(request.id);
@@ -179,7 +201,7 @@ export default function PermissionRequestsPanel({ canReview }: { canReview: bool
             </div>
           )}
 
-          <form onSubmit={handleApply} className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs space-y-4">
+          <form onSubmit={handleApply} autoComplete="off" className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs space-y-4">
             <div>
               <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
                 <Clock className="w-4 h-4 text-indigo-600" />
@@ -197,20 +219,19 @@ export default function PermissionRequestsPanel({ canReview }: { canReview: bool
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm"
               />
             </label>
-            <label className="block space-y-1">
-              <span className="text-xs font-semibold text-slate-600 uppercase">Hours</span>
-              <Select
-                value={hours}
-                onChange={(e) => setHours(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white"
-              >
-                {PERMISSION_HOUR_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option} {option === 1 ? "hour" : "hours"}
-                  </option>
-                ))}
-              </Select>
-            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block space-y-1">
+                <span className="text-xs font-semibold text-slate-600 uppercase">Start time</span>
+                <input type="time" step={900} value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm" />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs font-semibold text-slate-600 uppercase">End time</span>
+                <input type="time" step={900} value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm" />
+              </label>
+            </div>
+            <div className="rounded-xl bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-800">
+              Total permission: {durationHours(startTime, endTime) > 0 ? `${durationHours(startTime, endTime)} ${durationHours(startTime, endTime) === 1 ? "hour" : "hours"}` : "—"}
+            </div>
             <label className="block space-y-1">
               <span className="text-xs font-semibold text-slate-600 uppercase">Reason</span>
               <textarea
@@ -243,7 +264,7 @@ export default function PermissionRequestsPanel({ canReview }: { canReview: bool
                 <li key={r.id} className="px-5 py-3 flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-900">
-                      {r.date.slice(0, 10)} · {Number(r.hours)}h
+                      {r.date.slice(0, 10)} · {timeRangeLabel(r)}
                     </p>
                     <p className="text-xs text-slate-500 truncate">{r.reason}</p>
                     {r.reviewNote && <p className="text-xs text-slate-400 mt-0.5">Note: {r.reviewNote}</p>}
@@ -287,7 +308,7 @@ export default function PermissionRequestsPanel({ canReview }: { canReview: bool
                       <span className="ml-2 font-mono text-xs text-indigo-700">{r.employee?.employeeCode}</span>
                     </p>
                     <p className="text-xs text-slate-500">
-                      {r.date.slice(0, 10)} · {Number(r.hours)}h · {r.reason}
+                      {r.date.slice(0, 10)} · {timeRangeLabel(r)} · {r.reason}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

@@ -14,7 +14,7 @@ import EmployeeCombobox, { type EmployeeOption } from "./EmployeeCombobox";
 import AttendanceDateFilter, { ATTENDANCE_RANGES, type AttendanceRangeValue } from "./AttendanceDateFilter";
 import { breakMinutesOf, formatHm, localDateKey, lunchMinutesOf, recordDateKey, statusMeta, workedMinutes } from "./attendanceUtils";
 
-const TEAM_ROLES = ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"];
+const TEAM_ROLES = ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"];
 
 const workModeDisplay = (row: Attendance) => {
   const rawNote = row.wfhNote || "";

@@ -16,7 +16,7 @@ export interface DailyListPerson {
   breakMinutes?: number;
   lunchMinutes?: number;
   location?: string | null;
-  status: "PRESENT" | "REMOTE" | "ON_LEAVE" | "LATE" | "ABSENT" | "OFF";
+  status: "PRESENT" | "REMOTE" | "ON_LEAVE" | "LATE" | "HALF_DAY" | "ABSENT" | "OFF";
 }
 
 interface DailyAttendanceListProps {
@@ -30,7 +30,7 @@ interface DailyAttendanceListProps {
   holidayName?: string | null;
 }
 
-const STATUS_LABEL: Record<string, string> = { PRESENT: "Present", LATE: "Late", REMOTE: "Remote", ON_LEAVE: "On leave", ABSENT: "Absent", OFF: "Day off" };
+const STATUS_LABEL: Record<string, string> = { PRESENT: "Present", LATE: "Late", REMOTE: "Remote", HALF_DAY: "Half day", ON_LEAVE: "On leave", ABSENT: "Absent", OFF: "Day off" };
 
 /**
  * The day's two lists, present and absent, with a PDF. Before 6 pm "absent" means "has not punched in yet",
@@ -47,7 +47,7 @@ export default function DailyAttendanceList({ people, organization, dateKey, loc
     const byName = (a: DailyListPerson, b: DailyListPerson) => a.name.localeCompare(b.name);
     return {
       absent: people.filter((p) => p.status === "ABSENT").sort(byName),
-      present: people.filter((p) => ["PRESENT", "LATE", "REMOTE"].includes(p.status)).sort(byName),
+      present: people.filter((p) => ["PRESENT", "LATE", "REMOTE", "HALF_DAY"].includes(p.status)).sort(byName),
       onLeave: people.filter((p) => p.status === "ON_LEAVE").sort(byName),
     };
   }, [people]);

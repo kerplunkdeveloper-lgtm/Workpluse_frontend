@@ -1,0 +1,1338 @@
+"use client";
+
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
+import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
+import { Activity, Award, ChevronDown, ArrowRight, Building2, CalendarDays, Cake, CheckCircle2, Clock, FileText, Layers, MapPin, MessageSquare, Receipt, Search, ShieldCheck, TrendingDown, TrendingUp, Users, Lock, UserPlus, BarChart3, BellRing, Wallet, RefreshCw, ArrowUpRight } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { useAttendance } from "@/context/AttendanceContext";
+import { attendanceApi, leavesApi, holidaysApi, employeesApi, branchesApi, departmentsApi, offboardingApi } from "@/lib/api";
+import UnlockPlanModal from "@/components/auth/UnlockPlanModal";
+import CompanyLogo from "@/components/ui/CompanyLogo";
+import AnnouncementsCard from "./AnnouncementsCard";
+import PunchConfirmDialog, { PunchConfirmAction } from "@/components/attendance/PunchConfirmDialog";
+import { formatHm, liveWorkedMs } from "@/components/attendance/attendanceUtils";
+import { formatTime, formatDurationMinutes, unwrapList, unwrapItem } from "@/lib/utils";
+
+import { dashboardCounts, rosterStatusFor, type KpiStatus } from "./dashboardMetrics";
+import { RosterPerson, QuickAction } from "./dashboardTypes";
+import { KPI_META, greetingFor, timeContextBadge, personName, isTodayRecord, leaveCoversDay } from "./dashboardUtils";
+import { LiveClock } from "./LiveClock";
+
+export default function DashboardOverview() {
+  const { user, role, refreshUser } = useAuth();
+  const {
+    todayStatus,
+    checkIn,
+    checkOut,
+    isActionLoading,
+    currentLocation,
+    locationLabel,
+    isWithinGeofence,
+  } = useAttendance();
+
+  const [summary, setSummary] = useState<any>(null);
+  const [recentAttendance, setRecentAttendance] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [employeeTotal, setEmployeeTotal] = useState(0);
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
+  const [activeBreakdownTab, setActiveBreakdownTab] = useState<KpiStatus | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  // Branch filter for the staff list. The dashboard only preloads the first 200 people, so a chosen branch
+  // loads its own complete list from the server instead of trimming that partial one.
+  const [branchOptions, setBranchOptions] = useState<{ id: string; name: string }[]>([]);
+  const [branchFilter, setBranchFilter] = useState("ALL");
+  const [branchRoster, setBranchRoster] = useState<RosterPerson[] | null>(null);
+  const [branchRosterLoading, setBranchRosterLoading] = useState(false);
+  const [allAttendance, setAllAttendance] = useState<any[]>([]);
+  const [allLeaves, setAllLeaves] = useState<any[]>([]);
+  const [allEmployees, setAllEmployees] = useState<any[]>([]);
+  const [orgCounts, setOrgCounts] = useState<{ branches: number | null; departments: number | null }>({ branches: null, departments: null });
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [pendingPunch, setPendingPunch] = useState<PunchConfirmAction | null>(null);
+  const [selectedQuickAction, setSelectedQuickAction] = useState<QuickAction | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  // Server-side "today" the lists were last built for, and a guard so a slow
+  // network never stacks overlapping live refreshes.
+  const loadedDayRef = useRef<string | null>(null);
+  const refreshInFlightRef = useRef(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const isPlanLocked = Boolean(user?.planLocked || user?.organization?.planLocked);
+  const isAdmin = role === "COMPANY_ADMIN" || role === "SUPER_ADMIN";
+  const canManage = isAdmin || role === "MANAGER";
+  const [noticeSummary, setNoticeSummary] = useState<any>(null);
+  const [employeeHolidays, setEmployeeHolidays] = useState<any[]>([]);
+  const [employeeLeaves, setEmployeeLeaves] = useState<any[]>([]);
+
+  /**
+   * `silent` is the once-a-minute live refresh: it only re-reads today's summary
+   * and punches, and escalates to a full reload when the server's day rolls over.
+   */
+  const loadDashboardData = async (silent = false): Promise<void> => {
+    if (silent && !canManage) return;
+    if (!silent) {
+      setLoading(true);
+      setLoadError(null);
+    }
+    try {
+      // Render the shell from the small, high-value requests first. The summary
+      // is manager-only (employees would just get a 403), and it is the source of
+      // truth for the tenant's "today".
+      const [summaryRes, historyRes] = await Promise.allSettled([
+        canManage ? attendanceApi.getSummary(undefined, undefined, { background: silent }) : Promise.resolve(null),
+        silent ? Promise.resolve(null) : attendanceApi.getMyAttendance({ limit: 5, page: 1 }),
+      ]);
+      let todayKey: string | undefined;
+      if (summaryRes.status === "fulfilled" && summaryRes.value) {
+        const summaryData = unwrapItem(summaryRes.value) || summaryRes.value;
+        todayKey = typeof summaryData?.date === "string" ? summaryData.date : undefined;
+        if (silent && todayKey && loadedDayRef.current && todayKey !== loadedDayRef.current) {
+          // A new day started while the page stayed open: rebuild every list.
+          await loadDashboardData();
+          return;
+        }
+        if (!silent) loadedDayRef.current = todayKey ?? null;
+        setSummary(summaryData);
+      }
+      if (historyRes.status === "fulfilled" && historyRes.value) {
+        setRecentAttendance(unwrapList(historyRes.value).slice(0, 5));
+      }
+
+      // Only today's rows: without the date the API returns every day ever
+      // recorded, newest first, so older days crowd today out of the page.
+      const attendanceParams = { page: 1, limit: 200, ...(todayKey ? { date: todayKey } : {}) };
+      if (silent) {
+        const liveRes = await Promise.allSettled([attendanceApi.getAllAttendance(attendanceParams, { background: true })]);
+        if (liveRes[0].status === "fulfilled" && liveRes[0].value) setAllAttendance(unwrapList(liveRes[0].value));
+        return;
+      }
+
+      // Do not block first paint on large workforce lists. These hydrate charts,
+      // rosters, and people moments after the dashboard is already usable.
+      setLoading(false);
+      const [allAttendanceRes, leavesRes, employeesRes, branchesRes, departmentsRes] = canManage
+        ? await Promise.allSettled([
+            attendanceApi.getAllAttendance(attendanceParams),
+            // The list endpoint returns the newest 50 of every status; ask for what the dashboard needs.
+            Promise.all([
+              leavesApi.getAllLeaves({ status: "PENDING", limit: 200 }),
+              leavesApi.getAllLeaves({ status: "APPROVED", limit: 200 }),
+            ]).then(([pending, approved]) => ({ data: [...unwrapList(pending), ...unwrapList(approved)] })),
+            employeesApi.list({ page: 1, limit: 200, status: "WORKING" }),
+            branchesApi.list(),
+            departmentsApi.list(),
+          ])
+        : [
+            { status: "fulfilled", value: null },
+            { status: "fulfilled", value: null },
+            { status: "fulfilled", value: null },
+            { status: "fulfilled", value: null },
+            { status: "fulfilled", value: null },
+          ];
+
+      if (branchesRes.status === "fulfilled" && branchesRes.value) {
+        setBranchOptions(unwrapList(branchesRes.value).map((b: any) => ({ id: String(b.id), name: String(b.name) })).sort((a: any, b: any) => a.name.localeCompare(b.name)));
+      }
+      setOrgCounts((current) => ({
+        branches: branchesRes.status === "fulfilled" ? unwrapList(branchesRes.value).length : current.branches,
+        departments: departmentsRes.status === "fulfilled" ? unwrapList(departmentsRes.value).length : current.departments,
+      }));
+      if (allAttendanceRes.status === "fulfilled" && allAttendanceRes.value) {
+        setAllAttendance(unwrapList(allAttendanceRes.value));
+      }
+      if (leavesRes.status === "fulfilled" && leavesRes.value) {
+        setAllLeaves(unwrapList(leavesRes.value));
+      }
+      if (employeesRes.status === "fulfilled" && employeesRes.value) {
+        const empList = unwrapList(employeesRes.value);
+        setAllEmployees(empList);
+        setEmployeeTotal(
+          Number((employeesRes.value as any)?.total ?? (employeesRes.value as any)?.pagination?.total ?? empList.length),
+        );
+      }
+      if (!canManage) {
+        const [holidayRes, leaveRes] = await Promise.allSettled([
+          holidaysApi.upcoming({ limit: 4 }),
+          leavesApi.getMyLeaves(),
+        ]);
+        if (holidayRes.status === "fulfilled" && holidayRes.value) setEmployeeHolidays(unwrapList(holidayRes.value));
+        if (leaveRes.status === "fulfilled" && leaveRes.value) setEmployeeLeaves(unwrapList(leaveRes.value));
+      }
+      if (canManage) {
+        try {
+          const noticeRes = await offboardingApi.noticeSummary();
+          setNoticeSummary(noticeRes?.data || null);
+        } catch {
+          // The notice-period card is optional; the rest of the dashboard still renders.
+        }
+      }
+    } catch (err: any) {
+      console.error("Dashboard data load error:", err);
+      setLoadError("Could not load latest live metrics. Please refresh.");
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [canManage]);
+
+  // Keep the "live" numbers live, and fresh for a new day: refresh every minute
+  // and whenever the tab becomes visible again after sitting in the background.
+  useEffect(() => {
+    if (!canManage) return;
+    const refresh = () => {
+      if (document.visibilityState !== "visible" || refreshInFlightRef.current) return;
+      refreshInFlightRef.current = true;
+      loadDashboardData(true).finally(() => {
+        refreshInFlightRef.current = false;
+      });
+    };
+    const timer = setInterval(refresh, 60_000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [canManage]);
+
+  const handleManualRefresh = () => {
+    setIsRefreshing(true);
+    loadDashboardData();
+  };
+
+  // The tenant's "today" as reported by the server; the browser's own calendar
+  // day is only a fallback until the first summary arrives.
+  const localDayKey = `${currentTime.getFullYear()}-${String(currentTime.getMonth() + 1).padStart(2, "0")}-${String(currentTime.getDate()).padStart(2, "0")}`;
+  const todayKey = typeof summary?.date === "string" ? summary.date : localDayKey;
+
+  // Build live Roster
+  const buildRoster = useCallback((employees: any[], attendanceRows: any[]): RosterPerson[] => {
+    if (!employees.length) return [];
+
+    const attendanceByEmpId = new Map<string, any>();
+    attendanceRows.forEach((att) => {
+      if (isTodayRecord(att, todayKey)) {
+        attendanceByEmpId.set(att.employeeId, att);
+      }
+    });
+
+    // A leave that began earlier still covers today, so match the whole range.
+    const leaveByEmpId = new Map<string, any>();
+    allLeaves.forEach((leave) => {
+      if (leave.status === "APPROVED" && leaveCoversDay(leave, todayKey)) {
+        leaveByEmpId.set(leave.employeeId, leave);
+      }
+    });
+
+    return employees.map((emp) => {
+      const att = attendanceByEmpId.get(emp.id);
+      const leave = leaveByEmpId.get(emp.id);
+
+      const status = rosterStatusFor(att, Boolean(leave), Boolean(summary?.isHoliday));
+      const checkInTime = att?.checkIn ? formatTime(att.checkIn) : undefined;
+      const checkOutTime = att?.checkOut ? formatTime(att.checkOut) : undefined;
+
+      return {
+        id: emp.id,
+        name: personName(emp),
+        employeeCode: emp.employeeCode || emp.code,
+        designation: emp.designation || "Staff",
+        department: emp.department?.name || (typeof emp.department === "string" ? emp.department : "General"),
+        checkInTime,
+        checkOutTime,
+        breakMinutes: Number(att?.breakMinutes ?? att?.totalBreakMinutes ?? 0),
+        lunchMinutes: Number(att?.lunchMinutes ?? att?.totalLunchMinutes ?? 0),
+        location: att?.checkInLocation || att?.location || null,
+        branchName: emp.branch?.name || undefined,
+        status,
+      };
+    });
+  }, [allLeaves, todayKey, summary?.isHoliday]);
+
+  const roster: RosterPerson[] = useMemo(() => buildRoster(allEmployees, allAttendance), [buildRoster, allEmployees, allAttendance]);
+
+  // Choosing a branch loads everyone assigned to it and today's attendance for them.
+  useEffect(() => {
+    if (branchFilter === "ALL" || !canManage || !activeBreakdownTab) {
+      setBranchRoster(null);
+      return;
+    }
+    let cancelled = false;
+    setBranchRosterLoading(true);
+    Promise.all([
+      employeesApi.list({ page: 1, limit: 500, status: "WORKING", branchId: branchFilter }),
+      attendanceApi.getAllAttendance({ page: 1, limit: 500, employeeBranchId: branchFilter, ...(todayKey ? { date: todayKey } : {}) }),
+    ])
+      .then(([empRes, attRes]) => {
+        if (!cancelled) setBranchRoster(buildRoster(unwrapList(empRes), unwrapList(attRes)));
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setBranchRoster([]);
+          toast.error("Could not load that branch. Please try again.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setBranchRosterLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [branchFilter, canManage, activeBreakdownTab, todayKey, buildRoster]);
+
+  const counts = dashboardCounts(summary, roster, employeeTotal || allEmployees.length);
+  const totalEmployees = counts.total;
+  const presentCount = counts.present;
+  const wfhCount = counts.wfh;
+  const leaveCount = counts.onLeave;
+  const lateCount = counts.late;
+  const pendingLeaves = allLeaves.filter((leave) => leave.status === "PENDING").length;
+
+  const pct = (count: number) => (totalEmployees > 0 ? ((count / totalEmployees) * 100).toFixed(1) : "0.0");
+  const presentPercentage = pct(presentCount);
+  const wfhPercentage = pct(wfhCount);
+  const leavePercentage = pct(leaveCount);
+  const latePercentage = pct(lateCount);
+
+  const completionPercent = counts.turnoutPercent;
+  const completedCount = presentCount + lateCount;
+  const inProgressCount = wfhCount;
+  const notStartedCount = counts.notStarted;
+
+  const displayName = user?.employee?.firstName || user?.email?.split("@")[0] || "User";
+  const employeeUpcomingHolidays = employeeHolidays
+    .filter((holiday) => holiday?.date && new Date(holiday.date).getTime() >= new Date().setHours(0, 0, 0, 0))
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, 3);
+  const employeeLeaveUpdates = employeeLeaves
+    .slice()
+    .sort((a, b) => new Date(b.createdAt || b.startDate || 0).getTime() - new Date(a.createdAt || a.startDate || 0).getTime())
+    .slice(0, 3);
+  const formattedDate = currentTime.toLocaleDateString("en-IN", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  const totalBranches = orgCounts.branches ?? ((user?.organization as any)?.branches?.length || 1);
+  const uniqueDepartments = useMemo(() => {
+    const names = new Set<string>();
+    allEmployees.forEach((employee: any) => {
+      if (employee.department?.name) names.add(employee.department.name);
+      else if (typeof employee.department === "string") names.add(employee.department);
+    });
+    return names.size || 1;
+  }, [allEmployees]);
+
+  const genderAnalytics = useMemo(() => {
+    const counts = { male: 0, female: 0, unspecified: 0 };
+    allEmployees.forEach((employee: any) => {
+      const gender = String(employee.gender || employee.profile?.gender || "").trim().toLowerCase();
+      if (gender === "male" || gender === "m") counts.male += 1;
+      else if (gender === "female" || gender === "f") counts.female += 1;
+      else counts.unspecified += 1;
+    });
+    const total = counts.male + counts.female + counts.unspecified;
+    return {
+      ...counts,
+      total,
+      malePercent: total ? Math.round((counts.male / total) * 100) : 0,
+      femalePercent: total ? Math.round((counts.female / total) * 100) : 0,
+      unspecifiedPercent: total ? Math.round((counts.unspecified / total) * 100) : 0,
+    };
+  }, [allEmployees]);
+
+  const hasCheckedInToday = Boolean(todayStatus?.hasCheckedIn || todayStatus?.attendance?.checkIn);
+  const hasCheckedOutToday = Boolean(todayStatus?.hasCheckedOut || todayStatus?.attendance?.checkOut);
+  const isCheckedIn = hasCheckedInToday && !hasCheckedOutToday;
+  const todayCheckInTime = todayStatus?.attendance?.checkIn ? formatTime(todayStatus.attendance.checkIn) : null;
+  const todayCheckOutTime = todayStatus?.attendance?.checkOut ? formatTime(todayStatus.attendance.checkOut) : null;
+  const todayWorkingMinutes = (todayStatus?.attendance as any)?.workingMinutes ?? todayStatus?.attendance?.workMinutes;
+  // Worked minutes are only stored at punch-out, so while the shift runs the
+  // figure is derived live from the punch-in time (minus breaks).
+  const todayShiftHours = isCheckedIn
+    ? formatHm(liveWorkedMs(todayStatus?.attendance, Boolean(todayStatus?.isOnBreak), currentTime.getTime()) / 60000)
+    : todayWorkingMinutes !== null && todayWorkingMinutes !== undefined
+    ? formatDurationMinutes(Number(todayWorkingMinutes))
+    : "0m";
+
+  const filteredRoster = useMemo(() => {
+    if (!activeBreakdownTab) return [];
+    const q = searchQuery.trim().toLowerCase();
+    const source = branchFilter === "ALL" ? roster : branchRoster || [];
+    return source.filter((person) => {
+      if (person.status !== activeBreakdownTab) return false;
+      if (!q) return true;
+      return (
+        person.name.toLowerCase().includes(q) ||
+        person.department.toLowerCase().includes(q) ||
+        (person.employeeCode || "").toLowerCase().includes(q)
+      );
+    });
+  }, [activeBreakdownTab, roster, branchRoster, branchFilter, searchQuery]);
+
+  const hourlyData = useMemo(() => {
+    // Two-hour windows (6-8am ... 8-10pm). Earlier and later punches fall into the first and last window.
+    const buckets = [
+      { time: "6-8am", hour: 6, count: 0 },
+      { time: "8-10am", hour: 8, count: 0 },
+      { time: "10-12pm", hour: 10, count: 0 },
+      { time: "12-2pm", hour: 12, count: 0 },
+      { time: "2-4pm", hour: 14, count: 0 },
+      { time: "4-6pm", hour: 16, count: 0 },
+      { time: "6-8pm", hour: 18, count: 0 },
+      { time: "8-10pm", hour: 20, count: 0 },
+    ];
+    const addClockIns = (hour: number, count: number) => {
+      const index = Math.min(buckets.length - 1, Math.max(0, Math.floor((hour - 6) / 2)));
+      buckets[index].count += count;
+    };
+    // The server counts today's clock-ins by the tenant's local hour. Rows are
+    // only a fallback for a backend that predates that field, and are limited to today.
+    const serverHourly: unknown = summary?.hourlyCheckIns;
+    if (Array.isArray(serverHourly) && serverHourly.length === 24) {
+      serverHourly.forEach((count, hour) => {
+        if (Number(count) > 0) addClockIns(hour, Number(count));
+      });
+    } else {
+      allAttendance.forEach((att) => {
+        if (att.checkIn && isTodayRecord(att, todayKey)) addClockIns(new Date(att.checkIn).getHours(), 1);
+      });
+    }
+    const maxCount = Math.max(...buckets.map((b) => b.count), 0);
+    return buckets.map((b) => ({ ...b, peak: maxCount > 0 && b.count === maxCount }));
+  }, [summary, allAttendance, todayKey]);
+  // Sum of the bars, so the headline number always matches the chart under it.
+  const clockInsToday = hourlyData.reduce((sum, bucket) => sum + bucket.count, 0);
+
+  const kpis = canManage ? [
+    { key: "PRESENT" as const, count: presentCount, percent: presentPercentage },
+    { key: "REMOTE" as const, count: wfhCount, percent: wfhPercentage },
+    { key: "ON_LEAVE" as const, count: leaveCount, percent: leavePercentage },
+    { key: "LATE" as const, count: lateCount, percent: latePercentage },
+  ] : [];
+
+  const absentCount = counts.notStarted;
+  const chartTotal = Math.max(1, presentCount + wfhCount + leaveCount + lateCount + absentCount);
+  const pieStops = (() => {
+    const colors = ["#10b981", "#8b5cf6", "#38bdf8", "#f59e0b", "var(--color-slate-300)"];
+    const values = [presentCount, wfhCount, leaveCount, lateCount, absentCount];
+    let cursor = 0;
+    return values.map((value, index) => {
+      const start = cursor;
+      cursor += (value / chartTotal) * 360;
+      return `${colors[index]} ${start}deg ${cursor}deg`;
+    }).join(", ");
+  })();
+
+  const trendPoints = hourlyData.map((item, index) => {
+    const max = Math.max(...hourlyData.map((entry) => entry.count), 1);
+    const x = (index / Math.max(hourlyData.length - 1, 1)) * 560 + 20;
+    const y = 142 - (item.count / max) * 106;
+    return `${x},${y}`;
+  }).join(" ");
+
+  const peopleMoments = useMemo(() => {
+    const year = currentTime.getFullYear();
+    const now = new Date(year, currentTime.getMonth(), currentTime.getDate());
+    const getNextDate = (value: string | Date | undefined) => {
+      if (!value) return null;
+      const source = new Date(value);
+      if (Number.isNaN(source.getTime())) return null;
+      let date = new Date(year, source.getMonth(), source.getDate());
+      if (date < now) date = new Date(year + 1, source.getMonth(), source.getDate());
+      return date;
+    };
+    const getNextAnniversary = (value: string | Date | undefined) => {
+      if (!value) return null;
+      const source = new Date(value);
+      if (Number.isNaN(source.getTime())) return null;
+
+      // Do not show an anniversary until the employee has completed one full year.
+      const firstAnniversary = new Date(source.getFullYear() + 1, source.getMonth(), source.getDate());
+      if (firstAnniversary > now) return null;
+
+      let date = new Date(year, source.getMonth(), source.getDate());
+      if (date < now) date = new Date(year + 1, source.getMonth(), source.getDate());
+      return date;
+    };
+    const moments: Array<{ id: string; name: string; type: "Birthday" | "Work anniversary"; date: Date; month: string; day: number }> = [];
+    allEmployees.forEach((employee: any, index) => {
+      const name = personName(employee);
+      const birthday = getNextDate(employee.dateOfBirth || employee.dob);
+      const joining = getNextAnniversary(employee.dateOfJoining || employee.joiningDate || employee.hireDate);
+      if (birthday) moments.push({ id: `${employee.id || index}-birthday`, name, type: "Birthday", date: birthday, month: birthday.toLocaleDateString("en-IN", { month: "long" }), day: birthday.getDate() });
+      if (joining) moments.push({ id: `${employee.id || index}-anniversary`, name, type: "Work anniversary", date: joining, month: joining.toLocaleDateString("en-IN", { month: "long" }), day: joining.getDate() });
+    });
+    return moments.sort((a, b) => a.date.getTime() - b.date.getTime());
+  }, [allEmployees, currentTime]);
+
+  const momentMonths = useMemo(() => Array.from(new Set(peopleMoments.map((moment) => moment.month))), [peopleMoments]);
+  const nextPeopleMoments = peopleMoments.slice(0, 6);
+  const canSeePeopleNotifications = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER";
+  const tomorrowBirthdays = peopleMoments.filter((moment) => {
+    if (moment.type !== "Birthday") return false;
+    const today = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate());
+    const daysUntil = Math.round((moment.date.getTime() - today.getTime()) / 86400000);
+    return daysUntil === 1;
+  });
+
+  const quickActions: QuickAction[] = [
+    {
+      href: "/attendance",
+      label: "Attendance",
+      hint: "Punch history",
+      icon: Clock,
+      tone: "bg-indigo-50 text-indigo-600 border border-indigo-100",
+      details: [
+        "View daily punch-in and punch-out records",
+        "Review work hours and attendance history",
+        "Track location and work-from-home punches",
+      ],
+    },
+    {
+      href: "/leaves",
+      label: "Leaves",
+      hint: pendingLeaves ? `${pendingLeaves} pending` : "Apply or review",
+      icon: CalendarDays,
+      tone: "bg-emerald-50 text-emerald-600 border border-emerald-100",
+      details: [
+        "Apply for planned or emergency leave",
+        "See leave balances and approval status",
+        "Review the team leave calendar",
+      ],
+    },
+    {
+      href: "/payroll",
+      label: "Payroll",
+      hint: "Payslips",
+      icon: Receipt,
+      tone: "bg-sky-50 text-sky-600 border border-sky-100",
+      details: [
+        "View monthly salary and payslip records",
+        "Review earnings, deductions, and net pay",
+        "Download available payslips in PDF",
+      ],
+    },
+    {
+      href: "/expenses",
+      label: "Expenses",
+      hint: "Claims",
+      icon: FileText,
+      tone: "bg-amber-50 text-amber-600 border border-amber-100",
+      details: [
+        "Submit reimbursement claims with receipts",
+        "Track pending, approved, and rejected claims",
+        "Review expense history and payment status",
+      ],
+    },
+    {
+      href: "/chat",
+      label: "Team Chat",
+      hint: "Channels & DMs",
+      icon: MessageSquare,
+      tone: "bg-violet-50 text-violet-600 border border-violet-100",
+      details: [
+        "Direct messages with colleagues",
+        "Dedicated department channels",
+        "Live team notifications",
+      ],
+    },
+    {
+      href: "/overtime",
+      label: "Overtime",
+      hint: "Extra hours",
+      icon: Layers,
+      tone: "bg-rose-50 text-rose-600 border border-rose-100",
+      details: [
+        "Record extra working hours",
+        "Submit overtime for approval",
+        "Track approved overtime and comp-off balances",
+      ],
+    },
+    ...(canManage
+      ? [
+          {
+            href: "/approvals",
+            label: "Approvals",
+            hint: pendingLeaves ? `${pendingLeaves} waiting` : "HR inbox",
+            icon: ShieldCheck,
+            tone: "bg-teal-50 text-teal-700 border border-teal-100",
+            details: [
+              "Review pending leave and expense requests",
+              "Approve, reject, or request corrections",
+              "Keep an audited record of manager decisions",
+            ],
+          },
+          {
+            href: "/employees",
+            label: "People Directory",
+            hint: `${totalEmployees} staff`,
+            icon: Users,
+            tone: "bg-blue-50 text-blue-600 border border-blue-100",
+            details: [
+              "Full employee directory with search & filters",
+              "Bulk import staff via Excel / CSV",
+              "Manage roles, departments, shifts, and branches",
+            ],
+          },
+          {
+            href: "/reports",
+            label: "Reports",
+            hint: "PDF & CSV",
+            icon: BarChart3,
+            tone: "bg-slate-100 text-slate-800 border border-slate-200",
+            details: [
+              "Review attendance and workforce summaries",
+              "Filter records by employee, branch, or date",
+              "Export monthly muster rolls and daily attendance",
+            ],
+          },
+        ]
+      : []),
+    ...(isAdmin
+      ? [
+          {
+            href: "/onboarding",
+            label: "Onboarding",
+            hint: "New joiners",
+            icon: UserPlus,
+            tone: "bg-fuchsia-50 text-fuchsia-600 border border-fuchsia-100",
+            details: [
+              "Track new-hire onboarding progress",
+              "Collect joining documents and credentials",
+              "Monitor offer, review, and account activation stages",
+            ],
+          },
+        ]
+      : []),
+    {
+      href: "/loans",
+      label: "Salary Loans",
+      hint: "EMI Advances",
+      icon: Wallet,
+      tone: "bg-lime-50 text-lime-700 border border-lime-100",
+      details: [
+        "Submit salary advance requests",
+        "Track repayment schedules and EMI deductions",
+        "Review approval status and balances",
+      ],
+    },
+  ];
+
+  const timeBadge = timeContextBadge(currentTime);
+
+  if (loading) {
+    return (
+      <div className="space-y-6 max-w-[1440px] mx-auto animate-pulse">
+        <div className="h-56 rounded-3xl bg-slate-200/80" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="h-36 rounded-3xl bg-slate-200/80" />
+          ))}
+        </div>
+        <div className="h-96 rounded-3xl bg-slate-200/80" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="wp-dashboard-v2 space-y-7 max-w-[1480px] mx-auto pb-8">
+      {/* Load error banner if any */}
+      {loadError && (
+        <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center justify-between">
+          <span>{loadError}</span>
+          <button
+            onClick={handleManualRefresh}
+            className="underline font-semibold hover:text-rose-900"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Plan lock warning */}
+      {isPlanLocked && (
+        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white shadow-xl shadow-orange-500/15 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
+              <Lock className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="font-bold text-sm">Enterprise Workspace Requires Plan Unlock</p>
+              <p className="text-xs text-white/90">
+                Enter your subscription unlock code to activate payroll, multi-branch geofencing, and muster roll PDF exports.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowUnlockModal(true)}
+            className="px-4 py-2.5 text-sm font-semibold rounded-2xl bg-white text-orange-700 shadow-md hover:bg-orange-50 transition"
+          >
+            Enter Unlock Code
+          </button>
+        </div>
+      )}
+
+
+      <section className="wp-dashboard-hero relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white p-6 sm:p-9 shadow-2xl border border-slate-800">
+        {/* Subtle decorative background glow patterns */}
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 -mb-20 w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 grid gap-6 xl:grid-cols-[1fr_330px] items-center">
+          {/* Left Column: Greeting, Time, Workspace Statistics */}
+          <div className="space-y-5 min-w-0">
+            {/* Top pill bar */}
+            <div className="flex flex-wrap items-center gap-2.5 text-xs">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-slate-200 text-xs font-medium">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                Live workspace
+              </span>
+
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${timeBadge.color}`}>
+                <span>{timeBadge.icon}</span>
+                {timeBadge.text}
+              </span>
+
+              <span className="hidden sm:inline text-slate-500">•</span>
+              <span className="text-slate-400 text-xs">{formattedDate}</span>
+              <span className="font-semibold tabular-nums text-indigo-200 bg-white/[0.06] px-2.5 py-0.5 rounded-lg ring-1 ring-white/10 text-xs">
+                <LiveClock />
+              </span>
+
+              <button
+                type="button"
+                onClick={handleManualRefresh}
+                title="Refresh metrics"
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition ml-auto"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-indigo-400" : ""}`} />
+              </button>
+            </div>
+
+            {/* Title & Organization Subtitle */}
+         <div>
+  <h1 className="text-[26px] sm:text-[32px] font-semibold tracking-[-0.035em] text-white flex items-center gap-3">
+    {greetingFor(currentTime)}, {displayName}
+  </h1>
+
+  <p className="text-xs sm:text-sm text-slate-300 mt-2 max-w-2xl leading-relaxed">
+    Workforce operations, real-time presence, and team payroll — active for
+  </p>
+
+  <div className="mt-2">
+    <span className="inline-flex items-center gap-2 rounded-full bg-white/10 py-1 pl-1 pr-3 ring-1 ring-white/15 text-white font-semibold text-sm">
+      <CompanyLogo
+        name={user?.organization?.name || "Workspace"}
+        logoUrl={user?.organization?.logoUrl}
+        size="xs"
+        className="!rounded-full"
+      />
+      <span>
+        {user?.organization?.name || "Your Workspace"}
+      </span>
+    </span>
+  </div>
+</div>
+            {/* Metric Snapshot Chips */}
+            <div className={`grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1 ${canManage ? "" : "hidden"}`}>
+              {[
+                { icon: Users, value: totalEmployees, label: "Total Employees", color: "text-indigo-400" },
+                { icon: Building2, value: totalBranches, label: "Branches", color: "text-emerald-400" },
+                { icon: Layers, value: orgCounts.departments ?? uniqueDepartments, label: "Departments", color: "text-amber-400" },
+                { icon: Activity, value: `${completionPercent}%`, label: "Turnout Today", color: "text-sky-400" },
+              ].map((chip) => (
+                <div
+                  key={chip.label}
+                  className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.07] backdrop-blur-md border border-white/10 hover:bg-white/[0.12] transition"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+                    <chip.icon className={`w-4 h-4 ${chip.color}`} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-base sm:text-lg font-semibold tabular-nums tracking-[-0.02em] text-white leading-tight">{chip.value}</p>
+                    <p className="text-xs text-slate-400 font-medium truncate">{chip.label}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right Column: Personal Attendance & Punch Action Widget */}
+          <div className="rounded-3xl bg-white/10 backdrop-blur-xl border border-white/15 p-5 sm:p-6 space-y-4 shadow-xl">
+            <div className="flex min-w-0 items-center justify-between gap-3 text-xs">
+              <span className="flex min-w-0 flex-1 items-center gap-1.5 font-semibold text-slate-200">
+                <MapPin className={`w-4 h-4 ${isWithinGeofence ? "text-emerald-400" : "text-amber-400"}`} />
+                <span className="min-w-0 truncate">
+                  {(() => {
+                    const rawLoc = todayStatus?.attendance?.checkInLocation;
+                    const cleanLoc = rawLoc && !/^ward\s+\d+/i.test(rawLoc) ? rawLoc : null;
+                    if (isCheckedIn || hasCheckedOutToday) {
+                      return cleanLoc || user?.employee?.branch?.name || "Punched in";
+                    }
+                    return user?.employee?.branch?.name
+                      ? `${user.employee.branch.name}${isWithinGeofence ? " (In office zone)" : ""}`
+                      : (isWithinGeofence ? "Office zone verified" : "Anywhere Punch");
+                  })()}
+                </span>
+              </span>
+
+              <span
+                className={`flex min-h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold leading-none ${
+                  isCheckedIn
+                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                    : hasCheckedOutToday
+                    ? "bg-slate-500/20 text-slate-300 border border-slate-500/40"
+                    : "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                }`}
+              >
+                {isCheckedIn ? "On shift" : hasCheckedOutToday ? "Shift ended" : "Not in"}
+              </span>
+            </div>
+
+            {/* Active shift hours tracker */}
+            <dl className="grid grid-cols-3 divide-x divide-white/10 rounded-2xl bg-black/20 ring-1 ring-white/10">
+              <div className="min-w-0 px-2.5 py-3">
+                <dt className="whitespace-nowrap text-[11px] font-medium text-slate-400">Worked</dt>
+                <dd className="mt-0.5 truncate text-sm font-semibold tabular-nums text-white">{todayShiftHours}</dd>
+              </div>
+              <div className="min-w-0 px-2.5 py-3">
+                <dt className="whitespace-nowrap text-[11px] font-medium text-slate-400">Punched in</dt>
+                <dd className="mt-0.5 truncate text-sm font-semibold tabular-nums text-white">{todayCheckInTime || "—"}</dd>
+              </div>
+              <div className="min-w-0 px-2.5 py-3">
+                <dt className="whitespace-nowrap text-[11px] font-medium text-slate-400">Punched out</dt>
+                <dd className="mt-0.5 truncate text-sm font-semibold tabular-nums text-white">{todayCheckOutTime || "—"}</dd>
+              </div>
+            </dl>
+
+            {/* Primary Action Button */}
+            {!isCheckedIn ? (
+              <button
+                type="button"
+                onClick={() => setPendingPunch("CHECK_IN")}
+                disabled={isActionLoading || hasCheckedOutToday}
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 text-white font-semibold text-sm shadow-lg shadow-indigo-600/30 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                <Clock className="w-4 h-4" />
+                {hasCheckedOutToday ? "Shift completed" : todayStatus?.approvedShoot ? "Shoot In" : "Punch in"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setPendingPunch("CHECK_OUT")}
+                disabled={isActionLoading}
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-400 hover:to-rose-500 text-white font-semibold text-sm shadow-lg shadow-rose-600/30 transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <Clock className="w-4 h-4" />
+                {todayStatus?.approvedShoot ? "Shoot Out" : "Punch out"}
+              </button>
+            )}
+
+            {/* Quick Staff Fast-Links */}
+            <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+              <Link
+                href="/leaves"
+                className="rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 px-3 py-2 text-center font-semibold text-slate-100 transition"
+              >
+                Apply leave {pendingLeaves > 0 && `(${pendingLeaves})`}
+              </Link>
+              <Link
+                href="/payroll"
+                className="rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 px-3 py-2 text-center font-semibold text-slate-100 transition"
+              >
+                My payslips
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <AnnouncementsCard />
+
+      {!canManage && (
+        <section className="grid gap-4 lg:grid-cols-[1.25fr_1fr_1fr]" aria-label="Employee workspace highlights">
+          <article className="rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-emerald-50 p-5 shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">Your WorkPluse</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">Everything for your workday</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">Track attendance, request leave, view payslips, and stay updated from one simple employee workspace.</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link href="/attendance" className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white hover:bg-indigo-500">My attendance</Link>
+              <Link href="/leaves" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">Manage leave</Link>
+            </div>
+          </article>
+          <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-600">Next up</p><h2 className="mt-1 text-base font-semibold text-slate-950">Upcoming holidays</h2></div><CalendarDays className="h-5 w-5 text-emerald-500" /></div>
+            <div className="mt-4 space-y-3">
+              {employeeUpcomingHolidays.length ? employeeUpcomingHolidays.map((holiday) => <div key={holiday.id || holiday.date} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-3 py-2.5"><div className="min-w-0"><p className="truncate text-xs font-bold text-slate-800">{holiday.name || holiday.title || "Company holiday"}</p><p className="text-[11px] text-slate-500">{new Date(holiday.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</p></div><span className="shrink-0 rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-700">Holiday</span></div>) : <p className="py-3 text-xs text-slate-500">No upcoming holidays published yet.</p>}
+            </div>
+          </article>
+          <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-600">Leave desk</p><h2 className="mt-1 text-base font-semibold text-slate-950">Leave updates</h2></div><BellRing className="h-5 w-5 text-amber-500" /></div>
+            <div className="mt-4 space-y-3">
+              {employeeLeaveUpdates.length ? employeeLeaveUpdates.map((leave) => <div key={leave.id} className="rounded-2xl bg-slate-50 px-3 py-2.5"><div className="flex items-center justify-between gap-2"><p className="truncate text-xs font-bold text-slate-800">{leave.leaveType?.name || leave.leaveTypeName || "Leave request"}</p><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${leave.status === "APPROVED" ? "bg-emerald-100 text-emerald-700" : leave.status === "REJECTED" ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"}`}>{leave.status === "APPROVED" ? "Approved" : leave.status === "REJECTED" ? "Rejected" : "Pending"}</span></div><p className="mt-1 text-[11px] text-slate-500">{leave.status === "APPROVED" ? "Leave approved successfully." : leave.status === "REJECTED" ? "Leave request needs your attention." : "Waiting for HR approval."}</p></div>) : <p className="py-3 text-xs text-slate-500">No leave requests yet. Apply when you need time off.</p>}
+            </div>
+          </article>
+        </section>
+      )}
+      {/* ======================================================== */}
+      {/* 2. EXECUTIVE METRIC KPI CARDS (4 Interactive Tiles)     */}
+      {/* ======================================================== */}
+      <section className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 ${canManage ? "" : "hidden"}`}>
+        {kpis.map((kpi) => {
+          const meta = KPI_META[kpi.key];
+          const Icon = meta.icon;
+          const active = activeBreakdownTab === kpi.key;
+
+          return (
+            <button
+              key={kpi.key}
+              type="button"
+              onClick={() => {
+                setSearchQuery("");
+                setActiveBreakdownTab(active ? null : kpi.key);
+              }}
+              className={`text-left p-5 rounded-3xl bg-white border transition-all duration-200 shadow-sm hover:shadow-lg relative overflow-hidden group ${
+                active ? `ring-2 ${meta.ring} shadow-md` : "border-slate-200/90 hover:border-slate-300"
+              }`}
+            >
+              {/* Subtle background gradient on active */}
+              {active && (
+                <div
+                  className={`absolute inset-0 bg-gradient-to-br ${meta.gradient} pointer-events-none`}
+                />
+              )}
+
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-4">
+                  <span className={`w-11 h-11 rounded-2xl flex items-center justify-center ${meta.iconBg} shadow-xs`}>
+                    <Icon className="w-5 h-5" />
+                  </span>
+                  <span
+                    className={`flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${meta.iconBg}`}
+                  >
+                    {kpi.key === "LATE" || kpi.key === "ON_LEAVE" ? (
+                      <TrendingDown className="w-3.5 h-3.5" />
+                    ) : (
+                      <TrendingUp className="w-3.5 h-3.5" />
+                    )}
+                    {kpi.percent}%
+                  </span>
+                </div>
+
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{meta.label}</p>
+
+                <div className="mt-1.5 flex items-baseline gap-2">
+                  <span className="text-3xl font-bold text-slate-900 tracking-tight">{kpi.count}</span>
+                  {kpi.key === "PRESENT" && (
+                    <span className="text-xs font-medium text-slate-400">/ {totalEmployees} total</span>
+                  )}
+                </div>
+
+                {/* Progress bar */}
+                <div className="mt-3.5 h-2 rounded-full bg-slate-100 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${meta.bar}`}
+                    style={{ width: `${Math.min(100, Math.max(4, Number(kpi.percent)))}%` }}
+                  />
+                </div>
+
+                <div className="mt-2.5 flex items-center justify-between text-xs text-slate-400">
+                  <span>{meta.hint}</span>
+                  <span className={`font-semibold ${active ? "text-indigo-600" : "group-hover:text-slate-600"}`}>
+                    {active ? "Hide List ▴" : "View Staff ▾"}
+                  </span>
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </section>
+
+      <AnimatePresence>
+        {activeBreakdownTab && <motion.section
+          initial={{ opacity: 0, height: 0, y: -8 }}
+          animate={{ opacity: 1, height: "auto", y: 0 }}
+          exit={{ opacity: 0, height: 0, y: -8 }}
+          className="overflow-hidden rounded-3xl border border-indigo-200 bg-white p-5 shadow-[0_18px_50px_-36px_rgba(79,70,229,0.5)] sm:p-6"
+        >
+          <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
+            <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">Selected workforce view</p><h2 className="mt-1 text-lg font-semibold text-slate-950">{KPI_META[activeBreakdownTab].label} staff</h2><p className="mt-1 text-xs text-slate-500">{branchRosterLoading ? "Loading branch..." : `${filteredRoster.length} ${filteredRoster.length === 1 ? "person matches" : "people match"} this status${branchFilter !== "ALL" ? ` in ${branchOptions.find((b) => b.id === branchFilter)?.name || "this branch"}` : ""}.`}</p></div>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+            {branchOptions.length > 0 && (
+              <label className="relative block w-full sm:w-52">
+                <span className="sr-only">Filter by branch</span>
+                <Building2 aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <select
+                  value={branchFilter}
+                  onChange={(e) => setBranchFilter(e.target.value)}
+                  className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-8 text-xs font-semibold text-slate-700 outline-none focus:border-indigo-500 focus:bg-white"
+                >
+                  <option value="ALL">All branches</option>
+                  {branchOptions.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              </label>
+            )}
+            <div className="relative w-full sm:w-64"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search staff" className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-xs outline-none focus:border-indigo-500 focus:bg-white" /></div>
+            </div>
+          </div>
+          {filteredRoster.length === 0 ? <p className="py-8 text-center text-xs text-slate-400">No staff members match this status.</p> : <div className="mt-4 grid max-h-80 grid-cols-1 gap-2.5 overflow-y-auto pr-1 md:grid-cols-2 xl:grid-cols-3">{filteredRoster.map((person) => <div key={person.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3"><div className="flex min-w-0 items-center gap-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-xs font-bold text-indigo-700">{person.name.slice(0, 2).toUpperCase()}</span><div className="min-w-0"><p className="truncate text-xs font-bold text-slate-800">{person.name}</p><p className="truncate text-xs text-slate-500">{person.designation} · {person.department}{branchFilter === "ALL" && person.branchName ? ` · ${person.branchName}` : ""}</p></div></div><div className="shrink-0 text-right"><p className="font-mono text-xs font-bold text-slate-700">{person.checkInTime || "Not in"}</p>{person.employeeCode && <p className="font-mono text-[10px] text-slate-400">{person.employeeCode}</p>}</div></div>)}</div>}
+        </motion.section>}
+      </AnimatePresence>
+
+      <section className={`grid gap-4 xl:grid-cols-[0.78fr_1.42fr] ${canManage ? "" : "hidden"}`} aria-label="Workforce analytics">
+        <article className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-[0_18px_50px_-36px_rgba(15,23,42,0.35)] sm:p-6">
+          <div className="flex items-start justify-between gap-3">
+            <div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">Today at a glance</p><h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">Attendance mix</h2></div>
+            <span className="rounded-lg bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-500">LIVE</span>
+          </div>
+          <div className="mt-6 flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:gap-6">
+            <div className="relative flex h-36 w-36 shrink-0 items-center justify-center rounded-full" style={{ background: `conic-gradient(${pieStops})` }}>
+              <div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-white shadow-inner"><span className="text-2xl font-bold tabular-nums text-slate-950">{completionPercent}%</span><span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">turnout</span></div>
+            </div>
+            <div className="w-full min-w-0 flex-1 space-y-2.5 sm:w-auto">
+              {[{ label: "Present", value: presentCount, color: "bg-emerald-500" }, { label: "Remote", value: wfhCount, color: "bg-violet-500" }, { label: "On leave", value: leaveCount, color: "bg-sky-400" }, { label: "Late", value: lateCount, color: "bg-amber-400" }, { label: "Not punched", value: absentCount, color: "bg-slate-300" }].map((item) => <div key={item.label} className="flex items-center justify-between gap-3 text-xs"><span className="flex min-w-0 items-center gap-2 text-slate-600"><span className={`h-2 w-2 shrink-0 rounded-full ${item.color}`} />{item.label}</span><span className="font-bold tabular-nums text-slate-900">{item.value}</span></div>)}
+            </div>
+          </div>
+        </article>
+
+        <article className="min-w-0 rounded-3xl border border-slate-200/90 bg-white p-5 shadow-[0_18px_50px_-36px_rgba(15,23,42,0.35)] sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">Punch activity</p><h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">When your team clocks in</h2></div><Link href="/reports" className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700">Full reports <ArrowUpRight className="h-3.5 w-3.5" /></Link></div>
+          <div className="mt-5 overflow-x-auto rounded-2xl bg-slate-50/80 p-2 sm:p-3"><svg viewBox="0 0 600 180" role="img" aria-label="Punch activity by time of day" className="h-44 w-full min-w-[520px]"><defs><linearGradient id="attendance-area" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#6366f1" stopOpacity=".25" /><stop offset="1" stopColor="#6366f1" stopOpacity="0" /></linearGradient></defs>{[35, 70, 105, 140].map((y) => <line key={y} x1="20" x2="580" y1={y} y2={y} style={{ stroke: "var(--color-slate-200)" }} strokeDasharray="3 5" />)}<polyline points={`20,142 ${trendPoints} 580,142`} fill="url(#attendance-area)" stroke="none" /><polyline points={trendPoints} fill="none" stroke="#4f46e5" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />{hourlyData.map((item, index) => { const max = Math.max(...hourlyData.map((entry) => entry.count), 1); const x = (index / Math.max(hourlyData.length - 1, 1)) * 560 + 20; const y = 142 - (item.count / max) * 106; return <g key={item.time}><circle cx={x} cy={y} r={item.peak ? 5 : 3.5} fill={item.peak ? "#10b981" : "#4f46e5"} stroke="white" strokeWidth="2" /><text x={x} y="170" textAnchor="middle" fontSize="10" fontWeight="600" style={{ fill: "var(--color-slate-400)" }}>{item.time}</text></g>; })}{clockInsToday === 0 && <text x="300" y="100" textAnchor="middle" fontSize="12" fontWeight="600" style={{ fill: "var(--color-slate-400)" }}>No clock-ins yet today</text>}</svg></div>
+          <div className="mt-4 grid grid-cols-3 gap-2"><div className="rounded-xl bg-emerald-50 p-3"><p className="text-[10px] font-semibold text-emerald-700">Peak window</p><p className="mt-1 text-sm font-bold text-emerald-900">{hourlyData.find((item) => item.peak)?.time || "—"}</p></div><div className="rounded-xl bg-indigo-50 p-3"><p className="text-[10px] font-semibold text-indigo-700">Clock-ins today</p><p className="mt-1 text-sm font-bold text-indigo-900">{clockInsToday}</p></div><div className="rounded-xl bg-amber-50 p-3"><p className="text-[10px] font-semibold text-amber-700">Pending leave</p><p className="mt-1 text-sm font-bold text-amber-900">{pendingLeaves}</p></div></div>
+        </article>
+
+        <article className="min-w-0 rounded-3xl border border-slate-200/90 bg-white p-5 shadow-[0_18px_50px_-36px_rgba(15,23,42,0.35)] sm:col-span-2 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">People analytics</p><h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">Team gender distribution</h2></div>
+            <span className="rounded-lg bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-500">{genderAnalytics.total} PEOPLE</span>
+          </div>
+          <div className="mt-6 grid gap-6 lg:grid-cols-[220px_1fr] lg:items-center">
+            <div className="relative mx-auto flex h-40 w-40 items-center justify-center rounded-full" style={{ background: `conic-gradient(#6366f1 0 ${genderAnalytics.malePercent}%, #ec4899 ${genderAnalytics.malePercent}% ${genderAnalytics.malePercent + genderAnalytics.femalePercent}%, var(--color-slate-300) ${genderAnalytics.malePercent + genderAnalytics.femalePercent}% 100%)` }}>
+              <div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-white shadow-inner"><span className="text-2xl font-bold tabular-nums text-slate-950">{genderAnalytics.malePercent + genderAnalytics.femalePercent}%</span><span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">specified</span></div>
+            </div>
+            <div className="space-y-4">
+              {[{ label: "Male", value: genderAnalytics.male, percent: genderAnalytics.malePercent, color: "bg-indigo-500", track: "bg-indigo-100" }, { label: "Female", value: genderAnalytics.female, percent: genderAnalytics.femalePercent, color: "bg-pink-500", track: "bg-pink-100" }, { label: "Not specified", value: genderAnalytics.unspecified, percent: genderAnalytics.unspecifiedPercent, color: "bg-slate-400", track: "bg-slate-100" }].map((item) => <div key={item.label}><div className="mb-1.5 flex items-center justify-between gap-3 text-sm"><span className="flex items-center gap-2 font-medium text-slate-700"><span className={`h-2.5 w-2.5 rounded-full ${item.color}`} />{item.label}</span><span className="font-bold tabular-nums text-slate-900">{item.value} <span className="font-medium text-slate-400">({item.percent}%)</span></span></div><div className={`h-2 overflow-hidden rounded-full ${item.track}`}><div className={`h-full rounded-full ${item.color}`} style={{ width: `${item.percent}%` }} /></div></div>)}
+              <p className="pt-1 text-xs leading-5 text-slate-400">Based on employee profile data. Missing values remain visible as not specified.</p>
+            </div>
+          </div>
+        </article>
+
+        {canManage && noticeSummary && (
+          <article className="min-w-0 rounded-3xl border border-slate-200/90 bg-white p-5 shadow-[0_18px_50px_-36px_rgba(15,23,42,0.35)] sm:col-span-2 sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-rose-600">Exits</p>
+                <h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">Employees in notice period</h2>
+              </div>
+              <Link href="/offboarding" className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700">
+                Open offboarding <ArrowUpRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="rounded-xl bg-rose-50 p-3">
+                <p className="text-[10px] font-semibold text-rose-700">Serving notice</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-rose-900">{noticeSummary.inNoticeCount}</p>
+              </div>
+              <div className="rounded-xl bg-amber-50 p-3">
+                <p className="text-[10px] font-semibold text-amber-700">Leaving in 7 days</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-amber-900">{noticeSummary.endingWithin7Days}</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-3">
+                <p className="text-[10px] font-semibold text-slate-600">Waiting for HR</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{noticeSummary.awaitingHrReview}</p>
+              </div>
+              <div className="rounded-xl bg-indigo-50 p-3">
+                <p className="text-[10px] font-semibold text-indigo-700">Waiting for admin</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-indigo-900">{noticeSummary.awaitingAdminApproval}</p>
+              </div>
+            </div>
+            {noticeSummary.employees?.length > 0 ? (
+              <ul className="mt-4 divide-y divide-slate-100 rounded-2xl border border-slate-100">
+                {noticeSummary.employees.slice(0, 5).map((row: any) => (
+                  <li key={row.employeeId} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                    <span className="min-w-0 truncate font-medium text-slate-800">
+                      {row.name} <span className="font-mono text-xs text-indigo-700">{row.employeeCode}</span>
+                    </span>
+                    <span className="shrink-0 text-xs font-semibold tabular-nums text-slate-500">
+                      {row.lastWorkingDate
+                        ? row.daysLeft < 0
+                          ? `${-row.daysLeft}d past LWD`
+                          : row.daysLeft === 0
+                            ? "Leaves today"
+                            : `${row.daysLeft}d left · LWD ${row.lastWorkingDate}`
+                        : "LWD not set"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-4 text-xs text-slate-400">No one is serving notice right now.</p>
+            )}
+          </article>
+        )}
+      </section>
+
+
+      <AnimatePresence>
+        {activeBreakdownTab && (
+          <motion.section
+            initial={{ opacity: 0, height: 0, y: -8 }}
+            animate={{ opacity: 1, height: "auto", y: 0 }}
+            exit={{ opacity: 0, height: 0, y: -8 }}
+            className="hidden rounded-3xl bg-white border border-slate-200 p-5 sm:p-6 shadow-md overflow-hidden"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
+                  <h2 className="text-base font-semibold text-slate-900">
+                    {KPI_META[activeBreakdownTab].label} Staff Roster
+                  </h2>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Showing {filteredRoster.length} workforce members matching this status
+                </p>
+              </div>
+
+              <div className="relative flex-1 sm:max-w-xs">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Filter by name, code, dept..."
+                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
+                />
+              </div>
+            </div>
+
+            {filteredRoster.length === 0 ? (
+              <p className="py-12 text-center text-xs text-slate-400 italic">
+                No staff members currently match this filter.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2.5 max-h-80 overflow-y-auto pr-1">
+                {filteredRoster.map((person) => (
+                  <div
+                    key={person.id}
+                    className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50 hover:bg-slate-100/70 border border-slate-200/70 transition"
+                  >
+                    <div className="min-w-0 flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center shrink-0">
+                        {person.name.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-800 truncate">{person.name}</p>
+                        <p className="text-xs text-slate-500 truncate">
+                          {person.designation} • {person.department}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-xs font-mono font-bold text-slate-700 block">
+                        {person.checkInTime || "—"}
+                      </span>
+                      {person.employeeCode && (
+                        <span className="text-xs text-slate-400 font-mono">{person.employeeCode}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.section>
+        )}
+      </AnimatePresence>
+
+
+      <section className={`grid grid-cols-1 gap-5 ${canManage ? "" : "hidden"}`}>
+        {/* Left Column (8 cols): Hourly Attendance Rhythm & Functions */}
+        <div className="space-y-5">
+          {/* Premium hourly punch rhythm */}
+          <div className="relative overflow-hidden rounded-[28px] border border-slate-200/90 bg-white shadow-[0_20px_60px_-42px_rgba(15,23,42,0.5)]">
+            <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-indigo-100/50 blur-3xl" />
+            <div className="relative border-b border-slate-100 p-5 sm:p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/20"><Activity className="h-5 w-5" /></span>
+                  <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">Live workforce pulse</p><h3 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">Punch-in</h3><p className="mt-1 text-sm text-slate-500">When your team starts the workday today.</p></div>
+                </div>
+                <div className="flex items-center gap-2 self-start rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />Live distribution</div>
+              </div>
+              <div className="mt-5 grid grid-cols-3 gap-2 sm:max-w-md"><div className="rounded-2xl bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Clock-ins today</p><p className="mt-1 text-lg font-bold tabular-nums text-slate-900">{clockInsToday}</p></div><div className="rounded-2xl bg-indigo-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-500">Peak window</p><p className="mt-1 text-lg font-bold text-indigo-900">{hourlyData.find((item) => item.peak)?.time || "No peak"}</p></div><div className="rounded-2xl bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Coverage</p><p className="mt-1 text-lg font-bold tabular-nums text-slate-900">{completionPercent}%</p></div></div>
+            </div>
+            <div className="relative p-5 sm:p-6">
+              <div className="pointer-events-none absolute inset-x-5 top-8 bottom-12 flex flex-col justify-between sm:inset-x-6"><span className="border-t border-dashed border-slate-100" /><span className="border-t border-dashed border-slate-100" /><span className="border-t border-dashed border-slate-100" /><span className="border-t border-dashed border-slate-100" /></div>
+              <div className="relative flex h-56 items-end gap-2 sm:h-64 sm:gap-4">
+                {hourlyData.map((item) => {
+                  const maxVal = Math.max(...hourlyData.map((d) => d.count), 4);
+                  const height = Math.max(item.count > 0 ? 12 : 5, Math.round((item.count / maxVal) * 100));
+                  return <div key={item.time} className="group flex h-full min-w-0 flex-1 flex-col items-center justify-end"><div className="mb-2 flex h-5 items-end"><span className={`text-[11px] font-bold tabular-nums transition ${item.peak ? "text-indigo-600" : "text-slate-400 opacity-0 group-hover:opacity-100"}`}>{item.count}</span></div><div className={`relative w-full max-w-[52px] rounded-t-2xl transition-all duration-500 group-hover:-translate-y-1 ${item.peak ? "bg-indigo-600 shadow-[0_12px_24px_-10px_rgba(79,70,229,0.8)]" : "bg-slate-200 group-hover:bg-indigo-200"}`} style={{ height: `${height}%` }}><span className={`absolute inset-x-1 top-1 h-1 rounded-full ${item.peak ? "bg-white/35" : "bg-white/70"}`} /></div><span className={`mt-3 whitespace-nowrap text-[10px] font-semibold sm:text-[11px] ${item.peak ? "text-indigo-700" : "text-slate-500"}`}>{item.time}</span></div>;
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* People moments: birthdays and work anniversaries */}
+          <section className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm">
+            <div className="border-b border-slate-100 bg-gradient-to-r from-indigo-50 via-white to-pink-50 p-5 sm:p-6">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600"><BellRing className="h-3.5 w-3.5" /> People moments</p>
+                  <h3 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">Celebrate your team</h3>
+                  <p className="mt-1 text-sm text-slate-500">Upcoming birthdays and work anniversaries, organised month by month.</p>
+                </div>
+                <div className="rounded-2xl bg-white/80 px-3 py-2 text-right shadow-sm ring-1 ring-slate-200/70"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Next 12 months</p><p className="mt-0.5 text-lg font-bold text-slate-900">{peopleMoments.length} {peopleMoments.length === 1 ? "moment" : "moments"}</p></div>
+              </div>
+              {canSeePeopleNotifications && tomorrowBirthdays.length > 0 && <div className="mt-5 flex items-start gap-3 rounded-2xl border border-pink-200 bg-pink-50 p-3.5 text-pink-950"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-pink-500 text-white"><BellRing className="h-4 w-4" /></div><div className="min-w-0"><p className="text-sm font-bold">Birthday reminder for tomorrow</p><p className="mt-0.5 text-xs leading-5 text-pink-800">{tomorrowBirthdays.map((moment) => moment.name).join(", ")} {tomorrowBirthdays.length === 1 ? "has" : "have"} a birthday tomorrow. This reminder is visible to HR and admins only.</p></div></div>}
+            </div>
+            {nextPeopleMoments.length > 0 ? <div className="p-5 sm:p-6">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {nextPeopleMoments.map((moment) => <div key={moment.id} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-3"><div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${moment.type === "Birthday" ? "bg-pink-100 text-pink-600" : "bg-indigo-100 text-indigo-600"}`}>{moment.type === "Birthday" ? <Cake className="h-5 w-5" /> : <Award className="h-5 w-5" />}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-slate-800">{moment.name}</p><p className="text-xs text-slate-500">{moment.type} · {moment.month} {moment.day}</p></div></div>)}
+              </div>
+              {momentMonths.length > 0 && <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-4">{momentMonths.slice(0, 6).map((month) => <span key={month} className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">{month} · {peopleMoments.filter((moment) => moment.month === month).length}</span>)}</div>}
+            </div> : <div className="p-8 text-center"><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400"><Cake className="h-6 w-6" /></div><p className="mt-3 text-sm font-semibold text-slate-700">No upcoming people moments yet</p><p className="mt-1 text-xs text-slate-400">Add date of birth or date of joining to employee profiles to see notifications here.</p></div>}
+          </section>
+        </div>
+
+        {/* Right Column (4 cols): Shift Completion Donut & Summary */}
+        <div className={`grid gap-5 md:grid-cols-2 ${canManage ? "" : "hidden"}`}>
+          {/* Shift completion gauge */}
+          <div className="p-5 sm:p-6 rounded-3xl bg-white border border-slate-200/90 shadow-sm space-y-5">
+            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              Workforce Shift Coverage
+            </h3>
+
+            <div className="flex items-center gap-5">
+              <div className="relative w-28 h-28 shrink-0">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="40" stroke="#F1F5F9" strokeWidth="12" fill="none" />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="40"
+                    stroke="#10B981"
+                    strokeWidth="12"
+                    strokeDasharray="251.2"
+                    strokeDashoffset={251.2 * (1 - completionPercent / 100)}
+                    strokeLinecap="round"
+                    fill="none"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-2xl font-bold text-slate-900">{completionPercent}%</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Punched In</span>
+                </div>
+              </div>
+
+              <div className="flex-1 space-y-2 text-xs">
+                <div className="flex justify-between items-center p-1.5 rounded-xl bg-slate-50">
+                  <span className="text-slate-600 font-medium flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    Present On-Site
+                  </span>
+                  <span className="font-bold text-slate-900">{completedCount}</span>
+                </div>
+                <div className="flex justify-between items-center p-1.5 rounded-xl bg-slate-50">
+                  <span className="text-slate-600 font-medium flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-violet-500" />
+                    Remote / WFH
+                  </span>
+                  <span className="font-bold text-slate-900">{inProgressCount}</span>
+                </div>
+                <div className="flex justify-between items-center p-1.5 rounded-xl bg-slate-50">
+                  <span className="text-slate-600 font-medium flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-slate-300" />
+                    Not Punched Yet
+                  </span>
+                  <span className="font-bold text-slate-900">{notStartedCount}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Manager / Admin Live Summary Card */}
+          {canManage && (
+            <div className="p-5 rounded-3xl bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-950 text-white shadow-lg space-y-3 border border-indigo-800">
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase font-bold tracking-wider text-indigo-300 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
+                  Management Clearance
+                </span>
+                <span className="text-xs font-bold bg-white/10 px-2 py-0.5 rounded-md">Realtime</span>
+              </div>
+
+              <div>
+                <p className="text-sm font-bold text-white">Pending Requests</p>
+                <p className="text-xs text-indigo-200 mt-0.5">
+                  {pendingLeaves > 0
+                    ? `${pendingLeaves} leave applications await manager review.`
+                    : "All employee leave and expense requests are currently cleared."}
+                </p>
+              </div>
+
+              <Link
+                href="/approvals"
+                className="inline-flex items-center gap-2 w-full justify-center py-2.5 rounded-xl bg-white text-indigo-950 font-bold text-xs hover:bg-indigo-50 transition shadow-sm"
+              >
+                Open Clearance Inbox
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ======================================================== */}
+      {/* 7. PUNCH CONFIRM DIALOG & UNLOCK PLAN MODAL              */}
+      {/* ======================================================== */}
+      <PunchConfirmDialog
+        action={pendingPunch}
+        initialWorkMode={todayStatus?.approvedShoot ? "SHOOT" : undefined}
+        forceWorkMode={pendingPunch === "CHECK_IN" && todayStatus?.approvedShoot ? "SHOOT" : undefined}
+        loading={isActionLoading}
+        locationLabel={locationLabel}
+        onCancel={() => setPendingPunch(null)}
+        onConfirm={async (options) => {
+          const ok = pendingPunch === "CHECK_OUT" ? await checkOut() : await checkIn(options);
+          if (ok) {
+            setPendingPunch(null);
+            loadDashboardData();
+          }
+        }}
+      />
+
+      {showUnlockModal && (
+        <UnlockPlanModal
+          isOpen={showUnlockModal}
+          onClose={() => setShowUnlockModal(false)}
+          onSuccess={() => {
+            setShowUnlockModal(false);
+            refreshUser();
+            loadDashboardData();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+

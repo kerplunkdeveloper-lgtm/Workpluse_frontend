@@ -301,21 +301,11 @@ export const authApi = {
     }
   },
   refreshSession: async () => {
-    const storedRefresh =
-      typeof window !== "undefined"
-        ? window.localStorage.getItem("workpulse_refresh_token")
-        : null;
-    const res = await api.post("/auth/refresh", {
-      client: "web",
-      refreshToken: storedRefresh || undefined,
-    });
-    const nextRefresh = res.data?.data?.refreshToken;
-    if (nextRefresh && typeof window !== "undefined") {
-      try {
-        window.localStorage.setItem("workpulse_refresh_token", nextRefresh);
-      } catch {}
-    }
-    return res.data;
+    // All callers share the same rotating refresh request. Without this,
+    // simultaneous page requests can invalidate one another and show 401s.
+    const nextToken = await refreshAccessTokenSilently();
+    if (!nextToken) throw new Error("Session refresh failed");
+    return { success: true, data: { accessToken: nextToken, token: nextToken, refreshToken: null } };
   },
   getPlans: async () => {
     const res = await api.get("/auth/plans");
@@ -504,8 +494,9 @@ export const dayOffWorkApi = {
 };
 
 export const shootRequestsApi = {
-  create: async (payload: { date: string; startTime: string; endTime: string; shootName: string; location: string; employeeIds?: string[]; note?: string }) => (await api.post("/attendance/shoot-requests", payload)).data,
+  create: async (payload: { date: string; shootName: string; location: string; employeeIds?: string[]; note?: string }) => (await api.post("/attendance/shoot-requests", payload)).data,
   getMine: async () => (await api.get("/attendance/shoot-requests/my")).data,
+  getParticipants: async () => (await api.get("/attendance/shoot-requests/participants")).data,
   getAll: async (params: { status?: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | "CANCELLATION_PENDING" | "ALL" } = {}) => (await api.get("/attendance/shoot-requests", { params: { status: "PENDING", limit: 200, ...params } })).data,
   review: async (id: string, payload: { status: "APPROVED" | "REJECTED"; reviewNote?: string }) => (await api.post(`/attendance/shoot-requests/${id}/review`, payload)).data,
   cancel: async (id: string) => (await api.post(`/attendance/shoot-requests/${id}/cancel`)).data,
@@ -573,7 +564,7 @@ export const leavesApi = {
     startDate: string;
     endDate: string;
     reason: string;
-    isHalfDay?: boolean;
+    totalDays?: number;
   }) => {
     const res = await api.post("/leaves/apply", payload);
     return res.data;
@@ -626,7 +617,7 @@ export const permissionsApi = {
     const res = await api.get("/permissions/my");
     return res.data;
   },
-  apply: async (payload: { date: string; hours: number; reason: string }) => {
+  apply: async (payload: { date: string; startTime: string; endTime: string; reason: string }) => {
     const res = await api.post("/permissions", payload);
     return res.data;
   },
@@ -1168,17 +1159,13 @@ export const employeesApi = {
     return res.data;
   },
   uploadDocument: async (employeeId: string, formDataOrPayload: FormData | any) => {
-    const isFormData = typeof FormData !== "undefined" && formDataOrPayload instanceof FormData;
-    const res = await api.post(`/employees/${employeeId}/documents`, formDataOrPayload, {
-      headers: isFormData ? { "Content-Type": "multipart/form-data" } : undefined,
-    });
+    // Let the browser/Axios add the multipart boundary. Setting this header
+    // manually can send a body without the boundary and makes Multer see no file.
+    const res = await api.post(`/employees/${employeeId}/documents`, formDataOrPayload);
     return res.data;
   },
   updateDocument: async (employeeId: string, docId: string, formDataOrPayload: FormData | any) => {
-    const isFormData = typeof FormData !== "undefined" && formDataOrPayload instanceof FormData;
-    const res = await api.put(`/employees/${employeeId}/documents/${docId}`, formDataOrPayload, {
-      headers: isFormData ? { "Content-Type": "multipart/form-data" } : undefined,
-    });
+    const res = await api.put(`/employees/${employeeId}/documents/${docId}`, formDataOrPayload);
     return res.data;
   },
   deleteDocument: async (employeeId: string, docId: string) => {

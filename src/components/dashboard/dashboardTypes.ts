@@ -24,6 +24,8 @@ export interface RosterPerson {
   department: string;
   checkInTime?: string;
   checkOutTime?: string;
+  workMode?: "OFFICE" | "SHOOT" | "WORK_FROM_HOME";
+  workingMinutes?: number;
   breakMinutes?: number;
   lunchMinutes?: number;
   location?: string | null;

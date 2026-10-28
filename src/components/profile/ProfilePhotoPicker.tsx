@@ -90,6 +90,7 @@ export default function ProfilePhotoPicker({
         }}
       />
       <span className="text-xs text-slate-500 font-medium">{uploading ? "Uploading…" : hint}</span>
+      <span className="text-[10px] font-medium tracking-wide text-slate-400">JPG, PNG, WEBP, GIF or HEIC · Max 6 MB</span>
     </div>
   );
 }

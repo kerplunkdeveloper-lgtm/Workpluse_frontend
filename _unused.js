@@ -1,5 +1,4 @@
-// node _unused.js <eslint-json-report>  -> removes imports lint reports as never used
-const fs = require("fs");
+ const fs = require("fs");
 const ts = require("typescript");
 const report = require(require("path").resolve(process.argv[2]));
 let files = 0, removed = 0;
