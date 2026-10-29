@@ -159,6 +159,7 @@ export function NewChannelModal({ onClose, onCreated }: { onClose: () => void; o
                       <Avatar label={personName(p)} size="sm" />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-semibold text-slate-900">{personName(p)}</span>
+                        {p.employee?.department?.name && <span className="block truncate text-xs font-medium text-indigo-600">{p.employee.department.name}</span>}
                         <span className="block truncate text-xs text-slate-600">{[roleLabel(p.role), p.employee?.employeeCode].filter(Boolean).join(" · ")}</span>
                       </span>
                       <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${on ? "keep-white border-indigo-600 bg-indigo-600" : "border-slate-300 bg-white"}`}>

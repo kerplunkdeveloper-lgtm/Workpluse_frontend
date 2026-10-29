@@ -18,7 +18,8 @@ function localToday() {
 /**
  * Date of birth / date of joining for the self-service profile form.
  * Renders named inputs (via DatePicker `required`) so the surrounding <form>'s FormData picks them up.
- * A date already on record is shown read-only and not submitted; only HR can change it.
+ * Date of birth is fill-once for employee self-service. Date of joining stays editable
+ * because employees may need to correct an onboarding date entered incorrectly.
  */
 export default function ProfileDateFields({ dateOfBirth, dateOfJoining }: Props) {
   const savedBirth = toYMD(dateOfBirth);
@@ -56,13 +57,12 @@ export default function ProfileDateFields({ dateOfBirth, dateOfJoining }: Props)
         />
       </div>
       <div>
-        {label("Date of Joining", !!savedJoining)}
+        {label("Date of Joining", false)}
         <DatePicker
           name="dateOfJoining"
           value={joining}
           onChange={setJoining}
-          disabled={!!savedJoining}
-          required={!savedJoining}
+          required
           min={birth || undefined}
           align="right"
           placeholder="Select joining date"

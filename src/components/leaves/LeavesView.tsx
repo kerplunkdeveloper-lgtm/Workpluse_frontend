@@ -37,6 +37,11 @@ export default function LeavesView() {
   const [isHalfDay, setIsHalfDay] = useState(false);
   const [reason, setReason] = useState("");
   const [submittingApply, setSubmittingApply] = useState(false);
+  const [newTypeName, setNewTypeName] = useState("");
+  const [newTypeCode, setNewTypeCode] = useState("");
+  const [newTypeDays, setNewTypeDays] = useState("12");
+  const [creatingType, setCreatingType] = useState(false);
+  const [carryingForward, setCarryingForward] = useState(false);
 
   // Review Modal state
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
@@ -97,6 +102,38 @@ export default function LeavesView() {
   useEffect(() => {
     loadData();
   }, [canApprove]);
+
+  const handleCreateLeaveType = async () => {
+    const name = newTypeName.trim();
+    const code = newTypeCode.trim().toUpperCase();
+    const daysAllowed = Number(newTypeDays || 12);
+    if (!name || !code) {
+      toast.error("Leave type name and code are required");
+      return;
+    }
+    if (!Number.isInteger(daysAllowed) || daysAllowed < 1 || daysAllowed > 366) {
+      toast.error("Allowed days must be a whole number from 1 to 366");
+      return;
+    }
+
+    setCreatingType(true);
+    try {
+      const res = await leavesApi.createType({ name, code, daysAllowed, isPaid: true });
+      if (!res?.success) {
+        toast.error(res?.message || "Could not create leave type");
+        return;
+      }
+      toast.success("Leave type created");
+      setNewTypeName("");
+      setNewTypeCode("");
+      setNewTypeDays("12");
+      await loadData();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || "Could not create leave type");
+    } finally {
+      setCreatingType(false);
+    }
+  };
 
   const handleApplySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -275,42 +312,53 @@ export default function LeavesView() {
 
       {(role === "SUPER_ADMIN" || role === "COMPANY_ADMIN") && (
         <div className="bg-white rounded-2xl border p-4 flex flex-wrap gap-2 text-xs items-end">
-          <input id="lt-name" placeholder="Type name" className="px-3 py-2 rounded-xl border" />
-          <input id="lt-code" placeholder="Code" className="w-20 px-3 py-2 rounded-xl border" />
-          <input id="lt-days" type="number" placeholder="Days" className="w-20 px-3 py-2 rounded-xl border" />
+          <input value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} placeholder="Type name" className="px-3 py-2 rounded-xl border" />
+          <input value={newTypeCode} onChange={(e) => setNewTypeCode(e.target.value)} placeholder="Code" maxLength={20} className="w-20 px-3 py-2 rounded-xl border uppercase" />
+          <input value={newTypeDays} onChange={(e) => setNewTypeDays(e.target.value)} type="number" min={1} max={366} placeholder="Days" className="w-20 px-3 py-2 rounded-xl border" />
           <button
-            onClick={async () => {
-              const name = (document.getElementById("lt-name") as HTMLInputElement)?.value;
-              const code = (document.getElementById("lt-code") as HTMLInputElement)?.value;
-              const daysAllowed = Number((document.getElementById("lt-days") as HTMLInputElement)?.value || 12);
-              const res = await leavesApi.createType({ name, code, daysAllowed, isPaid: true });
-              if (res?.success) {
-                toast.success("Leave type created");
-                loadData();
-              } else toast.error(res?.message || "Failed");
-            }}
-            className="px-3 py-2 rounded-xl bg-indigo-600 text-white font-semibold"
+            type="button"
+            onClick={() => void handleCreateLeaveType()}
+            disabled={creatingType}
+            className="px-3 py-2 rounded-xl bg-indigo-600 text-white font-semibold disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Add type
+            {creatingType ? "Adding..." : "Add type"}
           </button>
           <button
+            type="button"
+            disabled={carryingForward}
             onClick={async () => {
               const y = new Date().getFullYear();
-              const res = await leavesApi.carryForward({ fromYear: y - 1, toYear: y, maxDays: 15 });
-              if (res?.success) toast.success(`Carried ${res.data?.balancesUpdated || 0} balances`);
-              else toast.error(res?.message || "Failed");
+              setCarryingForward(true);
+              try {
+                const res = await leavesApi.carryForward({ fromYear: y - 1, toYear: y, maxDays: 15 });
+                if (res?.success) toast.success(`Carried ${res.data?.balancesUpdated || 0} balances`);
+                else toast.error(res?.message || "Could not carry forward balances");
+              } catch (err: any) {
+                toast.error(err?.response?.data?.message || err?.message || "Could not carry forward balances");
+              } finally {
+                setCarryingForward(false);
+              }
             }}
-            className="px-3 py-2 rounded-xl border font-semibold"
+            className="px-3 py-2 rounded-xl border font-semibold disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Carry forward last year
+            {carryingForward ? "Carrying..." : "Carry forward last year"}
           </button>
           {leaveTypes.map((t) => (
             <button
               key={t.id}
               onClick={async () => {
-                if (!(await confirmDialog({ title: `Delete ${t.name}?`, message: "Existing requests keep their record, but this leave type can no longer be used.", confirmLabel: "Delete" }))) return;
-                await leavesApi.deleteType(t.id);
-                loadData();
+                if (!(await confirmDialog({ title: `Remove ${t.name}?`, message: "If this leave type has history, it will be archived so existing requests remain safe. New requests will no longer use it.", confirmLabel: "Remove leave type" }))) return;
+                try {
+                  const result = await leavesApi.deleteType(t.id);
+                  if (result?.success) {
+                    toast.success(result.message || "Leave type removed");
+                    loadData();
+                  } else {
+                    toast.error(result?.message || "Could not remove leave type");
+                  }
+                } catch (err: any) {
+                  toast.error(err?.response?.data?.message || err?.message || "Could not remove leave type");
+                }
               }}
               className="px-2 py-1 rounded-lg bg-rose-50 text-rose-700"
             >

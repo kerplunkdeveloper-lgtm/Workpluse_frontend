@@ -13,11 +13,9 @@ import {
   Shield,
   Download,
   Globe,
-  Layers,
-  Webhook,
 } from "lucide-react";
 import { toast } from "sonner";
-import PhoneInput, { sanitizeIndianPhone, toE164India, validateIndianPhone } from "@/components/ui/PhoneInput";
+import PhoneInput, { getCountryCodeFromPhone, sanitizePhone, toE164, validatePhone, type CountryCode } from "@/components/ui/PhoneInput";
 import { unwrapList } from "@/lib/utils";
 import { trialDaysLabel, trialDaysRemaining } from "@/components/billing/WorkspaceBilling";
 import type { SubscriptionPlanOption } from "@/types";
@@ -82,6 +80,7 @@ export default function SubscriptionSettingsView() {
     taxId: "",
     timezone: "UTC",
   });
+  const [orgPhoneCountryCode, setOrgPhoneCountryCode] = useState<CountryCode>("+91");
   const [isSavingOrg, setIsSavingOrg] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [activeEmployeesCount, setActiveEmployeesCount] = useState(0);
@@ -90,54 +89,17 @@ export default function SubscriptionSettingsView() {
   const [ssoCallbackUrl, setSsoCallbackUrl] = useState("");
   const [isSavingSso, setIsSavingSso] = useState(false);
 
-  const isAdminUser = user?.role === "COMPANY_ADMIN" || user?.role === "SUPER_ADMIN";
-  // Only the sections this user can actually see appear in the left menu.
-  const settingsSections = [
-    { id: "overview", label: "Plan & usage", icon: Settings, show: true },
-    { id: "company", label: "Company profile", icon: Building, show: true },
-    { id: "timezone", label: "Timezone & region", icon: Globe, show: true },
-    { id: "sso", label: "Single sign-on", icon: Shield, show: isAdminUser },
-    { id: "plans", label: "Subscription plans", icon: Layers, show: true },
-    { id: "billing", label: "Billing history", icon: FileText, show: true },
-    { id: "security", label: "Admin security", icon: Shield, show: user?.role === "COMPANY_ADMIN" },
-    { id: "webhooks", label: "Webhooks", icon: Webhook, show: Boolean(user?.features?.hasApiAccess) },
-  ].filter((section) => section.show);
-  const [activeSection, setActiveSection] = useState("overview");
-
-  const goToSection = (id: string) => {
-    setActiveSection(id);
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
-  // Highlight the menu entry for the section currently under the top of the viewport.
-  const sectionKey = settingsSections.map((section) => section.id).join(",");
-  useEffect(() => {
-    const elements = sectionKey
-      .split(",")
-      .map((id) => document.getElementById(id))
-      .filter((el): el is HTMLElement => Boolean(el));
-    if (elements.length === 0 || typeof IntersectionObserver === "undefined") return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (visible[0]) setActiveSection(visible[0].target.id);
-      },
-      { rootMargin: "-10% 0px -70% 0px" },
-    );
-    elements.forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, [sectionKey]);
-
   useEffect(() => {
     if (user?.organization) {
       setOrgForm({
         name: user.organization.name || "",
         email: user.organization.email || user.email || "",
-        phone: sanitizeIndianPhone(user.organization.phone || ""),
+        phone: sanitizePhone(user.organization.phone || "", getCountryCodeFromPhone(user.organization.phone || "")),
         address: user.organization.address || "",
         taxId: user.organization.taxId || "",
         timezone: user.organization.timezone || "UTC",
       });
+      setOrgPhoneCountryCode(getCountryCodeFromPhone(user.organization.phone || ""));
     }
   }, [user]);
 
@@ -275,12 +237,12 @@ export default function SubscriptionSettingsView() {
     e.preventDefault();
     setIsSavingOrg(true);
     try {
-      const phoneError = validateIndianPhone(orgForm.phone, false);
+      const phoneError = validatePhone(orgForm.phone, orgPhoneCountryCode, false);
       if (phoneError) {
         toast.error(phoneError);
         return;
       }
-      const res = await orgApi.update({ ...orgForm, phone: toE164India(orgForm.phone) });
+      const res = await orgApi.update({ ...orgForm, phone: toE164(orgPhoneCountryCode, orgForm.phone) });
       if (res?.success) {
         toast.success("Organization profile saved successfully!");
         await refreshUser();
@@ -377,37 +339,6 @@ export default function SubscriptionSettingsView() {
       </div>
 
       <div className="space-y-6">
-        {/* Top tab bar: sticky, one row that scrolls sideways when the screen is too narrow. */}
-        <nav
-          aria-label="Settings sections"
-          className="sticky top-2 z-20 -mx-1 rounded-2xl border border-slate-200/80 bg-white/85 p-1.5 shadow-[0_10px_30px_-18px_rgba(15,23,42,0.35)] backdrop-blur-xl"
-        >
-          <ul className="flex snap-x snap-mandatory gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {settingsSections.map((section) => {
-              const active = activeSection === section.id;
-              return (
-                <li key={section.id} className="shrink-0 snap-start">
-                  <button
-                    type="button"
-                    onClick={() => goToSection(section.id)}
-                    aria-current={active ? "true" : undefined}
-                    className={`group flex items-center gap-2 whitespace-nowrap rounded-xl px-3.5 py-2.5 text-[13px] font-semibold transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 ${
-                      active
-                        ? "bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-[0_8px_20px_-8px_rgba(79,70,229,0.7)]"
-                        : "text-slate-600 hover:bg-indigo-50 hover:text-indigo-700"
-                    }`}
-                  >
-                    <section.icon className={`h-4 w-4 shrink-0 transition-transform duration-200 ${active ? "" : "text-slate-400 group-hover:scale-110 group-hover:text-indigo-600"}`} />
-                    <span className="hidden min-[420px]:inline">{section.label}</span>
-                    {/* On very narrow phones only the active tab shows its name, so the row stays compact. */}
-                    {active && <span className="min-[420px]:hidden">{section.label}</span>}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-
         <div className="min-w-0 space-y-8">
       {/* Current Active Plan Overview Card */}
       <div id="overview" className="scroll-mt-24 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs relative overflow-hidden">
@@ -508,7 +439,7 @@ export default function SubscriptionSettingsView() {
             </div>
             <div className="space-y-1.5">
               <label className="text-[13px] font-medium text-slate-700">Phone Number</label>
-              <PhoneInput value={orgForm.phone} onChange={(digits) => setOrgForm({ ...orgForm, phone: digits })} />
+              <PhoneInput value={orgForm.phone} onChange={(digits) => setOrgForm({ ...orgForm, phone: digits })} countryCode={orgPhoneCountryCode} onCountryCodeChange={setOrgPhoneCountryCode} />
             </div>
             <div className="space-y-1.5">
               <label className="text-[13px] font-medium text-slate-700">Tax ID / VAT Number</label>

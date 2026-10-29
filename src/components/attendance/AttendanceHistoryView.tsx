@@ -12,7 +12,7 @@ import RegularizationModal from "./RegularizationModal";
 import AdminMarkDialog, { type AdminMarkInitial } from "./AdminMarkDialog";
 import EmployeeCombobox, { type EmployeeOption } from "./EmployeeCombobox";
 import AttendanceDateFilter, { ATTENDANCE_RANGES, type AttendanceRangeValue } from "./AttendanceDateFilter";
-import { breakMinutesOf, formatHm, localDateKey, lunchMinutesOf, recordDateKey, statusMeta, workedMinutes } from "./attendanceUtils";
+import { breakMinutesOf, formatClock, formatHm, localDateKey, lunchMinutesOf, recordDateKey, statusMeta, workedMinutes } from "./attendanceUtils";
 
 const TEAM_ROLES = ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"];
 
@@ -24,6 +24,39 @@ const workModeDisplay = (row: Attendance) => {
     label: isShoot ? "Shoot" : isRemote ? "Remote / WFH" : "Office",
     note: isShoot ? rawNote.replace(/^SHOOT:\s*/i, "") : rawNote,
   };
+};
+
+const pauseSummary = (row: Attendance, kind: "BREAK" | "LUNCH", minutes: number, now = Date.now()) => {
+  const starts = row.events?.filter((event) => event.type === `${kind}_START`) || [];
+  const start = starts[starts.length - 1];
+  if (!start) return "—";
+  const ends = row.events?.filter((event) => event.type === `${kind}_END` && new Date(event.timestamp) >= new Date(start.timestamp)) || [];
+  if (ends.length) return `${formatTime(start.timestamp)} · ${formatHm(minutes)}`;
+  return `${formatTime(start.timestamp)} · Active ${formatClock(Math.max(0, now - new Date(start.timestamp).getTime()))}`;
+};
+
+/**
+ * Overtime is payable only after HR/manager approval. Until then the column
+ * stays useful by showing the actual punch-out time instead of an unapproved
+ * duration that looks like payroll-ready overtime.
+ */
+const overtimeDisplay = (row: Attendance) => {
+  const request = row.overtimeRequests?.[0];
+  if (request?.status === "APPROVED") {
+    const approved = Number(request.approvedMinutes ?? row.overtimeMinutes ?? 0);
+    return approved > 0 ? { text: formatHm(approved), pending: false } : { text: "—", pending: false };
+  }
+
+  if (request?.status === "PENDING" || request?.status === "REJECTED") {
+    return row.checkOut
+      ? { text: `Punch out · ${formatTime(row.checkOut)}`, pending: true }
+      : { text: "Awaiting punch out", pending: true };
+  }
+
+  // Organisations without approval enabled continue to see their calculated
+  // overtime. This also keeps older records readable when no request exists.
+  const minutes = Number(row.overtimeMinutes || 0);
+  return minutes > 0 ? { text: formatHm(minutes), pending: false } : { text: "—", pending: false };
 };
 
 /** Metres between two GPS points. */
@@ -172,6 +205,7 @@ export default function AttendanceHistoryView() {
   const [markInitial, setMarkInitial] = useState<AdminMarkInitial | undefined>();
   const [correctionRequests, setCorrectionRequests] = useState<any[]>([]);
   const [correctionsLoading, setCorrectionsLoading] = useState(false);
+  const [clockNow, setClockNow] = useState(() => Date.now());
 
   const setFilters = useCallback(
     (next: Record<string, string | null>) => {
@@ -227,6 +261,17 @@ useEffect(() => {
       active = false;
     };
   }, [isTeamView, reloadKey]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClockNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!isTeamView) return;
+    const timer = window.setInterval(() => setReloadKey((key) => key + 1), 15000);
+    return () => window.clearInterval(timer);
+  }, [isTeamView]);
   const reload = () => setReloadKey((k) => k + 1);
 
   const openCorrection = (row: Attendance) => {
@@ -332,6 +377,7 @@ useEffect(() => {
         onClearFilters={() => setFilters({ status: null, range: "month", date: null, from: null, to: null, employee: null, employeeName: null })}
         onCorrect={openCorrection}
         correctionRequests={correctionRequests}
+        now={clockNow}
       />
 
 {!isTeamView && (
@@ -478,10 +524,11 @@ export interface AttendanceLogViewProps {
   onClearFilters: () => void;
   onCorrect: (row: Attendance) => void;
   correctionRequests: any[];
+  now: number;
 }
 
 /** Presentational: table on wide screens, stacked cards on phones. */
-export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered, onRetry, onClearFilters, onCorrect, correctionRequests }: AttendanceLogViewProps) {
+export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered, onRetry, onClearFilters, onCorrect, correctionRequests, now }: AttendanceLogViewProps) {
   const shell = "overflow-hidden rounded-2xl bg-white ring-1 ring-slate-900/[0.06] shadow-[0_1px_2px_rgba(15,23,42,0.04)]";
 
   if (failed) {
@@ -522,7 +569,21 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
     <div className={shell}>
       {/* Wide screens: table */}
       <div className="hidden overflow-x-auto md:block">
-        <table className="min-w-[1260px] w-full text-sm">
+        <table className={`w-full table-fixed text-sm ${isTeamView ? "min-w-[1580px]" : "min-w-[980px]"}`}>
+          <colgroup>
+            {isTeamView && <col className="w-[220px]" />}
+            <col className="w-[105px]" />
+            <col className="w-[125px]" />
+            <col className="w-[125px]" />
+            <col className="w-[105px]" />
+            <col className="w-[95px]" />
+            <col className="w-[95px]" />
+            <col className="w-[100px]" />
+            {isTeamView && <col className="w-[255px]" />}
+            {isTeamView && <col className="w-[220px]" />}
+            <col className="w-[110px]" />
+            <col className="w-[135px]" />
+          </colgroup>
           <thead className="border-b border-slate-100 bg-slate-50/70">
             <tr>
               {isTeamView && <th className={`${th} pl-5`}>Employee</th>}
@@ -532,18 +593,18 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
               <th className={th}>Worked</th>
               <th className={`${th} hidden xl:table-cell`}>Break</th>
               <th className={`${th} hidden xl:table-cell`}>Lunch</th>
-              <th className={`${th} hidden xl:table-cell`}>Overtime</th>
+              <th className={`${th} hidden xl:table-cell`}>Overtime / punch out</th>
               {isTeamView && <th className={`${th} hidden md:table-cell`}>Punch location</th>}
               {isTeamView && <th className={`${th} hidden lg:table-cell`}>Correction reason</th>}
               <th className={th}>Status</th>
-              <th className={`${th} pr-5 text-right`}><span className="sr-only">Actions</span></th>
+              <th className={`${th} pr-5 text-right`}>Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {loading
               ? skeletonRows.map((_, i) => (
                   <tr key={i}>
-                    <td colSpan={isTeamView ? 13 : 10} className="px-5 py-3.5"><span className="skeleton-shimmer block h-5 rounded-md" /></td>
+                    <td colSpan={isTeamView ? 12 : 9} className="px-5 py-3.5"><span className="skeleton-shimmer block h-5 rounded-md" /></td>
                   </tr>
                 ))
               : rows.map((row) => {
@@ -576,9 +637,16 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 tabular-nums text-slate-700">{row.checkIn && !row.checkOut ? <span className="text-xs font-medium text-emerald-700">Working</span> : timeOrDash(row.checkOut)}</td>
                       <td className="whitespace-nowrap px-4 py-3 font-semibold tabular-nums text-slate-900">{mins ? formatHm(mins) : "—"}</td>
-                      <td className="hidden whitespace-nowrap px-4 py-3 tabular-nums text-slate-500 xl:table-cell">{breakMinutesOf(row) ? formatHm(breakMinutesOf(row)) : "—"}</td>
-                      <td className="hidden whitespace-nowrap px-4 py-3 tabular-nums text-slate-500 xl:table-cell">{lunchMinutesOf(row) ? formatHm(lunchMinutesOf(row)) : "—"}</td>
-                      <td className="hidden whitespace-nowrap px-4 py-3 tabular-nums text-indigo-700 xl:table-cell">{row.overtimeMinutes ? formatHm(row.overtimeMinutes) : "—"}</td>
+                      <td className="hidden whitespace-nowrap px-4 py-3 tabular-nums text-slate-500 xl:table-cell">{pauseSummary(row, "BREAK", breakMinutesOf(row), now)}</td>
+                      <td className="hidden whitespace-nowrap px-4 py-3 tabular-nums text-slate-500 xl:table-cell">{pauseSummary(row, "LUNCH", lunchMinutesOf(row), now)}</td>
+                      {(() => {
+                        const overtime = overtimeDisplay(row);
+                        return (
+                          <td className={`hidden whitespace-nowrap px-4 py-3 tabular-nums xl:table-cell ${overtime.pending ? "text-slate-500" : "text-indigo-700"}`} title={overtime.pending ? "Overtime is shown after HR approval" : undefined}>
+                            {overtime.text}
+                          </td>
+                        );
+                      })()}
                       {isTeamView && (
                         <td className="hidden min-w-[15rem] px-4 py-3 md:table-cell">
                           <PunchLocations row={row} />
@@ -637,6 +705,10 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
                     <div><dt className="text-slate-500">In</dt><dd className="mt-0.5 font-semibold tabular-nums text-slate-900">{timeOrDash(row.checkIn)}</dd></div>
                     <div><dt className="text-slate-500">Out</dt><dd className="mt-0.5 font-semibold tabular-nums text-slate-900">{row.checkIn && !row.checkOut ? "Working" : timeOrDash(row.checkOut)}</dd></div>
                     <div><dt className="text-slate-500">Worked</dt><dd className="mt-0.5 font-semibold tabular-nums text-slate-900">{mins ? formatHm(mins) : "—"}</dd></div>
+                  </dl>
+                  <dl className="mt-2 grid grid-cols-2 gap-2 rounded-xl bg-indigo-50/60 px-3 py-2.5 text-xs">
+                    <div><dt className="text-slate-500">Break</dt><dd className="mt-0.5 font-semibold tabular-nums text-slate-900">{pauseSummary(row, "BREAK", breakMinutesOf(row), now)}</dd></div>
+                    <div><dt className="text-slate-500">Lunch</dt><dd className="mt-0.5 font-semibold tabular-nums text-slate-900">{pauseSummary(row, "LUNCH", lunchMinutesOf(row), now)}</dd></div>
                   </dl>
                   {isTeamView && (
                     <div className="mt-2 rounded-xl bg-white px-3 py-2.5 ring-1 ring-slate-200">

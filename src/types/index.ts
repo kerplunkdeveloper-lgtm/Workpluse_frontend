@@ -196,6 +196,13 @@ export interface Attendance {
   workHours?: number;
   workMinutes?: number;
   overtimeHours?: number;
+  overtimeRequests?: {
+    id: string;
+    status: "PENDING" | "APPROVED" | "REJECTED";
+    requestedMinutes: number;
+    approvedMinutes?: number | null;
+    reviewNote?: string | null;
+  }[];
   lateMinutes?: number;
   isWorkFromHome?: boolean;
   wfhNote?: string;

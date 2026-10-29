@@ -13,7 +13,12 @@ export interface Person {
   id: string;
   email?: string;
   role?: string;
-  employee?: { firstName?: string; lastName?: string; employeeCode?: string } | null;
+  employee?: {
+    firstName?: string;
+    lastName?: string;
+    employeeCode?: string;
+    department?: { id?: string; name?: string } | null;
+  } | null;
 }
 
 export interface ChatMessage {
