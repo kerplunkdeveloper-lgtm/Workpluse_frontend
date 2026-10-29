@@ -356,7 +356,6 @@ export default function ApprovalsInboxView() {
     { key: "EXPENSES", label: "Expense Claims", icon: Wallet, count: expenses.length },
     { key: "COMPOFF", label: "Comp-Off", icon: Sparkles, count: compOffs.length },
     { key: "DAYOFF", label: "Day-off work", icon: CalendarOff, count: dayOffWork.length },
-    { key: "SHOOTS", label: isReviewer ? "Shoot requests" : "My shoot requests", icon: Sparkles, count: shoots.filter((row) => row.status === "PENDING").length },
   ];
 
   const emptyNote = (text: string) => <div className="py-12 text-center text-xs text-slate-500">{text}</div>;

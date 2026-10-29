@@ -602,6 +602,16 @@ export default function DashboardOverview() {
     };
     // The server counts today's clock-ins by the tenant's local hour. Rows are
     // only a fallback for a backend that predates that field, and are limited to today.
+    // Never use the browser/server UTC hour directly: a 09:00 IST punch is
+    // stored as 03:30Z and would otherwise appear in the 6–8am bucket.
+    const timezone = summary?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata";
+    const hourInTimezone = (value: string) => {
+      try {
+        return Number(new Intl.DateTimeFormat("en-GB", { hour: "numeric", hour12: false, timeZone: timezone }).format(new Date(value))) % 24;
+      } catch {
+        return new Date(value).getHours();
+      }
+    };
     const serverHourly: unknown = summary?.hourlyCheckIns;
     if (Array.isArray(serverHourly) && serverHourly.length === 24) {
       serverHourly.forEach((count, hour) => {
@@ -610,7 +620,7 @@ export default function DashboardOverview() {
     } else {
       allAttendance.forEach((att) => {
         if (att.checkIn && isTodayRecord(att, todayKey))
-          addClockIns(new Date(att.checkIn).getHours(), 1);
+          addClockIns(hourInTimezone(att.checkIn), 1);
       });
     }
     const maxCount = Math.max(...buckets.map((b) => b.count), 0);
@@ -1148,24 +1158,34 @@ export default function DashboardOverview() {
                   type="button"
                   onClick={() => setPendingPunch("CHECK_IN")}
                   disabled={isActionLoading || hasCheckedOutToday}
-                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 text-white font-semibold text-sm shadow-lg shadow-indigo-600/30 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full rounded-2xl bg-gradient-to-r from-indigo-500 to-indigo-600 py-3.5 text-white shadow-lg shadow-indigo-600/30 transition hover:from-indigo-400 hover:to-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <Clock className="w-4 h-4" />
-                  {hasCheckedOutToday
-                    ? "Shift completed"
-                    : todayStatus?.approvedShoot
-                      ? "Shoot In"
-                      : "Punch in"}
+                  <span className="flex items-center justify-center gap-2 text-sm font-semibold">
+                    <Clock className="h-4 w-4" />
+                    {hasCheckedOutToday ? "Shift completed" : todayStatus?.approvedShoot ? "Punch in · Shoot" : "Punch in"}
+                  </span>
+                  {!hasCheckedOutToday && todayStatus?.approvedShoot && (
+                    <span className="mt-1 block text-xs font-medium text-indigo-100">
+                      {todayStatus.approvedShoot.shootName} · {formatTime(todayStatus.approvedShoot.startTime)} – {formatTime(todayStatus.approvedShoot.endTime)}
+                    </span>
+                  )}
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={() => setPendingPunch("CHECK_OUT")}
                   disabled={isActionLoading}
-                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-400 hover:to-rose-500 text-white font-semibold text-sm shadow-lg shadow-rose-600/30 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full rounded-2xl bg-gradient-to-r from-rose-500 to-rose-600 py-3.5 text-white shadow-lg shadow-rose-600/30 transition hover:from-rose-400 hover:to-rose-500 disabled:opacity-50"
                 >
-                  <Clock className="w-4 h-4" />
-                  {todayStatus?.approvedShoot ? "Shoot Out" : "Punch out"}
+                  <span className="flex items-center justify-center gap-2 text-sm font-semibold">
+                    <Clock className="h-4 w-4" />
+                    {todayStatus?.approvedShoot ? "Punch out · Shoot" : "Punch out"}
+                  </span>
+                  {todayStatus?.approvedShoot && (
+                    <span className="mt-1 block text-xs font-medium text-rose-100">
+                      {todayStatus.approvedShoot.shootName} · {formatTime(todayStatus.approvedShoot.startTime)} – {formatTime(todayStatus.approvedShoot.endTime)}
+                    </span>
+                  )}
                 </button>
               )}
 

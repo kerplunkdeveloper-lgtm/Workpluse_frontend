@@ -306,6 +306,16 @@ function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm,
                 <Stat icon={officeCheck ? Building2 : MapPin} label={officeCheck ? "Office" : "Current location"} value={officeCheck ? (policy?.branchName || "Not assigned") : (currentPlace || "Your current position")} />
               </div>
 
+              {workMode === "SHOOT" && todayStatus?.approvedShoot && (
+                <div className="rounded-2xl bg-violet-50 px-3.5 py-3 ring-1 ring-violet-200">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-violet-600">Approved shoot time</p>
+                  <p className="mt-1 truncate text-sm font-semibold text-violet-950">{todayStatus.approvedShoot.shootName}</p>
+                  <p className="mt-0.5 text-xs font-medium text-violet-700">
+                    {todayStatus.approvedShoot.location} · {todayStatus.approvedShoot.startTime} – {todayStatus.approvedShoot.endTime}
+                  </p>
+                </div>
+              )}
+
               <fieldset className="space-y-2">
                 <legend className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Where are you working today?</legend>
                 <div className={`grid gap-2 ${modes.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>

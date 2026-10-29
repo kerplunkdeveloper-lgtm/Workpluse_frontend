@@ -310,7 +310,7 @@ export default function LeavesView() {
         )}
       </div>
 
-      {(role === "SUPER_ADMIN" || role === "COMPANY_ADMIN") && (
+      {(role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "HR") && (
         <div className="bg-white rounded-2xl border p-4 flex flex-wrap gap-2 text-xs items-end">
           <input value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} placeholder="Type name" className="px-3 py-2 rounded-xl border" />
           <input value={newTypeCode} onChange={(e) => setNewTypeCode(e.target.value)} placeholder="Code" maxLength={20} className="w-20 px-3 py-2 rounded-xl border uppercase" />

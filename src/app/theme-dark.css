@@ -424,3 +424,33 @@ html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) ::-webkit-scro
 html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) ::-webkit-scrollbar-thumb:hover { background: #3a4462; }
 html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) option { background: #121829; color: #eef0f6; }
 html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) img:not([src$=".svg"]) { filter: none; }
+
+/* Final interaction pass: keep controls and utility content readable even
+   when a component uses a native browser colour or a utility outside the main
+   canvas. These rules intentionally stay scoped to the signed-in app. */
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) :is(input, select, textarea) {
+  color-scheme: dark;
+  caret-color: #a5b4fc;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) :is(input, select, textarea)::placeholder {
+  color: #717b96;
+  opacity: 1;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) :is(input, select, textarea):-webkit-autofill,
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) :is(input, select, textarea):-webkit-autofill:hover,
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) :is(input, select, textarea):-webkit-autofill:focus {
+  -webkit-text-fill-color: #eef0f6;
+  -webkit-box-shadow: 0 0 0 1000px #0f1526 inset;
+  caret-color: #a5b4fc;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) hr {
+  border-color: #242b42;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) :is(button, a):disabled {
+  color: #717b96;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) :is(button, a):focus-visible,
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) :is(input, select, textarea):focus-visible {
+  outline-color: #818cf8;
+  outline-offset: 2px;
+}
