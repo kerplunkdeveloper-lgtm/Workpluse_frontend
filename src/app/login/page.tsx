@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
-import { Lock, Mail, ArrowRight, Loader2, Eye, EyeOff, Building2 } from "lucide-react";
+import { Lock, Mail, Phone, ArrowRight, Loader2, Eye, EyeOff, Building2 } from "lucide-react";
 import AuthShell, {
   AuthDivider,
   authIcon,
@@ -132,18 +132,18 @@ export default function LoginPage() {
     >
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label htmlFor="login-email" className={authLabel}>Work email or employee code</label>
+          <label htmlFor="login-email" className={authLabel}>Work email, phone number, or employee code</label>
           <div className={authInputWrap()}>
-            <Mail className={authIcon} />
+            {/^[+\d\s()-]*$/.test(email) && email.length > 0 ? <Phone className={authIcon} /> : <Mail className={authIcon} />}
             <input
               type="text"
-              inputMode="email"
+              inputMode="text"
               id="login-email"
               name="email"
               autoComplete="username"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@company.com"
+              placeholder="you@company.com or +91 9876543210"
               className={authInput}
               required
             />

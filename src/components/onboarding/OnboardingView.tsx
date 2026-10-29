@@ -20,7 +20,7 @@ import {
 import { toast } from "sonner";
 import { confetti } from "@/lib/confetti";
 import Link from "next/link";
-import PhoneInput, { toE164India, validateIndianPhone } from "@/components/ui/PhoneInput";
+import PhoneInput, { toE164, validatePhone, type CountryCode } from "@/components/ui/PhoneInput";
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
 import CandidateDocumentsModal from "./CandidateDocumentsModal";
@@ -70,6 +70,7 @@ export default function OnboardingView() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneCountryCode, setPhoneCountryCode] = useState<CountryCode>("+91");
   const [designation, setDesignation] = useState("");
   const [offeredSalary, setOfferedSalary] = useState("");
   const [departmentId, setDepartmentId] = useState("");
@@ -102,7 +103,7 @@ export default function OnboardingView() {
 
   const handleCreateJoiner = async (e: React.FormEvent) => {
     e.preventDefault();
-    const phoneError = validateIndianPhone(phone);
+    const phoneError = validatePhone(phone, phoneCountryCode);
     if (phoneError) {
       toast.error(phoneError);
       return;
@@ -113,7 +114,7 @@ export default function OnboardingView() {
         firstName,
         lastName,
         email,
-        phone: toE164India(phone),
+        phone: toE164(phoneCountryCode, phone),
         designation,
         offeredSalary: Number(offeredSalary),
         proposedSalary: Number(offeredSalary),
@@ -132,6 +133,7 @@ export default function OnboardingView() {
         setLastName("");
         setEmail("");
         setPhone("");
+        setPhoneCountryCode("+91");
         setDesignation("");
         setOfferedSalary("");
         loadPipeline();
@@ -396,7 +398,7 @@ export default function OnboardingView() {
                 </div>
                 <div>
                   <label className="block text-[13px] font-medium text-slate-700 mb-1">Phone</label>
-                  <PhoneInput value={phone} onChange={setPhone} />
+                  <PhoneInput value={phone} onChange={setPhone} countryCode={phoneCountryCode} onCountryCodeChange={setPhoneCountryCode} />
                 </div>
               </div>
 

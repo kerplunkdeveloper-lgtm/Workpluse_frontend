@@ -28,6 +28,7 @@ function AttendanceWorkspace() {
   const { role } = useAuth();
   const { todayStatus, isOnline, currentLocation } = useAttendance();
   const isTeam = TEAM_ROLES.includes(String(role));
+  const canPunchForSelf = role !== "COMPANY_ADMIN" && role !== "SUPER_ADMIN";
   const punchedIn = Boolean(todayStatus?.hasCheckedIn || todayStatus?.attendance?.checkIn);
   const punchedOut = Boolean(todayStatus?.hasCheckedOut || todayStatus?.attendance?.checkOut);
 
@@ -39,7 +40,7 @@ function AttendanceWorkspace() {
           <p className="mt-3 text-[11px] font-bold uppercase tracking-[.18em] text-indigo-600">Workday command center</p>
           <h1 className="mt-1 text-3xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-[36px]">Attendance</h1>
           <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">
-            {isTeam ? "Punch in for yourself, see who's in today, and keep the team's records accurate." : "Punch in and out, take breaks, and keep an eye on your hours."}
+            {canPunchForSelf ? (isTeam ? "Punch in for yourself, see who's in today, and keep the team's records accurate." : "Punch in and out, take breaks, and keep an eye on your hours.") : "Review your team's attendance and keep employee records accurate."}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -54,14 +55,16 @@ function AttendanceWorkspace() {
         </div>
       </header>
 
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Attendance status summary">
-        <StatusTile icon={punchedOut ? CheckCircle2 : Clock3} label="Today" value={punchedOut ? "Complete" : punchedIn ? "In progress" : "Not started"} tone={punchedOut || punchedIn ? "text-emerald-700" : "text-slate-700"} />
-        <StatusTile icon={Clock3} label="Shift" value={todayStatus?.shift?.name || "Your assigned shift"} />
-        <StatusTile icon={MapPin} label="Location" value={currentLocation ? "GPS ready" : "Checking location"} tone={currentLocation ? "text-emerald-700" : "text-amber-700"} />
-        <StatusTile icon={isTeam ? UsersRound : CheckCircle2} label={isTeam ? "Team view" : "Connection"} value={isTeam ? "Live today" : isOnline ? "Online" : "Offline mode"} tone={isOnline || isTeam ? "text-indigo-700" : "text-amber-700"} />
-      </section>
+      {canPunchForSelf && (
+        <section className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Attendance status summary">
+          <StatusTile icon={punchedOut ? CheckCircle2 : Clock3} label="Today" value={punchedOut ? "Complete" : punchedIn ? "In progress" : "Not started"} tone={punchedOut || punchedIn ? "text-emerald-700" : "text-slate-700"} />
+          <StatusTile icon={Clock3} label="Shift" value={todayStatus?.shift?.name || "Your assigned shift"} />
+          <StatusTile icon={MapPin} label="Location" value={currentLocation ? "GPS ready" : "Checking location"} tone={currentLocation ? "text-emerald-700" : "text-amber-700"} />
+          <StatusTile icon={isTeam ? UsersRound : CheckCircle2} label={isTeam ? "Team view" : "Connection"} value={isTeam ? "Live today" : isOnline ? "Online" : "Offline mode"} tone={isOnline || isTeam ? "text-indigo-700" : "text-amber-700"} />
+        </section>
+      )}
 
-      <PunchClockCard />
+      {canPunchForSelf && <PunchClockCard />}
       {isTeam && <TeamToday />}
       {isTeam && <TeamPunchBoard />}
       <MyAttendanceInsights />

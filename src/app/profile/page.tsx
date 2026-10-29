@@ -22,15 +22,18 @@ import {
   Calendar,
   Laptop,
   Box,
+  Landmark,
+  LockKeyhole,
 } from "lucide-react";
 import { formatDate, roleLabel } from "@/lib/utils";
 import { offboardingApi, assetsApi, employeesApi, branchesApi, authApi } from "@/lib/api";
 import ProfilePhotoPicker from "@/components/profile/ProfilePhotoPicker";
 import ProfileDateFields from "@/components/profile/ProfileDateFields";
 import { toast } from "sonner";
-import { PhoneFormField, toE164India, validateIndianPhone } from "@/components/ui/PhoneInput";
+import { PhoneFormField, toE164, validatePhone } from "@/components/ui/PhoneInput";
 import { unwrapList } from "@/lib/utils";
 import { Asset, AssetAssignment } from "@/types";
+import BankSelector from "@/components/profile/BankSelector";
 
 export default function ProfilePage() {
   const { user, isLoading, refreshUser } = useAuth();
@@ -556,8 +559,14 @@ export default function ProfilePage() {
             <div className="rounded-3xl p-6 border border-slate-200 bg-white shadow-sm space-y-4">
               <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-3">
                 <Shield className="w-4 h-4 text-emerald-600" />
-                Statutory Compliance & Security
+                Profile details & payout account
               </h3>
+              <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 to-sky-50/60 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-100"><Landmark className="h-4 w-4" /></div>
+                  <div><p className="text-sm font-semibold text-slate-900">Keep your profile ready for payroll</p><p className="mt-0.5 text-xs leading-5 text-slate-600">Add accurate personal, emergency and bank details so HR can process salary without back-and-forth.</p></div>
+                </div>
+              </div>
               <div className="space-y-3 text-xs">
                 <div className="flex justify-between py-1 border-b border-slate-100">
                   <span className="text-slate-500">Employment Status:</span>
@@ -583,25 +592,31 @@ export default function ProfilePage() {
                       return;
                     }
                     const phoneError =
-                      validateIndianPhone(String(fd.get("phone") || ""), false) || validateIndianPhone(String(fd.get("emergencyContactPhone") || ""), false);
+                      validatePhone(String(fd.get("phone") || ""), String(fd.get("phoneCountryCode") || "+91"), false) ||
+                      validatePhone(String(fd.get("emergencyContactPhone") || ""), String(fd.get("emergencyContactPhoneCountryCode") || "+91"), false);
                     if (phoneError) {
                       toast.error(phoneError);
                       return;
                     }
+                    const bankIfsc = String(fd.get("bankIfsc") || "").replace(/\s+/g, "").toUpperCase();
+                    if (bankIfsc && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(bankIfsc)) {
+                      toast.error("Enter a valid 11-character IFSC, for example HDFC0001234");
+                      return;
+                    }
                     try {
                       const res = await employeesApi.updateMe({
-                        // Disabled (already recorded) date fields are absent from FormData, so they are never re-sent.
+                        // Date of birth is disabled once recorded; joining date remains editable.
                         ...(dob ? { dateOfBirth: dob } : {}),
                         ...(doj ? { dateOfJoining: doj } : {}),
-                        phone: toE164India(String(fd.get("phone") || "")),
+                        phone: toE164(String(fd.get("phoneCountryCode") || "+91"), String(fd.get("phone") || "")),
                         workEmail: String(fd.get("workEmail") || "").trim(),
                         personalEmail: String(fd.get("personalEmail") || "").trim(),
                         address: fd.get("address"),
                         emergencyContactName: fd.get("emergencyContactName"),
-                        emergencyContactPhone: toE164India(String(fd.get("emergencyContactPhone") || "")),
+                        emergencyContactPhone: toE164(String(fd.get("emergencyContactPhoneCountryCode") || "+91"), String(fd.get("emergencyContactPhone") || "")),
                         bankName: fd.get("bankName"),
                         bankAccountNumber: fd.get("bankAccountNumber"),
-                        bankIfsc: fd.get("bankIfsc"),
+                        bankIfsc,
                       });
                       if (res?.success) {
                         toast.success("Profile saved");
@@ -628,15 +643,10 @@ export default function ProfilePage() {
                     </label>
                   </div>
                   <PhoneFormField name="phone" defaultValue={employee?.phone} />
-                  <input name="address" defaultValue={(employee as any)?.address || ""} placeholder="Address" className="w-full px-3 py-2 rounded-xl border" />
-                  <input name="emergencyContactName" defaultValue={(employee as any)?.emergencyContactName || ""} placeholder="Emergency contact" className="w-full px-3 py-2 rounded-xl border" />
-                  <PhoneFormField name="emergencyContactPhone" defaultValue={(employee as any)?.emergencyContactPhone} />
-                  <input name="bankName" defaultValue={(employee as any)?.bankName || ""} placeholder="Bank name" className="w-full px-3 py-2 rounded-xl border" />
-                  <input name="bankAccountNumber" defaultValue={(employee as any)?.bankAccountNumber || ""} placeholder="Account number" className="w-full px-3 py-2 rounded-xl border" />
-                  <input name="bankIfsc" defaultValue={(employee as any)?.bankIfsc || ""} placeholder="IFSC" className="w-full px-3 py-2 rounded-xl border" />
-                  <button type="submit" className="w-full py-2.5 rounded-xl bg-slate-900 text-white font-semibold">
-                    Save my details
-                  </button>
+                  <label className="block text-xs font-medium text-slate-600">Home address<input name="address" defaultValue={(employee as any)?.address || ""} placeholder="Street, city, state" className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200" /></label>
+                  <div className="border-t border-slate-100 pt-3"><p className="mb-2 text-xs font-bold uppercase tracking-[0.12em] text-slate-500">Emergency contact</p><div className="grid grid-cols-1 gap-2 sm:grid-cols-2"><label className="text-xs font-medium text-slate-600">Full name<input name="emergencyContactName" defaultValue={(employee as any)?.emergencyContactName || ""} placeholder="Contact name" className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200" /></label><div><label className="text-xs font-medium text-slate-600">Phone number</label><div className="mt-1"><PhoneFormField name="emergencyContactPhone" defaultValue={employee?.emergencyContactPhone} /></div></div></div></div>
+                  <div className="border-t border-slate-100 pt-3"><div className="mb-2 flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">Bank details</p><span className="flex items-center gap-1 text-[11px] font-medium text-emerald-600"><LockKeyhole className="h-3 w-3" /> Private & encrypted</span></div><div className="space-y-2"><label className="block text-xs font-medium text-slate-600">Bank name<BankSelector defaultValue={(employee as any)?.bankName || ""} /></label><div className="grid grid-cols-1 gap-2 sm:grid-cols-2"><label className="text-xs font-medium text-slate-600">Account number<input name="bankAccountNumber" inputMode="numeric" defaultValue={(employee as any)?.bankAccountNumber || ""} placeholder="6–20 digit account number" className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200" /></label><label className="text-xs font-medium text-slate-600">IFSC code<input name="bankIfsc" autoCapitalize="characters" autoComplete="off" maxLength={11} spellCheck={false} defaultValue={(employee as any)?.bankIfsc || ""} placeholder="e.g. HDFC0001234" className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 uppercase" /><span className="mt-1 block text-[11px] font-normal text-slate-400"></span></label></div></div></div>
+                  <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 py-3 font-semibold text-white shadow-lg shadow-slate-900/15 transition hover:bg-indigo-700"><CheckCircle2 className="h-4 w-4" /> Save profile changes</button>
                 </form>
                 <div className="pt-2">
                   <button

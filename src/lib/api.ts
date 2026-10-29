@@ -257,8 +257,11 @@ export const authApi = {
     const res = await api.post("/auth/google", { idToken, client: "web" });
     return res.data;
   },
-  login: async (email: string, password: string) => {
-    const res = await api.post("/auth/login", { email, password, client: "web" });
+  login: async (identifier: string, password: string) => {
+    const value = identifier.trim();
+    const isPhone = /^\+?[\d\s()\-]+$/.test(value) && value.replace(/\D/g, "").length >= 10;
+    const payload = isPhone ? { phone: value, password, client: "web" } : { email: value, password, client: "web" };
+    const res = await api.post("/auth/login", payload);
     return res.data;
   },
   verifyTwoFactorLogin: async (challengeToken: string, code: string) => {
@@ -1158,6 +1161,12 @@ export const employeesApi = {
     const res = await api.get(`/employees/${employeeId}/documents`);
     return res.data;
   },
+  getDocumentContent: async (employeeId: string, documentId: string) => {
+    const res = await api.get(`/employees/${employeeId}/documents/${documentId}/content`, {
+      responseType: "blob",
+    });
+    return res.data as Blob;
+  },
   uploadDocument: async (employeeId: string, formDataOrPayload: FormData | any) => {
     // Let the browser/Axios add the multipart boundary. Setting this header
     // manually can send a body without the boundary and makes Multer see no file.
@@ -1349,6 +1358,18 @@ export const notificationsApi = {
     const res = await api.get("/notifications");
     return res.data;
   },
+    getPushPublicKey: async () => {
+      const res = await api.get("/notifications/push/public-key");
+      return res.data;
+    },
+    subscribePush: async (subscription: PushSubscriptionJSON) => {
+      const res = await api.post("/notifications/push/subscribe", { subscription });
+      return res.data;
+    },
+    unsubscribePush: async (endpoint: string) => {
+      const res = await api.delete("/notifications/push/subscribe", { data: { endpoint } });
+      return res.data;
+    },
   broadcast: async (payload: { title: string; message: string }) => {
     const res = await api.post("/notifications/broadcast", payload);
     return res.data;
@@ -1357,6 +1378,10 @@ export const notificationsApi = {
     const res = await api.put(`/notifications/${id}/read`);
     return res.data;
   },
+    remove: async (id: string) => {
+      const res = await api.delete(`/notifications/${id}`);
+      return res.data;
+    },
   markAllRead: async () => {
     const res = await api.put("/notifications/read-all");
     return res.data;

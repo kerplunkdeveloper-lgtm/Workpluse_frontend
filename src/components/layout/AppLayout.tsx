@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import Brand from "@/components/ui/Brand";
 import { useAttendance } from "@/context/AttendanceContext";
-import { Settings, Bell, LogOut, ChevronRight, ChevronDown, ShieldCheck, CheckCircle2, MapPin, Coffee, Menu, X, FileCheck2, Search, MessageSquare, HelpCircle, ChevronsLeft, ChevronsRight, Command, Home, Megaphone, Loader2 } from "lucide-react";
+import { Settings, Bell, LogOut, ChevronRight, ChevronDown, ShieldCheck, CheckCircle2, MapPin, Coffee, Menu, X, FileCheck2, Search, MessageSquare, HelpCircle, ChevronsLeft, ChevronsRight, Command, Home, Megaphone, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { employeesApi, notificationsApi, orgApi } from "@/lib/api";
@@ -21,6 +21,7 @@ import CommandPalette from "./CommandPalette";
 import CompanyLogo from "@/components/ui/CompanyLogo";
 import ShortcutsHelpModal from "./ShortcutsHelpModal";
 import { NAV_SECTIONS, PLATFORM_SECTIONS, DESKTOP_NAV_SCROLL_KEY, MOBILE_NAV_SCROLL_KEY, isNavActive, itemVisible, itemMatches, timeAgo } from "./navConfig";
+import { enableWebPushNotifications } from "@/lib/webPush";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -156,6 +157,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setSidebarCollapsed(localStorage.getItem("wp-sidebar-collapsed") === "1");
   }, [pathname]);
 
+  // Register this browser for server push so notifications still arrive when
+  // the dashboard tab is closed. Permission denial is intentionally silent.
+  useEffect(() => {
+    if (!user?.id) return;
+    void enableWebPushNotifications().catch(() => {});
+  }, [user?.id]);
+
   // Scroll restoration
   useLayoutEffect(() => {
     const restoreScroll = (element: HTMLDivElement | null, storageKey: string) => {
@@ -263,6 +271,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       setUnreadCount(0);
     } catch {
       // ignore
+    }
+  };
+
+  const deleteNotification = async (notification: NotificationItem) => {
+    setNotifications((prev) => prev.filter((item) => item.id !== notification.id));
+    if (!notification.isRead) setUnreadCount((count) => Math.max(0, count - 1));
+    try {
+      await notificationsApi.remove(notification.id);
+    } catch {
+      // Restore the item if the server could not delete it.
+      setNotifications((prev) => prev.some((item) => item.id === notification.id) ? prev : [notification, ...prev]);
+      if (!notification.isRead) setUnreadCount((count) => count + 1);
     }
   };
 
@@ -666,7 +686,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           {/* Right: Quick Punch Executive Pill, Notifications, Chat & User Menu */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {!isPlatformOwner && (
+            {!isPlatformOwner && role !== "COMPANY_ADMIN" && (
             <>
             {/* Quick Punch Widget */}
             <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100/80 border border-slate-200/90 shadow-2xs">
@@ -763,7 +783,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.96 }}
                     transition={{ duration: 0.15 }}
-                    className="fixed inset-x-3 top-20 sm:absolute sm:inset-auto sm:right-0 sm:mt-2 sm:w-96 max-h-[82dvh] flex flex-col rounded-2xl bg-white border border-slate-200 shadow-2xl p-4 z-50 text-slate-800"
+                    className="fixed left-1/2 top-16 z-50 flex w-[min(calc(100vw-1.5rem),24rem)] max-h-[min(72dvh,34rem)] -translate-x-1/2 flex-col rounded-2xl border border-slate-200 bg-white p-3 text-slate-800 shadow-2xl sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[22rem] sm:translate-x-0"
                   >
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-2">
                       <div className="flex items-center gap-2">
@@ -816,7 +836,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       </button>
                     </div>
 
-                    <div className="max-h-80 overflow-y-auto space-y-2 text-xs">
+                    <div className="max-h-64 space-y-2 overflow-y-auto text-xs">
                       {filteredNotifications.length === 0 ? (
                         <div className="py-8 text-center text-slate-400">
                           <Bell className="w-8 h-8 mx-auto mb-2 opacity-40 text-indigo-500" />
@@ -825,25 +845,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         </div>
                       ) : (
                         filteredNotifications.slice(0, 8).map((n) => (
-                          <button
-                            type="button"
+                          <NotificationRow
                             key={n.id}
-                            onClick={() => openNotification(n)}
-                            className={`block w-full text-left p-3 rounded-xl transition border hover:border-indigo-200 ${
-                              n.isRead
-                                ? "bg-slate-50/70 border-slate-100 text-slate-600"
-                                : "bg-indigo-50/50 border-indigo-100 text-slate-900 font-medium"
-                            }`}
-                          >
-                            <div className="flex items-start justify-between gap-2 mb-1">
-                              <span className="font-bold text-slate-900">{n.title}</span>
-                              {!n.isRead && (
-                                <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0 mt-1" />
-                              )}
-                            </div>
-                            <p className="text-slate-600 text-xs leading-relaxed">{n.message}</p>
-                            <p className="mt-1.5 text-[11px] text-slate-400">{timeAgo(n.createdAt)}</p>
-                          </button>
+                            notification={n}
+                            onOpen={openNotification}
+                            onDelete={deleteNotification}
+                          />
                         ))
                       )}
                     </div>
@@ -1039,7 +1046,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </button>
               </div>
 
-              {!isPlatformOwner && (
+              {!isPlatformOwner && role !== "COMPANY_ADMIN" && (
               <>
               {/* Mobile Quick Punch Bar */}
               <div className="mt-3 p-3 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-between">
@@ -1310,6 +1317,78 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function NotificationRow({
+  notification,
+  onOpen,
+  onDelete,
+}: {
+  notification: NotificationItem;
+  onOpen: (notification: NotificationItem) => void;
+  onDelete: (notification: NotificationItem) => void;
+}) {
+  const [offset, setOffset] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const startX = useRef<number | null>(null);
+
+  const onTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    setDragging(true);
+    startX.current = event.touches[0]?.clientX ?? null;
+  };
+  const onTouchMove = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (startX.current === null) return;
+    const distance = event.touches[0]?.clientX - startX.current;
+    if (Number.isFinite(distance) && distance < 0) setOffset(Math.max(-92, distance));
+  };
+  const onTouchEnd = () => {
+    if (startX.current === null) return;
+    setOffset((current) => (current <= -48 ? -92 : 0));
+    startX.current = null;
+    setDragging(false);
+  };
+  const onTouchCancel = () => {
+    startX.current = null;
+    setOffset(0);
+    setDragging(false);
+  };
+
+  return (
+    <div
+      className="relative overflow-hidden rounded-xl"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchCancel}
+    >
+      <button
+        type="button"
+        aria-label={`Delete ${notification.title}`}
+        onClick={() => onDelete(notification)}
+        style={{ opacity: offset < -8 ? 1 : 0 }}
+        className="absolute inset-y-0 right-0 z-0 flex w-[92px] items-center justify-center gap-1 bg-rose-600 text-xs font-semibold text-white transition-opacity duration-200"
+      >
+        <Trash2 className="h-4 w-4" /> Delete
+      </button>
+      <button
+        type="button"
+        onClick={() => (offset < 0 ? setOffset(0) : onOpen(notification))}
+        style={{ transform: `translateX(${offset}px)`, touchAction: "pan-y" }}
+        className={`relative z-10 block w-full text-left p-3 rounded-xl border hover:border-indigo-200 ${dragging ? "" : "transition-transform duration-200 ease-out"} ${
+          notification.isRead
+            ? "bg-slate-50/70 border-slate-100 text-slate-600"
+            : "bg-indigo-50/50 border-indigo-100 text-slate-900 font-medium"
+        }`}
+      >
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <span className="font-bold text-slate-900">{notification.title}</span>
+          {!notification.isRead && <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0 mt-1" />}
+        </div>
+        <p className="text-slate-600 text-xs leading-relaxed">{notification.message}</p>
+        <p className="mt-1.5 text-[11px] text-slate-400">{timeAgo(notification.createdAt)}</p>
+      </button>
     </div>
   );
 }

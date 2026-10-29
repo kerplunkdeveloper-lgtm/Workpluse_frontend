@@ -60,6 +60,8 @@ export default function EmployeeDocumentsView({
 
   // Preview Modal State
   const [previewDoc, setPreviewDoc] = useState<EmployeeDocument | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   // Rejection Reason Modal State
   const [rejectModalDoc, setRejectModalDoc] = useState<EmployeeDocument | null>(null);
@@ -204,14 +206,47 @@ export default function EmployeeDocumentsView({
     }
   };
 
-  const downloadFile = (fileUrl: string, fileName: string) => {
-    const a = document.createElement("a");
-    a.href = fileUrl;
-    a.download = fileName;
-    a.target = "_blank";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  useEffect(() => {
+    if (!previewDoc) {
+      setPreviewUrl(null);
+      return;
+    }
+    let cancelled = false;
+    setPreviewLoading(true);
+    setPreviewUrl(null);
+    employeesApi.getDocumentContent(employeeId, previewDoc.id)
+      .then((blob) => {
+        if (!cancelled) setPreviewUrl(URL.createObjectURL(blob));
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("Could not load document preview");
+      })
+      .finally(() => {
+        if (!cancelled) setPreviewLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [employeeId, previewDoc]);
+
+  useEffect(() => () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
+
+  const downloadFile = async (documentId: string, fileName: string) => {
+    try {
+      const blob = await employeesApi.getDocumentContent(employeeId, documentId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Could not download document");
+    }
   };
 
   // Filter checklist
@@ -559,7 +594,7 @@ export default function EmployeeDocumentsView({
                           Preview
                         </button>
                         <button
-                          onClick={() => downloadFile(doc.fileUrl, doc.fileName)}
+                          onClick={() => void downloadFile(doc.id, doc.fileName)}
                           className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-medium shadow-xs transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500"
                           title="Download file"
                         >
@@ -777,14 +812,14 @@ export default function EmployeeDocumentsView({
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => downloadFile(previewDoc.fileUrl, previewDoc.fileName)}
+                  onClick={() => void downloadFile(previewDoc.id, previewDoc.fileName)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition"
                 >
                   <Download className="w-3.5 h-3.5" />
                   Download
                 </button>
                 <a
-                  href={previewDoc.fileUrl}
+                  href={previewUrl || undefined}
                   target="_blank"
                   rel="noreferrer"
                   className="p-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 transition"
@@ -803,19 +838,24 @@ export default function EmployeeDocumentsView({
 
             {/* Document Content View */}
             <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-slate-100 min-h-[400px]">
-              {previewDoc.mimeType === "application/pdf" || previewDoc.fileUrl.split(/[?#]/)[0].toLowerCase().endsWith(".pdf") ? (
+              {previewLoading ? (
+                <div className="flex flex-col items-center gap-3 text-sm text-slate-500">
+                  <Loader2 className="h-7 w-7 animate-spin text-indigo-600" />
+                  Loading document…
+                </div>
+              ) : previewUrl && (previewDoc.mimeType === "application/pdf" || previewDoc.fileUrl.split(/[?#]/)[0].toLowerCase().endsWith(".pdf")) ? (
                 <iframe
-                  src={previewDoc.fileUrl}
+                  src={previewUrl}
                   className="w-full h-[650px] rounded-xl border border-slate-200"
                   title="PDF Preview"
                 />
-              ) : (
+              ) : previewUrl ? (
                 <img
-                  src={previewDoc.fileUrl}
+                  src={previewUrl}
                   alt={previewDoc.fileName}
                   className="max-w-full max-h-[650px] object-contain rounded-xl shadow-md"
                 />
-              )}
+              ) : null}
             </div>
           </div>
         </Modal>

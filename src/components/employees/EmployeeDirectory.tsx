@@ -995,7 +995,7 @@ export default function EmployeeDirectory() {
 
               {inviteMode === "MANUAL" && (
                 <div data-field="emp-password">
-                  <label htmlFor="emp-password" className="block text-[13px] font-medium text-slate-700 mb-1">Temporary password *</label>
+                  <label htmlFor="emp-password" className="block text-[13px] font-medium text-slate-700 mb-1">Login password *</label>
                   <input
                     id="emp-password"
                     type="text"
