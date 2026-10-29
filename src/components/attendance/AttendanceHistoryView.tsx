@@ -267,11 +267,8 @@ useEffect(() => {
     return () => window.clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    if (!isTeamView) return;
-    const timer = window.setInterval(() => setReloadKey((key) => key + 1), 15000);
-    return () => window.clearInterval(timer);
-  }, [isTeamView]);
+  // Team attendance is intentionally refreshed only by the user. Automatic
+  // polling was resetting pagination and filters while HR/admins reviewed rows.
   const reload = () => setReloadKey((k) => k + 1);
 
   const openCorrection = (row: Attendance) => {
@@ -527,7 +524,7 @@ export interface AttendanceLogViewProps {
   now: number;
 }
 
-/** Presentational: table on wide screens, stacked cards on phones. */
+/** Presentational: full table on wide screens, stacked cards on phones/tablets. */
 export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered, onRetry, onClearFilters, onCorrect, correctionRequests, now }: AttendanceLogViewProps) {
   const shell = "overflow-hidden rounded-2xl bg-white ring-1 ring-slate-900/[0.06] shadow-[0_1px_2px_rgba(15,23,42,0.04)]";
 
@@ -568,8 +565,8 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
   return (
     <div className={shell}>
       {/* Wide screens: table */}
-      <div className="hidden overflow-x-auto md:block">
-        <table className={`w-full table-fixed text-sm ${isTeamView ? "min-w-[1580px]" : "min-w-[980px]"}`}>
+      <div className="hidden max-w-full overflow-x-auto lg:block">
+        <table className={`w-full table-fixed text-sm ${isTeamView ? "min-w-[1760px]" : "min-w-[980px]"}`}>
           <colgroup>
             {isTeamView && <col className="w-[220px]" />}
             <col className="w-[105px]" />
@@ -578,8 +575,8 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
             <col className="w-[105px]" />
             <col className="w-[95px]" />
             <col className="w-[95px]" />
-            <col className="w-[100px]" />
-            {isTeamView && <col className="w-[255px]" />}
+            <col className="w-[145px]" />
+            {isTeamView && <col className="w-[270px]" />}
             {isTeamView && <col className="w-[220px]" />}
             <col className="w-[110px]" />
             <col className="w-[135px]" />
@@ -593,7 +590,7 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
               <th className={th}>Worked</th>
               <th className={`${th} hidden xl:table-cell`}>Break</th>
               <th className={`${th} hidden xl:table-cell`}>Lunch</th>
-              <th className={`${th} hidden xl:table-cell`}>Overtime / punch out</th>
+              <th className={`${th} hidden whitespace-normal leading-4 xl:table-cell`}>Overtime / punch out</th>
               {isTeamView && <th className={`${th} hidden md:table-cell`}>Punch location</th>}
               {isTeamView && <th className={`${th} hidden lg:table-cell`}>Correction reason</th>}
               <th className={th}>Status</th>
@@ -679,7 +676,7 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
       </div>
 
       {/* Phones: cards */}
-      <ul className="divide-y divide-slate-100 md:hidden">
+      <ul className="divide-y divide-slate-100 lg:hidden">
         {loading
           ? skeletonRows.slice(0, 4).map((_, i) => <li key={i} className="p-4"><span className="skeleton-shimmer block h-16 rounded-lg" /></li>)
           : rows.map((row) => {
@@ -695,11 +692,19 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
                       {isTeamView && <Avatar row={row} />}
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-slate-900">{isTeamView ? employeeName(row) : `${day.weekday}, ${day.date}`}</p>
-                        <p className="truncate text-xs text-slate-500">{isTeamView ? `${day.weekday}, ${day.date}` : row.branch?.name || "—"}</p>
+                        <p className="truncate text-xs text-slate-500">{isTeamView ? row.employee?.employeeCode || row.employee?.designation || "Team member" : row.branch?.name || "—"}</p>
                         {isTeamView && <p className="mt-1 whitespace-normal break-words text-[11px] font-semibold leading-4 text-indigo-600">{workMode.label}{workMode.note ? ` · ${workMode.note}` : ""}</p>}
                       </div>
                     </div>
-                    <StatusBadge status={row.status} />
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      {isTeamView && (
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-slate-900">{day.date}</p>
+                          <p className="text-xs text-slate-500">{day.weekday}</p>
+                        </div>
+                      )}
+                      <StatusBadge status={row.status} />
+                    </div>
                   </div>
                   <dl className="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-xs">
                     <div><dt className="text-slate-500">In</dt><dd className="mt-0.5 font-semibold tabular-nums text-slate-900">{timeOrDash(row.checkIn)}</dd></div>

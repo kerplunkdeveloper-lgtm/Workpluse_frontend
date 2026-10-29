@@ -78,7 +78,7 @@ export default function SubscriptionSettingsView() {
     phone: "",
     address: "",
     taxId: "",
-    timezone: "UTC",
+    timezone: "Asia/Kolkata",
   });
   const [orgPhoneCountryCode, setOrgPhoneCountryCode] = useState<CountryCode>("+91");
   const [isSavingOrg, setIsSavingOrg] = useState(false);
@@ -97,7 +97,7 @@ export default function SubscriptionSettingsView() {
         phone: sanitizePhone(user.organization.phone || "", getCountryCodeFromPhone(user.organization.phone || "")),
         address: user.organization.address || "",
         taxId: user.organization.taxId || "",
-        timezone: user.organization.timezone || "UTC",
+        timezone: user.organization.timezone || "Asia/Kolkata",
       });
       setOrgPhoneCountryCode(getCountryCodeFromPhone(user.organization.phone || ""));
     }
