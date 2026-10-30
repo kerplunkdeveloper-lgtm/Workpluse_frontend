@@ -531,7 +531,7 @@ export function ProofBar() {
     >
       <div className={WRAP}>
         <p className="text-center text-xs font-semibold tracking-widest text-slate-500 uppercase">
-          Trusted by fast-moving field & floor teams across India
+          Built for fast-moving field & floor teams across India
         </p>
         <ul className="mt-8 flex flex-wrap items-center justify-center gap-x-4 gap-y-3 sm:gap-x-6">
           {INDUSTRIES.map((item) => (
@@ -987,15 +987,15 @@ export function Offline() {
               </ul>
 
               <div className="mt-10 flex flex-wrap items-center gap-6 border-t border-white/10 pt-8">
-                <div>
-                  <p className="text-2xl font-extrabold text-white">100%</p>
-                  <p className="text-xs text-slate-400">Original Time Preserved</p>
-                </div>
+                  <div>
+                    <p className="text-2xl font-extrabold text-white">Exact</p>
+                    <p className="text-xs text-slate-400">Original time preserved</p>
+                  </div>
                 <div className="h-8 w-px bg-white/10" />
-                <div>
-                  <p className="text-2xl font-extrabold text-white">0s</p>
-                  <p className="text-xs text-slate-400">Duplicate Loss Guarantee</p>
-                </div>
+                  <div>
+                    <p className="text-2xl font-extrabold text-white">Safe</p>
+                    <p className="text-xs text-slate-400">Duplicate-safe sync</p>
+                  </div>
                 <div className="h-8 w-px bg-white/10" />
                 <div>
                   <p className="text-2xl font-extrabold text-white">IndexedDB</p>

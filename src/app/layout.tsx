@@ -6,6 +6,7 @@ import { AttendanceProvider } from "@/context/AttendanceContext";
 import ThemedToaster from "@/components/ui/ThemedToaster";
 import SystemStatusOverlay from "@/components/ui/SystemStatusOverlay";
 import HoverHints from "@/components/ui/HoverHints";
+import CookieConsent from "@/components/legal/CookieConsent";
 
 export const metadata: Metadata = {
   title: {
@@ -59,6 +60,7 @@ export default function RootLayout({
             <ThemedToaster />
             <SystemStatusOverlay />
             <HoverHints />
+            <CookieConsent />
           </AttendanceProvider>
         </AuthProvider>
       </body>

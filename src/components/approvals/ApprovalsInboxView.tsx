@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { correctionsApi, leavesApi, permissionsApi, overtimeApi, expensesApi, compOffApi, dayOffWorkApi, shootRequestsApi } from "@/lib/api";
 import { formatDate, formatTime, formatCurrency, unwrapList } from "@/lib/utils";
 import {
@@ -136,9 +137,12 @@ function TableShell({ heads, children }: { heads: string[]; children: React.Reac
 const rowClass = "align-middle transition-colors hover:bg-indigo-50/[0.32]";
 
 export default function ApprovalsInboxView() {
-  const [activeTab, setActiveTab] = useState<ApprovalCategory>("CORRECTIONS");
+  const searchParams = useSearchParams();
+  const requestedTab = String(searchParams?.get("tab") || "").toUpperCase() as ApprovalCategory;
+  const requestedStatus = String(searchParams?.get("status") || "").toUpperCase() as RequestFilter;
+  const [activeTab, setActiveTab] = useState<ApprovalCategory>(() => ["CORRECTIONS", "LEAVES", "PERMISSIONS", "OVERTIME", "EXPENSES", "COMPOFF", "DAYOFF", "SHOOTS"].includes(requestedTab) ? requestedTab : "CORRECTIONS");
   const [corrFilter, setCorrFilter] = useState<CorrectionFilter>("PENDING");
-  const [requestFilter, setRequestFilter] = useState<RequestFilter>("ALL");
+  const [requestFilter, setRequestFilter] = useState<RequestFilter>(() => ["PENDING", "APPROVED", "REJECTED", "ALL"].includes(requestedStatus) ? requestedStatus : "ALL");
   const [corrRows, setCorrRows] = useState<any[]>([]);
   const [corrCounts, setCorrCounts] = useState<Record<string, number>>({});
   const [corrLoading, setCorrLoading] = useState(false);
@@ -154,6 +158,11 @@ export default function ApprovalsInboxView() {
   const [loading, setLoading] = useState(true);
   const { role } = useAuth();
   const isReviewer = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER" || role === "HR";
+
+  useEffect(() => {
+    if (["CORRECTIONS", "LEAVES", "PERMISSIONS", "OVERTIME", "EXPENSES", "COMPOFF", "DAYOFF", "SHOOTS"].includes(requestedTab)) setActiveTab(requestedTab);
+    if (["PENDING", "APPROVED", "REJECTED", "ALL"].includes(requestedStatus)) setRequestFilter(requestedStatus);
+  }, [requestedStatus, requestedTab]);
 
   const pendingCorrections = corrCounts.PENDING ?? 0;
 
