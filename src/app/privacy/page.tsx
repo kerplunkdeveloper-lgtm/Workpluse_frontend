@@ -1,26 +1,21 @@
 import Link from "next/link";
 
-export const metadata = {
-  title: "Privacy",
-  description: "How WorkPluse handles workforce and account information.",
-};
+export const metadata = { title: "Privacy Notice", description: "How WorkPluse handles workforce, account and device information." };
 
 export default function PrivacyPage() {
-  return (
-    <main className="min-h-screen bg-slate-50 px-4 py-12 text-slate-800 sm:px-6">
-      <article className="mx-auto max-w-3xl rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-10">
-        <Link href="/" className="text-sm font-semibold text-indigo-600 hover:text-indigo-700">← WorkPluse</Link>
-        <h1 className="mt-6 font-serif text-4xl font-semibold text-slate-950">Privacy notice</h1>
-        <p className="mt-3 text-sm leading-7 text-slate-600">Last updated: 29 September 2026</p>
-        <div className="mt-8 space-y-7 text-sm leading-7 text-slate-700">
-          <section><h2 className="text-lg font-bold text-slate-950">Information processed</h2><p>WorkPluse processes account, employment, attendance, leave, payroll, device, location, billing, and uploaded document information supplied by a workspace and its authorized users.</p></section>
-          <section><h2 className="text-lg font-bold text-slate-950">Purpose</h2><p>Information is used to provide workforce workflows, authenticate users, enforce workspace permissions, produce requested records, prevent abuse, and operate subscriptions.</p></section>
-          <section><h2 className="text-lg font-bold text-slate-950">Workspace responsibility</h2><p>The organization operating a WorkPluse workspace controls its employee records and is responsible for lawful collection, notices, retention periods, and user access.</p></section>
-          <section><h2 className="text-lg font-bold text-slate-950">Service providers</h2><p>WorkPluse may use hosting, database, file-storage, email, messaging, analytics, and payment providers strictly to operate the service. Payment card details are handled by the payment provider rather than stored by WorkPluse.</p></section>
-          <section><h2 className="text-lg font-bold text-slate-950">Your choices</h2><p>Contact your workspace administrator to correct, export, restrict, or delete employment information. Workspace administrators may contact WorkPluse through their established support channel for account-level requests.</p></section>
-          <section><h2 className="text-lg font-bold text-slate-950">Security and retention</h2><p>WorkPluse applies access controls, audit records, encrypted transport, and credential protections. Records are retained only while needed for service operation, contractual requirements, or applicable legal obligations.</p></section>
-        </div>
-      </article>
-    </main>
-  );
+  return <main className="min-h-screen bg-slate-50 px-4 py-12 text-slate-800 sm:px-6"><article className="mx-auto max-w-3xl rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-10">
+    <Link href="/" className="text-sm font-semibold text-indigo-700 underline-offset-2 hover:underline">← WorkPluse</Link>
+    <h1 className="mt-6 text-4xl font-semibold tracking-tight text-slate-950">Privacy notice</h1>
+    <p className="mt-3 text-sm leading-7 text-slate-600">Last updated: 30 October 2026</p>
+    <div className="mt-8 space-y-7 text-sm leading-7 text-slate-700">
+      <section><h2 className="text-lg font-bold text-slate-950">What we collect</h2><p>Depending on the features enabled by a workspace, WorkPluse processes names, email and phone details, employee codes, role and employment information, joining and exit dates, salary and bank details, leave and attendance records, punch timestamps, work mode, GPS coordinates or location evidence, device and browser information, uploaded documents, support messages, billing records and security or audit events.</p></section>
+      <section><h2 className="text-lg font-bold text-slate-950">Why we use it</h2><p>We use information to create accounts, authenticate users, enforce permissions, record attendance, operate leave, shoot, expense and payroll workflows, generate reports and payslips, provide support, prevent fraud and abuse, secure the service, process subscriptions and meet contractual or legal obligations.</p></section>
+      <section><h2 className="text-lg font-bold text-slate-950">Workspace and employee roles</h2><p>The organization using WorkPluse usually decides why employee data is collected and how long it is retained. It must provide notices, obtain any required permissions or consent, use location and payroll data lawfully, and respond to employee requests. Employees should first contact HR or their workspace administrator for employment-record corrections, access or deletion requests.</p></section>
+      <section><h2 className="text-lg font-bold text-slate-950">Providers and third-party services</h2><p>We may use hosting, database, file storage, email, messaging, maps, payment, error monitoring and other providers to operate requested features. A payment provider handles payment credentials. Maps or other embedded content may receive information when a user opens or interacts with it. We do not sell workforce data.</p></section>
+      <section><h2 className="text-lg font-bold text-slate-950">Cookies and device storage</h2><p>Necessary cookies or browser storage support sessions, security and preferences. Optional analytics is off until a user allows it. See our <Link href="/cookies" className="font-semibold text-indigo-700 underline underline-offset-2">Cookie Notice</Link> for the current categories and choices.</p></section>
+      <section><h2 className="text-lg font-bold text-slate-950">India-focused legal context</h2><p>For India-based workspaces, customers should assess obligations under the Digital Personal Data Protection Act, 2023, applicable rules or commencement notifications, employment laws, tax and records requirements, and any sector or state rules. This notice is not legal advice and does not promise that a customer’s configuration meets every local-law requirement.</p></section>
+      <section><h2 className="text-lg font-bold text-slate-950">Retention and security</h2><p>We retain records for service operation, workspace instructions, contract administration, dispute handling, security and applicable legal requirements, then delete or de-identify them when practical. We use access controls, tenant separation, audit records, encrypted transport and credential protections. No internet service can promise absolute security; customers should report suspected incidents promptly through their established support channel.</p></section>
+      <section><h2 className="text-lg font-bold text-slate-950">Accessibility and contact</h2><p>We aim to provide keyboard-friendly controls, visible focus states, readable contrast, text alternatives and responsive layouts. If a control or document is difficult to use, contact your workspace administrator or the WorkPluse support channel with the page and issue so it can be reviewed.</p></section>
+    </div>
+  </article></main>;
 }

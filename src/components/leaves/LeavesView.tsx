@@ -14,13 +14,14 @@ import PermissionRequestsPanel from "./PermissionRequestsPanel";
 import CompanyLeavePanel from "./CompanyLeavePanel";
 import WorkFromHomePanel from "./WorkFromHomePanel";
 import ShootRequestsPanel from "./ShootRequestsPanel";
+import ShootSettlementPanel from "./ShootSettlementPanel";
 import { confirmDialog } from "@/components/ui/confirmDialog";
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
 
 export default function LeavesView() {
   const { user, role } = useAuth();
-  const [activeTab, setActiveTab] = useState<"MY_LEAVES" | "PERMISSIONS" | "COMPANY_LEAVE" | "WORK_FROM_HOME" | "SHOOT_REQUESTS" | "APPROVALS">("MY_LEAVES");
+  const [activeTab, setActiveTab] = useState<"MY_LEAVES" | "PERMISSIONS" | "COMPANY_LEAVE" | "WORK_FROM_HOME" | "SHOOT_REQUESTS" | "SHOOT_SETTLEMENT" | "APPROVALS">("MY_LEAVES");
   const [balances, setBalances] = useState<LeaveBalance[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
   const [myRequests, setMyRequests] = useState<LeaveRequest[]>([]);
@@ -420,6 +421,16 @@ export default function LeavesView() {
         >
           Shoot requests
         </button>
+        <button
+          onClick={() => setActiveTab("SHOOT_SETTLEMENT")}
+          className={`pb-3 px-4 text-sm font-semibold border-b-2 transition ${
+            activeTab === "SHOOT_SETTLEMENT"
+              ? "border-violet-600 text-violet-600"
+              : "border-transparent text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          Shoot settlement
+        </button>
         {canApprove && (
           <button
             onClick={() => setActiveTab("APPROVALS")}
@@ -447,6 +458,9 @@ export default function LeavesView() {
 
       {/* Tab Content: Shoot requests */}
       {activeTab === "SHOOT_REQUESTS" && <ShootRequestsPanel canReview={canApprove} />}
+
+      {/* Tab Content: Shoot settlement and payroll-ready review */}
+      {activeTab === "SHOOT_SETTLEMENT" && <ShootSettlementPanel canReview={canApprove} />}
 
       {/* Tab Content: Company leave */}
       {activeTab === "COMPANY_LEAVE" && <CompanyLeavePanel canManage={canApprove} />}

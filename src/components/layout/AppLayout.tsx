@@ -241,6 +241,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         // The next refresh puts the real state back.
       }
     }
+    // Approval alerts take reviewers directly to the relevant approval queue.
+    // The title check preserves compatibility with older shoot alerts that were
+    // stored as ATTENDANCE before approval notifications had their own type.
+    const isShootApproval = /shoot approval required|shoot cancellation request/i.test(String(n.title));
+    if (n.type === "APPROVAL" || isShootApproval) {
+      setNotificationsOpen(false);
+      router.push("/approvals?tab=SHOOTS&status=PENDING");
+      return;
+    }
     // Punch reminders take you straight to where you punch.
     if (n.type === "ATTENDANCE") {
       setNotificationsOpen(false);

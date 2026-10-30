@@ -39,6 +39,11 @@ const DEFAULTS = {
   allowWfh: true,
   requireOtApproval: false,
   geofenceStrict: false,
+  shootRecoveryEnabled: true,
+  shootRecoveryThresholdMinutes: 720,
+  shootTravelOtEnabled: true,
+  shootOtMultiplier: 1.5,
+  shootOtSalaryBasis: "BASE_SALARY",
 };
 
 export default function PolicyView() {
@@ -146,6 +151,11 @@ export default function PolicyView() {
             allowWfh: Boolean(policy.allowWfh),
             requireOtApproval: Boolean(policy.requireOtApproval),
             geofenceStrict: Boolean(policy.geofenceStrict),
+            shootRecoveryEnabled: Boolean(policy.shootRecoveryEnabled ?? DEFAULTS.shootRecoveryEnabled),
+            shootRecoveryThresholdMinutes: Number(policy.shootRecoveryThresholdMinutes ?? DEFAULTS.shootRecoveryThresholdMinutes),
+            shootTravelOtEnabled: Boolean(policy.shootTravelOtEnabled ?? DEFAULTS.shootTravelOtEnabled),
+            shootOtMultiplier: Number(policy.shootOtMultiplier ?? DEFAULTS.shootOtMultiplier),
+            shootOtSalaryBasis: String(policy.shootOtSalaryBasis ?? DEFAULTS.shootOtSalaryBasis),
             payrollCycleStartDay: Number(policy.payrollCycleStartDay ?? DEFAULTS.payrollCycleStartDay),
             payrollCycleEndDay: Number(policy.payrollCycleEndDay ?? DEFAULTS.payrollCycleEndDay),
             payrollDayBasis: String(policy.payrollDayBasis ?? DEFAULTS.payrollDayBasis),
@@ -466,6 +476,23 @@ export default function PolicyView() {
           Require manager approval before overtime is paid
         </label>
       </div>
+
+      <section className="rounded-3xl border border-violet-200 bg-gradient-to-br from-violet-50 to-white p-6 shadow-xs" aria-labelledby="shoot-policy-heading">
+        <div className="flex items-start gap-3">
+          <div className="rounded-2xl bg-violet-600 p-2.5 text-white"><CheckCircle2 className="h-5 w-5" /></div>
+          <div>
+            <h2 id="shoot-policy-heading" className="text-lg font-semibold text-slate-950">Shoot time, travel OT & recovery leave</h2>
+            <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-600">Employees submit shoot time, travel overtime and company expenses separately after the shoot. HR approves them before payroll. Recovery leave becomes available only when the approved return journey crosses the threshold below.</p>
+          </div>
+        </div>
+        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label className="space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Recovery leave threshold (hours)</span><input type="number" min={1} max={48} step={0.5} value={Number(form.shootRecoveryThresholdMinutes) / 60} onChange={(e) => setNum("shootRecoveryThresholdMinutes", String(Number(e.target.value || 12) * 60))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /><span className="text-xs text-slate-500">Default: 12 hours. If the employee returns the next day and total travel + shoot time reaches this limit, the employee can claim a full-day recovery leave.</span></label>
+          <label className="space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">OT multiplier</span><input type="number" min={0} max={5} step={0.25} value={form.shootOtMultiplier} onChange={(e) => setNum("shootOtMultiplier", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /><span className="text-xs text-slate-500">Example: 1.5 means 150% of the employee hourly rate.</span></label>
+          <label className="space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">OT salary basis</span><Select value={form.shootOtSalaryBasis} onChange={(e) => setForm((p) => ({ ...p, shootOtSalaryBasis: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"><option value="BASE_SALARY">Base salary</option><option value="MONTHLY_CTC">Monthly CTC</option></Select><span className="text-xs text-slate-500">Hourly rate = selected monthly salary ÷ working days per month ÷ 8 hours.</span></label>
+          <div className="space-y-2 text-sm text-slate-700"><label className="flex items-center gap-2"><input type="checkbox" checked={form.shootTravelOtEnabled} onChange={(e) => setForm((p) => ({ ...p, shootTravelOtEnabled: e.target.checked }))} /> Allow same-day return travel as OT</label><label className="flex items-center gap-2"><input type="checkbox" checked={form.shootRecoveryEnabled} onChange={(e) => setForm((p) => ({ ...p, shootRecoveryEnabled: e.target.checked }))} /> Enable recovery leave eligibility</label></div>
+        </div>
+        <div className="mt-5 rounded-2xl border border-violet-200 bg-white/80 p-4 text-xs leading-5 text-violet-950"><strong>Employee-friendly explanation:</strong> Shoot hours, travel OT and expenses are never mixed. HR approves each one separately. Approved OT moves to payroll; approved food, room and transport claims move as reimbursement. If the employee returns the next day and total duty time crosses the configured threshold, Recovery Leave appears as a paid-if-eligible full-day option.</div>
+      </section>
 
       <button
         type="submit"

@@ -497,13 +497,20 @@ export const dayOffWorkApi = {
 };
 
 export const shootRequestsApi = {
-  create: async (payload: { date: string; shootName: string; location: string; employeeIds?: string[]; note?: string }) => (await api.post("/attendance/shoot-requests", payload)).data,
+  create: async (payload: { date: string; shootName: string; location: string; startTime?: string; endTime?: string; employeeIds?: string[]; note?: string }) => (await api.post("/attendance/shoot-requests", payload)).data,
   getMine: async () => (await api.get("/attendance/shoot-requests/my")).data,
   getParticipants: async () => (await api.get("/attendance/shoot-requests/participants")).data,
   getAll: async (params: { status?: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | "CANCELLATION_PENDING" | "ALL" } = {}) => (await api.get("/attendance/shoot-requests", { params: { status: "PENDING", limit: 200, ...params } })).data,
   review: async (id: string, payload: { status: "APPROVED" | "REJECTED"; reviewNote?: string }) => (await api.post(`/attendance/shoot-requests/${id}/review`, payload)).data,
   cancel: async (id: string) => (await api.post(`/attendance/shoot-requests/${id}/cancel`)).data,
   cancelReview: async (id: string, payload: { status: "APPROVED" | "REJECTED"; reviewNote?: string }) => (await api.post(`/attendance/shoot-requests/${id}/cancel-review`, payload)).data,
+};
+
+export const shootSettlementsApi = {
+  create: async (payload: any) => (await api.post("/attendance/shoot-settlements", payload)).data,
+  getMine: async () => (await api.get("/attendance/shoot-settlements/my")).data,
+  getAll: async (status?: string) => (await api.get("/attendance/shoot-settlements", { params: status ? { status } : undefined })).data,
+  review: async (id: string, payload: any) => (await api.patch(`/attendance/shoot-settlements/${id}/review`, payload)).data,
 };
 export const correctionsApi = {
   request: async (payload: { attendanceId?: string; date?: string; requestedCheckIn?: string; requestedCheckOut?: string; reason: string }) => {

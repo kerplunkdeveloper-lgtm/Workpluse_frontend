@@ -519,6 +519,24 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
   min-width: 0;
 }
 
+/* Prevent long employee names, locations, notes and action labels from
+   expanding a flex/grid track into the next card or column. This is a
+   containment rule only; tables still keep their deliberate horizontal
+   scroll wrappers. */
+.wp-main-canvas .flex > *,
+.wp-main-canvas .grid > * {
+  min-width: 0;
+}
+
+.wp-main-canvas :is(p, span, label, dt, dd, th, td) {
+  overflow-wrap: anywhere;
+}
+
+.wp-main-canvas :is(button, a) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .wp-main-canvas .overflow-x-auto {
   scrollbar-width: thin;
   scrollbar-color: #c9cedd transparent;
@@ -540,6 +558,10 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
   padding-top: 0.8rem;
   padding-bottom: 0.8rem;
   vertical-align: middle;
+}
+
+.wp-main-canvas table th {
+  line-height: 1.25;
 }
 
 .wp-main-canvas .rounded-3xl,

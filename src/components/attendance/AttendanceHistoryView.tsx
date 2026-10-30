@@ -17,12 +17,15 @@ import { breakMinutesOf, formatClock, formatHm, localDateKey, lunchMinutesOf, re
 const TEAM_ROLES = ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"];
 
 const workModeDisplay = (row: Attendance) => {
-  const rawNote = row.wfhNote || "";
-  const isShoot = rawNote.toUpperCase().startsWith("SHOOT:");
-  const isRemote = !isShoot && (row.status === "WORK_FROM_HOME" || row.isWorkFromHome || Boolean(rawNote));
+  const rawNote = String(row.wfhNote || "").trim();
+  const match = rawNote.match(/^(WORK_FROM_HOME|CLIENT_VISIT|TRAVEL|SHOOT)\s*:\s*(.*)$/i);
+  const legacyMode = /^(WORK_FROM_HOME|CLIENT_VISIT|TRAVEL|SHOOT)$/i.exec(rawNote)?.[1];
+  const mode = String(match?.[1] || legacyMode || (row.status === "WORK_FROM_HOME" || row.isWorkFromHome ? "WORK_FROM_HOME" : "OFFICE")).toUpperCase();
+  const note = match ? match[2].trim() : legacyMode ? "" : rawNote;
+  const label = mode === "SHOOT" ? "Shoot" : mode === "TRAVEL" ? "Travel" : mode === "CLIENT_VISIT" ? "Client visit" : mode === "WORK_FROM_HOME" ? "WFH" : "Office";
   return {
-    label: isShoot ? "Shoot" : isRemote ? "Remote / WFH" : "Office",
-    note: isShoot ? rawNote.replace(/^SHOOT:\s*/i, "") : rawNote,
+    label,
+    note,
   };
 };
 
@@ -133,7 +136,7 @@ const STATUS_FILTERS = [
   { value: "ALL", label: "All" },
   { value: "PRESENT", label: "Present" },
   { value: "LATE", label: "Late" },
-  { value: "WORK_FROM_HOME", label: "Remote" },
+  { value: "WORK_FROM_HOME", label: "WFH" },
   { value: "HALF_DAY", label: "Half day" },
   { value: "ON_LEAVE", label: "On leave" },
   { value: "ABSENT", label: "Absent" },
@@ -565,8 +568,8 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
   return (
     <div className={shell}>
       {/* Wide screens: table */}
-      <div className="hidden max-w-full overflow-x-auto lg:block">
-        <table className={`w-full table-fixed text-sm ${isTeamView ? "min-w-[1760px]" : "min-w-[980px]"}`}>
+      <div className="hidden max-w-full overflow-x-auto overscroll-x-contain lg:block" aria-label="Scrollable attendance table">
+        <table className={`w-max min-w-full table-auto text-sm ${isTeamView ? "min-w-[1900px]" : "min-w-[980px]"}`}>
           <colgroup>
             {isTeamView && <col className="w-[220px]" />}
             <col className="w-[105px]" />
@@ -583,14 +586,14 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
           </colgroup>
           <thead className="border-b border-slate-100 bg-slate-50/70">
             <tr>
-              {isTeamView && <th className={`${th} pl-5`}>Employee</th>}
-              <th className={`${th} ${isTeamView ? "" : "pl-5"}`}>Date</th>
+              {isTeamView && <th className={`${th} sticky left-0 z-20 bg-slate-50/95 pl-5`}>Employee</th>}
+              <th className={`${th} ${isTeamView ? "sticky left-[220px] z-20 bg-slate-50/95" : ""} ${isTeamView ? "" : "pl-5"}`}>Date</th>
               <th className={th}>Punch in</th>
               <th className={th}>Punch out</th>
               <th className={th}>Worked</th>
               <th className={`${th} hidden xl:table-cell`}>Break</th>
               <th className={`${th} hidden xl:table-cell`}>Lunch</th>
-              <th className={`${th} hidden whitespace-normal leading-4 xl:table-cell`}>Overtime / punch out</th>
+              <th className={`${th} hidden !whitespace-normal break-words leading-4 xl:table-cell`}>Overtime / punch out</th>
               {isTeamView && <th className={`${th} hidden md:table-cell`}>Punch location</th>}
               {isTeamView && <th className={`${th} hidden lg:table-cell`}>Correction reason</th>}
               <th className={th}>Status</th>
@@ -613,7 +616,7 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
                   return (
                     <tr key={row.id} className="group transition hover:bg-slate-50/70">
                       {isTeamView && (
-                        <td className="py-3 pl-5 pr-4">
+                        <td className="sticky left-0 z-10 bg-white py-3 pl-5 pr-4 group-hover:bg-slate-50/70">
                           <div className="flex min-w-[18rem] max-w-[24rem] items-start gap-3">
                             <Avatar row={row} />
                             <div className="min-w-0">
@@ -624,7 +627,7 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
                           </div>
                         </td>
                       )}
-                      <td className={`whitespace-nowrap py-3 pr-4 ${isTeamView ? "pl-4" : "pl-5"}`}>
+                      <td className={`${isTeamView ? "sticky left-[220px] z-10 bg-white group-hover:bg-slate-50/70" : ""} whitespace-nowrap py-3 pr-4 ${isTeamView ? "pl-4" : "pl-5"}`}>
                         <p className="font-medium text-slate-900">{day.date}</p>
                         <p className="text-xs text-slate-500">{day.weekday}</p>
                       </td>

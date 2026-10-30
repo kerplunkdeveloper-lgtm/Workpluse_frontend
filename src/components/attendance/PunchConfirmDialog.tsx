@@ -15,6 +15,7 @@ import {
   LogOut,
   MapPin,
   Navigation,
+  Plane,
   Timer,
   X,
 } from "lucide-react";
@@ -191,17 +192,17 @@ function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm,
 
   const officeBlocked = isCheckIn && workMode === "OFFICE" && !isWithinGeofence;
   const officeCheck = isCheckIn && workMode === "OFFICE";
-  const workModeLabel = workMode === "WORK_FROM_HOME" ? "Remote" : workMode === "CLIENT_VISIT" ? "Client visit / travel" : workMode === "TRAVEL" ? "Travel" : workMode === "SHOOT" ? "Shoot" : "Office";
+  const workModeLabel = workMode === "WORK_FROM_HOME" ? "WFH" : workMode === "CLIENT_VISIT" ? "Client visit" : workMode === "TRAVEL" ? "Travel" : workMode === "SHOOT" ? "Shoot" : "Office";
   const shootInProgress = todayStatus?.attendance?.wfhNote?.startsWith("SHOOT:") === true;
-  const customNoteRequired = isCheckIn && workMode === "CLIENT_VISIT" && !note.trim();
   // No punch without a captured GPS position: it is what the attendance record says about where you were.
-  const blocked = Boolean(loading) || !gpsReady || officeBlocked || customNoteRequired;
+  const blocked = Boolean(loading) || !gpsReady || officeBlocked;
 
   const modes: { value: CheckInWorkMode; label: string; hint: string; icon: typeof Building2 }[] = [
     { value: "OFFICE", label: "Office", hint: "At your assigned office", icon: Building2 },
-    ...(policy?.allowWfh !== false ? [{ value: "WORK_FROM_HOME" as const, label: "Remote", hint: "Work from home", icon: Home }] : []),
+    ...(policy?.allowWfh !== false ? [{ value: "WORK_FROM_HOME" as const, label: "WFH", hint: "Work from home", icon: Home }] : []),
     ...(todayStatus?.approvedShoot ? [{ value: "SHOOT" as const, label: "Shoot", hint: "Approved for today", icon: BriefcaseBusiness }] : []),
-    { value: "CLIENT_VISIT" as const, label: "Other", hint: "Client visit, travel, shoot", icon: BriefcaseBusiness },
+    { value: "CLIENT_VISIT" as const, label: "Client visit", hint: "Meeting a client", icon: BriefcaseBusiness },
+    { value: "TRAVEL" as const, label: "Travel", hint: "Travelling for work", icon: Plane },
   ];
 
   // Close on Escape (unless saving), lock the page behind the dialog, and start on the safe button.
@@ -267,9 +268,11 @@ function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm,
           <p id="punch-confirm-desc" className="relative mt-3 text-[13px] leading-relaxed text-slate-500">
             {isCheckIn
               ? workMode === "WORK_FROM_HOME"
-                ? "Your work mode will be recorded as Remote for today."
+                ? "Your work mode will be recorded as WFH for today."
                 : workMode === "CLIENT_VISIT"
-                  ? "Add a short reason so your team knows where you are working."
+                  ? "Add a short reason so your team knows which client you are visiting."
+                  : workMode === "TRAVEL"
+                    ? "Your work mode will be recorded as Travel for today."
                   : "We will check that you are at your assigned office before starting your shift."
               : todayStatus?.approvedShoot
                 ? "This will end your approved shoot and save the shoot hours to your timesheet."
@@ -349,7 +352,7 @@ function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm,
                 <span className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-400">
                   <span>
                     {workMode === "CLIENT_VISIT" ? "Reason" : "Note"}{" "}
-                    <span className="font-medium normal-case tracking-normal">{workMode === "CLIENT_VISIT" ? "(required)" : "(optional)"}</span>
+                    <span className="font-medium normal-case tracking-normal">(optional)</span>
                   </span>
                   <span className="font-medium normal-case tracking-normal tabular-nums">
                     {note.length}/{NOTE_LIMIT}
@@ -358,12 +361,10 @@ function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm,
                 <textarea
                   value={note}
                   onChange={(event) => setNote(event.target.value.slice(0, NOTE_LIMIT))}
-                  placeholder={workMode === "CLIENT_VISIT" ? "Client visit, shoot, travel..." : workMode === "WORK_FROM_HOME" ? "Working from home today" : "Anything your team should know"}
+                  placeholder={workMode === "CLIENT_VISIT" ? "Client name and visit purpose" : workMode === "TRAVEL" ? "Travel destination or work purpose" : workMode === "WORK_FROM_HOME" ? "Working from home today" : "Anything your team should know"}
                   rows={2}
-                  aria-invalid={customNoteRequired}
-                  className={`w-full resize-none rounded-2xl border bg-white px-3.5 py-2.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 ${customNoteRequired ? "border-rose-300" : "border-slate-200"}`}
+                  className="w-full resize-none rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                 />
-                {customNoteRequired && <p className="text-[11px] font-medium text-rose-600">Enter a reason to continue.</p>}
               </label>
             </>
           ) : (
