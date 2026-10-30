@@ -868,6 +868,14 @@ export const orgApi = {
     const res = await api.delete("/organization/logo");
     return res.data;
   },
+  getOfferLetterTemplate: async () => {
+    const res = await api.get("/organization/offer-letter-template");
+    return res.data;
+  },
+  updateOfferLetterTemplate: async (payload: any) => {
+    const res = await api.put("/organization/offer-letter-template", payload);
+    return res.data;
+  },
 };
 
 export const loansApi = {
@@ -1468,6 +1476,22 @@ export const policyApi = {
   },
   deleteLateComingLop: async (id: string) => {
     const res = await api.delete(`/policy/late-coming-lop/${id}`);
+    return res.data;
+  },
+  listCompany: async () => {
+    const res = await api.get("/policy/company");
+    return res.data;
+  },
+  importCompany: async (form: FormData) => {
+    const res = await api.post("/policy/company", form);
+    return res.data;
+  },
+  updateCompany: async (id: string, payload: any) => {
+    const res = await api.put(`/policy/company/${id}`, payload);
+    return res.data;
+  },
+  deleteCompany: async (id: string) => {
+    const res = await api.delete(`/policy/company/${id}`);
     return res.data;
   },
 };

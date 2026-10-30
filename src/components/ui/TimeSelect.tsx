@@ -189,7 +189,29 @@ export default function TimeSelect({
 
   const [open, setOpen] = useState(false);
   const [openUpward, setOpenUpward] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState<{ left: number; top?: number; bottom?: number } | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+
+  const updateDropdownPosition = useCallback(() => {
+    const trigger = wrapRef.current;
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const dropdownWidth = Math.min(220, window.innerWidth - 16);
+    const left = Math.min(
+      Math.max(8, rect.left),
+      Math.max(8, window.innerWidth - dropdownWidth - 8),
+    );
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const shouldOpenUpward = spaceBelow < 240 && rect.top > spaceBelow;
+
+    setOpenUpward(shouldOpenUpward);
+    setDropdownPosition(
+      shouldOpenUpward
+        ? { left, bottom: Math.max(8, window.innerHeight - rect.top + 6) }
+        : { left, top: Math.min(rect.bottom + 6, window.innerHeight - 8) },
+    );
+  }, []);
 
   // Close on outside click
   useEffect(() => {
@@ -202,6 +224,18 @@ export default function TimeSelect({
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
+
+  // Keep the fixed dropdown aligned when the page or a scrollable panel moves.
+  useEffect(() => {
+    if (!open) return;
+    updateDropdownPosition();
+    window.addEventListener("resize", updateDropdownPosition);
+    window.addEventListener("scroll", updateDropdownPosition, true);
+    return () => {
+      window.removeEventListener("resize", updateDropdownPosition);
+      window.removeEventListener("scroll", updateDropdownPosition, true);
+    };
+  }, [open, updateDropdownPosition]);
 
   // Close on Escape or Enter
   useEffect(() => {
@@ -229,10 +263,7 @@ export default function TimeSelect({
   const handleToggle = () => {
     if (disabled) return;
     if (!open && wrapRef.current) {
-      const rect = wrapRef.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      // If less than 240px below and more room above, flip upward
-      setOpenUpward(spaceBelow < 240 && rect.top > spaceBelow);
+      updateDropdownPosition();
     }
     setOpen((o) => !o);
   };
@@ -267,11 +298,12 @@ export default function TimeSelect({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: openUpward ? 6 : -6, scale: 0.98 }}
             transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
-            className={`absolute z-50 left-0 right-0 rounded-2xl border border-slate-200 bg-white p-2.5 shadow-xl shadow-slate-900/10 backdrop-blur-xs
+            className={`fixed z-[60] w-[220px] max-w-[calc(100vw-1rem)] rounded-2xl border border-slate-200 bg-white p-2.5 shadow-xl shadow-slate-900/10 backdrop-blur-xs
               ${openUpward 
-                ? "bottom-full mb-1.5 origin-bottom" 
-                : "top-full mt-1.5 origin-top"
+                ? "origin-bottom"
+                : "origin-top"
               }`}
+            style={dropdownPosition ?? undefined}
           >
             {/* Header: Label, Live Value, and Primary Done button */}
             <div className="mb-2 flex items-center justify-between gap-1 border-b border-slate-100 pb-2">

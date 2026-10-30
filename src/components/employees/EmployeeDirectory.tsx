@@ -594,7 +594,20 @@ export default function EmployeeDirectory() {
       {/* Directory Table */}
       <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-[13px] text-slate-700">
+          <table className="w-max min-w-[1800px] table-fixed text-left text-[13px] text-slate-700">
+            <colgroup>
+              {canManageAccess && <col className="w-[52px]" />}
+              <col className="w-[250px]" />
+              <col className="w-[100px]" />
+              <col className="w-[220px]" />
+              <col className="w-[220px]" />
+              <col className="w-[220px]" />
+              <col className="w-[160px]" />
+              <col className="w-[185px]" />
+              <col className="w-[140px]" />
+              <col className="w-[170px]" />
+              <col className="w-[220px]" />
+            </colgroup>
             <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider border-b border-slate-200 font-semibold">
               <tr>
                 {canManageAccess && (
@@ -685,13 +698,13 @@ export default function EmployeeDirectory() {
                         />
                       </td>
                     )}
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 align-top">
                       <div
                         onClick={() => {
                           setSelectedEmployeeForProfile(emp);
                           setProfileModalOpen(true);
                         }}
-                        className="flex items-center gap-3 cursor-pointer"
+                        className="flex min-w-0 cursor-pointer items-center gap-3"
                       >
                         {emp.avatarUrl ? (
                           <img
@@ -704,11 +717,11 @@ export default function EmployeeDirectory() {
                             {emp.firstName?.[0] || "E"}
                           </div>
                         )}
-                        <div>
-                          <p className="font-semibold text-slate-900 group-hover:text-indigo-600 transition">
+                         <div className="min-w-0">
+                           <p className="whitespace-nowrap font-semibold text-slate-900 group-hover:text-indigo-600 transition">
                             {emp.firstName} {emp.lastName || ""}
                           </p>
-                          <p className="text-xs text-slate-500">{emp.user?.email || emp.phone || "-"}</p>
+                           <p className="max-w-[190px] truncate text-xs text-slate-500" title={emp.user?.email || emp.phone || "-"}>{emp.user?.email || emp.phone || "-"}</p>
                         </div>
                       </div>
                     </td>
@@ -769,7 +782,7 @@ export default function EmployeeDirectory() {
                         ))}
                       </Select>
                     </td>
-                    <td className="py-3.5 px-4 text-slate-500">
+                    <td className="whitespace-nowrap py-3.5 px-4 text-slate-500">
                       {emp.shift?.name || "General Shift"}
                     </td>
                     <td className="py-3.5 px-4 text-slate-700">

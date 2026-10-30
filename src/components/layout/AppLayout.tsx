@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import Brand from "@/components/ui/Brand";
 import { useAttendance } from "@/context/AttendanceContext";
-import { Settings, Bell, LogOut, ChevronRight, ChevronDown, ShieldCheck, CheckCircle2, MapPin, Coffee, Menu, X, FileCheck2, Search, MessageSquare, HelpCircle, ChevronsLeft, ChevronsRight, Command, Home, Megaphone, Loader2, Trash2 } from "lucide-react";
+import { Settings, Bell, LogOut, ChevronRight, ChevronDown, ShieldCheck, CheckCircle2, MapPin, Coffee, Utensils, Menu, X, FileCheck2, Search, MessageSquare, HelpCircle, ChevronsLeft, ChevronsRight, Command, Home, Megaphone, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { employeesApi, notificationsApi, orgApi } from "@/lib/api";
@@ -28,7 +28,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, role, logout } = useAuth();
   const isPlatformOwner = role === "SUPER_ADMIN";
-  const { todayStatus, checkIn, checkOut, startBreak, endBreak, isActionLoading, isWithinGeofence, locationLabel } = useAttendance();
+  const { todayStatus, checkIn, checkOut, startBreak, endBreak, startLunch, endLunch, isActionLoading, isWithinGeofence, locationLabel } = useAttendance();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -729,14 +729,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   Clock In
                 </button>
-              ) : isOnBreak ? (
+            ) : isOnBreak ? (
                 <button
-                  onClick={endBreak}
+                  onClick={todayStatus?.activePauseType === "LUNCH" ? endLunch : endBreak}
                   disabled={isActionLoading}
                   className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-amber-600 hover:bg-amber-500 text-white shadow-2xs transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
                 >
-                  <Coffee className="w-3.5 h-3.5" />
-                  End Break
+                  {todayStatus?.activePauseType === "LUNCH" ? <Utensils className="w-3.5 h-3.5" /> : <Coffee className="w-3.5 h-3.5" />}
+                  {todayStatus?.activePauseType === "LUNCH" ? "End Lunch" : "End Break"}
                 </button>
               ) : (
                 <div className="flex items-center gap-1.5">
@@ -749,12 +749,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <Coffee className="w-3.5 h-3.5" />
                   </button>
                   <button
-                    onClick={() => setPendingPunch("CHECK_OUT")}
+                    onClick={startLunch}
                     disabled={isActionLoading}
-                    className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-rose-600 hover:bg-rose-500 text-white shadow-2xs transition cursor-pointer disabled:opacity-50"
-                    title="Clock out"
+                    className="p-1 text-indigo-700 hover:text-indigo-900 bg-white hover:bg-indigo-50 border border-slate-200 rounded-lg transition cursor-pointer disabled:opacity-50"
+                    title="Start lunch"
+                    aria-label="Start lunch"
                   >
-                    Clock Out
+                    <Utensils className="w-3.5 h-3.5" />
                   </button>
                 </div>
               )}
@@ -1083,17 +1084,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   >
                     Punch In
                   </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      setPendingPunch("CHECK_OUT");
-                    }}
-                    className="px-3 py-1 text-xs font-semibold rounded-lg bg-rose-600 text-white"
-                  >
-                    Punch Out
-                  </button>
-                )}
+                ) : null}
               </div>
 
               </>
