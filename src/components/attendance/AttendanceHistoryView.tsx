@@ -22,10 +22,11 @@ const workModeDisplay = (row: Attendance) => {
   const legacyMode = /^(WORK_FROM_HOME|CLIENT_VISIT|TRAVEL|SHOOT)$/i.exec(rawNote)?.[1];
   const mode = String(match?.[1] || legacyMode || (row.status === "WORK_FROM_HOME" || row.isWorkFromHome ? "WORK_FROM_HOME" : "OFFICE")).toUpperCase();
   const note = match ? match[2].trim() : legacyMode ? "" : rawNote;
-  const label = mode === "SHOOT" ? "Shoot" : mode === "TRAVEL" ? "Travel" : mode === "CLIENT_VISIT" ? "Client visit" : mode === "WORK_FROM_HOME" ? "WFH" : "Office";
+  const label = mode === "SHOOT" ? "Shoot" : mode === "TRAVEL" ? "Travel" : mode === "CLIENT_VISIT" ? "Client visit" : mode === "WORK_FROM_HOME" ? "Work from home" : "Office";
+  const displayNote = mode === "WORK_FROM_HOME" && /^work\s*from\s*home$/i.test(note) ? "" : note;
   return {
     label,
-    note,
+    note: displayNote,
   };
 };
 
