@@ -210,13 +210,10 @@ export default function OnboardingView() {
           </p>
         </div>
 
-        <button
-          onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 transition hover:bg-slate-800 active:scale-[.98]"
-        >
-          <Plus className="w-4 h-4" />
-          Invite New Joiner
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/onboarding/offer-template" className="flex items-center gap-2 rounded-xl border border-indigo-200 bg-white px-4 py-3 text-sm font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-50 active:scale-[.98]"><FileText className="h-4 w-4" />Offer letter template</Link>
+          <button type="button" onClick={() => setModalOpen(true)} className="flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 transition hover:bg-slate-800 active:scale-[.98]"><Plus className="w-4 h-4" />Invite New Joiner</button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

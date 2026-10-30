@@ -33,8 +33,9 @@ export default function PayrollView() {
   const [activeSection, setActiveSection] = useState<"RECORDS" | "SALARY" | "TEMPLATES">("RECORDS");
 
   const isAdminOrManager = role === "COMPANY_ADMIN" || role === "SUPER_ADMIN" || role === "MANAGER";
-  // HR prepares payroll; only an admin generates, approves and disburses it (the server enforces this too).
+  // HR prepares/generates payroll; only an admin approves and disburses it.
   const isAdmin = role === "COMPANY_ADMIN" || role === "SUPER_ADMIN";
+  const canGenerate = isAdminOrManager;
   const [cycle, setCycle] = useState<any>(null);
 
   useEffect(() => {
@@ -266,7 +267,7 @@ export default function PayrollView() {
               </span>
             )}
 
-            {isAdmin ? (
+            {canGenerate ? (
               <>
             <button
               onClick={handleGenerateBatch}
@@ -278,26 +279,28 @@ export default function PayrollView() {
               Generate payroll
             </button>
 
-            <button
-              onClick={handleApproveBatch}
-              disabled={isApproving || payslips.length === 0}
-              className={`px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-1.5 transition active:scale-[0.98] disabled:opacity-50 ${stepTone("APPROVE")}`}
-            >
-              {isApproving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-              Approve
-            </button>
+            {isAdmin && <>
+              <button
+                onClick={handleApproveBatch}
+                disabled={isApproving || payslips.length === 0}
+                className={`px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-1.5 transition active:scale-[0.98] disabled:opacity-50 ${stepTone("APPROVE")}`}
+              >
+                {isApproving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                Approve
+              </button>
 
-            <button
-              onClick={handleDisburseBatch}
-              disabled={isDisbursing || payslips.length === 0}
-              className={`px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-1.5 transition active:scale-[0.98] disabled:opacity-50 ${stepTone("DISBURSE")}`}
-            >
-              {isDisbursing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-              Disburse & notify
-            </button>
+              <button
+                onClick={handleDisburseBatch}
+                disabled={isDisbursing || payslips.length === 0}
+                className={`px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-1.5 transition active:scale-[0.98] disabled:opacity-50 ${stepTone("DISBURSE")}`}
+              >
+                {isDisbursing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                Disburse & notify
+              </button>
+            </>}
               </>
             ) : (
-              <span className="text-xs font-medium text-slate-500">An admin generates, approves and disburses payroll.</span>
+              <span className="text-xs font-medium text-slate-500">Payroll processing access is restricted to HR and admins.</span>
             )}
 
             <button

@@ -6,7 +6,7 @@ import React from "react";
 
 
 
-import { LayoutDashboard, Clock, CalendarDays, Receipt, Users, Building2, CalendarRange, Calendar, SlidersHorizontal, UserPlus, BarChart3, Settings, History, ShieldCheck, KeyRound, MapPin, Layers, UserMinus, Laptop, FolderTree, MessageSquare, CircleUser, Landmark, HandCoins, CreditCard, Award } from "lucide-react";
+import { LayoutDashboard, Clock, CalendarDays, Receipt, Users, Building2, CalendarRange, Calendar, SlidersHorizontal, UserPlus, BarChart3, Settings, History, ShieldCheck, KeyRound, MapPin, Layers, UserMinus, Laptop, FolderTree, MessageSquare, CircleUser, Landmark, HandCoins, CreditCard, Award, FileText } from "lucide-react";
 
 
 
