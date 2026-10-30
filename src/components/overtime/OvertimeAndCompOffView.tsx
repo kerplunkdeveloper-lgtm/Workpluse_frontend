@@ -17,7 +17,11 @@ export default function OvertimeAndCompOffView() {
 
   // Redeem modal state
   const [modalOpen, setModalOpen] = useState(false);
+  const [overtimeModalOpen, setOvertimeModalOpen] = useState(false);
   const [requestedDate, setRequestedDate] = useState("");
+  const [overtimeDate, setOvertimeDate] = useState("");
+  const [overtimeHours, setOvertimeHours] = useState(1);
+  const [overtimeReason, setOvertimeReason] = useState("");
   const [days, setDays] = useState(1);
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -88,6 +92,42 @@ export default function OvertimeAndCompOffView() {
     }
   };
 
+  const handleRequestOvertime = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!overtimeDate) {
+      toast.error("Please select the overtime date");
+      return;
+    }
+    if (!overtimeHours || overtimeHours <= 0) {
+      toast.error("Enter a valid overtime duration");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await overtimeApi.request({
+        date: overtimeDate,
+        hours: Number(overtimeHours),
+        reason: overtimeReason.trim(),
+      });
+
+      if (res?.success) {
+        toast.success("Overtime request sent for approval");
+        setOvertimeModalOpen(false);
+        setOvertimeDate("");
+        setOvertimeHours(1);
+        setOvertimeReason("");
+        await loadData();
+      } else {
+        toast.error(res?.message || "Failed to submit overtime request");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || "Failed to submit overtime request");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -102,13 +142,22 @@ export default function OvertimeAndCompOffView() {
           </p>
         </div>
 
-        <button
-          onClick={() => setModalOpen(true)}
-          className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm flex items-center gap-2 shadow-lg shadow-indigo-600/20 transition"
-        >
-          <Plus className="w-4 h-4" />
-          Redeem Comp-Off
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setOvertimeModalOpen(true)}
+            className="px-4 py-2.5 rounded-xl border border-indigo-200 bg-white hover:bg-indigo-50 text-indigo-700 font-semibold text-sm flex items-center gap-2 transition"
+          >
+            <Clock className="w-4 h-4" />
+            Request Overtime
+          </button>
+          <button
+            onClick={() => setModalOpen(true)}
+            className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm flex items-center gap-2 shadow-lg shadow-indigo-600/20 transition"
+          >
+            <Plus className="w-4 h-4" />
+            Redeem Comp-Off
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -288,6 +337,72 @@ export default function OvertimeAndCompOffView() {
                 >
                   {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   Submit Redemption
+                </button>
+              </div>
+            </form>
+          </div>
+        </Modal>
+      )}
+
+      {overtimeModalOpen && (
+        <Modal>
+          <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl">
+            <h3 className="text-base font-semibold text-slate-900 mb-1">Request overtime</h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Request only the extra time recorded after your shift. HR, Admin or your Manager will review it.
+            </p>
+
+            <form onSubmit={handleRequestOvertime} className="space-y-4">
+              <div>
+                <label className="block text-[13px] font-medium text-slate-700 mb-1">Overtime date *</label>
+                <DatePicker
+                  value={overtimeDate}
+                  onChange={(val) => setOvertimeDate(val)}
+                  placeholder="Select overtime date"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[13px] font-medium text-slate-700 mb-1">Requested hours *</label>
+                <input
+                  type="number"
+                  min={0.25}
+                  step={0.25}
+                  value={overtimeHours}
+                  onChange={(e) => setOvertimeHours(Number(e.target.value))}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                  required
+                />
+                <span className="text-xs text-slate-500 mt-1 block">The request cannot exceed overtime recorded on the attendance log.</span>
+              </div>
+
+              <div>
+                <label className="block text-[13px] font-medium text-slate-700 mb-1">Reason</label>
+                <textarea
+                  rows={3}
+                  value={overtimeReason}
+                  onChange={(e) => setOvertimeReason(e.target.value)}
+                  placeholder="e.g. Production release support"
+                  className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setOvertimeModalOpen(false)}
+                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition flex items-center gap-2"
+                >
+                  {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  Submit Request
                 </button>
               </div>
             </form>
