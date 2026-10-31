@@ -78,6 +78,11 @@ export default function PolicyView() {
     setEditingLateRuleId(null);
   };
 
+  const applyLatePreset = (lateDays: number, lopDays: string, graceMinutes: number, remarks: string) => {
+    setLateRuleForm({ lateDays: String(lateDays), lopDays, graceMinutes: String(graceMinutes), isActive: true, remarks });
+    setEditingLateRuleId(null);
+  };
+
   const saveLateRule = async (e?: React.FormEvent) => {
     e?.preventDefault();
     setLateRuleSaving(true);
@@ -245,7 +250,16 @@ export default function PolicyView() {
       <section className="grid grid-cols-1 xl:grid-cols-[minmax(260px,0.34fr)_minmax(0,1fr)] gap-5 items-start">
         <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs">
           <h2 className="text-lg font-semibold text-slate-950">Company Late-coming LOP Policy</h2>
-          <p className="mt-1 text-xs text-slate-500">Create a rule for every completed block of late arrivals in a payroll cycle.</p>
+          <p className="mt-1 text-xs text-slate-500">Configure the grace window and the salary impact for each completed block of late arrivals in the payroll cycle.</p>
+          <div className="mt-4 rounded-2xl border border-indigo-100 bg-indigo-50/70 p-3">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-indigo-700">Quick setup</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" onClick={() => applyLatePreset(3, "1", 15, "Standard: 3 late arrivals after 15 minutes = 1 LOP day")} className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200 transition hover:bg-indigo-100">Standard · 3 → 1 LOP</button>
+              <button type="button" onClick={() => applyLatePreset(2, "1", 15, "Strict: 2 late arrivals after 15 minutes = 1 LOP day")} className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200 transition hover:bg-indigo-100">Strict · 2 → 1 LOP</button>
+              <button type="button" onClick={() => applyLatePreset(5, "1", 15, "Flexible: 5 late arrivals after 15 minutes = 1 LOP day")} className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200 transition hover:bg-indigo-100">Flexible · 5 → 1 LOP</button>
+            </div>
+            <p className="mt-2 text-[11px] leading-5 text-indigo-800">Presets only fill the form. Click Save Policy to apply the selected company rule.</p>
+          </div>
           <div className="mt-5 space-y-4">
             <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-800">Late days <span className="text-rose-500">*</span></span><input required type="number" min="1" step="1" value={lateRuleForm.lateDays} onChange={(e) => setLateRuleForm((p) => ({ ...p, lateDays: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm" /><span className="text-xs text-slate-400">Every this many late arrivals counts as LOP.</span></label>
             <label className="block space-y-1.5"><span className="text-sm font-semibold text-slate-800">LOP days <span className="text-rose-500">*</span></span><Select required value={lateRuleForm.lopDays} onChange={(e) => setLateRuleForm((p) => ({ ...p, lopDays: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm"><option value="0.5">0.5 day</option><option value="1">1 day</option><option value="1.5">1.5 days</option><option value="2">2 days</option></Select><span className="text-xs text-slate-400">LOP applied for each completed block of late days.</span></label>
@@ -407,9 +421,9 @@ export default function PolicyView() {
           <span className="text-xs text-slate-400">Paid leave and permission unlock after this period.</span>
         </label>
         <label className="space-y-1.5">
-          <span className="text-xs font-semibold text-slate-600 uppercase">Monthly permission hours</span>
+          <span className="text-xs font-semibold text-slate-600 uppercase">Monthly permission allowance</span>
           <input type="number" step="0.5" min={0} max={24} value={form.monthlyPermissionHours} onChange={(e) => setNum("monthlyPermissionHours", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm" />
-          <span className="text-xs text-slate-400">Example: 2 or 3 hours per month.</span>
+          <span className="text-xs text-slate-400">Hours per payroll cycle with no salary deduction. Example: 3 hours = 180 minutes.</span>
         </label>
         <label className="space-y-1.5">
           <span className="text-xs font-semibold text-slate-600 uppercase">Half-day threshold (minutes)</span>

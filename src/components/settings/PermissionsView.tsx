@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { Check, ShieldCheck, UserCog, UserRound, Users, Save, Loader2 } from "lucide-react";
+import { Check, ShieldCheck, UserCog, UserRound, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { orgApi } from "@/lib/api";
@@ -12,8 +11,11 @@ type Role = "COMPANY_ADMIN" | "MANAGER" | "EMPLOYEE";
 type Access = boolean | string;
 const HR_ACCESS_AREAS = ["DASHBOARD", "ATTENDANCE", "EMPLOYEES", "ROLES", "APPROVALS", "ONBOARDING", "PAYROLL", "REPORTS", "ANNOUNCEMENTS", "BRANCHES", "POLICIES", "SHOOTS"] as const;
 type HrAccess = Record<(typeof HR_ACCESS_AREAS)[number], boolean>;
+type RoleAccess = Record<"MANAGER" | "HR" | "EMPLOYEE", HrAccess>;
 const AREA_BY_MODULE: Record<string, keyof HrAccess> = { "Dashboard & my profile": "DASHBOARD", "Punch, leave & corrections": "ATTENDANCE", "Employee directory": "EMPLOYEES", "Roles & user access": "ROLES", "Attendance review": "ATTENDANCE", "Leave & approvals": "APPROVALS", "Onboarding & offboarding": "ONBOARDING", "Payroll & statutory": "PAYROLL", Reports: "REPORTS", Announcements: "ANNOUNCEMENTS", "Branches & departments": "BRANCHES", "Policies & organization settings": "POLICIES" };
 const defaultHrAccess = (): HrAccess => Object.fromEntries(HR_ACCESS_AREAS.map((area) => [area, true])) as HrAccess;
+const defaultEmployeeAccess = (): HrAccess => ({ ...defaultHrAccess(), EMPLOYEES: false, ROLES: false, APPROVALS: false, ONBOARDING: false, REPORTS: false, BRANCHES: false, POLICIES: false });
+const defaultRoleAccess = (): RoleAccess => ({ MANAGER: defaultHrAccess(), HR: defaultHrAccess(), EMPLOYEE: defaultEmployeeAccess() });
 
 const roles: {
   id: Role;
@@ -150,19 +152,47 @@ function Cell({ value }: { value: Access }) {
   return <span className="inline-flex rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-bold text-sky-800 ring-1 ring-sky-100">{value}</span>;
 }
 
+function AccessToggle({ enabled, label, onClick }: { enabled: boolean; label: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} aria-label={`${enabled ? "Disable" : "Enable"} ${label} access`} aria-pressed={enabled} className={`relative inline-flex h-8 w-14 items-center rounded-full px-1 transition ${enabled ? "bg-emerald-500" : "bg-slate-300"}`}>
+      <span className={`flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-sm transition-transform ${enabled ? "translate-x-6" : "translate-x-0"}`}>
+        {enabled ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />}
+      </span>
+      <span className="sr-only">{enabled ? "Enabled" : "Disabled"}</span>
+    </button>
+  );
+}
+
 export default function PermissionsView() {
   const [hrAccess, setHrAccess] = useState<HrAccess>(defaultHrAccess);
+  const [roleAccess, setRoleAccess] = useState<RoleAccess>(defaultRoleAccess);
   const [saving, setSaving] = useState(false);
+  const [accessLoaded, setAccessLoaded] = useState(false);
   useEffect(() => {
-    orgApi.get().then((res) => setHrAccess({ ...defaultHrAccess(), ...(res?.data?.hrAccess || {}) })).catch(() => toast.error("Could not load HR access settings"));
+    orgApi.get().then((res) => {
+      setHrAccess({ ...defaultHrAccess(), ...(res?.data?.hrAccess || {}) });
+      const stored = res?.data?.roleAccess || {};
+      setRoleAccess({
+        ...defaultRoleAccess(),
+        ...stored,
+        MANAGER: { ...defaultHrAccess(), ...(stored.MANAGER || {}) },
+        HR: { ...defaultHrAccess(), ...(stored.HR || {}) },
+        EMPLOYEE: { ...defaultEmployeeAccess(), ...(stored.EMPLOYEE || {}) },
+      });
+      setAccessLoaded(true);
+    }).catch(() => toast.error("Could not load access settings"));
   }, []);
   const toggleHrAccess = (area: keyof HrAccess) => setHrAccess((current) => ({ ...current, [area]: !current[area] }));
-  const saveHrAccess = async () => {
-    setSaving(true);
-    try { await orgApi.update({ hrAccess }); toast.success("HR access settings saved"); }
-    catch (error: any) { toast.error(error?.response?.data?.message || "Could not save HR access settings"); }
-    finally { setSaving(false); }
-  };
+  useEffect(() => {
+    if (!accessLoaded) return;
+    const timer = window.setTimeout(async () => {
+      setSaving(true);
+      try { await orgApi.update({ hrAccess, roleAccess }); }
+      catch (error: any) { toast.error(error?.response?.data?.message || "Could not save access settings"); }
+      finally { setSaving(false); }
+    }, 450);
+    return () => window.clearTimeout(timer);
+  }, [accessLoaded, hrAccess, roleAccess]);
   return (
     <div className="mx-auto max-w-[1100px] space-y-8">
       <PageHeader icon={ShieldCheck} title="Permissions" description="What each role can do in your workspace." />
@@ -188,22 +218,14 @@ export default function PermissionsView() {
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
           <div>
             <h2 className="text-sm font-bold text-slate-950">Access by area</h2>
-            <p className="text-xs text-slate-500">These rules are enforced by the server, not just hidden in the menu.</p>
+            <p className="text-xs text-slate-500">Configure workspace access for Company Admin and HR. Employee self-service is fixed by the system.</p>
           </div>
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={saveHrAccess} disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-500 disabled:opacity-60">{saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}Save HR access</button>
-          <Link
-            href="/employees"
-            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-md shadow-indigo-600/25 transition hover:bg-indigo-500 active:scale-[0.98]"
-          >
-            <Users className="h-3.5 w-3.5" />
-            Manage user roles
-          </Link>
-          </div>
+         
+         
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-left text-[13px]">
+            <table className="w-full min-w-[720px] text-left text-[13px]">
             <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-600">
               <tr>
                 <th scope="col" className="px-5 py-3.5">Workspace area</th>
@@ -223,7 +245,7 @@ export default function PermissionsView() {
                   </th>
                   {roles.map((role) => (
                     <td key={role.id} className="px-4 py-4 text-center">
-{role.id === "MANAGER" && AREA_BY_MODULE[permission.module] ? <button type="button" onClick={() => toggleHrAccess(AREA_BY_MODULE[permission.module])} aria-label={`${hrAccess[AREA_BY_MODULE[permission.module]] ? "Disable" : "Enable"} ${permission.module} for HR`} className={`inline-flex h-8 w-8 items-center justify-center rounded-full transition ${hrAccess[AREA_BY_MODULE[permission.module]] ? "bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100" : "bg-slate-100 text-slate-400 ring-1 ring-slate-200"}`}>{hrAccess[AREA_BY_MODULE[permission.module]] ? <Check className="h-4 w-4" /> : <span className="text-sm">—</span>}</button> : <Cell value={permission.access[role.id]} />}
+                      {role.id === "MANAGER" && AREA_BY_MODULE[permission.module] ? <AccessToggle enabled={hrAccess[AREA_BY_MODULE[permission.module]]} label="HR" onClick={() => toggleHrAccess(AREA_BY_MODULE[permission.module])} /> : <Cell value={permission.access[role.id]} />}
                     </td>
                   ))}
                 </tr>

@@ -42,8 +42,8 @@ const nameOf = (employee?: Review["employee"]) => `${employee?.firstName || ""} 
 
 export default function AppraisalsView() {
   const { role } = useAuth();
-  const isReviewer = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER";
-  const canCreate = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN";
+  const isReviewer = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER" || role === "HR";
+  const canCreate = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "HR";
   const [mine, setMine] = useState<Review[]>([]);
   const [cycles, setCycles] = useState<Cycle[]>([]);
   const [loading, setLoading] = useState(true);

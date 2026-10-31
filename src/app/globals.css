@@ -594,6 +594,33 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
   .wp-main-canvas .overflow-x-auto { margin-inline: -0.25rem; padding-inline: 0.25rem; }
 }
 
+/* Very narrow phones cannot safely hold the dense desktop card grids used by
+   several menu pages. Collapse them before text and controls compete for the
+   same row; larger phones retain the normal responsive two-column layout. */
+@media (max-width: 399px) {
+  .wp-main-canvas .grid-cols-2,
+  .wp-main-canvas .grid-cols-3,
+  .wp-main-canvas .grid-cols-4,
+  .wp-main-canvas .grid-cols-5,
+  .wp-main-canvas .grid-cols-6,
+  .wp-main-canvas .grid-cols-7 {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .wp-main-canvas .flex-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .wp-main-canvas .flex-row > * {
+    width: 100%;
+  }
+
+  .wp-main-canvas .flex-row > .shrink-0 {
+    width: auto;
+  }
+}
+
 .wp-sidebar a[aria-current="page"],
 .wp-sidebar a.bg-indigo-600 {
   background: linear-gradient(135deg, #6366f1, #4f46e5) !important;

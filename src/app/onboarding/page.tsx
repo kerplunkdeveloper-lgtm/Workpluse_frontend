@@ -6,7 +6,7 @@ import OnboardingView from "@/components/onboarding/OnboardingView";
 
 export default function OnboardingPage() {
   return (
-    <ProtectedRoute allowedRoles={["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"]}>
+    <ProtectedRoute allowedRoles={["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"]}>
       <AppLayout>
         <OnboardingView />
       </AppLayout>

@@ -3,7 +3,6 @@
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
 import PolicyView from "@/components/policy/PolicyView";
-import CompanyPolicyLibrary from "@/components/company-policies/CompanyPolicyLibrary";
 import { useAuth } from "@/context/AuthContext";
 
 export default function PolicyPage() {
@@ -13,7 +12,6 @@ export default function PolicyPage() {
     <ProtectedRoute>
       <AppLayout>
         {canManageSettings && <PolicyView />}
-        <CompanyPolicyLibrary />
       </AppLayout>
     </ProtectedRoute>
   );

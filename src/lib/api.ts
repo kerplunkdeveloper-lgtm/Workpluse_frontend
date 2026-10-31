@@ -979,6 +979,14 @@ export const chatApi = {
     const res = await api.post("/chat/groups", payload);
     return res.data;
   },
+  updateGroup: async (threadId: string, payload: { title: string }) => {
+    const res = await api.patch(`/chat/groups/${threadId}`, payload);
+    return res.data;
+  },
+  deleteGroup: async (threadId: string) => {
+    const res = await api.delete(`/chat/groups/${threadId}`);
+    return res.data;
+  },
   messages: async (threadId: string, params?: { page?: number; limit?: number }) => {
     const res = await api.get(`/chat/threads/${threadId}/messages`, { params });
     return res.data;
@@ -1478,22 +1486,6 @@ export const policyApi = {
     const res = await api.delete(`/policy/late-coming-lop/${id}`);
     return res.data;
   },
-  listCompany: async () => {
-    const res = await api.get("/policy/company");
-    return res.data;
-  },
-  importCompany: async (form: FormData) => {
-    const res = await api.post("/policy/company", form);
-    return res.data;
-  },
-  updateCompany: async (id: string, payload: any) => {
-    const res = await api.put(`/policy/company/${id}`, payload);
-    return res.data;
-  },
-  deleteCompany: async (id: string) => {
-    const res = await api.delete(`/policy/company/${id}`);
-    return res.data;
-  },
 };
 
 export const reportsApi = {
@@ -1531,7 +1523,7 @@ export const compOffApi = {
 };
 
 export const overtimeApi = {
-  request: async (payload: { date?: string; hours: number; reason: string }) => {
+  request: async (payload: { attendanceId?: string; date?: string; requestedMinutes?: number; hours?: number; reason: string }) => {
     const res = await api.post("/overtime/request", payload);
     return res.data;
   },

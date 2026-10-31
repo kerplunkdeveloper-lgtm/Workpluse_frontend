@@ -139,7 +139,7 @@ export default function DashboardOverview() {
     user?.planLocked || user?.organization?.planLocked,
   );
   const isAdmin = role === "COMPANY_ADMIN" || role === "SUPER_ADMIN";
-  const canManage = isAdmin || role === "MANAGER";
+  const canManage = isAdmin || role === "MANAGER" || role === "HR";
   const canPunchForSelf = role !== "COMPANY_ADMIN" && role !== "SUPER_ADMIN";
   const [noticeSummary, setNoticeSummary] = useState<any>(null);
   const [employeeHolidays, setEmployeeHolidays] = useState<any[]>([]);
@@ -750,7 +750,7 @@ export default function DashboardOverview() {
   );
   const nextPeopleMoments = peopleMoments.slice(0, 6);
   const canSeePeopleNotifications =
-    role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER";
+    role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER" || role === "HR";
   const tomorrowBirthdays = peopleMoments.filter((moment) => {
     if (moment.type !== "Birthday") return false;
     const today = new Date(

@@ -32,8 +32,8 @@ export default function PayrollView() {
   const [isDisbursing, setIsDisbursing] = useState<boolean>(false);
   const [activeSection, setActiveSection] = useState<"RECORDS" | "SALARY" | "TEMPLATES">("RECORDS");
 
-  const isAdminOrManager = role === "COMPANY_ADMIN" || role === "SUPER_ADMIN" || role === "MANAGER";
-  // HR prepares/generates payroll; only an admin approves and disburses it.
+  const isAdminOrManager = role === "COMPANY_ADMIN" || role === "SUPER_ADMIN" || role === "MANAGER" || role === "HR";
+  // HR prepares payroll; only company admins finalize approval and disbursement.
   const isAdmin = role === "COMPANY_ADMIN" || role === "SUPER_ADMIN";
   const canGenerate = isAdminOrManager;
   const [cycle, setCycle] = useState<any>(null);
@@ -157,9 +157,9 @@ export default function PayrollView() {
       s.employee?.employeeCode || "",
       s.month,
       s.year,
-      s.basicSalary ?? "",
+      s.baseSalary ?? s.basicSalary ?? "",
       s.grossSalary ?? "",
-      s.totalDeductions ?? "",
+      s.deductionsTotal ?? s.totalDeductions ?? "",
       s.netSalary ?? "",
       s.status,
     ]);
@@ -441,13 +441,14 @@ export default function PayrollView() {
                       Month {slip.month} / {slip.year}
                     </td>
                     <td className="py-3.5 px-4 font-mono text-slate-700">
-                      {formatCurrency(slip.basicSalary)}
+                      {formatCurrency(Number(slip.baseSalary ?? slip.basicSalary ?? 0))}
                     </td>
                     <td className="py-3.5 px-4 font-mono text-slate-700">
                       {formatCurrency(slip.grossSalary)}
                     </td>
                     <td className="py-3.5 px-4 font-mono text-rose-600">
-                      -{formatCurrency(slip.totalDeductions)}
+                      {Number(slip.deductionsTotal ?? slip.totalDeductions ?? 0) > 0 ? "-" : ""}
+                      {formatCurrency(Number(slip.deductionsTotal ?? slip.totalDeductions ?? 0))}
                     </td>
                     <td className="py-3.5 px-4 font-bold text-emerald-600 text-sm">
                       {formatCurrency(slip.netSalary)}

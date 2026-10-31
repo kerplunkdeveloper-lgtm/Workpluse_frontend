@@ -52,6 +52,10 @@ export default function LeavesView() {
   const [submittingReview, setSubmittingReview] = useState(false);
 
   const canApprove = role === "COMPANY_ADMIN" || role === "SUPER_ADMIN" || role === "MANAGER" || role === "HR";
+  const paidLeaveEligibilityOpen = eligibility?.eligible !== false;
+  const unpaidLeaveTypes = leaveTypes.filter((type) => type.isPaid === false);
+  const selectableLeaveTypes = paidLeaveEligibilityOpen ? leaveTypes : unpaidLeaveTypes;
+  const canApplyLeave = selectableLeaveTypes.length > 0;
 
   const loadData = async () => {
     setLoading(true);
@@ -221,21 +225,21 @@ export default function LeavesView() {
         </div>
 
         <button
-          disabled={eligibility && !eligibility.eligible}
+          disabled={!canApplyLeave}
           onClick={() => {
-            if (leaveTypes.length > 0 && !selectedTypeId) {
-              setSelectedTypeId(leaveTypes[0].id);
+            if (selectableLeaveTypes.length > 0) {
+              setSelectedTypeId(selectableLeaveTypes[0].id);
             }
             setApplyModalOpen(true);
           }}
           className="px-4 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm flex items-center gap-2 shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Plus className="w-4 h-4" />
-          Apply for Leave
+          {paidLeaveEligibilityOpen ? "Apply for Leave" : "Apply for Unpaid Leave"}
         </button>
       </div>
 
-      {typeof eligibility?.eligible === "boolean" && !eligibility.eligible && <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950"><AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" /><div><p className="text-sm font-bold">Leave eligibility is in progress</p><p className="mt-1 text-xs leading-5 text-amber-800">Paid leave and monthly permissions unlock after your {eligibility.probationMonths ?? 0}-month company eligibility period. {eligibility.remainingDays ?? 0} day(s) remain. Unpaid leave can still be requested for exceptional cases.</p></div></div>}
+      {typeof eligibility?.eligible === "boolean" && !eligibility.eligible && <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950"><AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" /><div><p className="text-sm font-bold">Paid leave is not available yet</p><p className="mt-1 text-xs leading-5 text-amber-800">Paid leave and monthly permissions unlock after your {eligibility.probationMonths ?? 0}-month company eligibility period. {eligibility.remainingDays ?? 0} day(s) remain. Unpaid leave remains available for exceptional cases.</p>{!canApplyLeave && <p className="mt-2 text-xs font-bold text-amber-900">Your company has not configured an unpaid leave type yet. Please contact HR.</p>}</div></div>}
       {typeof eligibility?.eligible === "boolean" && <div className="grid grid-cols-1 gap-3 sm:grid-cols-3"><div className="rounded-2xl border border-indigo-100 bg-indigo-50/70 p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">Monthly permission</p><p className="mt-1 text-2xl font-bold text-indigo-950">{eligibility.monthlyPermissionHours ?? 0} hrs</p><p className="mt-1 text-xs text-indigo-700">Company allowance</p></div><div className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Eligibility status</p><p className="mt-1 text-sm font-bold text-slate-900">{eligibility.eligible ? "Active" : "Waiting period"}</p><p className="mt-1 text-xs text-slate-500">{eligibility.eligible ? "Leave and permission access is open" : `Unlocks in ${eligibility.remainingDays ?? 0} days`}</p></div><div className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Policy window</p><p className="mt-1 text-sm font-bold text-slate-900">{eligibility.probationMonths ?? 0} months</p><p className="mt-1 text-xs text-slate-500">Configured by your company</p></div></div>}
 
       {/* Leave Quota Balance Cards */}
@@ -370,10 +374,10 @@ export default function LeavesView() {
       )}
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-3 border-b border-slate-200 pb-1">
         <button
           onClick={() => setActiveTab("MY_LEAVES")}
-          className={`pb-3 px-4 text-sm font-semibold border-b-2 transition ${
+          className={`whitespace-nowrap pb-3 px-3 text-sm font-semibold border-b-2 transition sm:px-4 ${
             activeTab === "MY_LEAVES"
               ? "border-indigo-600 text-indigo-600"
               : "border-transparent text-slate-500 hover:text-slate-800"
@@ -384,7 +388,7 @@ export default function LeavesView() {
 
         <button
           onClick={() => setActiveTab("PERMISSIONS")}
-          className={`pb-3 px-4 text-sm font-semibold border-b-2 transition ${
+          className={`whitespace-nowrap pb-3 px-3 text-sm font-semibold border-b-2 transition sm:px-4 ${
             activeTab === "PERMISSIONS"
               ? "border-indigo-600 text-indigo-600"
               : "border-transparent text-slate-500 hover:text-slate-800"
@@ -395,14 +399,14 @@ export default function LeavesView() {
 
         <button
           onClick={() => setActiveTab("WORK_FROM_HOME")}
-          className="pb-3 px-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition"
+          className="whitespace-nowrap pb-3 px-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition sm:px-4"
         >
           Work From Home
         </button>
 
         <button
           onClick={() => setActiveTab("COMPANY_LEAVE")}
-          className={`pb-3 px-4 text-sm font-semibold border-b-2 transition ${
+          className={`whitespace-nowrap pb-3 px-3 text-sm font-semibold border-b-2 transition sm:px-4 ${
             activeTab === "COMPANY_LEAVE"
               ? "border-indigo-600 text-indigo-600"
               : "border-transparent text-slate-500 hover:text-slate-800"
@@ -413,7 +417,7 @@ export default function LeavesView() {
 
         <button
           onClick={() => setActiveTab("SHOOT_REQUESTS")}
-          className={`pb-3 px-4 text-sm font-semibold border-b-2 transition ${
+          className={`whitespace-nowrap pb-3 px-3 text-sm font-semibold border-b-2 transition sm:px-4 ${
             activeTab === "SHOOT_REQUESTS"
               ? "border-indigo-600 text-indigo-600"
               : "border-transparent text-slate-500 hover:text-slate-800"
@@ -434,7 +438,7 @@ export default function LeavesView() {
         {canApprove && (
           <button
             onClick={() => setActiveTab("APPROVALS")}
-            className={`pb-3 px-4 text-sm font-semibold border-b-2 transition flex items-center gap-2 ${
+          className={`whitespace-nowrap pb-3 px-3 text-sm font-semibold border-b-2 transition flex items-center gap-2 sm:px-4 ${
               activeTab === "APPROVALS"
                 ? "border-indigo-600 text-indigo-600"
                 : "border-transparent text-slate-500 hover:text-slate-800"
@@ -451,7 +455,7 @@ export default function LeavesView() {
       </div>
 
       {/* Tab Content: Permissions */}
-      {activeTab === "PERMISSIONS" && <PermissionRequestsPanel canReview={canApprove} />}
+      {activeTab === "PERMISSIONS" && <PermissionRequestsPanel canReview={canApprove} eligible={paidLeaveEligibilityOpen} eligibility={eligibility} />}
 
       {/* Tab Content: Work From Home */}
       {activeTab === "WORK_FROM_HOME" && <WorkFromHomePanel canReview={canApprove} />}
@@ -635,7 +639,7 @@ export default function LeavesView() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl text-slate-900"
+            className="w-full max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white border border-slate-200 rounded-3xl p-5 sm:p-8 shadow-2xl text-slate-900"
           >
             <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-4">
               <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
@@ -662,7 +666,7 @@ export default function LeavesView() {
                   required
                 >
                   <option value="">Select a category...</option>
-                  {leaveTypes.map((t) => (
+                  {selectableLeaveTypes.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.name} ({t.code}) - {t.daysAllowed} days quota
                     </option>
@@ -670,7 +674,7 @@ export default function LeavesView() {
                 </Select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
                     Start Date <span className="text-rose-500">*</span>

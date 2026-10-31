@@ -17,7 +17,7 @@ import Modal from "@/components/ui/Modal";
 
 export default function OffboardingView() {
   const { role } = useAuth();
-  const isAdmin = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN";
+  const isAdmin = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "HR";
   const [noticeSummary, setNoticeSummary] = useState<any>(null);
   const [exits, setExits] = useState<EmployeeExit[]>([]);
   const [loading, setLoading] = useState(true);

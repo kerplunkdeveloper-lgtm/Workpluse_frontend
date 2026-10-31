@@ -30,6 +30,10 @@ export default function OvertimeAndCompOffView() {
     const total = Math.max(0, Math.round(minutes));
     return `${Math.floor(total / 60)}h ${String(total % 60).padStart(2, "0")}m`;
   };
+  const compOffUnavailable = loading || balance <= 0;
+  const compOffTooltip = loading
+    ? "Checking your comp-off balance..."
+    : "Redeem becomes available after you earn an approved comp-off credit.";
 
   const loadData = async () => {
     setLoading(true);
@@ -150,13 +154,24 @@ export default function OvertimeAndCompOffView() {
             <Clock className="w-4 h-4" />
             Request Overtime
           </button>
-          <button
-            onClick={() => setModalOpen(true)}
-            className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm flex items-center gap-2 shadow-lg shadow-indigo-600/20 transition"
-          >
-            <Plus className="w-4 h-4" />
-            Redeem Comp-Off
-          </button>
+          <div className="group relative">
+            <button
+              onClick={() => setModalOpen(true)}
+              disabled={compOffUnavailable}
+              aria-describedby={compOffUnavailable ? "comp-off-disabled-help" : undefined}
+              title={compOffUnavailable ? compOffTooltip : "Redeem an approved comp-off credit"}
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none"
+            >
+              <Plus className="h-4 w-4" />
+              Redeem Comp-Off
+            </button>
+            {compOffUnavailable && (
+              <div id="comp-off-disabled-help" role="tooltip" className="pointer-events-none absolute right-0 top-[calc(100%+10px)] z-20 w-64 translate-y-1 rounded-xl border border-slate-200 bg-slate-950 px-3 py-2.5 text-left text-[11px] leading-4 text-white opacity-0 shadow-xl transition duration-150 group-hover:translate-y-0 group-hover:opacity-100">
+                <span className="font-semibold text-white">Comp-Off redemption unavailable</span>
+                <span className="mt-0.5 block text-slate-300">{compOffTooltip}</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

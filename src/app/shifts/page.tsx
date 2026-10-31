@@ -6,7 +6,7 @@ import ShiftsAndRostersView from "@/components/shifts/ShiftsAndRostersView";
 
 export default function ShiftsPage() {
   return (
-    <ProtectedRoute allowedRoles={["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"]}>
+    <ProtectedRoute allowedRoles={["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"]}>
       <AppLayout>
         <ShiftsAndRostersView />
       </AppLayout>

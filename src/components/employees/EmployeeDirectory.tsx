@@ -486,7 +486,8 @@ export default function EmployeeDirectory() {
                 all: "All roles",
                 options: [
                   { value: "EMPLOYEE", text: "Employee" },
-                  { value: "MANAGER", text: "HR" },
+                  { value: "HR", text: "HR" },
+                  { value: "MANAGER", text: "Manager" },
                   { value: "COMPANY_ADMIN", text: "Company admin" },
                 ],
               },
@@ -1048,7 +1049,8 @@ export default function EmployeeDirectory() {
                     className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
                   >
                     <option value="EMPLOYEE">Employee</option>
-                    <option value="MANAGER">HR / Manager</option>
+                    <option value="HR">HR</option>
+                    <option value="MANAGER">Manager</option>
                     {canManageAccess && <option value="COMPANY_ADMIN">Company admin</option>}
                   </Select>
                 </div>

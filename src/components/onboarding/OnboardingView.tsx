@@ -8,7 +8,6 @@ import {
   UserPlus,
   Send,
   CheckCircle2,
-  Clock,
   ExternalLink,
   Plus,
   Loader2,
@@ -16,6 +15,10 @@ import {
   DollarSign,
   FileText,
   ShieldCheck,
+  ArrowRight,
+  Search,
+  BriefcaseBusiness,
+  CalendarDays,
 } from "lucide-react";
 import { toast } from "sonner";
 import { confetti } from "@/lib/confetti";
@@ -26,22 +29,22 @@ import Modal from "@/components/ui/Modal";
 import CandidateDocumentsModal from "./CandidateDocumentsModal";
 
 const STAGES = [
-  { id: "INVITED", label: "Invited", statuses: ["INVITED"], color: "border-slate-200 bg-slate-50/70" },
+  { id: "INVITED", label: "Invited", hint: "Candidate has received the portal link", statuses: ["INVITED"], color: "border-slate-200 bg-slate-50/70", tone: "bg-slate-100 text-slate-700" },
   {
     id: "REVIEW",
     label: "Profile / Review",
     statuses: ["PROFILE_SUBMITTED", "UNDER_HR_REVIEW"],
-    color: "border-indigo-200 bg-indigo-50/40",
+    hint: "Candidate submits profile and documents", color: "border-indigo-200 bg-indigo-50/40", tone: "bg-indigo-100 text-indigo-700",
   },
   {
     id: "READY",
     label: "Verified / Offer ready",
     statuses: ["HR_VERIFIED", "ADMIN_APPROVED", "OFFER_GENERATED"],
-    color: "border-sky-200 bg-sky-50/40",
+    hint: "HR verifies details before the offer", color: "border-sky-200 bg-sky-50/40", tone: "bg-sky-100 text-sky-700",
   },
-  { id: "OFFER_SENT", label: "Offer Sent", statuses: ["OFFER_SENT"], color: "border-amber-200 bg-amber-50/40" },
-  { id: "ACCEPTED", label: "Accepted", statuses: ["OFFER_ACCEPTED", "ACCEPTED"], color: "border-emerald-200 bg-emerald-50/40" },
-  { id: "ACTIVATED", label: "Activated", statuses: ["ACTIVATED", "ONBOARDED"], color: "border-teal-200 bg-teal-50/40" },
+  { id: "OFFER_SENT", label: "Offer Sent", hint: "Offer is sent by email and WhatsApp", statuses: ["OFFER_SENT"], color: "border-amber-200 bg-amber-50/40", tone: "bg-amber-100 text-amber-700" },
+  { id: "ACCEPTED", label: "Accepted", hint: "Candidate confirms the offer", statuses: ["OFFER_ACCEPTED", "ACCEPTED"], color: "border-emerald-200 bg-emerald-50/40", tone: "bg-emerald-100 text-emerald-700" },
+  { id: "ACTIVATED", label: "Activated", hint: "Employee account is ready for day one", statuses: ["ACTIVATED", "ONBOARDED"], color: "border-teal-200 bg-teal-50/40", tone: "bg-teal-100 text-teal-700" },
 ];
 
 const SEND_OFFER_STATUSES = [
@@ -77,6 +80,7 @@ export default function OnboardingView() {
   const [branchId, setBranchId] = useState("");
   const [joiningDate, setJoiningDate] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [search, setSearch] = useState("");
 
   const loadPipeline = async () => {
     setLoading(true);
@@ -195,26 +199,38 @@ export default function OnboardingView() {
     }
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-wrap items-end justify-between gap-5">
-        <div>
-          <p className="mb-2 text-[11px] font-bold uppercase tracking-[.18em] text-indigo-600">People operations</p>
-          <h1 className="flex items-center gap-2.5 text-3xl font-semibold tracking-[-.035em] text-slate-950">
-            <UserPlus className="h-7 w-7 text-indigo-600" />
-            Onboarding
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-            Move candidates from invitation to active employee with one clear, auditable workflow.
-          </p>
-        </div>
+  const visibleCandidates = candidates.filter((candidate) => {
+    const term = search.trim().toLowerCase();
+    if (!term) return true;
+    return [candidate.firstName, candidate.lastName, candidate.email, candidate.designation, (candidate as any).employeeCode].filter(Boolean).join(" ").toLowerCase().includes(term);
+  });
 
-        <div className="flex flex-wrap gap-2">
-          <Link href="/onboarding/offer-template" className="flex items-center gap-2 rounded-xl border border-indigo-200 bg-white px-4 py-3 text-sm font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-50 active:scale-[.98]"><FileText className="h-4 w-4" />Offer letter template</Link>
-          <button type="button" onClick={() => setModalOpen(true)} className="flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 transition hover:bg-slate-800 active:scale-[.98]"><Plus className="w-4 h-4" />Invite New Joiner</button>
+  return (
+    <div className="space-y-6 pb-10">
+      <section className="relative overflow-hidden rounded-[2rem] bg-slate-950 px-5 py-6 text-white shadow-[0_22px_60px_-28px_rgba(15,23,42,.55)] sm:px-8 sm:py-8">
+        <div className="pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full bg-indigo-500/30 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-[-8rem] left-1/3 h-56 w-56 rounded-full bg-violet-500/20 blur-3xl" />
+        <div className="relative flex flex-wrap items-end justify-between gap-6">
+          <div>
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-[.2em] text-indigo-300">People operations · hiring workspace</p>
+            <h1 className="flex items-center gap-3 text-3xl font-semibold tracking-[-.04em] sm:text-4xl"><UserPlus className="h-8 w-8 text-indigo-300" />Onboarding pipeline</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">A single place for HR to invite, verify, send offers, and activate new employees without losing the next step.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/onboarding/offer-template" className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/15"><FileText className="h-4 w-4 text-indigo-300" />Offer template</Link>
+            <button type="button" onClick={() => setModalOpen(true)} className="flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-950/30 transition hover:bg-indigo-400"><Plus className="h-4 w-4" />Invite new joiner</button>
+          </div>
         </div>
-      </div>
+        <div className="relative mt-7 grid gap-2 sm:grid-cols-3">
+          {[{ label: "1. Invite", text: "Create a secure candidate portal" }, { label: "2. Review", text: "Verify documents and offer details" }, { label: "3. Activate", text: "Create the employee account" }].map((step, index) => (
+            <div key={step.label} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[.07] px-4 py-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/10 text-xs font-bold text-indigo-200">{index + 1}</span>
+              <div><p className="text-xs font-bold text-white">{step.label}</p><p className="mt-0.5 text-[11px] text-slate-400">{step.text}</p></div>
+              {index < 2 && <ArrowRight className="ml-auto hidden h-4 w-4 text-slate-600 sm:block" />}
+            </div>
+          ))}
+        </div>
+      </section>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
@@ -230,117 +246,59 @@ export default function OnboardingView() {
         ))}
       </div>
 
-      {/* Kanban Board */}
-      <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
-        {STAGES.map((stage) => {
-          const stageCandidates = candidates.filter((c) => stage.statuses.includes(c.status));
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="flex min-w-[220px] flex-1 items-center gap-2 rounded-xl bg-slate-50 px-3 ring-1 ring-slate-200 focus-within:ring-indigo-300">
+          <Search className="h-4 w-4 text-slate-400" />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search candidate, email or role" className="h-10 min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400" />
+        </div>
+        <p className="text-xs font-medium text-slate-500">{visibleCandidates.length} of {candidates.length} candidates</p>
+      </div>
+
+      {/* Pipeline Board */}
+      <section className="rounded-[2rem] border border-slate-200 bg-white p-3 shadow-[0_18px_50px_-34px_rgba(15,23,42,.3)] sm:p-5">
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-3 px-1">
+          <div><p className="text-[11px] font-bold uppercase tracking-[.18em] text-indigo-600">Live workflow</p><h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">Candidate pipeline</h2><p className="mt-1 text-xs text-slate-500">Open a card, complete the highlighted action, and move the candidate forward.</p></div>
+          {loading && <span className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Syncing pipeline</span>}
+        </div>
+        <div className="overflow-x-auto pb-2">
+          <div className="grid min-w-[1420px] grid-cols-6 gap-3">
+        {STAGES.map((stage, stageIndex) => {
+          const stageCandidates = visibleCandidates.filter((c) => stage.statuses.includes(c.status));
           return (
             <div
               key={stage.id}
-              className={`rounded-3xl border p-4 flex flex-col min-h-[500px] ${stage.color}`}
+              className={`flex min-h-[470px] flex-col rounded-2xl border p-3.5 ${stage.color}`}
             >
-              {/* Stage Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
-                <span className="font-bold text-xs text-slate-800 tracking-wide uppercase">
-                  {stage.label}
-                </span>
-                <span className="w-5 h-5 rounded-full bg-white border border-slate-200 text-xs font-bold text-slate-700 flex items-center justify-center shadow-xs">
-                  {stageCandidates.length}
-                </span>
+              <div className="mb-3 border-b border-slate-200/80 pb-3">
+                <div className="flex items-center justify-between gap-2"><span className="text-[11px] font-bold uppercase tracking-wider text-slate-800">{stageIndex + 1}. {stage.label}</span><span className={`flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-[11px] font-bold ${stage.tone}`}>{stageCandidates.length}</span></div>
+                <p className="mt-1 text-[11px] leading-4 text-slate-500">{stage.hint}</p>
+                <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/70"><div className="h-full rounded-full bg-current opacity-40" style={{ width: `${Math.max(12, ((stageCandidates.length / Math.max(1, visibleCandidates.length)) * 100))}%` }} /></div>
               </div>
 
-              {/* Cards in this Stage */}
               <div className="flex-1 space-y-3 overflow-y-auto pr-1">
                 {stageCandidates.length === 0 ? (
-                  <div className="h-40 flex items-center justify-center text-xs text-slate-400 italic">
-                    No candidates
-                  </div>
+                  <div className="flex h-36 flex-col items-center justify-center rounded-xl border border-dashed border-slate-300/80 bg-white/35 px-4 text-center"><span className="text-xs font-semibold text-slate-400">No candidates here</span><span className="mt-1 text-[10px] text-slate-400">This stage is clear</span></div>
                 ) : (
                   stageCandidates.map((cand) => (
                     <div
                       key={cand.id}
-                      className="rounded-2xl p-4 border border-slate-200 bg-white space-y-3 hover:border-slate-300 shadow-xs transition"
+                      className="space-y-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-[0_8px_20px_-16px_rgba(15,23,42,.4)] transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md"
                     >
-                      <div>
-                        <h4 className="font-bold text-sm text-slate-900">
-                          {cand.firstName} {cand.lastName}
-                        </h4>
-                        <p className="text-xs text-indigo-600 font-medium">{cand.designation}</p>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0"><h4 className="truncate text-sm font-bold text-slate-900">{cand.firstName} {cand.lastName}</h4><p className="mt-0.5 truncate text-xs font-semibold text-indigo-600">{cand.designation || "Role to be confirmed"}</p></div>
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-xs font-bold text-indigo-700">{`${cand.firstName?.[0] || "C"}${cand.lastName?.[0] || ""}`.toUpperCase()}</span>
                       </div>
 
-                      <div className="space-y-1 text-xs text-slate-600">
-                        <div className="flex items-center gap-1.5">
-                          <Mail className="w-3.5 h-3.5 text-slate-400" />
-                          <span className="truncate">{cand.email}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 font-semibold text-slate-700">
-                          <DollarSign className="w-3.5 h-3.5 text-slate-400" />
-                          <span>Offered: {formatCurrency(cand.proposedSalary ?? cand.offeredSalary)}</span>
-                        </div>
-                        {(cand.expectedJoinDate || cand.joiningDate) && (
-                          <div className="flex items-center gap-1.5">
-                            <Clock className="w-3.5 h-3.5 text-slate-400" />
-                            <span>Joining: {formatDate(cand.expectedJoinDate || cand.joiningDate)}</span>
-                          </div>
-                        )}
+                      <div className="space-y-1.5 text-[11px] text-slate-600">
+                        <div className="flex min-w-0 items-center gap-1.5"><Mail className="h-3.5 w-3.5 shrink-0 text-slate-400" /><span className="truncate">{cand.email}</span></div>
+                        <div className="flex items-center gap-1.5"><BriefcaseBusiness className="h-3.5 w-3.5 shrink-0 text-slate-400" /><span className="truncate">{(cand as any).department?.name || "Department not assigned"}</span></div>
+                        <div className="flex items-center gap-1.5"><DollarSign className="h-3.5 w-3.5 shrink-0 text-slate-400" /><span className="font-semibold text-slate-700">{formatCurrency(cand.proposedSalary ?? cand.offeredSalary)}</span></div>
+                        {(cand.expectedJoinDate || cand.joiningDate) && <div className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 shrink-0 text-slate-400" /><span>Join {formatDate(cand.expectedJoinDate || cand.joiningDate)}</span></div>}
                       </div>
 
-                      {/* Uploaded documents (Aadhaar, PAN, certificates...) */}
-                      <button
-                        type="button"
-                        onClick={() => setDocsFor({ id: cand.id, name: `${cand.firstName} ${cand.lastName || ""}`.trim() })}
-                        className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
-                      >
-                        <span className="flex items-center gap-1.5">
-                          <FileText className="h-3.5 w-3.5 text-slate-400" />
-                          Documents
-                        </span>
-                        <span className="rounded-full bg-white px-2 py-0.5 text-[11px] tabular-nums ring-1 ring-slate-200">{((cand as any).documents || []).length}</span>
-                      </button>
+                      <button type="button" onClick={() => setDocsFor({ id: cand.id, name: `${cand.firstName} ${cand.lastName || ""}`.trim() })} className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"><span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5 text-slate-400" />Documents</span><span className="rounded-full bg-white px-2 py-0.5 text-[11px] tabular-nums ring-1 ring-slate-200">{((cand as any).documents || []).length}</span></button>
 
-                      {/* Portal Link */}
-                      {(cand.token || cand.portalToken) && (
-                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-                          <Link
-                            href={`/onboarding/portal/${cand.token || cand.portalToken}`}
-                            target="_blank"
-                            className="text-xs text-indigo-600 hover:text-indigo-700 font-semibold flex items-center gap-1"
-                          >
-                            <span>Candidate Portal</span>
-                            <ExternalLink className="w-3 h-3" />
-                          </Link>
-
-                          {VERIFY_STATUSES.includes(cand.status) ? (
-                            <button
-                              onClick={() => handleHrVerify(cand.id)}
-                              className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs"
-                            >
-                              Verify
-                            </button>
-                          ) : SEND_OFFER_STATUSES.includes(cand.status) ? (
-                            <button
-                              onClick={() => handleSendOffer(cand.id)}
-                              className="px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs flex items-center gap-1 shadow-xs"
-                            >
-                              <Send className="w-3 h-3" />
-                              Send Offer
-                            </button>
-                          ) : ACTIVATE_STATUSES.includes(cand.status) ? (
-                            <button
-                              onClick={() => handleActivateAccount(cand.id)}
-                              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center gap-1 shadow-xs"
-                            >
-                              <CheckCircle2 className="w-3 h-3" />
-                              Activate
-                            </button>
-                          ) : cand.status === "ACTIVATED" || cand.status === "ONBOARDED" ? (
-                            <span className="text-xs text-teal-700 font-bold flex items-center gap-1">
-                              <ShieldCheck className="w-3 h-3" />
-                              Active
-                            </span>
-                          ) : null}
-                        </div>
-                      )}
+                      {(cand.token || cand.portalToken) && <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-2"><Link href={`/onboarding/portal/${cand.token || cand.portalToken}`} target="_blank" className="flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700"><span>Open portal</span><ExternalLink className="h-3 w-3" /></Link>{VERIFY_STATUSES.includes(cand.status) ? <button onClick={() => handleHrVerify(cand.id)} className="rounded-lg bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500">Verify</button> : SEND_OFFER_STATUSES.includes(cand.status) ? <button onClick={() => handleSendOffer(cand.id)} className="flex items-center gap-1 rounded-lg bg-sky-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-sky-500"><Send className="h-3 w-3" />Offer</button> : ACTIVATE_STATUSES.includes(cand.status) ? <button onClick={() => handleActivateAccount(cand.id)} className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500"><CheckCircle2 className="h-3 w-3" />Activate</button> : cand.status === "ACTIVATED" || cand.status === "ONBOARDED" ? <span className="flex items-center gap-1 text-xs font-bold text-teal-700"><ShieldCheck className="h-3 w-3" />Active</span> : null}</div>}
                     </div>
                   ))
                 )}
@@ -348,7 +306,9 @@ export default function OnboardingView() {
             </div>
           );
         })}
-      </div>
+          </div>
+        </div>
+      </section>
 
       {/* Invite Joiner Modal */}
       {modalOpen && (

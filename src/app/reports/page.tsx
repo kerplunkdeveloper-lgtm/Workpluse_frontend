@@ -6,7 +6,7 @@ import ReportsView from "@/components/reports/ReportsView";
 
 export default function ReportsPage() {
   return (
-    <ProtectedRoute allowedRoles={["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"]}>
+    <ProtectedRoute allowedRoles={["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"]}>
       <AppLayout>
         <ReportsView />
       </AppLayout>

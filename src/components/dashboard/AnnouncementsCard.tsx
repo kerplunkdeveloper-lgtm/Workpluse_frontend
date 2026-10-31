@@ -30,7 +30,7 @@ const when = (iso: string) =>
 /** Company notice board: everyone reads, HR and admins post. Hidden entirely when there is nothing to show to an employee. */
 export default function AnnouncementsCard() {
   const { role, user } = useAuth();
-  const canPost = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER";
+  const canPost = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER" || role === "HR";
   const isAdmin = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN";
   const [items, setItems] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);

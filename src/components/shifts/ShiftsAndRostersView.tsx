@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Employee, Shift } from "@/types";
 import { employeesApi, shiftsApi, shiftOverridesApi } from "@/lib/api";
 import { formatDate, unwrapList } from "@/lib/utils";
+import { formatHm, shiftLengthMinutes } from "@/components/attendance/attendanceUtils";
 import { CalendarRange, Clock, Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import Select from "@/components/ui/Select";
@@ -30,7 +31,7 @@ export default function ShiftsAndRostersView() {
   const [endTime, setEndTime] = useState("18:00");
   const [graceMinutes, setGraceMinutes] = useState(15);
   const [breakMinutes, setBreakMinutes] = useState(15);
-  const [lunchMinutes, setLunchMinutes] = useState(45);
+  const [lunchMinutes, setLunchMinutes] = useState(40);
   const [breakIncluded, setBreakIncluded] = useState(true);
   const [lunchIncluded, setLunchIncluded] = useState(true);
   const [workingDays, setWorkingDays] = useState("1,2,3,4,5,6"); // Monday to Saturday
@@ -229,6 +230,17 @@ export default function ShiftsAndRostersView() {
                 </div>
 
                 <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+                  {(() => {
+                    const shiftMinutes = shiftLengthMinutes(s.startTime, s.endTime) || 0;
+                    const includedBreak = s.breakIncluded === false ? 0 : Number(s.breakMinutes || 0);
+                    const includedLunch = s.lunchIncluded === false ? 0 : Number(s.lunchMinutes || 0);
+                    const productiveMinutes = Math.max(0, shiftMinutes - includedBreak - includedLunch);
+                    return <>
+                      <div className="flex justify-between"><span className="text-slate-500">Shift window:</span><span className="font-bold text-slate-900">{formatHm(shiftMinutes)} total</span></div>
+                      <div className="flex justify-between"><span className="text-slate-500">Included pauses:</span><span className="font-semibold text-indigo-700">{formatHm(includedBreak)} break · {formatHm(includedLunch)} lunch</span></div>
+                      <div className="flex justify-between"><span className="text-slate-500">Productive target:</span><span className="font-semibold text-emerald-700">{formatHm(productiveMinutes)}</span></div>
+                    </>;
+                  })()}
                   <div className="flex justify-between">
                     <span className="text-slate-500">Timings:</span>
                     <span className="font-bold text-slate-900">
@@ -437,7 +449,7 @@ export default function ShiftsAndRostersView() {
                   <label className="block text-[13px] font-medium text-slate-700 mb-1">
 <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4">
                 <p className="text-xs font-semibold text-indigo-900">Included pause allowances</p>
-                <p className="mt-1 text-[11px] text-indigo-700">For a 09:00–18:00 shift, 15m break + 45m lunch means an 8h productive target.</p>
+                <p className="mt-1 text-[11px] text-indigo-700">For a 09:00–18:00 shift, included break and lunch time are part of the 9-hour window; productive target is calculated automatically.</p>
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   <label className="text-[11px] font-medium text-slate-700">Break minutes
                     <input type="number" min={0} max={240} value={breakMinutes} onChange={(e) => setBreakMinutes(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-900" />

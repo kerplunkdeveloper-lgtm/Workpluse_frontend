@@ -117,13 +117,13 @@ export default function BranchesAndGeofencesView() {
   };
 
   const pickedLocation =
-    latitude && longitude && Number.isFinite(parseFloat(latitude)) && Number.isFinite(parseFloat(longitude))
+    latitude !== "" && longitude !== "" && Number.isFinite(parseFloat(latitude)) && Number.isFinite(parseFloat(longitude))
       ? { lat: parseFloat(latitude), lng: parseFloat(longitude), address: address || `${latitude}, ${longitude}` }
       : null;
 
   const handleSaveBranch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!latitude || !longitude) {
+    if (latitude === "" || longitude === "") {
       toast.error("Select the office location first: search an address, use your current location, or pick it on the map.");
       return;
     }

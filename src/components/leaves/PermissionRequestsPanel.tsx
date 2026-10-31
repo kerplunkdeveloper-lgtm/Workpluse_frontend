@@ -23,9 +23,13 @@ type Allowance = {
   cycleStart: string;
   cycleEnd: string;
   allowanceHours: number;
+  allowanceMinutes?: number;
   usedHours: number;
+  usedMinutes?: number;
   remainingHours: number;
+  remainingMinutes?: number;
   excessHours: number;
+  excessMinutes?: number;
 };
 
 const STATUS_STYLES: Record<PermissionRequest["status"], string> = {
@@ -54,11 +58,18 @@ const formatClock = (value: string) => {
   return `${displayHour}:${String(minute).padStart(2, "0")} ${suffix}`;
 };
 
-const timeRangeLabel = (request: PermissionRequest) => request.startTime && request.endTime
-  ? `${formatClock(request.startTime)} - ${formatClock(request.endTime)} (${Number(request.hours)} ${Number(request.hours) === 1 ? "hour" : "hours"})`
-  : `${Number(request.hours)}h`;
+const formatMinutes = (minutes: number) => {
+  const total = Math.max(0, Math.round(minutes));
+  const hours = Math.floor(total / 60);
+  const mins = total % 60;
+  return hours ? `${hours}h${mins ? ` ${mins}m` : ""}` : `${mins}m`;
+};
 
-export default function PermissionRequestsPanel({ canReview }: { canReview: boolean }) {
+const timeRangeLabel = (request: PermissionRequest) => request.startTime && request.endTime
+  ? `${formatClock(request.startTime)} - ${formatClock(request.endTime)} (${formatMinutes(Number(request.hours) * 60)})`
+  : formatMinutes(Number(request.hours) * 60);
+
+export default function PermissionRequestsPanel({ canReview, eligible = true, eligibility }: { canReview: boolean; eligible?: boolean; eligibility?: { probationMonths?: number; remainingDays?: number } | null }) {
   const [requests, setRequests] = useState<PermissionRequest[]>([]);
   const [allowance, setAllowance] = useState<Allowance | null>(null);
   const [queue, setQueue] = useState<PermissionRequest[]>([]);
@@ -179,35 +190,45 @@ export default function PermissionRequestsPanel({ canReview }: { canReview: bool
               <p className="text-sm font-semibold text-slate-900 mt-1">
                 {formatCycleDate(parseDay(allowance.cycleStart))} to {formatCycleDate(parseDay(allowance.cycleEnd))}
               </p>
-              <div className="mt-4 grid grid-cols-3 gap-3 text-center">
+              <div className="mt-4 grid grid-cols-1 min-[400px]:grid-cols-3 gap-3 text-center">
                 <div className="rounded-2xl bg-slate-50 p-3">
-                  <p className="text-lg font-bold text-slate-900 tabular-nums">{allowance.allowanceHours}h</p>
-                  <p className="text-[11px] text-slate-500">Free allowance</p>
+                  <p className="text-lg font-bold text-slate-900 tabular-nums">{formatMinutes(allowance.allowanceMinutes ?? allowance.allowanceHours * 60)}</p>
+                  <p className="text-[11px] text-slate-500">Free / no-deduction time</p>
                 </div>
                 <div className="rounded-2xl bg-slate-50 p-3">
-                  <p className="text-lg font-bold text-slate-900 tabular-nums">{allowance.usedHours}h</p>
-                  <p className="text-[11px] text-slate-500">Approved</p>
+                  <p className="text-lg font-bold text-slate-900 tabular-nums">{formatMinutes(allowance.usedMinutes ?? allowance.usedHours * 60)}</p>
+                  <p className="text-[11px] text-slate-500">Approved time used</p>
                 </div>
                 <div className="rounded-2xl bg-indigo-50 p-3">
-                  <p className="text-lg font-bold text-indigo-700 tabular-nums">{allowance.remainingHours}h</p>
-                  <p className="text-[11px] text-indigo-600">Left</p>
+                  <p className="text-lg font-bold text-indigo-700 tabular-nums">{formatMinutes(allowance.remainingMinutes ?? allowance.remainingHours * 60)}</p>
+                  <p className="text-[11px] text-indigo-600">No-deduction time left</p>
                 </div>
               </div>
               {allowance.excessHours > 0 && (
                 <p className="mt-3 text-xs text-rose-600">
-                  {allowance.excessHours}h beyond the allowance will be deducted at the hourly rate.
+                  {formatMinutes(allowance.excessMinutes ?? allowance.excessHours * 60)} beyond the allowance will be deducted at the company hourly rate during payroll.
                 </p>
               )}
             </div>
           )}
 
-          <form onSubmit={handleApply} autoComplete="off" className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs space-y-4">
+          {!eligible ? (
+            <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 shadow-xs">
+              <div className="flex items-start gap-3">
+                <Clock className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                <div>
+                  <h3 className="text-sm font-bold text-amber-950">Monthly permissions are locked</h3>
+                  <p className="mt-1 text-xs leading-5 text-amber-800">Permission requests unlock after your {eligibility?.probationMonths ?? 3}-month company eligibility period. {eligibility?.remainingDays ?? 0} day(s) remain.</p>
+                </div>
+              </div>
+            </div>
+          ) : <form onSubmit={handleApply} autoComplete="off" className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs space-y-4">
             <div>
               <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
                 <Clock className="w-4 h-4 text-indigo-600" />
                 Request a short permission
               </h3>
-              <p className="text-xs text-slate-500 mt-1">For leaving work for a few hours on a working day.</p>
+              <p className="text-xs text-slate-500 mt-1">For leaving work for a short time on a working day. Requests use 15-minute steps; only approved time counts toward this payroll cycle’s allowance.</p>
             </div>
             <label className="block space-y-1">
               <span className="text-xs font-semibold text-slate-600 uppercase">Date</span>
@@ -219,7 +240,7 @@ export default function PermissionRequestsPanel({ canReview }: { canReview: bool
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm"
               />
             </label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3">
               <label className="block space-y-1">
                 <span className="text-xs font-semibold text-slate-600 uppercase">Start time</span>
                 <input type="time" step={900} value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm" />
@@ -230,7 +251,7 @@ export default function PermissionRequestsPanel({ canReview }: { canReview: bool
               </label>
             </div>
             <div className="rounded-xl bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-800">
-              Total permission: {durationHours(startTime, endTime) > 0 ? `${durationHours(startTime, endTime)} ${durationHours(startTime, endTime) === 1 ? "hour" : "hours"}` : "—"}
+              Total permission: {durationHours(startTime, endTime) > 0 ? `${Math.round(durationHours(startTime, endTime) * 60)} minutes (${durationHours(startTime, endTime)} ${durationHours(startTime, endTime) === 1 ? "hour" : "hours"})` : "—"}
             </div>
             <label className="block space-y-1">
               <span className="text-xs font-semibold text-slate-600 uppercase">Reason</span>
@@ -251,7 +272,7 @@ export default function PermissionRequestsPanel({ canReview }: { canReview: bool
               {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
               Submit request
             </button>
-          </form>
+          </form>}
         </div>
 
         <div className="lg:col-span-3 bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
@@ -261,7 +282,7 @@ export default function PermissionRequestsPanel({ canReview }: { canReview: bool
           ) : (
             <ul className="divide-y divide-slate-100">
               {requests.map((r) => (
-                <li key={r.id} className="px-5 py-3 flex items-start justify-between gap-4">
+                <li key={r.id} className="px-5 py-3 flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-900">
                       {r.date.slice(0, 10)} · {timeRangeLabel(r)}
@@ -269,7 +290,7 @@ export default function PermissionRequestsPanel({ canReview }: { canReview: bool
                     <p className="text-xs text-slate-500 truncate">{r.reason}</p>
                     {r.reviewNote && <p className="text-xs text-slate-400 mt-0.5">Note: {r.reviewNote}</p>}
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
                     <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${STATUS_STYLES[r.status]}`}>
                       {r.status}
                     </span>
@@ -301,8 +322,8 @@ export default function PermissionRequestsPanel({ canReview }: { canReview: bool
           ) : (
             <ul className="divide-y divide-slate-100">
               {queue.map((r) => (
-                <li key={r.id} className="px-5 py-3 flex flex-wrap items-center justify-between gap-3">
-                  <div>
+                <li key={r.id} className="px-5 py-3 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0 w-full">
                     <p className="text-sm font-semibold text-slate-900">
                       {r.employee ? `${r.employee.firstName} ${r.employee.lastName || ""}`.trim() : "Employee"}
                       <span className="ml-2 font-mono text-xs text-indigo-700">{r.employee?.employeeCode}</span>
@@ -311,11 +332,11 @@ export default function PermissionRequestsPanel({ canReview }: { canReview: bool
                       {r.date.slice(0, 10)} · {timeRangeLabel(r)} · {r.reason}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
                     <button
                       onClick={() => handleReview(r, "APPROVED")}
                       disabled={busyId === r.id}
-                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold inline-flex items-center gap-1 disabled:opacity-50"
+                      className="flex-1 justify-center px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold inline-flex items-center gap-1 disabled:opacity-50 sm:flex-none"
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" />
                       Approve
@@ -323,7 +344,7 @@ export default function PermissionRequestsPanel({ canReview }: { canReview: bool
                     <button
                       onClick={() => handleReview(r, "REJECTED")}
                       disabled={busyId === r.id}
-                      className="px-3 py-1.5 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-semibold inline-flex items-center gap-1 disabled:opacity-50"
+                      className="flex-1 justify-center px-3 py-1.5 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-semibold inline-flex items-center gap-1 disabled:opacity-50 sm:flex-none"
                     >
                       <XCircle className="w-3.5 h-3.5" />
                       Reject

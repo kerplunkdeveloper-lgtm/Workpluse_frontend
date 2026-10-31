@@ -57,6 +57,7 @@ export default function PunchClockCard() {
           hasCheckedOut={Boolean(status?.hasCheckedOut || status?.attendance?.checkOut)}
           isOnBreak={Boolean(status?.isOnBreak)}
           activePauseType={status?.activePauseType || null}
+          activePauseStartedAt={status?.activePauseStartedAt || null}
           isOnline={ctx.isOnline}
           busy={ctx.isActionLoading}
           onPunch={(a) => setAction(a)}
@@ -84,6 +85,7 @@ export interface TodayPanelProps {
   hasCheckedOut: boolean;
   isOnBreak: boolean;
   activePauseType?: "BREAK" | "LUNCH" | null;
+  activePauseStartedAt?: string | null;
   isOnline: boolean;
   busy: boolean;
   onPunch: (action: PunchAction) => void;
@@ -94,7 +96,7 @@ export interface TodayPanelProps {
   now?: number;
 }
 
-export function TodayPanel({ firstName, attendance, shift, hasCheckedIn, hasCheckedOut, isOnBreak, activePauseType, isOnline, busy, onPunch, onToggleBreak, onStartLunch, onEndLunch, now: fixedNow }: TodayPanelProps) {
+export function TodayPanel({ firstName, attendance, shift, hasCheckedIn, hasCheckedOut, isOnBreak, activePauseType, activePauseStartedAt, isOnline, busy, onPunch, onToggleBreak, onStartLunch, onEndLunch, now: fixedNow }: TodayPanelProps) {
   const [tick, setTick] = useState(() => fixedNow ?? Date.now());
   const working = hasCheckedIn && !hasCheckedOut;
   useEffect(() => {
@@ -111,6 +113,11 @@ export function TodayPanel({ firstName, attendance, shift, hasCheckedIn, hasChec
   const late = Number(attendance?.lateMinutes || 0);
   const breakMinutes = breakMinutesOf(attendance || {});
   const lunchMinutes = lunchMinutesOf(attendance || {});
+  const activePauseMinutes = isOnBreak && activePauseStartedAt
+    ? Math.max(0, (now - new Date(activePauseStartedAt).getTime()) / 60000)
+    : 0;
+  const displayedBreakMinutes = breakMinutes + (activePauseType === "BREAK" ? activePauseMinutes : 0);
+  const displayedLunchMinutes = lunchMinutes + (activePauseType === "LUNCH" ? activePauseMinutes : 0);
 
   const state = hasCheckedOut
     ? { label: "Day complete", dot: "bg-slate-400" }
@@ -165,7 +172,7 @@ export function TodayPanel({ firstName, attendance, shift, hasCheckedIn, hasChec
               <span className="ml-2 text-2xl tracking-[-0.03em] text-indigo-300/80 sm:text-4xl">{ss}</span>
             </p>
             <p className="mt-3 text-xs text-slate-400">
-              Worked today{breakMinutes > 0 ? ` · ${formatHm(breakMinutes)} on breaks` : ""}
+              Worked today{displayedBreakMinutes + displayedLunchMinutes > 0 ? ` · ${formatHm(displayedBreakMinutes + displayedLunchMinutes)} on pauses` : ""}
             </p>
 
             <div className="mt-7 flex flex-wrap items-center gap-3">
@@ -215,8 +222,8 @@ export function TodayPanel({ firstName, attendance, shift, hasCheckedIn, hasChec
         <dl className="mt-9 grid grid-cols-2 divide-white/10 overflow-hidden rounded-2xl bg-white/[0.04] ring-1 ring-white/10 backdrop-blur sm:grid-cols-4 sm:divide-x">
           <Fact label="Punch in" value={attendance?.checkIn ? formatTime(attendance.checkIn) : "—"} />
           <Fact label="Punch out" value={attendance?.checkOut ? formatTime(attendance.checkOut) : "—"} />
-          <Fact label="☕ Break" value={formatHm(breakMinutes)} />
-          <Fact label="🍽️ Lunch" value={formatHm(lunchMinutes)} />
+          <Fact label="☕ Break" value={`${formatHm(displayedBreakMinutes)}${activePauseType === "BREAK" ? " · running" : ""}`} />
+          <Fact label="🍽️ Lunch" value={`${formatHm(displayedLunchMinutes)}${activePauseType === "LUNCH" ? " · running" : ""}`} />
           <Fact
             label="Arrival"
             value={!attendance?.checkIn ? "—" : late > 0 ? `${formatHm(late)} late` : "On time"}

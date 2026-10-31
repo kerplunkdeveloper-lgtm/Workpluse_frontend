@@ -45,7 +45,7 @@ function downloadBlob(blob: Blob, fileName: string) {
 
 export default function StatutoryView() {
   const { role } = useAuth();
-  const isAdmin = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER";
+  const isAdmin = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER" || role === "HR";
   const [fy] = useState(() => {
     const d = new Date();
     const y = d.getFullYear();

@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useAttendance, PunchOptions } from "@/context/AttendanceContext";
 import DayOffRequestDialog from "./DayOffRequestDialog";
+import ApprovedLeaveDialog from "./ApprovedLeaveDialog";
 
 export type PunchConfirmAction = "CHECK_IN" | "CHECK_OUT";
 
@@ -45,6 +46,9 @@ export default function PunchConfirmDialog(props: PunchConfirmDialogProps) {
   // On a weekly off, holiday or company leave punch-in is closed until HR or an admin approves the work.
   // Punching out is never blocked, and neither is someone who is already in.
   const dayOff = todayStatus?.dayOff;
+  if (props.action === "CHECK_IN" && dayOff?.kind === "PERSONAL_LEAVE" && !todayStatus?.hasCheckedIn) {
+    return <ApprovedLeaveDialog onCancel={props.onCancel} />;
+  }
   if (props.action === "CHECK_IN" && dayOff && !dayOff.canPunch && !todayStatus?.hasCheckedIn) {
     return <DayOffRequestDialog onCancel={props.onCancel} />;
   }

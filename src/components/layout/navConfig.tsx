@@ -81,7 +81,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Approvals", href: "/approvals", icon: ShieldCheck, hint: "HR clearance inbox for leaves and expenses", keywords: ["inbox", "requests"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"], badge: "Inbox", badgeColor: "bg-amber-500/20 text-amber-300 border border-amber-500/30" },
       { label: "Employees", href: "/employees", icon: Users, hint: "Full employee directory and staff directory", keywords: ["employee", "staff", "directory"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
-      { label: "Departments", href: "/departments", icon: FolderTree, hint: "Organizational structure and teams", keywords: ["team", "org"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN"] },
+      { label: "Departments", href: "/departments", icon: FolderTree, hint: "Organizational structure and teams", keywords: ["team", "org"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "HR"] },
       { label: "Onboarding", href: "/onboarding", icon: UserPlus, hint: "New hire workflows and document collection", keywords: ["hire", "joining"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
       { label: "Offboarding", href: "/offboarding", icon: UserMinus, hint: "Exit clearance, checklist, and resignation handover", keywords: ["exit", "resign"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
     ],
@@ -94,7 +94,7 @@ export const NAV_SECTIONS: NavSection[] = [
     glow: "rgba(245, 158, 11, 0.4)",
     items: [
       { label: "Shifts", href: "/shifts", icon: CalendarRange, hint: "Shift schedules, rotations, and rosters", keywords: ["roster", "schedule"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
-      { label: "Branches", href: "/branches", icon: MapPin, hint: "Office locations with GPS geofencing radius", keywords: ["office", "location", "geo"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN"] },
+      { label: "Branches", href: "/branches", icon: MapPin, hint: "Office locations with GPS geofencing radius", keywords: ["office", "location", "geo"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "HR"] },
       { label: "Holidays", href: "/holidays", icon: Calendar, hint: "Public holiday and company off calendar", keywords: ["holiday"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
       { label: "Policy", href: "/policy", icon: SlidersHorizontal, hint: "Attendance rules, leave eligibility, and deduction policy", keywords: ["rules", "settings", "leave eligibility"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
       { label: "Assets", href: "/assets", icon: Laptop, hint: "Hardware inventory and laptop assignments", keywords: ["laptop", "device", "inventory"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
@@ -162,13 +162,14 @@ export function itemMatches(item: NavItem, query: string) {
   );
 }
 
-/** "just now", "5 min ago", "3 h ago", or the date once it is older than a day. */
+/** Stable relative notification time. Floor elapsed units so "3 h" is not shown before 3 full hours. */
 export function timeAgo(value?: string) {
   const time = value ? new Date(value).getTime() : NaN;
   if (!Number.isFinite(time)) return "";
-  const minutes = Math.max(0, Math.round((Date.now() - time) / 60000));
-  if (minutes < 1) return "just now";
+  const elapsed = Date.now() - time;
+  if (elapsed < 60000) return "just now";
+  const minutes = Math.floor(elapsed / 60000);
   if (minutes < 60) return `${minutes} min ago`;
-  if (minutes < 1440) return `${Math.round(minutes / 60)} h ago`;
-  return new Date(time).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  if (minutes < 1440) return `${Math.floor(minutes / 60)} h ago`;
+  return new Date(time).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 }
