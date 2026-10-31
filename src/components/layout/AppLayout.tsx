@@ -60,6 +60,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [broadcastMessage, setBroadcastMessage] = useState("");
   const [sendingBroadcast, setSendingBroadcast] = useState(false);
   const [hrAccess, setHrAccess] = useState<Record<string, boolean> | null>(null);
+  const [roleAccess, setRoleAccess] = useState<Record<string, Record<string, boolean>> | null>(null);
+  const [pushPermission, setPushPermission] = useState<NotificationPermission | "unsupported" | "insecure" | "not-configured" | null>(null);
+  const [pushBusy, setPushBusy] = useState(false);
+
+  const requestBrowserNotifications = async () => {
+    setPushBusy(true);
+    try {
+      const result = await enableWebPushNotifications();
+      if (typeof window !== "undefined" && "Notification" in window) setPushPermission(Notification.permission);
+      if (result === "granted") toast.success("Browser notifications enabled");
+      else if (result === "insecure") toast.error("Browser notifications require HTTPS in production.");
+      else if (result === "not-configured") toast.error("Web notifications are not configured on the server yet.");
+      else if (result === "denied") toast.error("Notifications are blocked. Allow them in this site’s browser settings, then try again.");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Could not enable browser notifications.");
+    } finally {
+      setPushBusy(false);
+    }
+  };
 
   const handleSendBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,7 +180,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // the dashboard tab is closed. Permission denial is intentionally silent.
   useEffect(() => {
     if (!user?.id) return;
-    void enableWebPushNotifications().catch(() => {});
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      setPushPermission("unsupported");
+      return;
+    }
+    setPushPermission(Notification.permission);
+    // Registration is safe on login, but permission prompts must be started by
+    // the explicit button in the notification popover.
+    void enableWebPushNotifications({ requestPermission: false }).then((result) => {
+      if (result === "unsupported" || result === "insecure" || result === "not-configured") setPushPermission(result);
+    }).catch(() => {});
   }, [user?.id]);
 
   // Scroll restoration
@@ -257,9 +285,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   };
 
-  useEffect(() => { if (role === "MANAGER" || role === "HR") orgApi.get().then((res) => setHrAccess(res?.data?.hrAccess || null)).catch(() => setHrAccess(null)); else setHrAccess(null); }, [role]);
-  const hrAreaForHref = (href: string) => { if (href.startsWith("/dashboard") || href.startsWith("/profile")) return "DASHBOARD"; if (href.startsWith("/attendance") || href.startsWith("/leaves") || href.startsWith("/approvals")) return "ATTENDANCE"; if (href.startsWith("/employees")) return "EMPLOYEES"; if (href.startsWith("/onboarding") || href.startsWith("/offboarding")) return "ONBOARDING"; if (href.startsWith("/payroll") || href.startsWith("/statutory")) return "PAYROLL"; if (href.startsWith("/reports")) return "REPORTS"; if (href.startsWith("/branches") || href.startsWith("/departments")) return "BRANCHES"; if (href.startsWith("/policy") || href.startsWith("/holidays") || href.startsWith("/shifts")) return "POLICIES"; return null; };
-  const canSeeHrArea = (href: string) => { if ((role !== "MANAGER" && role !== "HR") || !hrAccess) return true; const area = hrAreaForHref(href); return !area || hrAccess[area] !== false; };
+  useEffect(() => { if (role === "MANAGER" || role === "HR" || role === "EMPLOYEE") orgApi.get().then((res) => { setHrAccess(res?.data?.hrAccess || null); setRoleAccess(res?.data?.roleAccess || null); }).catch(() => { setHrAccess(null); setRoleAccess(null); }); else { setHrAccess(null); setRoleAccess(null); } }, [role]);
+  const hrAreaForHref = (href: string) => { if (href.startsWith("/dashboard") || href.startsWith("/profile")) return "DASHBOARD"; if (href.startsWith("/attendance") || href.startsWith("/leaves") || href.startsWith("/approvals")) return "ATTENDANCE"; if (href.startsWith("/employees")) return "EMPLOYEES"; if (href.startsWith("/onboarding") || href.startsWith("/offboarding")) return "ONBOARDING"; if (href.startsWith("/payroll") || href.startsWith("/statutory") || href.startsWith("/loans") || href.startsWith("/expenses") || href.startsWith("/overtime")) return "PAYROLL"; if (href.startsWith("/reports")) return "REPORTS"; if (href.startsWith("/branches") || href.startsWith("/departments")) return "BRANCHES"; if (href.startsWith("/policy") || href.startsWith("/holidays") || href.startsWith("/shifts")) return "POLICIES"; if (href.startsWith("/assets")) return "EMPLOYEES"; return null; };
+  const canSeeHrArea = (href: string) => { const area = hrAreaForHref(href); if (!area) return true; if ((role === "MANAGER" || role === "HR") && hrAccess) return hrAccess[area] !== false; if (role === "EMPLOYEE" && roleAccess?.EMPLOYEE) return roleAccess.EMPLOYEE[area] !== false; return true; };
   const visibleSections = (isPlatformOwner ? PLATFORM_SECTIONS : NAV_SECTIONS).map((section) => ({
     ...section,
     items: section.items.filter((item) => itemVisible(item, role, user?.features) && canSeeHrArea(item.href) && itemMatches(item, navQuery)),
@@ -299,6 +327,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     todayStatus?.hasCheckedIn || todayStatus?.attendance?.checkIn
   ) && !Boolean(todayStatus?.hasCheckedOut || todayStatus?.attendance?.checkOut);
   const isOnBreak = todayStatus?.isOnBreak;
+  const punchInBlockedByLeave = !isCheckedIn && todayStatus?.dayOff?.kind === "PERSONAL_LEAVE";
 
   const orgName = user?.organization?.name || "WorkPluse";
   const planName = isPlatformOwner ? "Platform owner" : user?.organization?.subscriptionPlan || "Standard Plan";
@@ -722,9 +751,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {!isCheckedIn ? (
                 <button
                   onClick={() => setPendingPunch("CHECK_IN")}
-                  disabled={isActionLoading}
+                  disabled={isActionLoading || punchInBlockedByLeave}
                   className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white shadow-2xs transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                  title="Clock in with geolocation"
+                  title={punchInBlockedByLeave ? "Punch-in disabled while approved leave is active" : "Clock in with geolocation"}
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   Clock In
@@ -846,6 +875,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       </button>
                     </div>
 
+                    {pushPermission && pushPermission !== "granted" && (
+                      <div className="mb-2 rounded-xl border border-indigo-100 bg-indigo-50/70 px-3 py-2.5 text-xs text-indigo-950">
+                        <p className="font-semibold">Enable browser notifications</p>
+                        {pushPermission === "denied" ? (
+                          <p className="mt-1 leading-5 text-indigo-800">Notifications are blocked for this site. Open the browser site settings, allow notifications, and reload.</p>
+                        ) : pushPermission === "insecure" ? (
+                          <p className="mt-1 leading-5 text-indigo-800">Production browser notifications require an HTTPS website.</p>
+                        ) : pushPermission === "not-configured" ? (
+                          <p className="mt-1 leading-5 text-indigo-800">The server VAPID keys are not configured, so browser push is unavailable.</p>
+                        ) : pushPermission === "unsupported" ? (
+                          <p className="mt-1 leading-5 text-indigo-800">This browser does not support web notifications.</p>
+                        ) : (
+                          <button type="button" onClick={() => void requestBrowserNotifications()} disabled={pushBusy} className="mt-2 rounded-lg bg-indigo-600 px-3 py-1.5 font-semibold text-white disabled:opacity-60">
+                            {pushBusy ? "Enabling…" : "Allow notifications"}
+                          </button>
+                        )}
+                      </div>
+                    )}
+
                     <div className="max-h-64 space-y-2 overflow-y-auto text-xs">
                       {filteredNotifications.length === 0 ? (
                         <div className="py-8 text-center text-slate-400">
@@ -866,7 +914,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     </div>
 
                     {/* Admin and HR Announcement broadcast action */}
-                    {(role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER") && (
+                    {(role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER" || role === "HR") && (
                       <div className="pt-2.5 mt-2 border-t border-slate-100">
                         <button
                           type="button"
@@ -1078,11 +1126,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <button
                     onClick={() => {
                       setMobileMenuOpen(false);
-                      setPendingPunch("CHECK_IN");
+                    if (!punchInBlockedByLeave) setPendingPunch("CHECK_IN");
                     }}
-                    className="px-3 py-1 text-xs font-semibold rounded-lg bg-indigo-600 text-white"
+                    disabled={punchInBlockedByLeave}
+                    title={punchInBlockedByLeave ? "Punch-in disabled while approved leave is active" : "Punch in"}
+                    className="px-3 py-1 text-xs font-semibold rounded-lg bg-indigo-600 text-white disabled:cursor-not-allowed disabled:bg-slate-600 disabled:opacity-70"
                   >
-                    Punch In
+                    {punchInBlockedByLeave ? "On Leave" : "Punch In"}
                   </button>
                 ) : null}
               </div>
@@ -1387,7 +1437,12 @@ function NotificationRow({
           {!notification.isRead && <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0 mt-1" />}
         </div>
         <p className="text-slate-600 text-xs leading-relaxed">{notification.message}</p>
-        <p className="mt-1.5 text-[11px] text-slate-400">{timeAgo(notification.createdAt)}</p>
+        <p
+          className="mt-1.5 text-[11px] text-slate-400"
+          title={notification.createdAt ? new Date(notification.createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : undefined}
+        >
+          {timeAgo(notification.createdAt)}
+        </p>
       </button>
     </div>
   );

@@ -35,7 +35,6 @@ const CORRECTION_FILTERS: { value: CorrectionFilter; label: string }[] = [
   { value: "ALL", label: "All" },
 ];
 
-/** A DATE column arrives as UTC midnight; use its calendar day so no timezone can shift it. */
 const dayOf = (value?: string | null) => (value ? formatDate(String(value).slice(0, 10)) : "—");
 
 const minutesLabel = (minutes?: number | null) => {

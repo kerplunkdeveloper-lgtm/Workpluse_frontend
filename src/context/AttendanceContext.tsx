@@ -279,7 +279,13 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
   const { distanceToBranch, isWithinGeofence } = useMemo(() => {
     if (!currentLocation) return { distanceToBranch: null as number | null, isWithinGeofence: false };
     const branch: any = todayStatus?.branch || user?.employee?.branch;
-    if (!branch || !branch.latitude || !branch.longitude) return { distanceToBranch: null as number | null, isWithinGeofence: true };
+    if (
+      !branch ||
+      branch.latitude == null ||
+      branch.longitude == null ||
+      !Number.isFinite(Number(branch.latitude)) ||
+      !Number.isFinite(Number(branch.longitude))
+    ) return { distanceToBranch: null as number | null, isWithinGeofence: true };
     const branchLat = typeof branch.latitude === "string" ? parseFloat(branch.latitude) : branch.latitude;
     const branchLng = typeof branch.longitude === "string" ? parseFloat(branch.longitude) : branch.longitude;
     const distance = calculateDistanceMeters(currentLocation.latitude, currentLocation.longitude, branchLat, branchLng);
@@ -332,6 +338,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
           hasCheckedOut,
           isOnBreak,
           activePauseType: raw.activePauseType || null,
+          activePauseStartedAt: raw.activePauseStartedAt || null,
           isWorkFromHome,
           attendance: raw.attendance,
           totalBreakMinutes: raw.totalBreakMinutes || raw.attendance?.breakMinutes || 0,
@@ -367,7 +374,11 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
       refreshPendingCount();
       updateLocation();
       const interval = setInterval(updateLocation, 30000);
-      return () => clearInterval(interval);
+      const statusInterval = setInterval(() => void fetchTodayStatus(), 30000);
+      return () => {
+        clearInterval(interval);
+        clearInterval(statusInterval);
+      };
     }
   }, [token, fetchTodayStatus, updateLocation, refreshPendingCount]);
 
@@ -414,11 +425,11 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
             isOfflinePunch: true,
           }));
         } else if (type === "BREAK_START") {
-          setTodayStatus((prev: any) => ({ ...(prev || {}), isOnBreak: true }));
+          setTodayStatus((prev: any) => ({ ...(prev || {}), isOnBreak: true, activePauseType: "BREAK", activePauseStartedAt: punchTimestamp }));
         } else if (type === "BREAK_END" || type === "LUNCH_END") {
-          setTodayStatus((prev: any) => ({ ...(prev || {}), isOnBreak: false, activePauseType: null }));
+          setTodayStatus((prev: any) => ({ ...(prev || {}), isOnBreak: false, activePauseType: null, activePauseStartedAt: null }));
         } else if (type === "LUNCH_START") {
-          setTodayStatus((prev: any) => ({ ...(prev || {}), isOnBreak: true, activePauseType: "LUNCH" }));
+          setTodayStatus((prev: any) => ({ ...(prev || {}), isOnBreak: true, activePauseType: "LUNCH", activePauseStartedAt: punchTimestamp }));
         }
       };
 
@@ -481,6 +492,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
           LOCATION_REQUIRED: "Turn on location (GPS) to punch",
           LOCATION_IMPRECISE: "Your location isn't precise enough",
           OUTSIDE_OFFICE: "You're outside the office area",
+          APPROVED_LEAVE_BLOCKED: "Punch-in is disabled while you are on approved leave",
         };
         if (data?.code && locationTitle[data.code]) {
           toast.error(locationTitle[data.code], { description: data.message, duration: 9000 });

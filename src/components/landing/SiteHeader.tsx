@@ -53,7 +53,13 @@ export function SiteHeader() {
           <div className="flex items-center gap-2">
             <Link
               href="/login"
-              className="hidden rounded-lg px-3 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-900/[0.04] hover:text-slate-950 sm:inline-flex"
+              className="hidden rounded-lg px-3 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-900/[0.04] hover:text-slate-950 md:inline-flex"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/login"
+              className="inline-flex rounded-lg px-1.5 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-900/[0.04] hover:text-slate-950 md:hidden"
             >
               Sign in
             </Link>

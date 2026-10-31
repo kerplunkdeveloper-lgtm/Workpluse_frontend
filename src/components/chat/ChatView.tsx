@@ -4,13 +4,14 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { chatApi, getSessionAccessToken } from "@/lib/api";
 
 import { useAuth } from "@/context/AuthContext";
-import { ArrowLeft, Loader2, MessageSquare, Plus, Search, Send, Users } from "lucide-react";
+import { ArrowLeft, Info, Loader2, MessageSquare, Plus, Search, Send, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Person, ChatMessage, Thread } from "./chatTypes";
 import { MESSAGE_PAGE_SIZE, MAX_MESSAGE_LENGTH, toList, metaOf, personName, roleLabel, timeOf, dayLabel } from "./chatUtils";
 import { useDebounced, usePeopleSearch } from "./chatHooks";
 import { Avatar } from "./ChatAvatar";
 import { NewChannelModal } from "./NewChannelModal";
+import { ChannelProfilePanel } from "./ChannelProfilePanel";
 
 /** Compact label for the sidebar: time today, otherwise a short date. */
 const listStamp = (iso?: string) => {
@@ -28,7 +29,8 @@ export default function ChatView() {
   const { user, role } = useAuth();
   const me = user?.id;
   // Only admins and HR can create channels (the server enforces this too).
-  const canCreateChannel = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER";
+  const canCreateChannel = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER" || role === "HR";
+  const canManageChannel = canCreateChannel;
 
   const [threads, setThreads] = useState<Thread[]>([]);
   const [workspaceSize, setWorkspaceSize] = useState(0);
@@ -53,6 +55,7 @@ export default function ChatView() {
   const peopleSearch = usePeopleSearch(debouncedQuery, 2);
 
   const [channelOpen, setChannelOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
@@ -224,6 +227,20 @@ export default function ChatView() {
 
   const activeThread = sortedThreads.find((t) => t.id === activeId) || null;
   const activeInfo = activeThread ? describe(activeThread) : null;
+
+  const renameActiveChannel = (title: string) => {
+    if (!activeId) return;
+    setThreads((current) => current.map((thread) => thread.id === activeId ? { ...thread, title } : thread));
+  };
+
+  const removeActiveChannel = () => {
+    if (!activeId) return;
+    setThreads((current) => current.filter((thread) => thread.id !== activeId));
+    activeIdRef.current = null;
+    setActiveId(null);
+    setProfileOpen(false);
+    void loadThreads();
+  };
 
   /* Actions */
   const startDirect = async (person: Person) => {
@@ -559,6 +576,7 @@ export default function ChatView() {
                     )}
                   </p>
                 </div>
+                {activeInfo?.channel && activeThread && <button type="button" onClick={() => setProfileOpen(true)} className="ml-auto inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-xs transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700" title="View channel profile"><Info className="h-4 w-4" /> <span className="hidden sm:inline">Channel profile</span></button>}
               </header>
 
               <div ref={scrollRef} onScroll={onScroll} role="log" aria-live="polite" aria-label="Messages" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6">
@@ -667,6 +685,15 @@ export default function ChatView() {
             await loadThreads();
             void openThread(threadId);
           }}
+        />
+      )}
+      {profileOpen && activeThread?.isDirect === false && (
+        <ChannelProfilePanel
+          thread={activeThread}
+          canManage={canManageChannel}
+          onClose={() => setProfileOpen(false)}
+          onUpdated={renameActiveChannel}
+          onDeleted={removeActiveChannel}
         />
       )}
     </div>

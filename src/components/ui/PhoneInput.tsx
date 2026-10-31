@@ -106,7 +106,7 @@ export default function PhoneInput({ value, onChange, required, disabled, id, er
             onChange(sanitizePhone(value, next));
           }}
           title={`${country.name} (${country.code})`}
-          className="h-11 w-[116px] shrink-0 cursor-pointer appearance-none truncate bg-slate-50 px-3 text-[11px] font-semibold text-slate-700 outline-none transition hover:bg-indigo-50 focus:bg-indigo-50 sm:w-[146px]"
+          className="h-11 min-w-[104px] max-w-[146px] basis-[42%] shrink cursor-pointer appearance-none truncate bg-slate-50 px-2.5 text-[10px] font-semibold text-slate-700 outline-none transition hover:bg-indigo-50 focus:bg-indigo-50 sm:px-3 sm:text-[11px]"
         >
           {COUNTRY_CODES.map((option) => (
             <option key={option.code} value={option.code}>{option.iso} {option.code} · {option.name}</option>
@@ -127,7 +127,7 @@ export default function PhoneInput({ value, onChange, required, disabled, id, er
           aria-invalid={!!error}
           aria-describedby={describedBy}
           maxLength={14}
-          className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+          className="min-w-[5.5rem] flex-[1_1_0%] bg-transparent px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400"
         />
       </div>
       {showMessage && <p className="mt-1 text-[11px] text-red-500">{error}</p>}

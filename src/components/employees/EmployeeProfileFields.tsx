@@ -11,6 +11,7 @@ import {
   type ProfileErrors,
 } from "@/lib/employeeProfile";
 import Select from "@/components/ui/Select";
+import BankSelector from "@/components/profile/BankSelector";
 
 interface Option {
   id: string;
@@ -289,7 +290,9 @@ export default function EmployeeProfileFields({
       </Section>
 
       <Section icon={<CreditCard className="h-4 w-4" />} title="Bank details" description="Used for salary payouts and bank advice.">
-        {text("bankName", "Bank name", { placeholder: "e.g. HDFC Bank" })}
+        <Field id="emp-bankName" label="Bank name" required error={errors.bankName}>
+          <BankSelector id="emp-bankName" value={values.bankName} onChange={(value) => onChange("bankName", value)} />
+        </Field>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {text("bankAccountNumber", "Account number", { inputMode: "numeric", placeholder: "6 to 20 digits" })}
           {text("bankIfsc", "IFSC code", { placeholder: "HDFC0001234", autoCapitalize: "characters" })}

@@ -180,7 +180,7 @@ export default function EmployeeProfileModal({
 
 
   const startEditingEmployment = () => {
-    setEmploymentForm({ employeeCode: view.employeeCode || "", designation: view.designation || "", employmentType: view.employmentType || "", branchId: view.branchId || "", departmentId: view.departmentId || "", shiftId: view.shiftId || "", dateOfJoining: ymd(view.dateOfJoining) || ymd(view.createdAt), role: view.user?.role === "MANAGER" ? "MANAGER" : "EMPLOYEE" });
+    setEmploymentForm({ employeeCode: view.employeeCode || "", designation: view.designation || "", employmentType: view.employmentType || "", branchId: view.branchId || "", departmentId: view.departmentId || "", shiftId: view.shiftId || "", dateOfJoining: ymd(view.dateOfJoining) || ymd(view.createdAt), role: view.user?.role === "HR" ? "HR" : view.user?.role === "MANAGER" ? "MANAGER" : "EMPLOYEE" });
     setEditingEmployment(true);
   };
 

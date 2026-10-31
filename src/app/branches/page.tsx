@@ -6,7 +6,7 @@ import BranchesAndGeofencesView from "@/components/organization/BranchesAndGeofe
 
 export default function BranchesPage() {
   return (
-    <ProtectedRoute allowedRoles={["SUPER_ADMIN", "COMPANY_ADMIN"]}>
+    <ProtectedRoute allowedRoles={["SUPER_ADMIN", "COMPANY_ADMIN", "HR"]}>
       <AppLayout>
         <BranchesAndGeofencesView />
       </AppLayout>

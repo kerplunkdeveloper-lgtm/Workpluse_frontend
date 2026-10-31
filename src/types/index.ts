@@ -223,10 +223,10 @@ export interface Attendance {
   correctionStatus?: string | null;
   correctionReviewNote?: string | null;
 }
-/** Today is closed for punching: a weekly off, company holiday or company leave. */
+/** Today is closed for self-service punching because of approved leave or a non-working day. */
 export interface DayOffInfo {
-  kind: "WEEK_OFF" | "HOLIDAY" | "COMPANY_LEAVE";
-  /** The weekday, holiday name or company-leave title. */
+  kind: "PERSONAL_LEAVE" | "WEEK_OFF" | "HOLIDAY" | "COMPANY_LEAVE";
+  /** The leave type, weekday, holiday name or company-leave title. */
   title: string;
   reason?: string | null;
   isPaid?: boolean;
@@ -247,6 +247,7 @@ export interface AttendanceTodayStatus {
   hasCheckedOut: boolean;
   isOnBreak: boolean;
   activePauseType?: "BREAK" | "LUNCH" | null;
+  activePauseStartedAt?: string | null;
   isWorkFromHome: boolean;
   attendance?: Attendance;
   currentBreak?: BreakRecord;
@@ -290,6 +291,7 @@ export interface LeaveType {
   name: string;
   code: string;
   daysAllowed: number;
+  isPaid?: boolean;
 }
 
 export interface LeaveBalance {
@@ -377,6 +379,8 @@ export interface Payslip {
   unpaidLeaveDays?: number;
   overtimeHours?: number;
   basicSalary: number;
+  /** Backend payroll records use baseSalary; basicSalary remains for older clients. */
+  baseSalary?: number;
   hra: number;
   transport?: number;
   special?: number;
@@ -396,6 +400,7 @@ export interface Payslip {
   loanRecovery?: number;
   reimbursements?: number;
   totalDeductions: number;
+  /** Backend payroll records use deductionsTotal; totalDeductions remains for older clients. */
   deductionsTotal?: number;
   netSalary: number;
   status: "DRAFT" | "GENERATED" | "APPROVED" | "PAID" | "DISBURSED" | "PENDING_APPROVAL" | "REJECTED";

@@ -175,7 +175,7 @@ export default function ProfilePage() {
         {/* Header Profile Hero Card */}
         <div className="rounded-3xl p-6 sm:p-8 border border-slate-200 bg-white shadow-sm relative overflow-hidden">
           <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
-            <div className="flex items-center gap-5">
+            <div className="flex min-w-0 items-start gap-4 sm:items-center sm:gap-5">
               <ProfilePhotoPicker
                 src={user?.avatarUrl || employee?.avatarUrl}
                 initials={employee?.firstName?.[0] || user?.email?.[0]?.toUpperCase() || "U"}
@@ -197,9 +197,9 @@ export default function ProfilePage() {
                   }
                 }}
               />
-              <div>
+              <div className="min-w-0">
                 <div className="flex items-center gap-2.5 flex-wrap">
-                  <h1 className="font-serif text-2xl font-bold text-slate-900">
+                  <h1 className="break-words font-serif text-2xl font-bold text-slate-900">
                     {employee?.firstName
                       ? `${employee.firstName} ${employee.lastName || ""}`
                       : user?.email?.split("@")[0]}
@@ -215,17 +215,17 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 mt-2 text-xs text-slate-600">
-                  <span className="flex items-center gap-1.5">
+                  <span className="flex min-w-0 items-start gap-1.5 break-all">
                     <Mail className="w-3.5 h-3.5 text-slate-400" />
                     {user?.email}
                   </span>
                   {employee?.phone && (
-                    <span className="flex items-center gap-1.5">
+                    <span className="flex min-w-0 items-center gap-1.5 break-all">
                       <Phone className="w-3.5 h-3.5 text-slate-400" />
                       {employee.phone}
                     </span>
                   )}
-                  <span className="flex items-center gap-1.5">
+                  <span className="flex min-w-0 items-start gap-1.5 break-words">
                     <Building2 className="w-3.5 h-3.5 text-slate-400" />
                     {employee?.department?.name || "Corporate"} • {employee?.branch?.name || "Main HQ"}
                   </span>
@@ -367,7 +367,7 @@ export default function ProfilePage() {
                     </p>
                   </div>
 
-                  <div className="text-right">
+                <div className="text-left sm:text-right">
                     <p className="text-xs text-slate-500">Clearances Completed</p>
                     <p className="text-2xl font-bold text-slate-900 mt-0.5">
                       {myExit.metrics?.clearedCount} / {myExit.metrics?.totalClearances}
@@ -388,7 +388,7 @@ export default function ProfilePage() {
                     {myExit.clearances?.map((c: any) => (
                       <div
                         key={c.id}
-                        className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between text-xs"
+                        className="flex flex-col items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs sm:flex-row sm:items-center sm:justify-between"
                       >
                         <div>
                           <p className="font-bold text-slate-800">{c.itemName}</p>
@@ -410,14 +410,14 @@ export default function ProfilePage() {
 
                 {/* Final Settlement if calculated */}
                 {myExit.finalSettlement && (
-                  <div className="rounded-2xl p-5 border border-indigo-200 bg-indigo-50/50 flex items-center justify-between">
+                  <div className="flex flex-col items-start gap-3 rounded-2xl border border-indigo-200 bg-indigo-50/50 p-5 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <h4 className="text-xs font-bold text-indigo-800 uppercase">Calculated Full & Final Settlement</h4>
                       <p className="text-xs text-slate-600 mt-0.5">
                         Status: <strong className="text-slate-900">{myExit.finalSettlement.status}</strong>
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-left sm:text-right">
                       <p className="text-2xl font-bold text-slate-900 font-mono">
                         ₹{Number(myExit.finalSettlement.netPayable).toLocaleString("en-IN")}
                       </p>
@@ -499,19 +499,19 @@ export default function ProfilePage() {
                 Employment & Role Details
               </h3>
               <div className="space-y-3 text-xs">
-                <div className="flex justify-between py-1 border-b border-slate-100">
+                <div className="flex flex-col gap-1 py-1 border-b border-slate-100 sm:flex-row sm:items-center sm:justify-between">
                   <span className="text-slate-500">System User ID:</span>
                   <span className="text-slate-700 font-mono text-xs">{user?.id}</span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-slate-100">
+                <div className="flex flex-col gap-1 py-1 border-b border-slate-100 sm:flex-row sm:items-center sm:justify-between">
                   <span className="text-slate-500">Employee Code:</span>
                   <span className="text-indigo-600 font-mono font-bold">{employee?.employeeCode || "N/A"}</span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-slate-100">
+                <div className="flex flex-col gap-1 py-1 border-b border-slate-100 sm:flex-row sm:items-center sm:justify-between">
                   <span className="text-slate-500">Department:</span>
                   <span className="text-slate-800 font-medium">{employee?.department?.name || "Corporate Operations"}</span>
                 </div>
-                <div className="flex justify-between items-center py-1 border-b border-slate-100 gap-3">
+                <div className="flex flex-col items-start gap-2 py-1 border-b border-slate-100 sm:flex-row sm:items-center sm:justify-between">
                   <span className="text-slate-500 shrink-0">Work Location / Branch:</span>
                   {canEditBranch && branches.length > 0 ? (
                     <select
@@ -532,7 +532,7 @@ export default function ProfilePage() {
                           setSavingBranch(false);
                         }
                       }}
-                      className="max-w-[220px] bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-800"
+                      className="w-full max-w-[220px] bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-800 sm:w-auto"
                     >
                       <option value="">Select branch</option>
                       {branches.map((b) => (
@@ -545,11 +545,11 @@ export default function ProfilePage() {
                     <span className="text-slate-800 font-medium">{employee?.branch?.name || "No branch yet"}</span>
                   )}
                 </div>
-                <div className="flex justify-between py-1 border-b border-slate-100">
+                <div className="flex flex-col gap-1 py-1 border-b border-slate-100 sm:flex-row sm:items-center sm:justify-between">
                   <span className="text-slate-500">Shift Schedule:</span>
                   <span className="text-slate-800 font-medium">{employee?.shift?.name || "Standard Day Shift"}</span>
                 </div>
-                <div className="flex justify-between py-1">
+                <div className="flex flex-col gap-1 py-1 sm:flex-row sm:items-center sm:justify-between">
                   <span className="text-slate-500">Account Role:</span>
                   <span className="text-indigo-600 font-semibold">{roleLabel(user?.role)}</span>
                 </div>
@@ -568,15 +568,15 @@ export default function ProfilePage() {
                 </div>
               </div>
               <div className="space-y-3 text-xs">
-                <div className="flex justify-between py-1 border-b border-slate-100">
+                <div className="flex flex-col gap-1 py-1 border-b border-slate-100 sm:flex-row sm:items-center sm:justify-between">
                   <span className="text-slate-500">Employment Status:</span>
                   <span className="text-emerald-700 font-bold">{employee?.status || "ACTIVE"}</span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-slate-100">
+                <div className="flex flex-col gap-1 py-1 border-b border-slate-100 sm:flex-row sm:items-center sm:justify-between">
                   <span className="text-slate-500">Document Compliance Status:</span>
                   <span className="text-indigo-600 font-semibold">10 Configured Categories</span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-slate-100">
+                <div className="flex flex-col gap-1 py-1 border-b border-slate-100 sm:flex-row sm:items-center sm:justify-between">
                   <span className="text-slate-500">Mandatory IDs:</span>
                   <span className="text-slate-700">Aadhaar, PAN, Education, Bank</span>
                 </div>
@@ -666,7 +666,7 @@ export default function ProfilePage() {
             <div className="rounded-3xl p-6 sm:p-8 border border-slate-200 bg-white shadow-sm">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5 mb-6">
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+              <h2 className="flex items-start gap-2 break-words text-lg font-semibold text-slate-900">
                     <Laptop className="w-5 h-5 text-indigo-600" />
                     Entrusted Company Assets & Equipment
                   </h2>

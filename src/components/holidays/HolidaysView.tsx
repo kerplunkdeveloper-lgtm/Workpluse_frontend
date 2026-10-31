@@ -13,9 +13,9 @@ import Select from "@/components/ui/Select";
 
 export default function HolidaysView() {
   const { role } = useAuth();
-  const canManage = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER";
-  const canDelete = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN";
-  const canBulkImport = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN";
+  const canManage = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER" || role === "HR";
+  const canDelete = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "HR";
+  const canBulkImport = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "HR";
 
   const [holidays, setHolidays] = useState<any[]>([]);
   const [branches, setBranches] = useState<any[]>([]);

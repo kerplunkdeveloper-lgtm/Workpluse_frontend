@@ -39,7 +39,7 @@ const errorOf = (err: any, fallback: string) => err?.response?.data?.message || 
 
 export default function LoansView() {
   const { role } = useAuth();
-  const isReviewer = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER";
+  const isReviewer = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER" || role === "HR";
   const [rows, setRows] = useState<LoanRow[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

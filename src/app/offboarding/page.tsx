@@ -7,7 +7,7 @@ import OffboardingView from "@/components/offboarding/OffboardingView";
 
 export default function OffboardingPage() {
   return (
-    <ProtectedRoute allowedRoles={["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER"]}>
+    <ProtectedRoute allowedRoles={["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"]}>
       <AppLayout>
         <div className="max-w-7xl mx-auto pb-12">
           <OffboardingView />
