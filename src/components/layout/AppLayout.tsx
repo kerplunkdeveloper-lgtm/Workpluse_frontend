@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { employeesApi, notificationsApi, orgApi } from "@/lib/api";
 import { NotificationItem } from "@/types";
-import { roleLabel, unwrapList } from "@/lib/utils";
+import { INDIA_TIME_ZONE, roleLabel, unwrapList } from "@/lib/utils";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import ThemeSwitcher from "@/components/ui/ThemeSwitcher";
 import { watchTheme } from "@/lib/theme";
@@ -1439,7 +1439,7 @@ function NotificationRow({
         <p className="text-slate-600 text-xs leading-relaxed">{notification.message}</p>
         <p
           className="mt-1.5 text-[11px] text-slate-400"
-          title={notification.createdAt ? new Date(notification.createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : undefined}
+          title={notification.createdAt ? new Date(notification.createdAt).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: INDIA_TIME_ZONE, timeZoneName: "short" }) : undefined}
         >
           {timeAgo(notification.createdAt)}
         </p>

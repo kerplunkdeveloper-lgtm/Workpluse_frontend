@@ -113,13 +113,15 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
   // Numbers & Rates
   const workingDays = Number(details?.attendance?.workingDays || payslip.workingDays || 26);
   const basicSalary = Number(details?.totals?.baseSalary || payslip.basicSalary || (payslip as any).baseSalary || 0);
-  const hra = Number(payslip.hra || 0);
-  const transport = Number(payslip.transport || 0);
-  const special = Number(payslip.special || 0);
-  const otherAllowance = Number(payslip.otherAllowance || 0);
+  const hra = Number(details?.earnings?.find((item: any) => item.label.includes("HRA"))?.amount ?? payslip.hra ?? 0);
+  const transport = Number(details?.earnings?.find((item: any) => item.label === "Transport Allowance")?.amount ?? payslip.transport ?? 0);
+  const special = Number(details?.earnings?.find((item: any) => item.label === "Special Allowance")?.amount ?? payslip.special ?? 0);
+  const otherAllowance = Number(details?.earnings?.find((item: any) => item.label === "Other Allowance")?.amount ?? payslip.otherAllowance ?? 0);
   const overtimeHours = Number(details?.attendance?.overtimeHours ?? (payslip as any).overtimeHours ?? 0);
-  const overtimePay = Number(payslip.overtimePay || 0);
+  const overtimePay = Number(details?.attendance?.overtimePay ?? payslip.overtimePay ?? 0);
   const reimbursements = Number(details?.totals?.reimbursements ?? (payslip as any).reimbursements ?? 0);
+  const shootSettlements = Array.isArray(details?.shootSettlements) ? details.shootSettlements : [];
+  const dailyPayroll = Array.isArray(details?.dailyPayroll) ? details.dailyPayroll : [];
 
   const grossSalary = Number(details?.totals?.grossSalary || payslip.grossSalary || (basicSalary + hra + transport + special + otherAllowance + overtimePay));
   const totalDeductions = Number(details?.totals?.totalDeductions || payslip.totalDeductions || (payslip as any).deductionsTotal || 0);
@@ -127,8 +129,9 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
 
   // Deductions breakdown
   const unpaidLeaveDays = Number(details?.attendance?.unpaidLeaveDays ?? (payslip as any).unpaidLeaveDays ?? 0);
-  const lopDeduction = Number((payslip as any).unpaidLeaveDeduction || (payslip as any).lopDeduction || 0);
-  const lateDeduction = Number((payslip as any).lateDeduction || 0);
+  const lopDeduction = Number(details?.attendance?.lopDeduction ?? (payslip as any).unpaidLeaveDeduction ?? (payslip as any).lopDeduction ?? 0);
+  const lateDeduction = Number(details?.attendance?.lateDeduction ?? (payslip as any).lateDeduction ?? 0);
+  const lateCount = Number(details?.attendance?.lateCount ?? (payslip as any).lateCount ?? 0);
   const permissionDeduction = Number(details?.attendance?.permissionDeduction ?? (payslip as any).permissionDeduction ?? 0);
 
   const pfDeduction = Number((payslip as any).pfDeduction || 0);
@@ -419,22 +422,51 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
               <div className="border-r border-slate-100 last:border-none">
                 <span className="text-xs text-slate-400 block font-medium">Loss of Pay (LOP)</span>
                 <span className="font-bold text-rose-600 text-sm">
-                  {unpaidLeaveDays}
+                  {unpaidLeaveDays} days
                 </span>
+                <span className="block text-[10px] text-rose-400">{formatCurrency(lopDeduction)}</span>
               </div>
               <div className="border-r border-slate-100 last:border-none">
                 <span className="text-xs text-slate-400 block font-medium">Late Marks</span>
                 <span className="font-bold text-amber-600 text-sm">
-                  {details?.attendance?.lateCount !== undefined ? details.attendance.lateCount : (lateDeduction > 0 ? "Penalty" : 0)}
+                  {lateCount}
                 </span>
+                <span className="block text-[10px] text-amber-400">{formatCurrency(lateDeduction)}</span>
               </div>
               <div>
                 <span className="text-xs text-slate-400 block font-medium">Overtime</span>
                 <span className="font-bold text-sm" style={{ color: primaryColor }}>
                   {overtimeHours} hrs
                 </span>
+                <span className="block text-[10px]" style={{ color: `${primaryColor}99` }}>{formatCurrency(overtimePay)}</span>
               </div>
             </div>
+          )}
+
+          {dailyPayroll.length > 0 && (
+            <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">Daily salary calculation</h3><p className="mt-1 text-xs text-slate-500">Per-day salary, LOP and late-arrival impact for this employee.</p></div><span className="text-xs font-semibold text-slate-500">{dailyPayroll.length} days</span></div>
+              <div className="mt-3 max-h-64 overflow-auto rounded-xl border border-slate-200 bg-white"><table className="w-full min-w-[760px] text-left text-[11px]"><thead className="sticky top-0 bg-slate-100 uppercase tracking-wider text-slate-400"><tr><th className="px-3 py-2">Date</th><th className="px-3 py-2">Status</th><th className="px-3 py-2 text-right">Per-day</th><th className="px-3 py-2 text-right">LOP</th><th className="px-3 py-2 text-right">Late</th><th className="px-3 py-2 text-right">Earned</th></tr></thead><tbody className="divide-y divide-slate-100">{dailyPayroll.map((row: any) => <tr key={row.date}><td className="px-3 py-2 text-slate-600">{row.date}</td><td className={`px-3 py-2 font-semibold ${row.status === "ABSENT" || row.status.includes("UNPAID") || row.status === "HALF_DAY" ? "text-rose-700" : row.status === "LATE" ? "text-amber-700" : "text-emerald-700"}`}>{row.status}</td><td className="px-3 py-2 text-right font-mono">{formatCurrency(Number(row.perDaySalary || 0))}</td><td className="px-3 py-2 text-right font-mono text-rose-600">{Number(row.lopDeduction || 0) ? `-${formatCurrency(Number(row.lopDeduction))}` : formatCurrency(0)}</td><td className="px-3 py-2 text-right font-mono text-amber-600">{Number(row.lateDeduction || 0) ? `-${formatCurrency(Number(row.lateDeduction))}` : formatCurrency(0)}</td><td className="px-3 py-2 text-right font-mono font-semibold text-emerald-700">{formatCurrency(Number(row.earnedSalary || 0))}</td></tr>)}</tbody></table></div>
+            </section>
+          )}
+
+          {shootSettlements.length > 0 && (
+            <section className="rounded-2xl border border-violet-200 bg-violet-50/50 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div><h3 className="text-xs font-bold uppercase tracking-wider text-violet-800">Shoot settlement</h3><p className="mt-1 text-xs text-violet-700">Approved shoot time, travel overtime and claims included in this payslip.</p></div>
+                <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold text-violet-700 ring-1 ring-violet-200">Payroll included</span>
+              </div>
+              <div className="mt-3 space-y-2">
+                {shootSettlements.map((shoot: any) => (
+                  <div key={shoot.id} className="grid grid-cols-2 gap-2 rounded-xl bg-white p-3 text-xs sm:grid-cols-5">
+                    <div className="col-span-2 sm:col-span-1"><span className="block text-slate-400">Shoot</span><span className="font-semibold text-slate-900">{shoot.shootName || "Shoot"}</span></div>
+                    <div><span className="block text-slate-400">Shoot hours</span><span className="font-semibold text-slate-900">{(Number(shoot.approvedShootMinutes || 0) / 60).toFixed(2)}h</span></div>
+                    <div><span className="block text-slate-400">Travel OT</span><span className="font-semibold text-slate-900">{(Number(shoot.approvedTravelOtMinutes || 0) / 60).toFixed(2)}h</span></div>
+                    <div><span className="block text-slate-400">Claims</span><span className="font-semibold text-slate-900">{formatCurrency(Number(shoot.approvedAllowanceAmount || 0) + Number(shoot.approvedExpenseAmount || 0))}</span></div>
+                  </div>
+                ))}
+              </div>
+            </section>
           )}
 
           {/* 4. Earnings & Deductions Breakdown Tables */}

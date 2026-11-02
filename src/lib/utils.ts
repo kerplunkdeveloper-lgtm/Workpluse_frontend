@@ -2,14 +2,35 @@ import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { format, parseISO } from "date-fns";
 
+/** WorkPulse's default company timezone: Indian Standard Time (Mumbai/Asia/Kolkata). */
+export const INDIA_TIME_ZONE = "Asia/Kolkata";
+
+const indiaTimeFormatter = new Intl.DateTimeFormat("en-IN", {
+  timeZone: INDIA_TIME_ZONE,
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: true,
+});
+
+export function formatIndiaTime(date: Date = new Date()): string {
+  return indiaTimeFormatter.format(date);
+}
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 /** Pull a list out of any backend envelope ({ data }, { records }, nested, or a bare array). */
-/** Today as YYYY-MM-DD in the browser's local calendar. toISOString() is UTC and shows yesterday before 5:30 AM IST. */
+/** Today as YYYY-MM-DD in India Standard Time, regardless of the device timezone. */
 export function todayLocalKey(date: Date = new Date()): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: INDIA_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return `${values.year}-${values.month}-${values.day}`;
 }
 
 export function unwrapList<T = any>(res: any): T[] {
@@ -101,7 +122,7 @@ export function formatTime(timeValue?: string | Date | number | null): string {
   if (!timeValue) return "-";
   try {
     if (timeValue instanceof Date) {
-      return isNaN(timeValue.getTime()) ? "-" : format(timeValue, "hh:mm a");
+      return isNaN(timeValue.getTime()) ? "-" : formatIndiaTime(timeValue);
     }
     const str = String(timeValue).trim();
     if (!str || str === "null" || str === "undefined" || str === "-") return "-";
@@ -115,11 +136,11 @@ export function formatTime(timeValue?: string | Date | number | null): string {
     if (str.includes("T") || str.includes("-") || str.includes("/")) {
       const d = parseISO(str);
       if (!isNaN(d.getTime())) {
-        return format(d, "hh:mm a");
+        return formatIndiaTime(d);
       }
       const directDate = new Date(str);
       if (!isNaN(directDate.getTime())) {
-        return format(directDate, "hh:mm a");
+        return formatIndiaTime(directDate);
       }
     }
 
@@ -128,7 +149,7 @@ export function formatTime(timeValue?: string | Date | number | null): string {
     if (!isNaN(num) && num > 1000000000) {
       const d = new Date(num);
       if (!isNaN(d.getTime())) {
-        return format(d, "hh:mm a");
+        return formatIndiaTime(d);
       }
     }
 

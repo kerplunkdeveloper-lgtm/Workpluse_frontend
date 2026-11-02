@@ -9,6 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useAttendance } from "@/context/AttendanceContext";
 import PunchClockCard from "@/components/attendance/PunchClockCard";
 import AttendanceHistoryView from "@/components/attendance/AttendanceHistoryView";
+import { INDIA_TIME_ZONE } from "@/lib/utils";
 import TeamPunchBoard from "@/components/attendance/TeamPunchBoard";
 import { MyAttendanceInsights, TeamToday } from "@/components/attendance/AttendanceInsights";
 
@@ -97,7 +98,7 @@ function LiveDate() {
   return (
     <p className="text-xs font-medium text-slate-500" suppressHydrationWarning>
       {now
-        ? `${now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })} · ${now.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}`
+        ? `${now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", timeZone: INDIA_TIME_ZONE })} · ${now.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: INDIA_TIME_ZONE })} IST`
         : " "}
     </p>
   );

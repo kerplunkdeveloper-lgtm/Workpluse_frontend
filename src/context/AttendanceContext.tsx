@@ -336,6 +336,8 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
         setTodayStatus({
           hasCheckedIn,
           hasCheckedOut,
+          punchingClosed: Boolean(raw.punchingClosed),
+          punchingClosedReason: raw.punchingClosedReason || null,
           isOnBreak,
           activePauseType: raw.activePauseType || null,
           activePauseStartedAt: raw.activePauseStartedAt || null,
@@ -349,6 +351,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
           branch: raw.employee?.branch || null,
           department: raw.employee?.department || null,
           dayOff: raw.dayOff || null,
+          flexiblePunching: Boolean(raw.employee?.flexiblePunching),
           locationPolicy: raw.locationPolicy,
         });
         if (raw.attendance?.checkInLocation && !/^ward\s+\d+/i.test(raw.attendance.checkInLocation)) {

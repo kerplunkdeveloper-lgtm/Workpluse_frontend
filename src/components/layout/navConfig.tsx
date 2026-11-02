@@ -2,6 +2,8 @@
 
 import React from "react";
 
+import { INDIA_TIME_ZONE } from "@/lib/utils";
+
 
 
 
@@ -171,5 +173,12 @@ export function timeAgo(value?: string) {
   const minutes = Math.floor(elapsed / 60000);
   if (minutes < 60) return `${minutes} min ago`;
   if (minutes < 1440) return `${Math.floor(minutes / 60)} h ago`;
-  return new Date(time).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+  return new Date(time).toLocaleString("en-IN", {
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: INDIA_TIME_ZONE,
+    timeZoneName: "short",
+  });
 }

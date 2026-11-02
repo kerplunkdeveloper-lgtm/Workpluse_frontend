@@ -469,7 +469,7 @@ export default function DatePicker({
 
           {/* Body: Year Picker Mode */}
           {pickerMode === "year" && (
-            <div className="grid grid-cols-4 gap-2 py-2 max-h-56 overflow-y-auto overscroll-contain pr-1">
+            <div className="wp-date-picker-year-grid grid grid-cols-4 gap-2 py-2 max-h-56 overflow-y-auto overscroll-contain pr-1">
               {yearOptions.map((y) => {
                 const isSelectedYear = viewYear === y;
                 return (

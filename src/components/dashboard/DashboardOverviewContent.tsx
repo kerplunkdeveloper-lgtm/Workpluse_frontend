@@ -55,6 +55,7 @@ import AnnouncementsCard from "./AnnouncementsCard";
 import PunchConfirmDialog, {
   PunchConfirmAction,
 } from "@/components/attendance/PunchConfirmDialog";
+import DashboardPermissionCard from "./DashboardPermissionCard";
 import {
   formatHm,
   liveWorkedMs,
@@ -1435,6 +1436,7 @@ export default function DashboardOverview() {
           </article>
         </section>
       )}
+      {!canManage && <DashboardPermissionCard />}
       {/* ======================================================== */}
       {/* 2. EXECUTIVE METRIC KPI CARDS (4 Interactive Tiles)     */}
       {/* ======================================================== */}

@@ -106,6 +106,8 @@ export interface Shift {
   scheduledWorkMinutes?: number;
   scheduledWorkHours?: string;
   workingDays: string;
+  flexiblePunching?: boolean;
+  totalWorkingMinutes?: number | null;
 }
 
 export interface Employee {
@@ -196,12 +198,18 @@ export interface Attendance {
   workHours?: number;
   workMinutes?: number;
   overtimeHours?: number;
+  lateCount?: number;
   overtimeRequests?: {
     id: string;
     status: "PENDING" | "APPROVED" | "REJECTED";
     requestedMinutes: number;
     approvedMinutes?: number | null;
     reviewNote?: string | null;
+    otCheckIn?: string | null;
+    otCheckOut?: string | null;
+    plannedStartTime?: string | null;
+    plannedEndTime?: string | null;
+    reason?: string | null;
   }[];
   lateMinutes?: number;
   isWorkFromHome?: boolean;
@@ -245,6 +253,9 @@ export interface DayOffInfo {
 export interface AttendanceTodayStatus {
   hasCheckedIn: boolean;
   hasCheckedOut: boolean;
+  /** No punch-in is allowed because the assigned shift has ended. */
+  punchingClosed?: boolean;
+  punchingClosedReason?: string | null;
   isOnBreak: boolean;
   activePauseType?: "BREAK" | "LUNCH" | null;
   activePauseStartedAt?: string | null;
@@ -258,6 +269,7 @@ export interface AttendanceTodayStatus {
   workedMinutesToday?: number;
   dayOff?: DayOffInfo | null;
   approvedShoot?: { id: string; shootName: string; location: string; startTime: string; endTime: string } | null;
+  flexiblePunching?: boolean;
   /** The employee's assigned branch, with its coordinates, so the browser can measure the distance. */
   branch?: Branch | null;
   department?: { id: string; name: string } | null;
@@ -365,6 +377,7 @@ export interface SalaryStructure {
   taxDeduction: number;
   grossSalary: number;
   netSalary: number;
+  dailyPayroll?: any[];
 }
 
 export interface Payslip {
