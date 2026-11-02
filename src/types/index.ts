@@ -216,7 +216,7 @@ export interface Attendance {
   wfhNote?: string;
   totalBreakMinutes?: number;
   totalLunchMinutes?: number;
-  shift?: Pick<Shift, "id" | "name" | "startTime" | "endTime"> | null;
+  shift?: Pick<Shift, "id" | "name" | "startTime" | "endTime" | "flexiblePunching"> | null;
   events?: { id: string; type: string; timestamp: string }[];
   breaks?: BreakRecord[];
   checkInLatitude?: number;

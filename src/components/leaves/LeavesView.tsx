@@ -41,6 +41,8 @@ export default function LeavesView() {
   const [newTypeName, setNewTypeName] = useState("");
   const [newTypeCode, setNewTypeCode] = useState("");
   const [newTypeDays, setNewTypeDays] = useState("12");
+  const [newTypeIsPaid, setNewTypeIsPaid] = useState(true);
+  const [editingTypeId, setEditingTypeId] = useState<string | null>(null);
   const [creatingType, setCreatingType] = useState(false);
   const [carryingForward, setCarryingForward] = useState(false);
 
@@ -52,6 +54,7 @@ export default function LeavesView() {
   const [submittingReview, setSubmittingReview] = useState(false);
 
   const canApprove = role === "COMPANY_ADMIN" || role === "SUPER_ADMIN" || role === "MANAGER" || role === "HR";
+  const isAdminRole = role === "COMPANY_ADMIN" || role === "SUPER_ADMIN";
   const paidLeaveEligibilityOpen = eligibility?.eligible !== false;
   const unpaidLeaveTypes = leaveTypes.filter((type) => type.isPaid === false);
   const selectableLeaveTypes = paidLeaveEligibilityOpen ? leaveTypes : unpaidLeaveTypes;
@@ -127,20 +130,41 @@ export default function LeavesView() {
 
     setCreatingType(true);
     try {
-      const res = await leavesApi.createType({ name, code, daysAllowed, isPaid: true });
+      const res = editingTypeId
+        ? await leavesApi.updateType(editingTypeId, { name, code, daysAllowed, isPaid: newTypeIsPaid })
+        : await leavesApi.createType({ name, code, daysAllowed, isPaid: newTypeIsPaid });
       if (!res?.success) {
         toast.error(res?.message || "Could not create leave type");
         return;
       }
-      toast.success("Leave type created");
+      toast.success(editingTypeId ? "Leave type updated" : "Leave type created");
       setNewTypeName("");
       setNewTypeCode("");
       setNewTypeDays("12");
+      setNewTypeIsPaid(true);
+      setEditingTypeId(null);
       await loadData();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || err?.message || "Could not create leave type");
     } finally {
       setCreatingType(false);
+    }
+  };
+
+  const handleSetLeaveTypePaid = async (type: LeaveType, isPaid: boolean) => {
+    try {
+      const result = await leavesApi.updateType(type.id, {
+        name: type.name,
+        code: type.code,
+        daysAllowed: type.daysAllowed,
+        isPaid,
+      });
+      if (result?.success) {
+        toast.success(`${type.name} set as ${isPaid ? "paid" : "unpaid"} leave`);
+        await loadData();
+      } else toast.error(result?.message || "Could not update leave type");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || "Could not update leave type");
     }
   };
 
@@ -243,7 +267,7 @@ export default function LeavesView() {
         </button>
       </div>
 
-      {typeof eligibility?.eligible === "boolean" && !eligibility.eligible && <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950"><AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" /><div><p className="text-sm font-bold">Paid leave is not available yet</p><p className="mt-1 text-xs leading-5 text-amber-800">Paid leave and monthly permissions unlock after your {eligibility.probationMonths ?? 0}-month company eligibility period. {eligibility.remainingDays ?? 0} day(s) remain. Unpaid leave remains available for exceptional cases.</p>{!canApplyLeave && <p className="mt-2 text-xs font-bold text-amber-900">Your company has not configured an unpaid leave type yet. Please contact HR.</p>}</div></div>}
+      {typeof eligibility?.eligible === "boolean" && !eligibility.eligible && !isAdminRole && <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950"><AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" /><div><p className="text-sm font-bold">Paid leave is not available yet</p><p className="mt-1 text-xs leading-5 text-amber-800">Paid leave and monthly permissions unlock after your {eligibility.probationMonths ?? 0}-month company eligibility period. {eligibility.remainingDays ?? 0} day(s) remain. Unpaid leave remains available for exceptional cases.</p>{!canApplyLeave && <p className="mt-2 text-xs font-bold text-amber-900">Your company has not configured an unpaid leave type yet. Please contact HR.</p>}</div></div>}
       {typeof eligibility?.eligible === "boolean" && <div className="grid grid-cols-1 gap-3 sm:grid-cols-3"><div className="rounded-2xl border border-indigo-100 bg-indigo-50/70 p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">Monthly permission</p><p className="mt-1 text-2xl font-bold text-indigo-950">{eligibility.monthlyPermissionHours ?? 0} hrs</p><p className="mt-1 text-xs text-indigo-700">Company allowance</p></div><div className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Eligibility status</p><p className="mt-1 text-sm font-bold text-slate-900">{eligibility.eligible ? "Active" : "Waiting period"}</p><p className="mt-1 text-xs text-slate-500">{eligibility.eligible ? "Leave and permission access is open" : `Unlocks in ${eligibility.remainingDays ?? 0} days`}</p></div><div className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Policy window</p><p className="mt-1 text-sm font-bold text-slate-900">{eligibility.probationMonths ?? 0} months</p><p className="mt-1 text-xs text-slate-500">Configured by your company</p></div></div>}
 
       {/* Leave Quota Balance Cards */}
@@ -259,8 +283,24 @@ export default function LeavesView() {
                 <span className="text-xs font-semibold text-slate-500">
                   {b.leaveType?.name || "Leave Quota"}
                 </span>
-                <span className="px-2 py-0.5 rounded text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                  {b.leaveType?.code || "LEAVE"}
+                <span className="flex items-center gap-2">
+                  {canApprove && b.leaveType && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingTypeId(b.leaveType!.id);
+                        setNewTypeName(b.leaveType!.name);
+                        setNewTypeCode(b.leaveType!.code);
+                        setNewTypeDays(String(b.leaveType!.daysAllowed));
+                        setNewTypeIsPaid(b.leaveType!.isPaid !== false);
+                        window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+                      }}
+                      className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800"
+                    >Edit</button>
+                  )}
+                  <span className="px-2 py-0.5 rounded text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    {b.leaveType?.code || "LEAVE"}
+                  </span>
                 </span>
               </div>
               <div className="flex items-baseline gap-2">
@@ -277,14 +317,19 @@ export default function LeavesView() {
           <input value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} placeholder="Type name" className="px-3 py-2 rounded-xl border" />
           <input value={newTypeCode} onChange={(e) => setNewTypeCode(e.target.value)} placeholder="Code" maxLength={20} className="w-20 px-3 py-2 rounded-xl border uppercase" />
           <input value={newTypeDays} onChange={(e) => setNewTypeDays(e.target.value)} type="number" min={1} max={366} placeholder="Days" className="w-20 px-3 py-2 rounded-xl border" />
+          <Select value={newTypeIsPaid ? "PAID" : "UNPAID"} onChange={(e) => setNewTypeIsPaid(e.target.value === "PAID")} className="px-3 py-2 rounded-xl border">
+            <option value="PAID">Paid leave</option>
+            <option value="UNPAID">Unpaid leave</option>
+          </Select>
           <button
             type="button"
             onClick={() => void handleCreateLeaveType()}
             disabled={creatingType}
             className="px-3 py-2 rounded-xl bg-indigo-600 text-white font-semibold disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {creatingType ? "Adding..." : "Add type"}
+            {creatingType ? (editingTypeId ? "Saving..." : "Adding...") : (editingTypeId ? "Save changes" : "Add type")}
           </button>
+          {editingTypeId && <button type="button" onClick={() => { setEditingTypeId(null); setNewTypeName(""); setNewTypeCode(""); setNewTypeDays("12"); setNewTypeIsPaid(true); }} className="px-3 py-2 rounded-xl border font-semibold">Cancel</button>}
           <button
             type="button"
             disabled={carryingForward}
@@ -306,26 +351,40 @@ export default function LeavesView() {
             {carryingForward ? "Carrying..." : "Carry forward last year"}
           </button>
           {leaveTypes.map((t) => (
-            <button
-              key={t.id}
-              onClick={async () => {
-                if (!(await confirmDialog({ title: `Remove ${t.name}?`, message: "If this leave type has history, it will be archived so existing requests remain safe. New requests will no longer use it.", confirmLabel: "Remove leave type" }))) return;
-                try {
-                  const result = await leavesApi.deleteType(t.id);
-                  if (result?.success) {
-                    toast.success(result.message || "Leave type removed");
-                    loadData();
-                  } else {
-                    toast.error(result?.message || "Could not remove leave type");
+            <span key={t.id} className="inline-flex items-center gap-1 rounded-lg bg-slate-50 p-1">
+              <button
+                type="button"
+                onClick={() => void handleSetLeaveTypePaid(t, false)}
+                disabled={t.isPaid === false}
+                className="px-2 py-1 rounded-md bg-amber-50 text-amber-700 disabled:cursor-default disabled:opacity-50"
+              >
+                Set {t.code} unpaid
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleSetLeaveTypePaid(t, true)}
+                disabled={t.isPaid !== false}
+                className="px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 disabled:cursor-default disabled:opacity-50"
+              >
+                Set paid
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!(await confirmDialog({ title: `Remove ${t.name}?`, message: "If this leave type has history, it will be archived so existing requests remain safe. New requests will no longer use it.", confirmLabel: "Remove leave type" }))) return;
+                  try {
+                    const result = await leavesApi.deleteType(t.id);
+                    if (result?.success) { toast.success(result.message || "Leave type removed"); await loadData(); }
+                    else toast.error(result?.message || "Could not remove leave type");
+                  } catch (err: any) {
+                    toast.error(err?.response?.data?.message || err?.message || "Could not remove leave type");
                   }
-                } catch (err: any) {
-                  toast.error(err?.response?.data?.message || err?.message || "Could not remove leave type");
-                }
-              }}
-              className="px-2 py-1 rounded-lg bg-rose-50 text-rose-700"
-            >
-              Delete {t.code}
-            </button>
+                }}
+                className="px-2 py-1 rounded-md bg-rose-50 text-rose-700"
+              >
+                Delete
+              </button>
+            </span>
           ))}
         </div>
       )}
@@ -372,16 +431,18 @@ export default function LeavesView() {
           Company leave
         </button>
 
-        <button
-          onClick={() => setActiveTab("SHOOT_REQUESTS")}
-          className={`whitespace-nowrap pb-3 px-3 text-sm font-semibold border-b-2 transition sm:px-4 ${
-            activeTab === "SHOOT_REQUESTS"
-              ? "border-indigo-600 text-indigo-600"
-              : "border-transparent text-slate-500 hover:text-slate-800"
-          }`}
-        >
-          Shoot requests
-        </button>
+        {!canApprove && (
+          <button
+            onClick={() => setActiveTab("SHOOT_REQUESTS")}
+            className={`whitespace-nowrap pb-3 px-3 text-sm font-semibold border-b-2 transition sm:px-4 ${
+              activeTab === "SHOOT_REQUESTS"
+                ? "border-indigo-600 text-indigo-600"
+                : "border-transparent text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            Shoot requests
+          </button>
+        )}
         <button
           onClick={() => setActiveTab("SHOOT_SETTLEMENT")}
           className={`pb-3 px-4 text-sm font-semibold border-b-2 transition ${
@@ -418,7 +479,7 @@ export default function LeavesView() {
       {activeTab === "WORK_FROM_HOME" && <WorkFromHomePanel canReview={canApprove} />}
 
       {/* Tab Content: Shoot requests */}
-      {activeTab === "SHOOT_REQUESTS" && <ShootRequestsPanel canReview={canApprove} />}
+      {activeTab === "SHOOT_REQUESTS" && !canApprove && <ShootRequestsPanel canReview={false} />}
 
       {/* Tab Content: Shoot settlement and payroll-ready review */}
       {activeTab === "SHOOT_SETTLEMENT" && <ShootSettlementPanel canReview={canApprove} />}

@@ -296,7 +296,7 @@ const HERO =
 export interface TodayPanelProps {
   firstName: string;
   attendance?: Partial<Attendance>;
-  shift: { name?: string; startTime?: string; endTime?: string } | null;
+  shift: { name?: string; startTime?: string; endTime?: string; flexiblePunching?: boolean } | null;
   hasCheckedIn: boolean;
   hasCheckedOut: boolean;
   punchingClosed?: boolean;
@@ -468,7 +468,7 @@ export function TodayPanel({ firstName, attendance, shift, hasCheckedIn, hasChec
             <ShiftRing
               percent={progress}
               name={shift?.name || "Shift"}
-              range={`${formatShiftTime(shift?.startTime)} – ${formatShiftTime(shift?.endTime)}`}
+              range={hasFlexiblePunching ? "Any time" : `${formatShiftTime(shift?.startTime)} – ${formatShiftTime(shift?.endTime)}`}
               caption={hasCheckedIn ? (remaining && remaining > 0 ? `${formatHm(remaining)} left` : "Shift hours met") : `${formatHm(shiftMinutes || 0)} shift`}
             />
           )}

@@ -27,6 +27,7 @@ import ProfilePhotoPicker from "@/components/profile/ProfilePhotoPicker";
 import Pagination from "@/components/ui/Pagination";
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
+import PhoneInput, { toE164, validatePhone, type CountryCode } from "@/components/ui/PhoneInput";
 
 export default function EmployeeDirectory() {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -39,6 +40,7 @@ export default function EmployeeDirectory() {
   const [hrRolesAccess, setHrRolesAccess] = useState(true);
   useEffect(() => { if (viewerRole === "MANAGER" || viewerRole === "HR") orgApi.get().then((res) => setHrRolesAccess(res?.data?.hrAccess?.ROLES !== false)).catch(() => setHrRolesAccess(true)); }, [viewerRole]);
   const canManageAccess = viewerRole === "SUPER_ADMIN" || viewerRole === "COMPANY_ADMIN" || ((viewerRole === "MANAGER" || viewerRole === "HR") && hrRolesAccess);
+  const canManageCompanyAdmins = viewerRole === "COMPANY_ADMIN";
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [pendingAction, setPendingAction] = useState<"DEACTIVATE" | "ACTIVATE" | "DELETE" | null>(null);
   const [updating, setUpdating] = useState(false);
@@ -114,6 +116,7 @@ export default function EmployeeDirectory() {
   const [sendingBroadcast, setSendingBroadcast] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [companyAdminCountryCode, setCompanyAdminCountryCode] = useState<CountryCode>("+91");
 
   const loadData = async () => {
     setLoading(true);
@@ -211,9 +214,14 @@ export default function EmployeeDirectory() {
 
   const handleCreateEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Everything except PAN, UAN and ESI is required, for both manual entry and email invite.
-    const errors = validateProfile(form);
-    const badPassword = inviteMode === "MANUAL" && password.trim().length < 8;
+    const errors = role === "COMPANY_ADMIN"
+      ? validateProfile(form, { skip: (Object.keys(EMPTY_PROFILE) as (keyof EmployeeProfileValues)[]).filter((key) => key !== "email") })
+      : validateProfile(form);
+    if (role === "COMPANY_ADMIN") {
+      const phoneError = validatePhone(form.phone, companyAdminCountryCode, true);
+      if (phoneError) errors.phone = phoneError;
+    }
+    const badPassword = inviteMode === "MANUAL" && role !== "COMPANY_ADMIN" && password.trim().length < 8;
     setFormErrors(errors);
     setPasswordError(badPassword ? "Temporary password must be at least 8 characters" : "");
     const firstKey = firstErrorKey(errors);
@@ -227,7 +235,12 @@ export default function EmployeeDirectory() {
     setIsSubmitting(true);
     try {
       // Blank PAN, UAN and ESI go through as empty, which the server stores as "not provided".
-      const payload = { ...toProfilePayload(form), employeeCode: employeeCode.trim() || undefined, role };
+      const payload = {
+        ...toProfilePayload(form),
+        ...(role === "COMPANY_ADMIN" ? { phone: toE164(companyAdminCountryCode, form.phone) } : {}),
+        employeeCode: employeeCode.trim() || undefined,
+        role,
+      };
       const res =
         inviteMode === "INVITE"
           ? await employeesApi.inviteEmployee(payload)
@@ -295,6 +308,7 @@ export default function EmployeeDirectory() {
   const filteredEmployees = employees;
   const canEditEmployee = (emp: Employee) =>
     canManageAccess || (viewerRole === "MANAGER" && (emp.user?.role || "EMPLOYEE") === "EMPLOYEE");
+  const isCompanyAdminAccount = (emp: Employee) => emp.user?.role === "COMPANY_ADMIN" || emp.user?.role === "SUPER_ADMIN";
 
   const updateEmployeeFromTable = async (employeeId: string, payload: Record<string, unknown>, message: string) => {
     try {
@@ -730,7 +744,7 @@ export default function EmployeeDirectory() {
                       {emp.employeeCode}
                     </td>
                     <td className="py-3.5 px-4 text-slate-700">
-                      {canEditEmployee(emp) ? (
+                      {isCompanyAdminAccount(emp) ? <span className="text-slate-400">—</span> : canEditEmployee(emp) ? (
                         <input
                           value={emp.designation || ""}
                           list="employee-designation-options"
@@ -746,7 +760,7 @@ export default function EmployeeDirectory() {
                       ) : emp.designation || <span className="text-slate-400">Not assigned</span>}
                     </td>
                     <td className="py-3.5 px-4 text-slate-600">
-                      {canEditEmployee(emp) ? (
+                      {isCompanyAdminAccount(emp) ? <span className="text-slate-400">—</span> : canEditEmployee(emp) ? (
                         <Select
                           value={emp.departmentId || ""}
                           aria-label="Employee department"
@@ -784,10 +798,10 @@ export default function EmployeeDirectory() {
                       </Select>
                     </td>
                     <td className="whitespace-nowrap py-3.5 px-4 text-slate-500">
-                      {emp.shift?.name || "General Shift"}
+                      {isCompanyAdminAccount(emp) ? <span className="text-slate-400">—</span> : emp.shift?.name || "General Shift"}
                     </td>
                     <td className="py-3.5 px-4 text-slate-700">
-                      {emp.salaryStructure?.annualCtc ? (
+                      {isCompanyAdminAccount(emp) ? <span className="text-slate-400">—</span> : emp.salaryStructure?.annualCtc ? (
                         <>
                           <span className="font-semibold tabular-nums">{formatCurrency(emp.salaryStructure.annualCtc)}</span>
                           {emp.salaryStructure.monthlyCtc && (
@@ -1009,7 +1023,7 @@ export default function EmployeeDirectory() {
 
               {inviteMode === "MANUAL" && (
                 <div data-field="emp-password">
-                  <label htmlFor="emp-password" className="block text-[13px] font-medium text-slate-700 mb-1">Login password *</label>
+                  <label htmlFor="emp-password" className="block text-[13px] font-medium text-slate-700 mb-1">Login password {role === "COMPANY_ADMIN" ? <span className="font-normal text-slate-400">(optional)</span> : "*"}</label>
                   <input
                     id="emp-password"
                     type="text"
@@ -1018,7 +1032,7 @@ export default function EmployeeDirectory() {
                       setPassword(e.target.value);
                       setPasswordError("");
                     }}
-                    placeholder="At least 8 characters"
+                    placeholder={role === "COMPANY_ADMIN" ? "Leave blank to generate one" : "At least 8 characters"}
                     aria-invalid={!!passwordError}
                     className={`w-full bg-white border rounded-xl p-2.5 text-xs font-mono text-slate-900 focus:outline-none ${passwordError ? "border-rose-400" : "border-slate-200 focus:border-indigo-500"}`}
                   />
@@ -1027,7 +1041,7 @@ export default function EmployeeDirectory() {
               )}
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
+                {role !== "COMPANY_ADMIN" && <div>
                   <label htmlFor="emp-code" className="block text-[13px] font-medium text-slate-700 mb-1">
                     Employee / HR ID <span className="font-normal text-slate-400">(auto if blank)</span>
                   </label>
@@ -1039,7 +1053,7 @@ export default function EmployeeDirectory() {
                     placeholder="Auto: KM001"
                     className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
                   />
-                </div>
+                </div>}
                 <div>
                   <label htmlFor="emp-role" className="block text-[13px] font-medium text-slate-700 mb-1">System Role *</label>
                   <Select
@@ -1050,13 +1064,27 @@ export default function EmployeeDirectory() {
                   >
                     <option value="EMPLOYEE">Employee</option>
                     <option value="HR">HR</option>
-                    <option value="MANAGER">Manager</option>
-                    {canManageAccess && <option value="COMPANY_ADMIN">Company admin</option>}
+                    <option value="MANAGER">Manager / Branch Head</option>
+                    {canManageCompanyAdmins && <option value="COMPANY_ADMIN">Company admin</option>}
                   </Select>
                 </div>
               </div>
 
-              <EmployeeProfileFields
+              {role === "COMPANY_ADMIN" ? (
+                <div className="space-y-4 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-5">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">Company Admin account</h3>
+                    <p className="mt-1 text-xs leading-5 text-slate-600">Name, email and phone are required. Branch is optional. Company Admin accounts do not punch in and are excluded from attendance and payroll.</p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <label className="block text-[13px] font-medium text-slate-700">First name (optional)<input value={form.firstName} onChange={(e) => setField("firstName", e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs" /></label>
+                    <label className="block text-[13px] font-medium text-slate-700">Last name (optional)<input value={form.lastName} onChange={(e) => setField("lastName", e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs" /></label>
+                    <label className="block text-[13px] font-medium text-slate-700">Email ID *<input type="email" value={form.email} onChange={(e) => setField("email", e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs" required /></label>
+                    <label className="block text-[13px] font-medium text-slate-700">Phone number *<PhoneInput id="company-admin-phone" value={form.phone} onChange={(digits) => setField("phone", digits)} countryCode={companyAdminCountryCode} onCountryCodeChange={setCompanyAdminCountryCode} error={formErrors.phone} required /></label>
+                    <label className="block text-[13px] font-medium text-slate-700 sm:col-span-2">Branch <Select value={form.branchId} onChange={(e) => setField("branchId", e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs"><option value="">No branch / organization-wide</option>{branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</Select></label>
+                  </div>
+                </div>
+              ) : <EmployeeProfileFields
                 values={form}
                 errors={formErrors}
                 onChange={setField}
@@ -1118,7 +1146,7 @@ export default function EmployeeDirectory() {
                     )}
                   </div>
                 )}
-              />
+              />}
 
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
@@ -1139,7 +1167,7 @@ export default function EmployeeDirectory() {
                   ) : inviteMode === "INVITE" ? (
                     <Send className="w-3.5 h-3.5" />
                   ) : null}
-                  {inviteMode === "INVITE" ? "Send Email Invitation" : "Create Employee"}
+                  {inviteMode === "INVITE" ? "Send Email Invitation" : role === "COMPANY_ADMIN" ? "Create Company Admin" : "Create Employee"}
                 </button>
               </div>
             </form>
@@ -1256,6 +1284,7 @@ export default function EmployeeDirectory() {
           // Admin and HR can edit profile details. HR is limited to plain employee accounts (the server enforces it too).
           canEdit={canManageAccess || (viewerRole === "MANAGER" && (selectedEmployeeForProfile.user?.role || "EMPLOYEE") === "EMPLOYEE")}
           canEditRole={canManageAccess}
+          canEditCompanyAdminRole={canManageCompanyAdmins}
           branches={branches}
           departments={departments}
           shifts={shifts}

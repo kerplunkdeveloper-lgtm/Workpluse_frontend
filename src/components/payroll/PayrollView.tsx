@@ -414,10 +414,10 @@ export default function PayrollView() {
       {/* Payslips Table */}
       <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-[13px] text-slate-700">
+          <table className="min-w-[1420px] w-full whitespace-nowrap text-left text-[13px] text-slate-700">
             <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider border-b border-slate-200 font-semibold">
               <tr>
-                <th className="py-3.5 px-4">Employee</th>
+                <th className="sticky left-0 z-10 bg-slate-50 py-3.5 px-4">Employee</th>
                 <th className="py-3.5 px-4">Period</th>
                 <th className="py-3.5 px-4">Present</th>
                 <th className="py-3.5 px-4">Overtime</th>
@@ -448,7 +448,7 @@ export default function PayrollView() {
                 displayPayslips.map((slip) => (
                   <React.Fragment key={slip.id}>
                   <tr className="hover:bg-slate-50/80 transition">
-                    <td className="py-3.5 px-4 font-semibold text-slate-900">
+                    <td className="sticky left-0 z-[1] bg-white py-3.5 px-4 font-semibold text-slate-900">
                       <div>
                         {slip.employee?.firstName} {slip.employee?.lastName}
                       </div>
