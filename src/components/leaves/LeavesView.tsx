@@ -55,6 +55,10 @@ export default function LeavesView() {
   const paidLeaveEligibilityOpen = eligibility?.eligible !== false;
   const unpaidLeaveTypes = leaveTypes.filter((type) => type.isPaid === false);
   const selectableLeaveTypes = paidLeaveEligibilityOpen ? leaveTypes : unpaidLeaveTypes;
+  // Keep the balance cards consistent with the categories that can actually be
+  // submitted. Paid leave is blocked by the API during the eligibility period,
+  // so showing paid balances here is misleading (and used to show a fake CL card).
+  const visibleBalances = balances.filter((balance) => paidLeaveEligibilityOpen || balance.leaveType?.isPaid === false);
   const canApplyLeave = selectableLeaveTypes.length > 0;
 
   const loadData = async () => {
@@ -244,59 +248,12 @@ export default function LeavesView() {
 
       {/* Leave Quota Balance Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {balances.length === 0 ? (
-          <>
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-slate-500">Casual Leave (CL)</span>
-                <span className="px-2 py-0.5 rounded text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                  Standard
-                </span>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold text-slate-900">12</span>
-                <span className="text-xs text-slate-500">/ 12 days remaining</span>
-              </div>
-            </div>
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-slate-500">Sick Leave (SL)</span>
-                <span className="px-2 py-0.5 rounded text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  Paid
-                </span>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold text-emerald-600">10</span>
-                <span className="text-xs text-slate-500">/ 10 days remaining</span>
-              </div>
-            </div>
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-slate-500">Privilege / Earned (EL)</span>
-                <span className="px-2 py-0.5 rounded text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200">
-                  Accrued
-                </span>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold text-sky-600">15</span>
-                <span className="text-xs text-slate-500">/ 15 days remaining</span>
-              </div>
-            </div>
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-slate-500">Comp-Off Credit</span>
-                <span className="px-2 py-0.5 rounded text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                  Rest Day OT
-                </span>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold text-amber-600">2</span>
-                <span className="text-xs text-slate-500">days accrued</span>
-              </div>
-            </div>
-          </>
+        {visibleBalances.length === 0 ? (
+          <div className="sm:col-span-2 lg:col-span-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-600">
+            {loading ? "Loading leave balances..." : canApplyLeave ? "No leave balance is available to display yet." : "No unpaid leave type is configured. Please contact HR."}
+          </div>
         ) : (
-          balances.map((b) => (
+          visibleBalances.map((b) => (
             <div key={b.id} className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold text-slate-500">
