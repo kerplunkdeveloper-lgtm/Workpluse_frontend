@@ -30,6 +30,7 @@ import {
   Search,
   Sparkles,
   CalendarOff,
+  Clapperboard,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
@@ -549,6 +550,12 @@ export default function ApprovalsInboxView() {
       label: "Punch & Shoot Time",
       icon: Clock,
       count: pendingCorrections,
+    },
+    {
+      key: "SHOOTS",
+      label: "Shoot requests",
+      icon: Clapperboard,
+      count: shoots.filter((row) => row.status === "PENDING").length,
     },
     {
       key: "LEAVES",

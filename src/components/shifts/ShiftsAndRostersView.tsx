@@ -288,13 +288,13 @@ export default function ShiftsAndRostersView() {
                   <div className="flex justify-between">
                     <span className="text-slate-500">Timings:</span>
                     <span className="font-bold text-slate-900">
-                      {s.startTime} - {s.endTime}
+                      {s.flexiblePunching ? "Any time" : `${s.startTime} - ${s.endTime}`}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Grace Arrival:</span>
                     <span className="font-semibold text-amber-700">
-                      {s.graceMinutes} minutes
+                      {s.flexiblePunching ? "Company rules" : `${s.graceMinutes} minutes`}
                     </span>
                   </div>
                   <div className="flex justify-between">

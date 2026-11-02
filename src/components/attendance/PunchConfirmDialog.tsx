@@ -310,7 +310,7 @@ function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm,
                 </div>
               )}
               <div className="grid grid-cols-2 gap-2.5">
-                <Stat icon={CalendarDays} label="Shift" value={shift ? `${shift.startTime} – ${shift.endTime}` : "Not assigned"} />
+                <Stat icon={CalendarDays} label="Shift" value={shift ? (shift.flexiblePunching ? "Any time" : `${shift.startTime} – ${shift.endTime}`) : "Not assigned"} />
                 <Stat icon={officeCheck ? Building2 : MapPin} label={officeCheck ? "Office" : "Current location"} value={officeCheck ? (policy?.branchName || "Not assigned") : (currentPlace || "Your current position")} />
               </div>
 
@@ -377,7 +377,7 @@ function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm,
               <Stat icon={LogIn} label="Punched in" value={punchedInAt ? `${formatIndiaTime(punchedInAt)} IST` : "—"} />
               <Stat icon={Timer} label="Worked so far" value={hm(workedMinutes)} tone="text-indigo-700" />
               <div className="col-span-2">
-                <Stat icon={CalendarDays} label="Shift" value={shift ? `${shift.name || "Shift"} · ${shift.startTime} – ${shift.endTime}` : "Not assigned"} />
+                <Stat icon={CalendarDays} label="Shift" value={shift ? `${shift.name || "Shift"} · ${shift.flexiblePunching ? "Any time" : `${shift.startTime} – ${shift.endTime}`}` : "Not assigned"} />
               </div>
             </div>
           )}
