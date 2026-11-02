@@ -22,6 +22,7 @@ import {
 import { useAttendance, PunchOptions } from "@/context/AttendanceContext";
 import DayOffRequestDialog from "./DayOffRequestDialog";
 import ApprovedLeaveDialog from "./ApprovedLeaveDialog";
+import { formatIndiaTime } from "@/lib/utils";
 
 export type PunchConfirmAction = "CHECK_IN" | "CHECK_OUT";
 
@@ -65,7 +66,7 @@ function LiveTime() {
   }, []);
   return (
     <>
-      <span className="tabular-nums">{now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true })}</span>
+      <span className="tabular-nums">{formatIndiaTime(now)} IST</span>
       <span className="sr-only"> {now.toLocaleDateString("en-IN")}</span>
     </>
   );
@@ -373,7 +374,7 @@ function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm,
             </>
           ) : (
             <div className="grid grid-cols-2 gap-2.5">
-              <Stat icon={LogIn} label="Punched in" value={punchedInAt ? punchedInAt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }) : "—"} />
+              <Stat icon={LogIn} label="Punched in" value={punchedInAt ? `${formatIndiaTime(punchedInAt)} IST` : "—"} />
               <Stat icon={Timer} label="Worked so far" value={hm(workedMinutes)} tone="text-indigo-700" />
               <div className="col-span-2">
                 <Stat icon={CalendarDays} label="Shift" value={shift ? `${shift.name || "Shift"} · ${shift.startTime} – ${shift.endTime}` : "Not assigned"} />

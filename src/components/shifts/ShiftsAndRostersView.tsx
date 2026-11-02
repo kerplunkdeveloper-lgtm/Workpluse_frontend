@@ -36,6 +36,8 @@ export default function ShiftsAndRostersView() {
   const [breakIncluded, setBreakIncluded] = useState(true);
   const [lunchIncluded, setLunchIncluded] = useState(true);
   const [workingDays, setWorkingDays] = useState("1,2,3,4,5,6"); // Monday to Saturday
+  const [flexiblePunching, setFlexiblePunching] = useState(false);
+  const [workingHours, setWorkingHours] = useState(9);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadShifts = async () => {
@@ -79,6 +81,8 @@ export default function ShiftsAndRostersView() {
         breakIncluded,
         lunchIncluded,
         workingDays,
+        flexiblePunching,
+        totalWorkingMinutes: flexiblePunching ? Math.round(Number(workingHours) * 60) : undefined,
       };
       const res = editingShift
         ? await shiftsApi.update(editingShift.id, payload)
@@ -111,6 +115,8 @@ export default function ShiftsAndRostersView() {
     setBreakIncluded(shift.breakIncluded !== false);
     setLunchIncluded(shift.lunchIncluded !== false);
     setWorkingDays(shift.workingDays || "1,2,3,4,5,6");
+    setFlexiblePunching(shift.flexiblePunching === true);
+    setWorkingHours(Number(shift.totalWorkingMinutes || 540) / 60);
     setModalOpen(true);
   };
 
@@ -125,6 +131,8 @@ export default function ShiftsAndRostersView() {
     setBreakIncluded(true);
     setLunchIncluded(true);
     setWorkingDays("1,2,3,4,5,6");
+    setFlexiblePunching(false);
+    setWorkingHours(9);
     setModalOpen(true);
   };
 
@@ -403,6 +411,7 @@ export default function ShiftsAndRostersView() {
         <div className="fixed inset-0 z-50 bg-slate-900/40 flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-white rounded-2xl p-5 space-y-3">
             <h3 className="text-sm font-semibold">Assign to {assignShift.name}</h3>
+            <p className="text-xs text-slate-500">Select the employees who should use this shift. Any-time punching is configured only in the shift settings.</p>
             <div className="max-h-64 overflow-y-auto space-y-1">
               {employees.map((e) => (
                 <label key={e.id} className="flex items-center gap-2 text-[13px] py-1">
@@ -438,10 +447,10 @@ export default function ShiftsAndRostersView() {
       {/* Create Shift Modal */}
       {modalOpen && (
         <Modal>
-          <div className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl">
+          <div className="w-full max-w-lg max-h-[92dvh] overflow-y-auto bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl">
             <h3 className="text-base font-semibold text-slate-900 mb-1">{editingShift ? "Edit Shift Schedule" : "Create Shift Schedule"}</h3>
             <p className="text-xs text-slate-500 mb-4">
-              Configure shift working hours, grace period, and working days bitmask
+              {flexiblePunching ? "Create a flexible attendance shift and assign eligible employees after saving." : "Configure shift working hours, grace period, and working days bitmask"}
             </p>
 
             <form onSubmit={handleCreateShift} className="space-y-4">
@@ -457,6 +466,29 @@ export default function ShiftsAndRostersView() {
                 />
               </div>
 
+              <label className="flex items-start gap-3 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-xs text-violet-950">
+                <input type="checkbox" className="mt-0.5" checked={flexiblePunching} onChange={(e) => setFlexiblePunching(e.target.checked)} />
+                <span><span className="block font-semibold">Allow any-time punching</span><span className="mt-0.5 block text-violet-700">Employees assigned to this shift can punch in or out outside the shift timing. Payroll still uses the company working-hours rules.</span></span>
+              </label>
+
+              {flexiblePunching && (
+                <label className="block rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-950">
+                  <span className="block font-semibold">Total working hours (including break & lunch)</span>
+                  <input type="number" min={1} max={24} step={0.25} value={workingHours} onChange={(e) => setWorkingHours(Number(e.target.value))} className="mt-3 w-full rounded-xl border border-emerald-200 bg-white p-2.5 text-sm font-semibold text-slate-900" required />
+                  <span className="mt-3 grid grid-cols-2 gap-3">
+                    <span>
+                      <span className="block font-semibold">Break minutes</span>
+                      <input type="number" min={0} max={240} value={breakMinutes} onChange={(e) => setBreakMinutes(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-emerald-200 bg-white p-2.5 text-sm font-semibold text-slate-900" />
+                    </span>
+                    <span>
+                      <span className="block font-semibold">Lunch minutes</span>
+                      <input type="number" min={0} max={240} value={lunchMinutes} onChange={(e) => setLunchMinutes(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-emerald-200 bg-white p-2.5 text-sm font-semibold text-slate-900" />
+                    </span>
+                  </span>
+                </label>
+              )}
+
+              {!flexiblePunching && <>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[13px] font-medium text-slate-700 mb-1">Start Time *</label>
@@ -525,6 +557,7 @@ export default function ShiftsAndRostersView() {
                   />
                 </div>
               </div>
+              </>}
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
                 <button

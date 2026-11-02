@@ -16,6 +16,8 @@ type PermissionRequest = {
   reviewNote?: string | null;
   startTime?: string;
   endTime?: string;
+  startedAt?: string | null;
+  endedAt?: string | null;
   employee?: { firstName: string; lastName?: string | null; employeeCode: string };
 };
 
@@ -63,6 +65,11 @@ const formatMinutes = (minutes: number) => {
   const hours = Math.floor(total / 60);
   const mins = total % 60;
   return hours ? `${hours}h${mins ? ` ${mins}m` : ""}` : `${mins}m`;
+};
+
+const actualDurationLabel = (request: PermissionRequest) => {
+  if (!request.startedAt || !request.endedAt) return null;
+  return formatMinutes((new Date(request.endedAt).getTime() - new Date(request.startedAt).getTime()) / 60000);
 };
 
 const timeRangeLabel = (request: PermissionRequest) => request.startTime && request.endTime
@@ -288,6 +295,7 @@ export default function PermissionRequestsPanel({ canReview, eligible = true, el
                       {r.date.slice(0, 10)} · {timeRangeLabel(r)}
                     </p>
                     <p className="text-xs text-slate-500 truncate">{r.reason}</p>
+                    {actualDurationLabel(r) && <p className="mt-1 text-[11px] font-semibold text-emerald-700">Captured on-site: {actualDurationLabel(r)}</p>}
                     {r.reviewNote && <p className="text-xs text-slate-400 mt-0.5">Note: {r.reviewNote}</p>}
                   </div>
                   <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">

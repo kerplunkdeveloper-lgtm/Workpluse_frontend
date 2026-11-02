@@ -600,7 +600,7 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 @media (max-width: 399px) {
   .wp-main-canvas .grid-cols-2,
   .wp-main-canvas .grid-cols-3,
-  .wp-main-canvas .grid-cols-4,
+  .wp-main-canvas .grid-cols-4:not(.wp-date-picker-year-grid),
   .wp-main-canvas .grid-cols-5,
   .wp-main-canvas .grid-cols-6,
   .wp-main-canvas .grid-cols-7 {

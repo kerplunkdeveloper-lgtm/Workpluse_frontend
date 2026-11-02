@@ -31,6 +31,7 @@ export default function PayrollView() {
   const [isApproving, setIsApproving] = useState<boolean>(false);
   const [isDisbursing, setIsDisbursing] = useState<boolean>(false);
   const [activeSection, setActiveSection] = useState<"RECORDS" | "SALARY" | "TEMPLATES">("RECORDS");
+  const [expandedDailyId, setExpandedDailyId] = useState<string | null>(null);
 
   const isAdminOrManager = role === "COMPANY_ADMIN" || role === "SUPER_ADMIN" || role === "MANAGER" || role === "HR";
   // HR prepares payroll; only company admins finalize approval and disbursement.
@@ -74,8 +75,16 @@ export default function PayrollView() {
               grossSalary: preview.salaryBreakdown?.grossSalary || 0,
               totalDeductions: preview.deductions?.deductionsTotal || 0,
               lopDeduction: preview.deductions?.unpaidLeaveDeduction || 0,
+              unpaidLeaveDeduction: preview.deductions?.unpaidLeaveDeduction || 0,
+              presentDays: preview.attendanceSummary?.presentDays || 0,
+              paidLeaveDays: preview.attendanceSummary?.paidLeaveDays || 0,
+              unpaidLeaveDays: preview.attendanceSummary?.unpaidLeaveDays || 0,
+              overtimeHours: preview.attendanceSummary?.overtimeHours || 0,
+              lateCount: preview.attendanceSummary?.lateCount || 0,
+              lateDeduction: preview.deductions?.lateDeduction || 0,
               overtimePay: preview.salaryBreakdown?.overtimePay || 0,
               netSalary: preview.netSalary || 0,
+              dailyPayroll: preview.dailyPayroll || [],
               status: "DRAFT",
               createdAt: new Date().toISOString(),
               employee: {
@@ -206,7 +215,12 @@ export default function PayrollView() {
   const displayPayslips = payslips.length > 0 ? payslips : previewRows;
   const showingPreview = payslips.length === 0 && previewRows.length > 0;
   const totalDisbursement = displayPayslips.reduce((acc, p) => acc + (Number(p.netSalary) || 0), 0);
-  const totalLopDeductions = displayPayslips.reduce((acc, p) => acc + (Number(p.lopDeduction) || 0), 0);
+  // Generated payslips store this as unpaidLeaveDeduction; preview rows use
+  // lopDeduction. Support both so the KPI matches the table and payslip data.
+  const totalLopDeductions = displayPayslips.reduce(
+    (acc, p) => acc + (Number(p.unpaidLeaveDeduction ?? p.lopDeduction) || 0),
+    0,
+  );
 
   return (
     <div className="space-y-6">
@@ -405,6 +419,10 @@ export default function PayrollView() {
               <tr>
                 <th className="py-3.5 px-4">Employee</th>
                 <th className="py-3.5 px-4">Period</th>
+                <th className="py-3.5 px-4">Present</th>
+                <th className="py-3.5 px-4">Overtime</th>
+                <th className="py-3.5 px-4">Late deduction</th>
+                <th className="py-3.5 px-4">LOP deduction</th>
                 <th className="py-3.5 px-4">Basic</th>
                 <th className="py-3.5 px-4">Gross</th>
                 <th className="py-3.5 px-4">Deductions</th>
@@ -416,19 +434,20 @@ export default function PayrollView() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-10 text-slate-500">
+                  <td colSpan={12} className="text-center py-10 text-slate-500">
                     Loading payroll records...
                   </td>
                 </tr>
               ) : displayPayslips.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-slate-500">
+                  <td colSpan={12} className="text-center py-12 text-slate-500">
                     No payslips for this cycle yet. Use "Generate payroll" to create them.
                   </td>
                 </tr>
               ) : (
                 displayPayslips.map((slip) => (
-                  <tr key={slip.id} className="hover:bg-slate-50/80 transition">
+                  <React.Fragment key={slip.id}>
+                  <tr className="hover:bg-slate-50/80 transition">
                     <td className="py-3.5 px-4 font-semibold text-slate-900">
                       <div>
                         {slip.employee?.firstName} {slip.employee?.lastName}
@@ -439,6 +458,18 @@ export default function PayrollView() {
                     </td>
                     <td className="py-3.5 px-4 text-slate-600">
                       Month {slip.month} / {slip.year}
+                    </td>
+                    <td className="py-3.5 px-4 font-mono text-emerald-700">
+                      {Number(slip.presentDays ?? 0)} days
+                    </td>
+                    <td className="py-3.5 px-4 font-mono text-indigo-700">
+                      {Number(slip.overtimeHours ?? 0).toFixed(1)} hrs / {formatCurrency(Number(slip.overtimePay ?? 0))}
+                    </td>
+                    <td className="py-3.5 px-4 font-mono text-amber-700">
+                      {formatCurrency(Number(slip.lateDeduction ?? 0))}
+                    </td>
+                    <td className="py-3.5 px-4 font-mono text-rose-600">
+                      {formatCurrency(Number(slip.unpaidLeaveDeduction ?? slip.lopDeduction ?? 0))}
                     </td>
                     <td className="py-3.5 px-4 font-mono text-slate-700">
                       {formatCurrency(Number(slip.baseSalary ?? slip.basicSalary ?? 0))}
@@ -468,7 +499,9 @@ export default function PayrollView() {
                     </td>
                     <td className="py-3.5 px-4 text-right">
                       {showingPreview ? (
-                        <span className="text-xs font-semibold text-slate-400">Preview only</span>
+                        <button type="button" onClick={() => setExpandedDailyId(expandedDailyId === slip.id ? null : slip.id)} className="text-xs font-semibold text-indigo-600 hover:text-indigo-800">
+                          {expandedDailyId === slip.id ? "Hide daily audit" : "View daily audit"}
+                        </button>
                       ) : (
                         <button
                           onClick={() => {
@@ -483,6 +516,14 @@ export default function PayrollView() {
                       )}
                     </td>
                   </tr>
+                  {expandedDailyId === slip.id && (
+                    <tr>
+                      <td colSpan={12} className="bg-slate-50 px-4 py-4">
+                        <DailyPayrollAudit rows={(slip as any).dailyPayroll || []} />
+                      </td>
+                    </tr>
+                  )}
+                  </React.Fragment>
                 ))
               )}
             </tbody>
@@ -498,6 +539,39 @@ export default function PayrollView() {
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
       />
+    </div>
+  );
+}
+
+function DailyPayrollAudit({ rows }: { rows: any[] }) {
+  if (!rows.length) return <p className="text-xs text-slate-500">No daily payroll rows available.</p>;
+  return (
+    <div>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div><h3 className="text-sm font-bold text-slate-900">Daily salary audit</h3><p className="text-xs text-slate-500">Per-day salary, attendance status, late marks and LOP impact.</p></div>
+        <span className="text-xs font-semibold text-slate-500">{rows.length} calendar days</span>
+      </div>
+      <div className="max-h-80 overflow-auto rounded-xl border border-slate-200 bg-white">
+        <table className="w-full min-w-[820px] text-left text-xs">
+          <thead className="sticky top-0 bg-slate-100 text-[10px] uppercase tracking-wider text-slate-500">
+            <tr><th className="px-3 py-2">Date</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Working</th><th className="px-3 py-2 text-right">Per-day salary</th><th className="px-3 py-2 text-right">LOP deduction</th><th className="px-3 py-2 text-right">Late deduction</th><th className="px-3 py-2 text-right">Earned salary</th></tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {rows.map((row: any) => {
+              const tone = row.status === "ABSENT" || row.status.includes("UNPAID") || row.status === "HALF_DAY" ? "text-rose-700" : row.status === "LATE" ? "text-amber-700" : "text-emerald-700";
+              return <tr key={row.date}>
+                <td className="px-3 py-2 font-medium text-slate-700">{row.date}</td>
+                <td className={`px-3 py-2 font-semibold ${tone}`}>{row.status}<span className="ml-1 font-normal text-slate-400">{row.note ? `· ${row.note}` : ""}</span></td>
+                <td className="px-3 py-2 text-slate-600">{row.workingMinutes ? `${Math.floor(row.workingMinutes / 60)}h ${row.workingMinutes % 60}m` : "—"}</td>
+                <td className="px-3 py-2 text-right font-mono text-slate-700">{formatCurrency(Number(row.perDaySalary || 0))}</td>
+                <td className="px-3 py-2 text-right font-mono text-rose-600">{Number(row.lopDeduction || 0) ? `-${formatCurrency(Number(row.lopDeduction))}` : formatCurrency(0)}</td>
+                <td className="px-3 py-2 text-right font-mono text-amber-600">{Number(row.lateDeduction || 0) ? `-${formatCurrency(Number(row.lateDeduction))}` : formatCurrency(0)}</td>
+                <td className="px-3 py-2 text-right font-mono font-semibold text-emerald-700">{formatCurrency(Number(row.earnedSalary || 0))}</td>
+              </tr>;
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

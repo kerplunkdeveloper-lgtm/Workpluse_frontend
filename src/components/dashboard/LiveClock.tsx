@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { formatIndiaTime } from "@/lib/utils";
 export function LiveClock() {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -9,12 +10,7 @@ export function LiveClock() {
   }, []);
   return (
     <>
-      {now.toLocaleTimeString("en-IN", {
-        hour12: true,
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      })}
+      {formatIndiaTime(now)} IST
     </>
   );
 }

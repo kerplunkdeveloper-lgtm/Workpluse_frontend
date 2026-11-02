@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { compOffApi, overtimeApi } from "@/lib/api";
-import { formatDate, unwrapList, unwrapItem } from "@/lib/utils";
+import { formatDate, formatTime, unwrapList, unwrapItem } from "@/lib/utils";
 import { Layers, Clock, Plus, CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { confetti } from "@/lib/confetti";
@@ -20,7 +20,8 @@ export default function OvertimeAndCompOffView() {
   const [overtimeModalOpen, setOvertimeModalOpen] = useState(false);
   const [requestedDate, setRequestedDate] = useState("");
   const [overtimeDate, setOvertimeDate] = useState("");
-  const [overtimeHours, setOvertimeHours] = useState(1);
+  const [overtimeStartTime, setOvertimeStartTime] = useState("");
+  const [overtimeEndTime, setOvertimeEndTime] = useState("");
   const [overtimeReason, setOvertimeReason] = useState("");
   const [days, setDays] = useState(1);
   const [reason, setReason] = useState("");
@@ -102,8 +103,18 @@ export default function OvertimeAndCompOffView() {
       toast.error("Please select the overtime date");
       return;
     }
-    if (!overtimeHours || overtimeHours <= 0) {
-      toast.error("Enter a valid overtime duration");
+    if (!overtimeStartTime || !overtimeEndTime) {
+      toast.error("Select both overtime start and end time");
+      return;
+    }
+
+    const [startHour, startMinute] = overtimeStartTime.split(":").map(Number);
+    const [endHour, endMinute] = overtimeEndTime.split(":").map(Number);
+    const startMinutes = startHour * 60 + startMinute;
+    const endMinutes = endHour * 60 + endMinute;
+    const durationMinutes = endMinutes - startMinutes;
+    if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+      toast.error("OT end time must be after the start time");
       return;
     }
 
@@ -111,7 +122,8 @@ export default function OvertimeAndCompOffView() {
     try {
       const res = await overtimeApi.request({
         date: overtimeDate,
-        hours: Number(overtimeHours),
+        startTime: overtimeStartTime,
+        endTime: overtimeEndTime,
         reason: overtimeReason.trim(),
       });
 
@@ -119,7 +131,8 @@ export default function OvertimeAndCompOffView() {
         toast.success("Overtime request sent for approval");
         setOvertimeModalOpen(false);
         setOvertimeDate("");
-        setOvertimeHours(1);
+        setOvertimeStartTime("");
+        setOvertimeEndTime("");
         setOvertimeReason("");
         await loadData();
       } else {
@@ -281,9 +294,9 @@ export default function OvertimeAndCompOffView() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-[13px] text-slate-700">
-            <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200 font-semibold"><tr><th className="py-3.5 px-4">Date</th><th className="py-3.5 px-4">Requested</th><th className="py-3.5 px-4">Approved</th><th className="py-3.5 px-4">Reason</th><th className="py-3.5 px-4">Status</th></tr></thead>
+            <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200 font-semibold"><tr><th className="py-3.5 px-4">Date</th><th className="py-3.5 px-4">Planned start</th><th className="py-3.5 px-4">Planned end</th><th className="py-3.5 px-4">Requested</th><th className="py-3.5 px-4">Approved</th><th className="py-3.5 px-4">Reason</th><th className="py-3.5 px-4">Status</th></tr></thead>
             <tbody className="divide-y divide-slate-100">
-              {loading ? <tr><td colSpan={5} className="py-8 text-center text-slate-500">Loading requests...</td></tr> : myOvertimes.length === 0 ? <tr><td colSpan={5} className="py-8 text-center text-slate-500">No overtime requests yet. Overtime is raised after you punch out when approval is required.</td></tr> : myOvertimes.map((request) => <tr key={request.id} className="hover:bg-slate-50"><td className="px-4 py-3.5 font-semibold text-slate-900">{formatDate(request.attendance?.date || request.createdAt)}</td><td className="px-4 py-3.5">{overtimeLabel(Number(request.requestedMinutes || 0))}</td><td className="px-4 py-3.5 font-semibold text-emerald-700">{request.status === "APPROVED" ? overtimeLabel(overtimeMinutes(request)) : "—"}</td><td className="max-w-xs truncate px-4 py-3.5 text-slate-500">{request.reason || "Overtime after scheduled shift"}</td><td className="px-4 py-3.5"><span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${request.status === "APPROVED" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : request.status === "REJECTED" ? "border-rose-200 bg-rose-50 text-rose-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>{request.status}</span></td></tr>)}
+              {loading ? <tr><td colSpan={7} className="py-8 text-center text-slate-500">Loading requests...</td></tr> : myOvertimes.length === 0 ? <tr><td colSpan={7} className="py-8 text-center text-slate-500">No overtime requests yet. Submit planned OT before starting it.</td></tr> : myOvertimes.map((request) => <tr key={request.id} className="hover:bg-slate-50"><td className="px-4 py-3.5 font-semibold text-slate-900">{formatDate(request.attendance?.date || request.createdAt)}</td><td className="px-4 py-3.5">{request.plannedStartTime || (request.otCheckIn ? formatTime(request.otCheckIn) : "—")}</td><td className="px-4 py-3.5">{request.plannedEndTime || (request.otCheckOut ? formatTime(request.otCheckOut) : "—")}</td><td className="px-4 py-3.5">{overtimeLabel(Number(request.requestedMinutes || 0))}</td><td className="px-4 py-3.5 font-semibold text-emerald-700">{request.status === "APPROVED" ? overtimeLabel(overtimeMinutes(request)) : "—"}</td><td className="max-w-xs truncate px-4 py-3.5 text-slate-500">{request.reason || "Planned overtime"}</td><td className="px-4 py-3.5"><span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${request.status === "APPROVED" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : request.status === "REJECTED" ? "border-rose-200 bg-rose-50 text-rose-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>{request.status}</span></td></tr>)}
             </tbody>
           </table>
         </div>
@@ -364,7 +377,7 @@ export default function OvertimeAndCompOffView() {
           <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl">
             <h3 className="text-base font-semibold text-slate-900 mb-1">Request overtime</h3>
             <p className="text-xs text-slate-500 mb-4">
-              Request only the extra time recorded after your shift. HR, Admin or your Manager will review it.
+              Request planned overtime before you start it. Approval is required before the OT punch is enabled.
             </p>
 
             <form onSubmit={handleRequestOvertime} className="space-y-4">
@@ -378,18 +391,28 @@ export default function OvertimeAndCompOffView() {
                 />
               </div>
 
-              <div>
-                <label className="block text-[13px] font-medium text-slate-700 mb-1">Requested hours *</label>
-                <input
-                  type="number"
-                  min={0.25}
-                  step={0.25}
-                  value={overtimeHours}
-                  onChange={(e) => setOvertimeHours(Number(e.target.value))}
-                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
-                  required
-                />
-                <span className="text-xs text-slate-500 mt-1 block">The request cannot exceed overtime recorded on the attendance log.</span>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1">OT start time *</label>
+                  <input
+                    type="time"
+                    value={overtimeStartTime}
+                    onChange={(e) => setOvertimeStartTime(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1">OT end time *</label>
+                  <input
+                    type="time"
+                    value={overtimeEndTime}
+                    onChange={(e) => setOvertimeEndTime(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                    required
+                  />
+                </div>
+                <span className="text-xs text-slate-500 sm:col-span-2">These are planned OT times. After approval, start and end OT from the punch screen; only the approved session is paid.</span>
               </div>
 
               <div>

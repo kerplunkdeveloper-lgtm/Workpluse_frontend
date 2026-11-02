@@ -635,6 +635,14 @@ export const permissionsApi = {
     const res = await api.delete(`/permissions/${id}`);
     return res.data;
   },
+  start: async (id: string, payload: { latitude: number; longitude: number; accuracy?: number; locationLabel?: string }) => {
+    const res = await api.post(`/permissions/${id}/start`, payload);
+    return res.data;
+  },
+  end: async (id: string, payload: { latitude: number; longitude: number; accuracy?: number; locationLabel?: string }) => {
+    const res = await api.post(`/permissions/${id}/end`, payload);
+    return res.data;
+  },
   list: async (params?: { status?: string; employeeId?: string }) => {
     const res = await api.get("/permissions", { params });
     return res.data;
@@ -1280,8 +1288,8 @@ export const shiftsApi = {
     invalidate("shifts:");
     return res.data;
   },
-  assign: async (id: string, employeeIds: string[]) => {
-    const res = await api.post(`/shifts/${id}/assign`, { employeeIds });
+  assign: async (id: string, employeeIds: string[], flexibleEmployeeIds: string[] = []) => {
+    const res = await api.post(`/shifts/${id}/assign`, { employeeIds, flexibleEmployeeIds });
     invalidate("shifts:");
     return res.data;
   },
@@ -1523,7 +1531,15 @@ export const compOffApi = {
 };
 
 export const overtimeApi = {
-  request: async (payload: { attendanceId?: string; date?: string; requestedMinutes?: number; hours?: number; reason: string }) => {
+  start: async (reason?: string) => {
+    const res = await api.post("/overtime/start", { reason });
+    return res.data;
+  },
+  end: async (id: string, reason?: string) => {
+    const res = await api.patch(`/overtime/${id}/end`, { reason });
+    return res.data;
+  },
+  request: async (payload: { attendanceId?: string; date?: string; requestedMinutes?: number; hours?: number; startTime?: string; endTime?: string; reason: string }) => {
     const res = await api.post("/overtime/request", payload);
     return res.data;
   },
