@@ -701,7 +701,9 @@ export default function LeavesView() {
                     value={startDate}
                     onChange={(val) => {
                       setStartDate(val);
-                      if (endDate && val && val > endDate) {
+                      if (isHalfDay && val) {
+                        setEndDate(val);
+                      } else if (endDate && val && val > endDate) {
                         setEndDate(val);
                       }
                     }}
@@ -717,6 +719,7 @@ export default function LeavesView() {
                     value={endDate}
                     onChange={(val) => setEndDate(val)}
                     min={startDate}
+                    disabled={isHalfDay}
                     placeholder="Select end date"
                     required
                   />
@@ -728,7 +731,13 @@ export default function LeavesView() {
                   type="checkbox"
                   id="halfDay"
                   checked={isHalfDay}
-                  onChange={(e) => setIsHalfDay(e.target.checked)}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setIsHalfDay(checked);
+                    if (checked && startDate) {
+                      setEndDate(startDate);
+                    }
+                  }}
                   className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                 />
                 <label htmlFor="halfDay" className="text-[13px] text-slate-700 font-medium cursor-pointer">
