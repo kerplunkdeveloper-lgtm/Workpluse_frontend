@@ -515,6 +515,7 @@ export const shootSettlementsApi = {
   getMine: async () => (await api.get("/attendance/shoot-settlements/my")).data,
   getAll: async (status?: string) => (await api.get("/attendance/shoot-settlements", { params: status ? { status } : undefined })).data,
   review: async (id: string, payload: any) => (await api.patch(`/attendance/shoot-settlements/${id}/review`, payload)).data,
+  reviewOvertime: async (id: string, payload: any) => (await api.patch(`/attendance/shoot-settlements/${id}/overtime-review`, payload)).data,
 };
 export const correctionsApi = {
   request: async (payload: { attendanceId?: string; date?: string; requestedCheckIn?: string; requestedCheckOut?: string; reason: string }) => {
@@ -1397,16 +1398,16 @@ export const notificationsApi = {
     const res = await api.get("/notifications");
     return res.data;
   },
-    getPushPublicKey: async () => {
-      const res = await api.get("/notifications/push/public-key");
+    getFcmConfig: async () => {
+      const res = await api.get("/notifications/fcm/config");
       return res.data;
     },
-    subscribePush: async (subscription: PushSubscriptionJSON) => {
-      const res = await api.post("/notifications/push/subscribe", { subscription });
+    registerFcmToken: async (token: string) => {
+      const res = await api.post("/notifications/fcm/token", { token });
       return res.data;
     },
-    unsubscribePush: async (endpoint: string) => {
-      const res = await api.delete("/notifications/push/subscribe", { data: { endpoint } });
+    unregisterFcmToken: async (token: string) => {
+      const res = await api.delete("/notifications/fcm/token", { data: { token } });
       return res.data;
     },
   broadcast: async (payload: { title: string; message: string }) => {
@@ -1532,6 +1533,10 @@ export const compOffApi = {
     const res = await api.get("/compoff/pending");
     return res.data;
   },
+  getAll: async () => {
+    const res = await api.get("/compoff/all");
+    return res.data;
+  },
   review: async (id: string, payload: { status: "APPROVED" | "REJECTED"; reviewNote?: string }) => {
     const res = await api.post(`/compoff/${id}/review`, payload);
     return res.data;
@@ -1553,6 +1558,10 @@ export const overtimeApi = {
   },
   getPending: async () => {
     const res = await api.get("/overtime/pending");
+    return res.data;
+  },
+  getAll: async (params: { status?: "PENDING" | "APPROVED" | "REJECTED" | "ALL" } = {}) => {
+    const res = await api.get("/overtime", { params: { status: "ALL", limit: 500, ...params } });
     return res.data;
   },
   getMy: async () => {

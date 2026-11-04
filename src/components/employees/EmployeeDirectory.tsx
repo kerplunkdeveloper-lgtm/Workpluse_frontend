@@ -741,7 +741,7 @@ export default function EmployeeDirectory() {
                       </div>
                     </td>
                     <td className="whitespace-nowrap py-3.5 px-4 font-mono text-[13px] font-medium text-indigo-700">
-                      {emp.employeeCode}
+                      {isCompanyAdminAccount(emp) ? <span className="font-sans text-slate-400">—</span> : emp.employeeCode}
                     </td>
                     <td className="py-3.5 px-4 text-slate-700">
                       {isCompanyAdminAccount(emp) ? <span className="text-slate-400">—</span> : canEditEmployee(emp) ? (

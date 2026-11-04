@@ -2,10 +2,11 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ExternalLink, FileSearch, MapPin, Pencil, Plus, RefreshCw } from "lucide-react";
+import { Download, ExternalLink, FileSearch, MapPin, Pencil, Plus, RefreshCw } from "lucide-react";
 import { attendanceApi, correctionsApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { formatTime, unwrapList } from "@/lib/utils";
+import { toast } from "sonner";
 import type { Attendance } from "@/types";
 import Pagination from "@/components/ui/Pagination";
 import RegularizationModal from "./RegularizationModal";
@@ -15,6 +16,47 @@ import AttendanceDateFilter, { ATTENDANCE_RANGES, type AttendanceRangeValue } fr
 import { breakMinutesOf, formatClock, formatHm, localDateKey, lunchMinutesOf, recordDateKey, statusMeta, workedMinutes } from "./attendanceUtils";
 
 const TEAM_ROLES = ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"];
+const csvCell = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+
+const downloadAttendanceCsv = (rows: Attendance[], selectedStatus: string, from?: string, to?: string) => {
+  const headers = ["Employee Code", "Employee", "Department", "Designation", "Date", "Status", "Punch In", "Punch Out", "Worked", "Break", "Lunch", "Late", "Overtime", "Work Mode", "Punch In Location", "Punch Out Location"];
+  const records = rows
+    .filter((row) => selectedStatus === "ALL" || String(row.status || "").toUpperCase() === selectedStatus)
+    .map((row) => {
+      const employee = row.employee;
+      const name = `${employee?.firstName || ""} ${employee?.lastName || ""}`.trim() || "—";
+      const overtime = overtimeDisplay(row);
+      return [
+        employee?.employeeCode || "—",
+        name,
+        employee?.department?.name || "General",
+        employee?.designation || "—",
+        recordDateKey(row),
+        row.status,
+        row.checkIn ? new Date(row.checkIn).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "—",
+        row.checkOut ? new Date(row.checkOut).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "—",
+        formatHm(workedMinutes(row)),
+        formatHm(breakMinutesOf(row)),
+        formatHm(lunchMinutesOf(row)),
+        Number(row.lateMinutes || 0) > 0 ? formatHm(Number(row.lateMinutes)) : "â€”",
+        overtime.text,
+        workModeDisplay(row).label,
+        row.checkInLocation || "â€”",
+        row.checkOutLocation || "â€”",
+      ].map(csvCell).join(",");
+    });
+  const csv = [headers.map(csvCell).join(","), ...records].join("\n");
+  const suffix = from && to && from !== to ? `${from}-to-${to}` : from || localDateKey(new Date());
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8" }));
+  const category = selectedStatus.toLowerCase();
+  link.download = `WorkPluse_Attendance_${category}_${suffix}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(link.href);
+  return records.length;
+};
 
 const workModeDisplay = (row: Attendance) => {
   const rawNote = String(row.wfhNote || "").trim();
@@ -196,6 +238,7 @@ export default function AttendanceHistoryView() {
   const [correctionRequests, setCorrectionRequests] = useState<any[]>([]);
   const [correctionsLoading, setCorrectionsLoading] = useState(false);
   const [clockNow, setClockNow] = useState(() => Date.now());
+  const [exporting, setExporting] = useState(false);
 
   const setFilters = useCallback(
     (next: Record<string, string | null>) => {
@@ -261,6 +304,37 @@ useEffect(() => {
   // polling was resetting pagination and filters while HR/admins reviewed rows.
   const reload = () => setReloadKey((k) => k + 1);
 
+  const exportAttendance = async () => {
+    setExporting(true);
+    try {
+      const allRows: Attendance[] = [];
+      let currentPage = 1;
+      let totalRecords = 0;
+      do {
+        const res = await attendanceApi.getHistory({
+          from,
+          to,
+          status: status !== "ALL" ? status : undefined,
+          employeeId: employee?.id,
+          page: currentPage,
+          limit: 500,
+        });
+        const pageRows = unwrapList<Attendance>(res);
+        allRows.push(...pageRows);
+        totalRecords = Number(res?.total ?? res?.pagination?.total ?? allRows.length);
+        currentPage += 1;
+        if (!pageRows.length) break;
+      } while (allRows.length < totalRecords);
+
+      const count = downloadAttendanceCsv(allRows, status, from, to);
+      toast.success(`${count} filtered attendance record${count === 1 ? "" : "s"} downloaded.`);
+    } catch (error: any) {
+      toast.error(error?.message || "Could not download filtered attendance.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const openCorrection = (row: Attendance) => {
     if (!isTeamView) return setRegularize(row);
     const e = row.employee;
@@ -284,16 +358,21 @@ useEffect(() => {
           </p>
         </div>
         {isTeamView && (
-          <button
-            type="button"
-            onClick={() => {
-              setMarkInitial(undefined);
-              setMarkOpen(true);
-            }}
-            className="keep-white inline-flex h-9 items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 text-sm font-semibold shadow-sm transition hover:bg-indigo-500 active:scale-[0.98]"
-          >
-            <Plus className="h-4 w-4" /> Mark attendance
-          </button>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <button type="button" onClick={() => void exportAttendance()} disabled={exporting} className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200 transition hover:bg-indigo-50 disabled:opacity-50">
+              <Download className="h-3.5 w-3.5" /> {exporting ? "Preparing…" : `Download ${status === "ALL" ? "all" : STATUS_FILTERS.find((filter) => filter.value === status)?.label || "filtered"}`}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMarkInitial(undefined);
+                setMarkOpen(true);
+              }}
+              className="keep-white inline-flex h-9 items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 text-sm font-semibold shadow-sm transition hover:bg-indigo-500 active:scale-[0.98]"
+            >
+              <Plus className="h-4 w-4" /> Mark attendance
+            </button>
+          </div>
         )}
       </div>
 

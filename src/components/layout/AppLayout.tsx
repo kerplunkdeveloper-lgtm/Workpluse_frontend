@@ -21,7 +21,7 @@ import CommandPalette from "./CommandPalette";
 import CompanyLogo from "@/components/ui/CompanyLogo";
 import ShortcutsHelpModal from "./ShortcutsHelpModal";
 import { NAV_SECTIONS, PLATFORM_SECTIONS, DESKTOP_NAV_SCROLL_KEY, MOBILE_NAV_SCROLL_KEY, isNavActive, itemVisible, itemMatches, timeAgo } from "./navConfig";
-import { enableWebPushNotifications } from "@/lib/webPush";
+import { enableFirebaseNotifications, listenForFirebaseNotifications } from "@/lib/firebaseMessaging";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -61,19 +61,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sendingBroadcast, setSendingBroadcast] = useState(false);
   const [hrAccess, setHrAccess] = useState<Record<string, boolean> | null>(null);
   const [roleAccess, setRoleAccess] = useState<Record<string, Record<string, boolean>> | null>(null);
-  const [pushPermission, setPushPermission] = useState<NotificationPermission | "unsupported" | "insecure" | "not-configured" | null>(null);
+  const [pushPermission, setPushPermission] = useState<NotificationPermission | "unsupported" | "insecure" | "not-configured" | "error" | null>(null);
   const [pushBusy, setPushBusy] = useState(false);
 
   const requestBrowserNotifications = async () => {
     setPushBusy(true);
     try {
-      const result = await enableWebPushNotifications();
-      if (typeof window !== "undefined" && "Notification" in window) setPushPermission(Notification.permission);
+      const result = await enableFirebaseNotifications();
+      setPushPermission(result);
       if (result === "granted") toast.success("Browser notifications enabled");
       else if (result === "insecure") toast.error("Browser notifications require HTTPS in production.");
-      else if (result === "not-configured") toast.error("Web notifications are not configured on the server yet.");
+      else if (result === "not-configured") toast.error("Firebase notifications are not configured yet.");
       else if (result === "denied") toast.error("Notifications are blocked. Allow them in this site’s browser settings, then try again.");
     } catch (error: any) {
+      setPushPermission("error");
       toast.error(error?.response?.data?.message || "Could not enable browser notifications.");
     } finally {
       setPushBusy(false);
@@ -184,12 +185,29 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       setPushPermission("unsupported");
       return;
     }
-    setPushPermission(Notification.permission);
+    let cancelled = false;
+    setPushPermission(Notification.permission === "granted" ? null : Notification.permission);
     // Registration is safe on login, but permission prompts must be started by
     // the explicit button in the notification popover.
-    void enableWebPushNotifications({ requestPermission: false }).then((result) => {
-      if (result === "unsupported" || result === "insecure" || result === "not-configured") setPushPermission(result);
-    }).catch(() => {});
+    void enableFirebaseNotifications({ requestPermission: false }).then((result) => {
+      if (!cancelled) setPushPermission(result);
+    }).catch(() => { if (!cancelled) setPushPermission("error"); });
+
+    let stopListening: (() => void) | undefined;
+    void listenForFirebaseNotifications((payload) => {
+      if (cancelled) return;
+      const title = payload.notification?.title || "WorkPluse notification";
+      const message = payload.notification?.body || "You have a new notification.";
+      toast(title, { description: message });
+      void notificationsApi.getAll().then((updated) => {
+        if (cancelled) return;
+        const items = unwrapList<NotificationItem>(updated);
+        setNotifications(items);
+        setUnreadCount(typeof updated?.unreadCount === "number" ? updated.unreadCount : items.filter((n) => !n.isRead).length);
+      }).catch(() => {});
+    }).then((cleanup) => { if (cancelled) cleanup(); else stopListening = cleanup; }).catch(() => {});
+
+    return () => { cancelled = true; stopListening?.(); };
   }, [user?.id]);
 
   // Scroll restoration
@@ -269,9 +287,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         // The next refresh puts the real state back.
       }
     }
-    // Approval alerts take reviewers directly to the relevant approval queue.
-    // The title check preserves compatibility with older shoot alerts that were
-    // stored as ATTENDANCE before approval notifications had their own type.
+     
     const isShootApproval = /shoot approval required|shoot cancellation request/i.test(String(n.title));
     if (n.type === "APPROVAL" || isShootApproval) {
       setNotificationsOpen(false);
@@ -878,17 +894,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     {pushPermission && pushPermission !== "granted" && (
                       <div className="mb-2 rounded-xl border border-indigo-100 bg-indigo-50/70 px-3 py-2.5 text-xs text-indigo-950">
                         <p className="font-semibold">Enable browser notifications</p>
+                        {pushPermission === "error" && (
+                          <p className="mt-1 leading-5 text-indigo-800">Notification setup failed. Check your connection and try again.</p>
+                        )}
                         {pushPermission === "denied" ? (
                           <p className="mt-1 leading-5 text-indigo-800">Notifications are blocked for this site. Open the browser site settings, allow notifications, and reload.</p>
                         ) : pushPermission === "insecure" ? (
                           <p className="mt-1 leading-5 text-indigo-800">Production browser notifications require an HTTPS website.</p>
                         ) : pushPermission === "not-configured" ? (
-                          <p className="mt-1 leading-5 text-indigo-800">The server VAPID keys are not configured, so browser push is unavailable.</p>
+                          <p className="mt-1 leading-5 text-indigo-800">Firebase notification settings are not configured, so browser notifications are unavailable.</p>
                         ) : pushPermission === "unsupported" ? (
                           <p className="mt-1 leading-5 text-indigo-800">This browser does not support web notifications.</p>
                         ) : (
                           <button type="button" onClick={() => void requestBrowserNotifications()} disabled={pushBusy} className="mt-2 rounded-lg bg-indigo-600 px-3 py-1.5 font-semibold text-white disabled:opacity-60">
-                            {pushBusy ? "Enabling…" : "Allow notifications"}
+                            {pushBusy ? "Enabling…" : pushPermission === "error" ? "Retry notification setup" : "Allow notifications"}
                           </button>
                         )}
                       </div>

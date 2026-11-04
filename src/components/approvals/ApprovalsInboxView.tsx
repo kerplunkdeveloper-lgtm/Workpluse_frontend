@@ -11,6 +11,8 @@ import {
   compOffApi,
   dayOffWorkApi,
   shootRequestsApi,
+  shootSettlementsApi,
+  workFromHomeApi,
 } from "@/lib/api";
 import {
   formatDate,
@@ -32,6 +34,9 @@ import {
   Sparkles,
   CalendarOff,
   Clapperboard,
+  Home,
+  Download,
+  FileDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
@@ -45,7 +50,9 @@ type ApprovalCategory =
   | "EXPENSES"
   | "COMPOFF"
   | "DAYOFF"
-  | "SHOOTS";
+  | "SHOOTS"
+  | "SHOOT_SETTLEMENTS"
+  | "WORK_FROM_HOME";
 
 const DAY_KIND_LABEL: Record<string, string> = {
   WEEK_OFF: "Weekly off",
@@ -101,7 +108,9 @@ const workflowDate = (row: any, category: ApprovalCategory) => {
               ? row.date || row.expenseDate || row.createdAt
               : category === "COMPOFF"
                 ? row.referenceDate || row.createdAt
-                : row.date || row.createdAt;
+                : category === "SHOOT_SETTLEMENTS"
+                  ? row.shootDate || row.createdAt
+                  : row.date || row.createdAt;
   return String(value || "").slice(0, 10);
 };
 
@@ -120,6 +129,9 @@ const workflowSearchText = (row: any) =>
     row.location,
     row.leaveType?.name,
     row.reasonType,
+    row.shootRequest?.shootName,
+    row.shootRequest?.location,
+    row.employeeNote,
   ]
     .filter(Boolean)
     .join(" ")
@@ -131,6 +143,72 @@ const matchesWorkflowStatus = (row: any, status: WorkflowStatus) => {
   return status === "PENDING"
     ? ["PENDING", "SUBMITTED", "UNDER_REVIEW"].includes(rowStatus)
     : rowStatus === status;
+};
+
+const APPROVAL_LABELS: Record<ApprovalCategory, string> = {
+  CORRECTIONS: "Attendance correction",
+  LEAVES: "Leave request",
+  PERMISSIONS: "Permission request",
+  OVERTIME: "Overtime request",
+  EXPENSES: "Expense claim",
+  COMPOFF: "Comp-off request",
+  DAYOFF: "Day-off work",
+  SHOOTS: "Shoot request",
+  SHOOT_SETTLEMENTS: "Shoot settlement",
+  WORK_FROM_HOME: "Work-from-home request",
+};
+
+const csvCell = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+const approvalDetail = (row: any, category: ApprovalCategory) => {
+  if (category === "LEAVES") return `${row.leaveType?.name || "Leave"} · ${Number(row.totalDays || 1)} day(s) · ${row.reason || "No reason"}`;
+  if (category === "PERMISSIONS") return `${Number(row.hours || 0)}h · ${row.reason || "No reason"}`;
+  if (category === "OVERTIME") return `${minutesLabel(row.requestedMinutes)} · ${row.reason || "No reason"}`;
+  if (category === "EXPENSES") return `${row.title || "Claim"} · ${formatCurrency(Number(row.amount || 0))}`;
+  if (category === "COMPOFF") return `${Number(row.days || 0)} day(s) · ${row.reason || "No reason"}`;
+  if (category === "SHOOTS") return `${row.shootName || "Shoot"} · ${row.location || "No location"}`;
+  if (category === "SHOOT_SETTLEMENTS") return `${row.shootRequest?.shootName || "Shoot settlement"} · ${minutesLabel(row.shootMinutes)} shoot · ${minutesLabel(row.travelMinutes)} travel · ${row.employeeNote || "No note"}`;
+  if (category === "WORK_FROM_HOME") return `${row.reason || "No reason"}`;
+  if (category === "DAYOFF") return `${DAY_KIND_LABEL[row.dayKind] || "Day off"} · ${DAY_REASON_LABEL[row.reasonType] || row.reasonType || ""} · ${row.note || "No details"}`;
+  return `${row.requestedCheckIn ? formatTime(row.requestedCheckIn) : "—"} / ${row.requestedCheckOut ? formatTime(row.requestedCheckOut) : "—"} · ${row.reason || "No reason"}`;
+};
+
+const downloadApprovalCsv = (rows: any[], category: ApprovalCategory) => {
+  const lines = [
+    ["Employee", "Employee Code", "Workflow", "Date", "Status", "Details"].map(csvCell).join(","),
+    ...rows.map((row) => [
+      personName(workflowEmployee(row)),
+      workflowEmployee(row)?.employeeCode || "—",
+      APPROVAL_LABELS[category],
+      workflowDate(row, category) || "—",
+      row.status || "PENDING",
+      approvalDetail(row, category),
+    ].map(csvCell).join(",")),
+  ];
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(new Blob(["\ufeff", lines.join("\n")], { type: "text/csv;charset=utf-8" }));
+  link.download = `WorkPluse_Approvals_${category.toLowerCase()}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(link.href);
+};
+
+const printApprovalPdf = (rows: any[], category: ApprovalCategory) => {
+  const esc = (value: unknown) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const body = rows.length
+    ? rows.map((row, index) => `<tr><td>${index + 1}</td><td><b>${esc(personName(workflowEmployee(row)))}</b><br><span>${esc(workflowEmployee(row)?.employeeCode || "—")}</span></td><td>${esc(workflowDate(row, category) || "—")}</td><td>${esc(row.status || "PENDING")}</td><td>${esc(approvalDetail(row, category))}</td></tr>`).join("")
+    : `<tr><td colspan="5" class="empty">No approval requests match these filters.</td></tr>`;
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(APPROVAL_LABELS[category])}</title><style>@page{size:A4 landscape;margin:12mm}body{font:12px Arial;color:#0f172a}header{border-bottom:2px solid #4f46e5;margin-bottom:16px;padding-bottom:10px}h1{margin:0 0 4px;font-size:20px}p{margin:0;color:#64748b}table{width:100%;border-collapse:collapse}th{background:#eef2ff;text-align:left;font-size:10px;text-transform:uppercase}th,td{padding:7px;border-bottom:1px solid #e2e8f0;vertical-align:top}td span{color:#64748b;font-size:10px}.empty{text-align:center;color:#94a3b8;padding:18px}</style></head><body><header><h1>${esc(APPROVAL_LABELS[category])}</h1><p>WorkPluse approvals · Generated ${esc(new Date().toLocaleString("en-IN"))} · ${rows.length} request(s)</p></header><table><thead><tr><th>#</th><th>Employee</th><th>Date</th><th>Status</th><th>Details</th></tr></thead><tbody>${body}</tbody></table></body></html>`;
+  const frame = document.createElement("iframe");
+  frame.setAttribute("aria-hidden", "true");
+  frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
+  document.body.appendChild(frame);
+  const doc = frame.contentDocument;
+  const win = frame.contentWindow;
+  if (!doc || !win) { frame.remove(); throw new Error("Could not prepare the PDF."); }
+  doc.open(); doc.write(html); doc.close();
+  win.addEventListener("afterprint", () => setTimeout(() => frame.remove(), 1000));
+  setTimeout(() => { win.focus(); win.print(); }, 250);
 };
 
 function StatusBadge({ status }: { status?: string }) {
@@ -257,6 +335,8 @@ export default function ApprovalsInboxView() {
       "COMPOFF",
       "DAYOFF",
       "SHOOTS",
+      "SHOOT_SETTLEMENTS",
+      "WORK_FROM_HOME",
     ].includes(requestedTab)
       ? requestedTab
       : "CORRECTIONS",
@@ -282,10 +362,13 @@ export default function ApprovalsInboxView() {
   const [compOffs, setCompOffs] = useState<any[]>([]);
   const [dayOffWork, setDayOffWork] = useState<any[]>([]);
   const [shoots, setShoots] = useState<any[]>([]);
+  const [shootSettlements, setShootSettlements] = useState<any[]>([]);
+  const [workFromHomeRequests, setWorkFromHomeRequests] = useState<any[]>([]);
   const [approvedOvertimeMinutes, setApprovedOvertimeMinutes] = useState<
     Record<string, string>
   >({});
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState<"CSV" | "PDF" | null>(null);
   const { role } = useAuth();
   const isReviewer =
     role === "SUPER_ADMIN" ||
@@ -304,6 +387,8 @@ export default function ApprovalsInboxView() {
         "COMPOFF",
         "DAYOFF",
         "SHOOTS",
+        "SHOOT_SETTLEMENTS",
+        "WORK_FROM_HOME",
       ].includes(requestedTab)
     )
       setActiveTab(requestedTab);
@@ -342,19 +427,27 @@ export default function ApprovalsInboxView() {
         compRes,
         dayOffRes,
         shootRes,
+        shootSettlementRes,
+        wfhRes,
       ] = await Promise.allSettled([
         loadCorrections(),
         leavesApi.getAllLeaves({ status: "ALL", limit: 200 }),
         isReviewer
           ? permissionsApi.list({ status: "ALL" })
           : permissionsApi.my(),
-        overtimeApi.getPending(),
+        isReviewer ? overtimeApi.getAll({ status: "ALL" }) : overtimeApi.getMy(),
         expensesApi.getAllClaims(),
-        compOffApi.getPending(),
-        dayOffWorkApi.getRequests({ status: "PENDING" }),
+        isReviewer ? compOffApi.getAll() : compOffApi.getHistory(),
+        dayOffWorkApi.getRequests({ status: "ALL" }),
         isReviewer
           ? shootRequestsApi.getAll({ status: "ALL" })
           : shootRequestsApi.getMine(),
+        isReviewer
+          ? shootSettlementsApi.getAll("ALL")
+          : shootSettlementsApi.getMine(),
+        isReviewer
+          ? workFromHomeApi.getAll({ status: "ALL" })
+          : Promise.resolve(null),
       ]);
 
       if (leaveRes.status === "fulfilled") {
@@ -366,11 +459,7 @@ export default function ApprovalsInboxView() {
         setOvertimes(unwrapList(otRes.value));
       }
       if (expRes.status === "fulfilled") {
-        setExpenses(
-          unwrapList(expRes.value).filter((e: any) =>
-            ["PENDING", "SUBMITTED", "UNDER_REVIEW"].includes(e.status),
-          ),
-        );
+        setExpenses(unwrapList(expRes.value));
       }
       if (compRes.status === "fulfilled")
         setCompOffs(unwrapList(compRes.value));
@@ -378,6 +467,10 @@ export default function ApprovalsInboxView() {
         setDayOffWork(unwrapList(dayOffRes.value));
       if (shootRes.status === "fulfilled")
         setShoots(unwrapList(shootRes.value));
+      if (shootSettlementRes.status === "fulfilled")
+        setShootSettlements(unwrapList(shootSettlementRes.value));
+      if (wfhRes.status === "fulfilled" && wfhRes.value)
+        setWorkFromHomeRequests(unwrapList(wfhRes.value));
     } catch (err) {
       console.error("Failed to load approvals inbox:", err);
     } finally {
@@ -566,6 +659,49 @@ export default function ApprovalsInboxView() {
       status,
     );
 
+  const handleReviewShootSettlement = (id: string, status: "APPROVED" | "REJECTED") =>
+    review(
+      "shoot-settlement-act",
+      "Saving shoot settlement decision...",
+      (st) => `Shoot settlement ${st.toLowerCase()}!`,
+      () => shootSettlementsApi.review(id, { status, reviewNote: "Reviewed in approvals inbox" }),
+      status,
+    );
+
+  const handleReviewShootSettlementOvertime = (
+    id: string,
+    kind: "SHOOT" | "TRAVEL",
+    status: "APPROVED" | "REJECTED",
+    minutes: number,
+  ) => {
+    const reviewNote = status === "REJECTED"
+      ? window.prompt(`Reason for rejecting ${kind.toLowerCase()} overtime`)
+      : undefined;
+    if (status === "REJECTED" && !reviewNote?.trim()) return;
+    return review(
+      `shoot-${kind.toLowerCase()}-ot-act`,
+      `Saving ${kind.toLowerCase()} overtime decision...`,
+      (st) => `${kind === "TRAVEL" ? "Travel" : "Shoot"} overtime ${st.toLowerCase()}!`,
+      () => shootSettlementsApi.reviewOvertime(id, {
+        kind,
+        status,
+        reviewNote,
+        approvedShootOtMinutes: kind === "SHOOT" ? minutes : undefined,
+        approvedTravelOtMinutes: kind === "TRAVEL" ? minutes : undefined,
+      }),
+      status,
+    );
+  };
+
+  const handleReviewWorkFromHome = (id: string, status: "APPROVED" | "REJECTED") =>
+    review(
+      "wfh-act",
+      "Saving WFH decision...",
+      (st) => `Work-from-home request ${st.toLowerCase()}!`,
+      () => workFromHomeApi.review(id, { status, reviewNote: "Reviewed in approvals inbox" }),
+      status,
+    );
+
   const handleReviewDayOff = (id: string, status: "APPROVED" | "REJECTED") =>
     review(
       "dayoff-act",
@@ -582,11 +718,13 @@ export default function ApprovalsInboxView() {
     pendingCorrections +
     leaves.filter((row) => row.status === "PENDING").length +
     permissions.filter((row) => row.status === "PENDING").length +
-    overtimes.length +
-    expenses.length +
-    compOffs.length +
-    dayOffWork.length +
-    shoots.filter((row) => row.status === "PENDING").length;
+    overtimes.filter((row) => row.status === "PENDING").length +
+    expenses.filter((row) => ["PENDING", "SUBMITTED", "UNDER_REVIEW"].includes(String(row.status))).length +
+    compOffs.filter((row) => row.status === "PENDING").length +
+    dayOffWork.filter((row) => row.status === "PENDING").length +
+    shoots.filter((row) => row.status === "PENDING").length +
+    shootSettlements.filter((row) => row.status === "PENDING").length +
+    workFromHomeRequests.filter((row) => row.status === "PENDING").length;
 
   const filterRequests = (rows: any[]) =>
     requestFilter === "ALL"
@@ -595,10 +733,44 @@ export default function ApprovalsInboxView() {
   const visibleLeaves = filterWorkflowRows(filterRequests(leaves), "LEAVES");
   const visiblePermissions = filterWorkflowRows(filterRequests(permissions), "PERMISSIONS");
   const visibleShoots = filterWorkflowRows(filterRequests(shoots), "SHOOTS");
-  const visibleOvertimes = filterWorkflowRows(overtimes, "OVERTIME");
-  const visibleExpenses = filterWorkflowRows(expenses, "EXPENSES");
-  const visibleCompOffs = filterWorkflowRows(compOffs, "COMPOFF");
-  const visibleDayOffWork = filterWorkflowRows(dayOffWork, "DAYOFF");
+  const visibleShootSettlements = filterWorkflowRows(filterRequests(shootSettlements), "SHOOT_SETTLEMENTS");
+  const visibleWorkFromHome = filterWorkflowRows(filterRequests(workFromHomeRequests), "WORK_FROM_HOME");
+  const visibleOvertimes = filterWorkflowRows(filterRequests(overtimes), "OVERTIME");
+  const visibleExpenses = filterWorkflowRows(filterRequests(expenses), "EXPENSES");
+  const visibleCompOffs = filterWorkflowRows(filterRequests(compOffs), "COMPOFF");
+  const visibleDayOffWork = filterWorkflowRows(filterRequests(dayOffWork), "DAYOFF");
+  const visibleApprovalRows = activeTab === "CORRECTIONS"
+    ? visibleCorrections
+    : activeTab === "LEAVES"
+      ? visibleLeaves
+      : activeTab === "PERMISSIONS"
+        ? visiblePermissions
+        : activeTab === "OVERTIME"
+          ? visibleOvertimes
+          : activeTab === "EXPENSES"
+            ? visibleExpenses
+            : activeTab === "COMPOFF"
+              ? visibleCompOffs
+              : activeTab === "DAYOFF"
+                ? visibleDayOffWork
+                : activeTab === "SHOOTS"
+                  ? visibleShoots
+                  : activeTab === "SHOOT_SETTLEMENTS"
+                    ? visibleShootSettlements
+                  : visibleWorkFromHome;
+
+  const exportApprovals = (kind: "CSV" | "PDF") => {
+    setExporting(kind);
+    try {
+      if (kind === "CSV") downloadApprovalCsv(visibleApprovalRows, activeTab);
+      else printApprovalPdf(visibleApprovalRows, activeTab);
+      toast.success(kind === "CSV" ? "Approval list CSV downloaded." : "PDF print dialog opened. Choose Save as PDF.");
+    } catch (error: any) {
+      toast.error(error?.message || "Could not export approval list.");
+    } finally {
+      setExporting(null);
+    }
+  };
   const requestFilters: { value: RequestFilter; label: string }[] = [
     { value: "ALL", label: "All" },
     { value: "PENDING", label: "Pending" },
@@ -614,7 +786,7 @@ export default function ApprovalsInboxView() {
   }[] = [
     {
       key: "CORRECTIONS",
-      label: "Punch & Shoot Time",
+      label: "Punch & Correction Time",
       icon: Clock,
       count: pendingCorrections,
     },
@@ -623,6 +795,18 @@ export default function ApprovalsInboxView() {
       label: "Shoot requests",
       icon: Clapperboard,
       count: shoots.filter((row) => row.status === "PENDING").length,
+    },
+    {
+      key: "SHOOT_SETTLEMENTS",
+      label: "Shoot settlements",
+      icon: Clapperboard,
+      count: shootSettlements.filter((row) => row.status === "PENDING").length,
+    },
+    {
+      key: "WORK_FROM_HOME",
+      label: "Work from home",
+      icon: Home,
+      count: workFromHomeRequests.filter((row) => row.status === "PENDING").length,
     },
     {
       key: "LEAVES",
@@ -640,25 +824,25 @@ export default function ApprovalsInboxView() {
       key: "OVERTIME",
       label: "Overtime Credits",
       icon: Layers,
-      count: overtimes.length,
+      count: overtimes.filter((row) => row.status === "PENDING").length,
     },
     {
       key: "EXPENSES",
       label: "Expense Claims",
       icon: Wallet,
-      count: expenses.length,
+      count: expenses.filter((row) => ["PENDING", "SUBMITTED", "UNDER_REVIEW"].includes(String(row.status))).length,
     },
     {
       key: "COMPOFF",
       label: "Comp-Off",
       icon: Sparkles,
-      count: compOffs.length,
+      count: compOffs.filter((row) => row.status === "PENDING").length,
     },
     {
       key: "DAYOFF",
       label: "Day-off work",
       icon: CalendarOff,
-      count: dayOffWork.length,
+      count: dayOffWork.filter((row) => row.status === "PENDING").length,
     },
   ];
 
@@ -681,8 +865,20 @@ export default function ApprovalsInboxView() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700">
-          <span>{totalPending} Total Requests Awaiting Review</span>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {isReviewer && (
+            <>
+              <button type="button" onClick={() => exportApprovals("CSV")} disabled={Boolean(exporting)} className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-50">
+                <Download className="h-3.5 w-3.5" /> {exporting === "CSV" ? "Preparing…" : "Download CSV"}
+              </button>
+              <button type="button" onClick={() => exportApprovals("PDF")} disabled={Boolean(exporting)} className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:opacity-50">
+                <FileDown className="h-3.5 w-3.5" /> Download PDF
+              </button>
+            </>
+          )}
+          <div className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700">
+            <span>{totalPending} Total Requests Awaiting Review</span>
+          </div>
         </div>
       </div>
 
@@ -756,11 +952,7 @@ export default function ApprovalsInboxView() {
 
       {/* Tab Panels */}
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        {activeTab !== "CORRECTIONS" &&
-          activeTab !== "OVERTIME" &&
-          activeTab !== "EXPENSES" &&
-          activeTab !== "COMPOFF" &&
-          activeTab !== "DAYOFF" && (
+        {activeTab !== "CORRECTIONS" && (
             <div
               className="mb-4 flex flex-wrap items-center gap-2"
               role="tablist"
@@ -1153,6 +1345,82 @@ export default function ApprovalsInboxView() {
                     <td className="whitespace-nowrap px-4 py-4 text-right">
                       <StatusBadge status={req.status} />
                     </td>
+                  )}
+                </tr>
+              ))}
+            </TableShell>
+          )
+        ) : activeTab === "SHOOT_SETTLEMENTS" ? (
+          visibleShootSettlements.length === 0 ? (
+            emptyNote(
+              requestFilter === "PENDING"
+                ? "No pending shoot settlements."
+                : "No shoot settlements found for this filter.",
+            )
+          ) : (
+            <TableShell heads={["Employee", "Shoot", "Date", "Shoot time", "Travel", "Claims", "Status / action"]}>
+              {visibleShootSettlements.map((settlement) => (
+                <tr key={settlement.id} className={rowClass}>
+                  <PersonCell emp={settlement.employee} />
+                  <td className="px-4 py-4 text-xs font-semibold text-slate-900">
+                    <p>{settlement.shootRequest?.shootName || "Shoot settlement"}</p>
+                    <p className="mt-1 font-normal text-slate-500">{settlement.shootRequest?.location || "No location"}</p>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-4 text-xs font-medium text-slate-700">{dayOf(settlement.shootDate)}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-600">
+                    {settlement.shootStart && settlement.shootEnd ? `${formatTime(settlement.shootStart)} - ${formatTime(settlement.shootEnd)}` : minutesLabel(settlement.shootMinutes)}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-600">{minutesLabel(settlement.travelMinutes)}{settlement.returnedNextDay ? " · next day" : ""}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-600">
+                    {formatCurrency(Number(settlement.approvedAllowanceAmount ?? 0) + Number(settlement.approvedExpenseAmount ?? 0))}
+                    {settlement.employeeNote && <p className="mt-1 max-w-40 truncate text-[11px] text-slate-400" title={settlement.employeeNote}>{settlement.employeeNote}</p>}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-4 text-right">
+                    <div className="flex min-w-56 flex-col items-end gap-2">
+                      {settlement.status === "PENDING" && <div className="flex justify-end gap-2">
+                        <button type="button" onClick={() => handleReviewShootSettlement(settlement.id, "APPROVED")} className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-500"><CheckCircle2 className="h-3.5 w-3.5" />Approve settlement</button>
+                        <button type="button" onClick={() => handleReviewShootSettlement(settlement.id, "REJECTED")} className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100"><XCircle className="h-3.5 w-3.5" />Reject settlement</button>
+                      </div>}
+                      {settlement.shootOvertimeStatus === "PENDING" && <div className="flex items-center justify-end gap-2 text-[11px]">
+                        <span className="font-semibold text-violet-700">Shoot OT {minutesLabel(settlement.shootOvertimeMinutes)}</span>
+                        <button type="button" onClick={() => handleReviewShootSettlementOvertime(settlement.id, "SHOOT", "APPROVED", Number(settlement.shootOvertimeMinutes || 0))} className="font-bold text-emerald-700 hover:underline">Approve</button>
+                        <button type="button" onClick={() => handleReviewShootSettlementOvertime(settlement.id, "SHOOT", "REJECTED", 0)} className="font-bold text-rose-700 hover:underline">Reject</button>
+                      </div>}
+                      {settlement.travelOvertimeStatus === "PENDING" && <div className="flex items-center justify-end gap-2 text-[11px]">
+                        <span className="font-semibold text-orange-700">Travel OT {minutesLabel(settlement.travelOvertimeMinutes)}</span>
+                        <button type="button" onClick={() => handleReviewShootSettlementOvertime(settlement.id, "TRAVEL", "APPROVED", Number(settlement.travelOvertimeMinutes || 0))} className="font-bold text-emerald-700 hover:underline">Approve</button>
+                        <button type="button" onClick={() => handleReviewShootSettlementOvertime(settlement.id, "TRAVEL", "REJECTED", 0)} className="font-bold text-rose-700 hover:underline">Reject</button>
+                      </div>}
+                      {settlement.status !== "PENDING" && settlement.shootOvertimeStatus !== "PENDING" && settlement.travelOvertimeStatus !== "PENDING" && <StatusBadge status={settlement.status} />}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </TableShell>
+          )
+        ) : activeTab === "WORK_FROM_HOME" ? (
+          visibleWorkFromHome.length === 0 ? (
+            emptyNote(
+              requestFilter === "PENDING"
+                ? "No pending work-from-home requests."
+                : "No work-from-home requests found for this filter.",
+            )
+          ) : (
+            <TableShell heads={["Employee", "Dates", "Reason", "Status / action"]}>
+              {visibleWorkFromHome.map((request) => (
+                <tr key={request.id} className={rowClass}>
+                  <PersonCell emp={request.employee} />
+                  <td className="whitespace-nowrap px-4 py-4 text-xs font-medium text-slate-700">
+                    {dayOf(request.startDate)}{String(request.endDate).slice(0, 10) !== String(request.startDate).slice(0, 10) && <> to {dayOf(request.endDate)}</>}
+                  </td>
+                  <ReasonCell text={request.reason} />
+                  {request.status === "PENDING" ? (
+                    <ActionCell
+                      onApprove={() => handleReviewWorkFromHome(request.id, "APPROVED")}
+                      onReject={() => handleReviewWorkFromHome(request.id, "REJECTED")}
+                    />
+                  ) : (
+                    <td className="whitespace-nowrap px-4 py-4 text-right"><StatusBadge status={request.status} /></td>
                   )}
                 </tr>
               ))}

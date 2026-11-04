@@ -42,6 +42,8 @@ const DEFAULTS = {
   shootRecoveryEnabled: true,
   shootRecoveryThresholdMinutes: 720,
   shootTravelOtEnabled: true,
+  shootTravelOtThresholdMinutes: 360,
+  shootTravelOtMultiplier: 0.5,
   shootOtMultiplier: 1.5,
   shootOtSalaryBasis: "BASE_SALARY",
 };
@@ -159,6 +161,8 @@ export default function PolicyView() {
             shootRecoveryEnabled: Boolean(policy.shootRecoveryEnabled ?? DEFAULTS.shootRecoveryEnabled),
             shootRecoveryThresholdMinutes: Number(policy.shootRecoveryThresholdMinutes ?? DEFAULTS.shootRecoveryThresholdMinutes),
             shootTravelOtEnabled: Boolean(policy.shootTravelOtEnabled ?? DEFAULTS.shootTravelOtEnabled),
+            shootTravelOtThresholdMinutes: Number(policy.shootTravelOtThresholdMinutes ?? DEFAULTS.shootTravelOtThresholdMinutes),
+            shootTravelOtMultiplier: Number(policy.shootTravelOtMultiplier ?? DEFAULTS.shootTravelOtMultiplier),
             shootOtMultiplier: Number(policy.shootOtMultiplier ?? DEFAULTS.shootOtMultiplier),
             shootOtSalaryBasis: String(policy.shootOtSalaryBasis ?? DEFAULTS.shootOtSalaryBasis),
             payrollCycleStartDay: Number(policy.payrollCycleStartDay ?? DEFAULTS.payrollCycleStartDay),
@@ -501,11 +505,13 @@ export default function PolicyView() {
         </div>
         <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Recovery leave threshold (hours)</span><input type="number" min={1} max={48} step={0.5} value={Number(form.shootRecoveryThresholdMinutes) / 60} onChange={(e) => setNum("shootRecoveryThresholdMinutes", String(Number(e.target.value || 12) * 60))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /><span className="text-xs text-slate-500">Default: 12 hours. If the employee returns the next day and total travel + shoot time reaches this limit, the employee can claim a full-day recovery leave.</span></label>
-          <label className="space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">OT multiplier</span><input type="number" min={0} max={5} step={0.25} value={form.shootOtMultiplier} onChange={(e) => setNum("shootOtMultiplier", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /><span className="text-xs text-slate-500">Example: 1.5 means 150% of the employee hourly rate.</span></label>
+          <label className="space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Travel OT threshold (hours)</span><input type="number" min={1} max={48} step={0.5} value={Number(form.shootTravelOtThresholdMinutes) / 60} onChange={(e) => setNum("shootTravelOtThresholdMinutes", String(Number(e.target.value || 6) * 60))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /><span className="text-xs text-slate-500">Default: 6 hours. Total travel time must reach this threshold before travel OT is calculated.</span></label>
+          <label className="space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Travel OT multiplier</span><input type="number" min={0} max={5} step={0.25} value={form.shootTravelOtMultiplier} onChange={(e) => setNum("shootTravelOtMultiplier", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /><span className="text-xs text-slate-500">Default: 0.5. Example: 6 hours of qualifying travel is paid as 6 hours × 0.5 hourly rate.</span></label>
+          <label className="space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Shoot OT multiplier</span><input type="number" min={0} max={5} step={0.25} value={form.shootOtMultiplier} onChange={(e) => setNum("shootOtMultiplier", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /><span className="text-xs text-slate-500">Example: 1.5 means 150% of the employee hourly rate.</span></label>
           <label className="space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">OT salary basis</span><Select value={form.shootOtSalaryBasis} onChange={(e) => setForm((p) => ({ ...p, shootOtSalaryBasis: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"><option value="BASE_SALARY">Base salary</option><option value="MONTHLY_CTC">Monthly CTC</option></Select><span className="text-xs text-slate-500">Hourly rate = selected monthly salary ÷ working days per month ÷ 8 hours.</span></label>
-          <div className="space-y-2 text-sm text-slate-700"><label className="flex items-center gap-2"><input type="checkbox" checked={form.shootTravelOtEnabled} onChange={(e) => setForm((p) => ({ ...p, shootTravelOtEnabled: e.target.checked }))} /> Allow same-day return travel as OT</label><label className="flex items-center gap-2"><input type="checkbox" checked={form.shootRecoveryEnabled} onChange={(e) => setForm((p) => ({ ...p, shootRecoveryEnabled: e.target.checked }))} /> Enable recovery leave eligibility</label></div>
+          <div className="space-y-2 text-sm text-slate-700"><label className="flex items-center gap-2"><input type="checkbox" checked={form.shootTravelOtEnabled} onChange={(e) => setForm((p) => ({ ...p, shootTravelOtEnabled: e.target.checked }))} /> Enable total-travel-time OT</label><label className="flex items-center gap-2"><input type="checkbox" checked={form.shootRecoveryEnabled} onChange={(e) => setForm((p) => ({ ...p, shootRecoveryEnabled: e.target.checked }))} /> Enable recovery leave eligibility</label></div>
         </div>
-        <div className="mt-5 rounded-2xl border border-violet-200 bg-white/80 p-4 text-xs leading-5 text-violet-950"><strong>Employee-friendly explanation:</strong> Shoot hours, travel OT and expenses are never mixed. HR approves each one separately. Approved OT moves to payroll; approved food, room and transport claims move as reimbursement. If the employee returns the next day and total duty time crosses the configured threshold, Recovery Leave appears as a paid-if-eligible full-day option.</div>
+        <div className="mt-5 rounded-2xl border border-violet-200 bg-white/80 p-4 text-xs leading-5 text-violet-950"><strong>Employee-friendly explanation:</strong> Total travel time at or above the configured threshold creates travel OT using the travel multiplier. Once the settlement is approved, that travel OT moves directly into payroll; approved food, room and transport claims move as reimbursement. Recovery Leave remains a separate eligibility option.</div>
       </section>
 
       <button

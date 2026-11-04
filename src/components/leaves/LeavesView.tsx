@@ -532,7 +532,7 @@ export default function LeavesView() {
       {activeTab === "PERMISSIONS" && <PermissionRequestsPanel canReview={canApprove} eligible={paidLeaveEligibilityOpen} eligibility={eligibility} />}
 
       {/* Tab Content: Work From Home */}
-      {activeTab === "WORK_FROM_HOME" && <WorkFromHomePanel canReview={canApprove} />}
+      {activeTab === "WORK_FROM_HOME" && <WorkFromHomePanel />}
 
       {/* Tab Content: Shoot requests */}
       {activeTab === "SHOOT_REQUESTS" && !canApprove && <ShootRequestsPanel canReview={false} />}
