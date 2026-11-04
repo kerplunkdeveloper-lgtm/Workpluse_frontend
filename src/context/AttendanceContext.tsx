@@ -46,21 +46,16 @@ interface AttendanceContextType {
   currentLocation: GeoCoordinates | null;
   locationLabel: string | null;
   locationError: string | null;
-  /** Where the GPS reading is: waiting for the browser, ready, blocked by the user, or failed. */
-  locationStatus: "locating" | "ready" | "denied" | "error";
-  /** The street or area name of the captured position, e.g. "Mudaliarpet, Puducherry". */
-  currentPlace: string | null;
-  /** Asks the browser for a fresh position again (after the user turns GPS on). Returns true when it worked. */
-  retryLocation: () => Promise<boolean>;
+   locationStatus: "locating" | "ready" | "denied" | "error";
+   currentPlace: string | null;
+   retryLocation: () => Promise<boolean>;
   distanceToBranch: number | null;
   isWithinGeofence: boolean;
-  // Offline-aware state
-  isOnline: boolean;
+   isOnline: boolean;
   pendingPunchCount: number;
   syncStatus: SyncStatus;
   lastSyncedAt: Date | null;
-  // Actions
-  checkIn: (options?: PunchOptions) => Promise<boolean>;
+   checkIn: (options?: PunchOptions) => Promise<boolean>;
   checkOut: (options?: PunchOptions) => Promise<boolean>;
   startBreak: () => Promise<boolean>;
   endBreak: () => Promise<boolean>;
@@ -85,8 +80,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
   const [currentPlace, setCurrentPlace] = useState<string | null>(null);
   const placedAtRef = useRef<{ lat: number; lng: number } | null>(null);
 
-  // ── Offline tracking ────────────────────────────────────────────────────────
-  const [isOnline, setIsOnline] = useState<boolean>(
+   const [isOnline, setIsOnline] = useState<boolean>(
     typeof navigator !== "undefined" ? navigator.onLine : true
   );
   const [pendingPunchCount, setPendingPunchCount] = useState<number>(0);
@@ -95,14 +89,12 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
   const isSyncingRef = useRef(false);
   const fetchTodayStatusRef = useRef<(() => Promise<void>) | null>(null);
 
-  // ── Refresh pending count from IndexedDB ────────────────────────────────────
-  const refreshPendingCount = useCallback(async () => {
+   const refreshPendingCount = useCallback(async () => {
     const count = await getPendingCount(user?.id);
     setPendingPunchCount(count);
   }, [user?.id]);
 
-  // ── Sync offline queue to server ────────────────────────────────────────────
-  const triggerSync = useCallback(async () => {
+   const triggerSync = useCallback(async () => {
     if (isSyncingRef.current || !token || !user?.id) return;
     isSyncingRef.current = true;
     setSyncStatus("syncing");
@@ -121,8 +113,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
 
       const result = await attendanceApi.syncOffline(pending);
 
-      // Remove punches that were synced or were already-processed duplicates (SKIPPED)
-      const clearedIds = (result.results || [])
+       const clearedIds = (result.results || [])
         .filter((r: any) => r.status === "SYNCED" || r.status === "SKIPPED")
         .map((r: any) => r.localId);
 
@@ -179,11 +170,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
       window.removeEventListener("offline", onOffline);
     };
   }, [triggerSync]);
-
-  // ── Track browser GPS location ───────────────────────────────────────────────
-  // Read through refs so this callback keeps one identity. Depending on `todayStatus` made every
-  // status fetch (which returns a new policy object) re-run the polling effect below, which
-  // fetched again: an endless request loop that also re-asked for GPS each time.
+ 
   const userRef = useRef(user);
   const policyRef = useRef(todayStatus?.locationPolicy);
   useEffect(() => {
@@ -195,9 +182,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
     setCurrentLocation(coords);
     setLocationError(null);
     setLocationDenied(false);
-
-    // Name the place the person is standing in. Looked up only after moving about 100 m, so the 30-second
-    // refresh does not call the geocoder every time.
+ 
     const last = placedAtRef.current;
     const moved = !last || calculateDistanceMeters(coords.latitude, coords.longitude, last.lat, last.lng) > 100;
     if (moved) {
@@ -229,11 +214,9 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
           resolve(coords);
         },
         (error) => {
-          // Never keep an old position after a failed read: it would look current and be punched with.
-          setCurrentLocation(null);
+    setCurrentLocation(null);
           setLocationDenied(error.code === error.PERMISSION_DENIED);
-          // Browser messages ("User denied Geolocation") aren't written for employees.
-          setLocationError(
+      setLocationError(
             error.code === error.PERMISSION_DENIED
               ? "Location is turned off for this site. Allow location in your browser settings so your punch-in can be verified."
               : error.code === error.TIMEOUT
@@ -242,8 +225,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
           );
           resolve(null);
         },
-        // A punch must use the position right now. The background refresh may reuse one up to 15 s old.
-        { enableHighAccuracy: true, timeout: fresh ? 15000 : 8000, maximumAge: fresh ? 0 : 15000 }
+  { enableHighAccuracy: true, timeout: fresh ? 15000 : 8000, maximumAge: fresh ? 0 : 15000 }
       );
     });
   }, [applyCoords]);
@@ -273,9 +255,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
       .catch(() => {});
     return () => status?.removeEventListener("change", onChange);
   }, [requestBrowserLocation]);
-
-  // Distance from the employee's branch, worked out from the branch's real coordinates in today's status
-  // (the sign-in profile can lack them). Derived, so it is right whichever of position and branch arrives first.
+ 
   const { distanceToBranch, isWithinGeofence } = useMemo(() => {
     if (!currentLocation) return { distanceToBranch: null as number | null, isWithinGeofence: false };
     const branch: any = todayStatus?.branch || user?.employee?.branch;

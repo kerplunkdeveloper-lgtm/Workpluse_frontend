@@ -30,12 +30,14 @@ export default function PayrollView() {
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isApproving, setIsApproving] = useState<boolean>(false);
   const [isDisbursing, setIsDisbursing] = useState<boolean>(false);
+  const [disbursingPayslipId, setDisbursingPayslipId] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<"RECORDS" | "SALARY" | "TEMPLATES">("RECORDS");
   const [expandedDailyId, setExpandedDailyId] = useState<string | null>(null);
 
   const isAdminOrManager = role === "COMPANY_ADMIN" || role === "SUPER_ADMIN" || role === "MANAGER" || role === "HR";
   // HR prepares payroll; only company admins finalize approval and disbursement.
   const isAdmin = role === "COMPANY_ADMIN" || role === "SUPER_ADMIN";
+  const canDisburseIndividual = isAdmin || role === "HR";
   const canGenerate = isAdminOrManager;
   const [cycle, setCycle] = useState<any>(null);
 
@@ -203,6 +205,24 @@ export default function PayrollView() {
       toast.error(err.response?.data?.message || err.message || "Failed to disburse batch");
     } finally {
       setIsDisbursing(false);
+    }
+  };
+
+  const handleDisburseIndividual = async (slip: Payslip) => {
+    if (slip.status !== "APPROVED") {
+      toast.error("Approve this payslip before distributing it.");
+      return;
+    }
+    setDisbursingPayslipId(slip.id);
+    try {
+      const res = await payrollApi.disbursePayslip(slip.id);
+      if (!res?.success) throw new Error(res?.message || "Could not distribute payslip");
+      toast.success("Payslip distributed to the employee");
+      await loadPayslips();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || "Could not distribute payslip");
+    } finally {
+      setDisbursingPayslipId(null);
     }
   };
 
@@ -400,7 +420,9 @@ export default function PayrollView() {
             Disbursement
           </p>
           <p className="text-base font-semibold leading-snug tracking-[-0.01em] text-slate-900">Direct to bank, payslips on WhatsApp</p>
-          <p className="text-xs text-slate-500 mt-1">Complies with 26 days/month standard</p>
+          <p className="text-xs text-slate-500 mt-1">
+            Per-day basis: {cycle?.basisDays || 0} {cycle?.dayBasis === "WORKING_DAYS" ? "working" : "calendar"} days
+          </p>
         </div>
       </div>
 
@@ -503,16 +525,29 @@ export default function PayrollView() {
                           {expandedDailyId === slip.id ? "Hide daily audit" : "View daily audit"}
                         </button>
                       ) : (
-                        <button
-                          onClick={() => {
-                            setSelectedPayslip(slip);
-                            setModalOpen(true);
-                          }}
-                          className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition inline-flex items-center gap-1.5"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          View Letterhead
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => {
+                              setSelectedPayslip(slip);
+                              setModalOpen(true);
+                            }}
+                            className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition inline-flex items-center gap-1.5"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            View Letterhead
+                          </button>
+                          {canDisburseIndividual && slip.status === "APPROVED" && (
+                            <button
+                              type="button"
+                              disabled={disbursingPayslipId === slip.id}
+                              onClick={() => void handleDisburseIndividual(slip)}
+                              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition inline-flex items-center gap-1.5 disabled:opacity-50"
+                            >
+                              {disbursingPayslipId === slip.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                              Distribute
+                            </button>
+                          )}
+                        </div>
                       )}
                     </td>
                   </tr>

@@ -20,7 +20,13 @@ export async function enableWebPushNotifications({ requestPermission = true }: {
     : Notification.permission;
   if (permission !== "granted") return permission;
 
-  const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+  // Bypass the browser's HTTP cache when checking for a new worker. This is
+  // important after deploys because push subscriptions may outlive the tab
+  // that first registered the worker.
+  const registration = await navigator.serviceWorker.register("/sw.js", {
+    scope: "/",
+    updateViaCache: "none",
+  });
   let subscription = await registration.pushManager.getSubscription();
   if (!subscription) {
     subscription = await registration.pushManager.subscribe({

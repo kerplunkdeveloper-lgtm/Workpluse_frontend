@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { LeaveRequest, LeaveBalance, LeaveType } from "@/types";
 import { leavesApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { formatDate, unwrapList } from "@/lib/utils";
-import { CalendarDays, Plus, AlertCircle, Loader2, Calendar } from "lucide-react";
+import { CalendarDays, Plus, AlertCircle, Loader2, Calendar, ChevronLeft, ChevronRight, CheckCircle2, Clock3, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { logClientError } from "@/lib/clientLogger";
 import { motion } from "framer-motion";
@@ -18,6 +18,38 @@ import ShootSettlementPanel from "./ShootSettlementPanel";
 import { confirmDialog } from "@/components/ui/confirmDialog";
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
+
+const parseDateOnly = (value: string) => {
+  const [year, month, day] = String(value || "").slice(0, 10).split("-").map(Number);
+  if (![year, month, day].every(Number.isFinite)) return null;
+  return new Date(year, month - 1, day);
+};
+
+const dateKey = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const addDays = (date: Date, days: number) => {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+};
+
+const requestCoversDate = (request: LeaveRequest, date: Date) => {
+  const start = parseDateOnly(request.startDate);
+  const end = parseDateOnly(request.endDate);
+  if (!start || !end) return false;
+  return date >= start && date <= end;
+};
+
+const statusTone = (status: LeaveRequest["status"]) => {
+  if (status === "APPROVED") return { dot: "bg-emerald-500", badge: "bg-emerald-50 text-emerald-700 border-emerald-200", label: "Approved", icon: CheckCircle2 };
+  if (status === "REJECTED") return { dot: "bg-rose-400", badge: "bg-rose-50 text-rose-700 border-rose-200", label: "Rejected", icon: XCircle };
+  return { dot: "bg-amber-400", badge: "bg-amber-50 text-amber-700 border-amber-200", label: "Pending", icon: Clock3 };
+};
 
 export default function LeavesView() {
   const { user, role } = useAuth();
@@ -45,6 +77,10 @@ export default function LeavesView() {
   const [editingTypeId, setEditingTypeId] = useState<string | null>(null);
   const [creatingType, setCreatingType] = useState(false);
   const [carryingForward, setCarryingForward] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), 1);
+  });
 
   // Review Modal state
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
@@ -227,6 +263,26 @@ export default function LeavesView() {
   };
 
   const pendingApprovals = teamRequests.filter((r) => r.status === "PENDING");
+
+  const calendarDays = useMemo(() => {
+    const firstDay = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
+    const daysInMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate();
+    return Array.from({ length: firstDay.getDay() + daysInMonth }, (_, index) => {
+      if (index < firstDay.getDay()) return null;
+      return new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), index - firstDay.getDay() + 1);
+    });
+  }, [calendarMonth]);
+
+  const upcomingLeave = useMemo(() => {
+    const today = parseDateOnly(dateKey(new Date())) || new Date();
+    return myRequests
+      .filter((request) => request.status !== "REJECTED")
+      .filter((request) => {
+        const end = parseDateOnly(request.endDate);
+        return end && end >= today;
+      })
+      .sort((a, b) => String(a.startDate).localeCompare(String(b.startDate)));
+  }, [myRequests]);
 
   if (loadError && loading === false && myRequests.length === 0 && leaveTypes.length === 0 && balances.length === 0) {
     return (
@@ -489,7 +545,105 @@ export default function LeavesView() {
 
       {/* Tab Content: My Leaves */}
       {activeTab === "MY_LEAVES" && (
-        <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
+        <div className="space-y-5">
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+            <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5" aria-labelledby="leave-calendar-title">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">Personal planner</p>
+                  <h2 id="leave-calendar-title" className="mt-1 text-lg font-bold text-slate-900">My leave calendar</h2>
+                  <p className="mt-1 text-xs text-slate-500">See all your leave applications month by month.</p>
+                </div>
+                <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1">
+                  <button type="button" onClick={() => setCalendarMonth((month) => new Date(month.getFullYear(), month.getMonth() - 1, 1))} className="rounded-lg p-2 text-slate-500 hover:bg-white hover:text-slate-900" aria-label="Previous month"><ChevronLeft className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => { const today = new Date(); setCalendarMonth(new Date(today.getFullYear(), today.getMonth(), 1)); }} className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-white">Today</button>
+                  <button type="button" onClick={() => setCalendarMonth((month) => new Date(month.getFullYear(), month.getMonth() + 1, 1))} className="rounded-lg p-2 text-slate-500 hover:bg-white hover:text-slate-900" aria-label="Next month"><ChevronRight className="h-4 w-4" /></button>
+                </div>
+              </div>
+
+              <div className="mt-5 flex items-center justify-between">
+                <h3 className="text-base font-bold text-slate-900">{calendarMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</h3>
+                <div className="flex flex-wrap items-center gap-3 text-[10px] font-semibold text-slate-500">
+                  <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" />Approved</span>
+                  <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400" />Pending</span>
+                  <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-rose-400" />Rejected</span>
+                </div>
+              </div>
+
+              <div className="mt-3 grid grid-cols-7 gap-1 text-center text-[10px] font-bold uppercase tracking-wider text-slate-400 sm:gap-2">
+                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => <div key={day} className="py-2">{day.slice(0, 2)}</div>)}
+              </div>
+              <div className="grid grid-cols-7 gap-1 sm:gap-2">
+                {calendarDays.map((day, index) => {
+                  const dayRequests = day ? myRequests.filter((request) => requestCoversDate(request, day)) : [];
+                  const today = day && dateKey(day) === dateKey(new Date());
+                  return (
+                    <div
+                      key={day ? dateKey(day) : `blank-${index}`}
+                      role={day ? "button" : undefined}
+                      tabIndex={day ? 0 : undefined}
+                      onClick={() => {
+                        if (!day || !canApplyLeave) return;
+                        const selectedDay = dateKey(day);
+                        setSelectedTypeId(selectableLeaveTypes[0]?.id || "");
+                        setStartDate(selectedDay);
+                        setEndDate(selectedDay);
+                        setIsHalfDay(false);
+                        setReason("");
+                        setApplyModalOpen(true);
+                      }}
+                      onKeyDown={(event) => {
+                        if (day && (event.key === "Enter" || event.key === " ")) {
+                          event.preventDefault();
+                          event.currentTarget.click();
+                        }
+                      }}
+                      className={`min-h-[72px] rounded-xl border p-1.5 sm:min-h-[86px] sm:p-2 ${day ? "cursor-pointer border-slate-100 bg-slate-50/60 transition hover:border-indigo-200 hover:bg-indigo-50/50" : "border-transparent bg-transparent"} ${today ? "ring-2 ring-indigo-200" : ""} ${day && !canApplyLeave ? "cursor-not-allowed opacity-70" : ""}`}
+                      title={day && canApplyLeave ? "Click to apply for leave on this date" : undefined}
+                    >
+                      {day && <>
+                        <div className={`text-right text-xs font-bold ${today ? "text-indigo-600" : "text-slate-500"}`}>{day.getDate()}</div>
+                        <div className="mt-1 space-y-1">
+                          {dayRequests.slice(0, 2).map((request) => {
+                            const tone = statusTone(request.status);
+                            return <div key={request.id} title={`${request.leaveType?.name || "Leave"} · ${tone.label}`} className={`flex items-center gap-1 truncate rounded-md px-1 py-0.5 text-[9px] font-semibold ${tone.badge}`}><span className={`h-1.5 w-1.5 shrink-0 rounded-full ${tone.dot}`} /><span className="truncate">{request.leaveType?.code || request.leaveType?.name || "Leave"}</span></div>;
+                          })}
+                          {dayRequests.length > 2 && <div className="px-1 text-[9px] font-bold text-slate-400">+{dayRequests.length - 2} more</div>}
+                        </div>
+                      </>}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5" aria-labelledby="upcoming-leave-title">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-600">Next time off</p>
+                  <h2 id="upcoming-leave-title" className="mt-1 text-lg font-bold text-slate-900">Upcoming leave</h2>
+                  <p className="mt-1 text-xs text-slate-500">Approved and pending leave from today onward.</p>
+                </div>
+                <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700">{upcomingLeave.length}</span>
+              </div>
+              <div className="mt-4 space-y-3">
+                {upcomingLeave.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-xs text-slate-500">No upcoming leave. Your calendar is clear.</div> : upcomingLeave.slice(0, 6).map((request) => {
+                  const tone = statusTone(request.status);
+                  const StatusIcon = tone.icon;
+                  return <div key={request.id} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0"><p className="truncate text-sm font-bold text-slate-900">{request.leaveType?.name || "Leave"}</p><p className="mt-1 text-xs font-medium text-slate-500">{formatDate(request.startDate)}{request.startDate !== request.endDate ? ` – ${formatDate(request.endDate)}` : ""}</p></div>
+                      <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-bold ${tone.badge}`}><StatusIcon className="h-3 w-3" />{tone.label}</span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-slate-500"><span>{request.isHalfDay ? "Half day" : `${request.totalDays} day${Number(request.totalDays) === 1 ? "" : "s"}`}</span><span className="max-w-[65%] truncate text-right" title={request.reason}>{request.reason}</span></div>
+                  </div>;
+                })}
+                {upcomingLeave.length > 6 && <p className="text-center text-xs font-semibold text-indigo-600">See all details in My Leave Applications below.</p>}
+              </div>
+            </section>
+          </div>
+
+          <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-[13px] text-slate-700">
               <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider border-b border-slate-200 font-semibold">
@@ -551,6 +705,7 @@ export default function LeavesView() {
                 )}
               </tbody>
             </table>
+          </div>
           </div>
         </div>
       )}
