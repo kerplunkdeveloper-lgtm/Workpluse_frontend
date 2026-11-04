@@ -1,4 +1,9 @@
 /* WorkPluse web push worker. It runs even when the dashboard tab is closed. */
+self.skipWaiting();
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 self.addEventListener("push", (event) => {
   let data = {};
   try {

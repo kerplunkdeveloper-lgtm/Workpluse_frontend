@@ -84,6 +84,10 @@ function forceSessionLogout(failedToken?: string) {
   const currentToken = getSessionAccessToken();
   if (failedToken && currentToken && failedToken !== currentToken) return;
   setSessionAccessToken(null);
+  // Cached list data is keyed by resource, not by organization. Clear it on
+  // an automatic logout as well as the explicit logout path so a subsequent
+  // sign-in can never render the previous workspace's data first.
+  clearQueryCache();
   delete api.defaults.headers.common.Authorization;
   // Remove credentials left by older WorkPluse releases.
   localStorage.removeItem("workpulse_access_token");
@@ -706,6 +710,10 @@ export const payrollApi = {
   },
   disburseBatch: async (payload: { batchId?: string; month?: number; year?: number }) => {
     const res = await api.post("/payroll/disburse-batch", payload);
+    return res.data;
+  },
+  disbursePayslip: async (id: string, payload?: { remarks?: string }) => {
+    const res = await api.post(`/payroll/payslips/${id}/disburse`, payload || {});
     return res.data;
   },
   getReports: async (params?: any) => {

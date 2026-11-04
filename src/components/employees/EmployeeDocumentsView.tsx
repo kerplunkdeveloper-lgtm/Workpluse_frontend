@@ -35,6 +35,9 @@ const DOCUMENT_ICONS: Record<string, string> = {
   OTHER: "📁",
 };
 
+const MAX_DOCUMENT_BYTES = 15 * 1024 * 1024;
+const DOCUMENT_ACCEPT = ".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.csv";
+
 export default function EmployeeDocumentsView({
   employeeId,
   employeeName: initialName,
@@ -110,6 +113,13 @@ export default function EmployeeDocumentsView({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      if (file.size > MAX_DOCUMENT_BYTES) {
+        e.target.value = "";
+        setSelectedFile(null);
+        setFilePreviewUrl(null);
+        toast.error("Document is too large. Maximum allowed size is 15 MB.");
+        return;
+      }
       setSelectedFile(file);
       if (file.type.startsWith("image/")) {
         const reader = new FileReader();
@@ -701,7 +711,7 @@ export default function EmployeeDocumentsView({
                   type="file"
                   ref={fileInputRef}
                   onChange={handleFileChange}
-                  accept=".pdf,.png,.jpg,.jpeg,.webp"
+                  accept={DOCUMENT_ACCEPT}
                   className="hidden"
                 />
                 {selectedFile ? (
