@@ -291,7 +291,10 @@ export default function DatePicker({
 
   // Open the year list already scrolled to the year being viewed, so earlier and later years are one scroll away.
   const selectedYearRef = (node: HTMLButtonElement | null) => {
-    node?.scrollIntoView({ block: "center" });
+    // Keep scrolling inside the year list. The default `scrollIntoView` behavior
+    // may also scroll the page, which can make the bottom of the picker appear
+    // clipped when the field is inside a long form.
+    node?.scrollIntoView({ block: "nearest", inline: "nearest" });
   };
 
   return (
@@ -378,7 +381,7 @@ export default function DatePicker({
         <div
           role="dialog"
           aria-label="Calendar date picker"
-          className={`absolute top-full mt-2 z-50 w-[300px] sm:w-[320px] p-4 bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl shadow-2xl shadow-slate-900/15 animate-in fade-in zoom-in-95 duration-150 select-none ${
+          className={`absolute top-full mt-2 z-50 box-border w-[min(320px,calc(100vw-1rem))] p-4 bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl shadow-2xl shadow-slate-900/15 animate-in fade-in zoom-in-95 duration-150 select-none ${
             align === "right" ? "right-0" : "left-0"
           }`}
         >
@@ -469,7 +472,7 @@ export default function DatePicker({
 
           {/* Body: Year Picker Mode */}
           {pickerMode === "year" && (
-            <div className="wp-date-picker-year-grid grid grid-cols-4 gap-2 py-2 max-h-56 overflow-y-auto overscroll-contain pr-1">
+            <div className="wp-date-picker-year-grid grid min-h-0 grid-cols-4 gap-2 overflow-y-auto overscroll-contain py-2 pr-1 [max-height:14rem] [scrollbar-gutter:stable]">
               {yearOptions.map((y) => {
                 const isSelectedYear = viewYear === y;
                 return (

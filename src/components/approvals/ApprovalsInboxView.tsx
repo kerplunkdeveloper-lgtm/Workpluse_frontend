@@ -28,6 +28,7 @@ import {
   XCircle,
   Loader2,
   Search,
+  Filter,
   Sparkles,
   CalendarOff,
   Clapperboard,
@@ -59,6 +60,7 @@ const DAY_REASON_LABEL: Record<string, string> = {
 };
 type CorrectionFilter = "PENDING" | "APPROVED" | "REJECTED" | "ALL";
 type RequestFilter = "PENDING" | "APPROVED" | "REJECTED" | "ALL";
+type WorkflowStatus = RequestFilter;
 
 const CORRECTION_FILTERS: { value: CorrectionFilter; label: string }[] = [
   { value: "PENDING", label: "Pending" },
@@ -84,6 +86,52 @@ const isShootCorrection = (correction: any) =>
   String(correction?.attendance?.wfhNote || "")
     .toUpperCase()
     .startsWith("SHOOT:");
+
+const workflowDate = (row: any, category: ApprovalCategory) => {
+  const value =
+    category === "CORRECTIONS"
+      ? row.date || row.attendance?.date
+      : category === "LEAVES"
+        ? row.startDate || row.date
+        : category === "PERMISSIONS"
+          ? row.date
+          : category === "OVERTIME"
+            ? row.attendance?.date || row.date || row.createdAt
+            : category === "EXPENSES"
+              ? row.date || row.expenseDate || row.createdAt
+              : category === "COMPOFF"
+                ? row.referenceDate || row.createdAt
+                : row.date || row.createdAt;
+  return String(value || "").slice(0, 10);
+};
+
+const workflowEmployee = (row: any) =>
+  row.employee || row.compOffBalance?.employee || row.attendance?.employee;
+
+const workflowSearchText = (row: any) =>
+  [
+    personName(workflowEmployee(row)),
+    workflowEmployee(row)?.employeeCode,
+    row.reason,
+    row.note,
+    row.title,
+    row.category,
+    row.shootName,
+    row.location,
+    row.leaveType?.name,
+    row.reasonType,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+const matchesWorkflowStatus = (row: any, status: WorkflowStatus) => {
+  if (status === "ALL") return true;
+  const rowStatus = String(row.status || "PENDING").toUpperCase();
+  return status === "PENDING"
+    ? ["PENDING", "SUBMITTED", "UNDER_REVIEW"].includes(rowStatus)
+    : rowStatus === status;
+};
 
 function StatusBadge({ status }: { status?: string }) {
   const tone =
@@ -223,6 +271,10 @@ export default function ApprovalsInboxView() {
   const [corrCounts, setCorrCounts] = useState<Record<string, number>>({});
   const [corrLoading, setCorrLoading] = useState(false);
   const [corrSearch, setCorrSearch] = useState("");
+  const [workflowSearch, setWorkflowSearch] = useState("");
+  const [workflowStatus, setWorkflowStatus] = useState<WorkflowStatus>("ALL");
+  const [workflowFrom, setWorkflowFrom] = useState("");
+  const [workflowTo, setWorkflowTo] = useState("");
   const [leaves, setLeaves] = useState<any[]>([]);
   const [permissions, setPermissions] = useState<any[]>([]);
   const [overtimes, setOvertimes] = useState<any[]>([]);
@@ -343,15 +395,26 @@ export default function ApprovalsInboxView() {
     loadCorrections(filter);
   };
 
+  const filterWorkflowRows = (rows: any[], category: ApprovalCategory) =>
+    rows.filter((row) => {
+      const date = workflowDate(row, category);
+      const search = workflowSearch.trim().toLowerCase();
+      return (
+        matchesWorkflowStatus(row, workflowStatus) &&
+        (!search || workflowSearchText(row).includes(search)) &&
+        (!workflowFrom || !date || date >= workflowFrom) &&
+        (!workflowTo || !date || date <= workflowTo)
+      );
+    });
+
   const visibleCorrections = useMemo(() => {
     const q = corrSearch.trim().toLowerCase();
-    if (!q) return corrRows;
-    return corrRows.filter((c) =>
-      `${personName(c.employee)} ${c.employee?.employeeCode || ""} ${c.reason || ""}`
+    return filterWorkflowRows(corrRows, "CORRECTIONS").filter((c) =>
+      !q || `${personName(c.employee)} ${c.employee?.employeeCode || ""} ${c.reason || ""}`
         .toLowerCase()
         .includes(q),
     );
-  }, [corrRows, corrSearch]);
+  }, [corrRows, corrSearch, workflowSearch, workflowStatus, workflowFrom, workflowTo]);
 
   const review = async (
     toastId: string,
@@ -529,9 +592,13 @@ export default function ApprovalsInboxView() {
     requestFilter === "ALL"
       ? rows
       : rows.filter((row) => row.status === requestFilter);
-  const visibleLeaves = filterRequests(leaves);
-  const visiblePermissions = filterRequests(permissions);
-  const visibleShoots = filterRequests(shoots);
+  const visibleLeaves = filterWorkflowRows(filterRequests(leaves), "LEAVES");
+  const visiblePermissions = filterWorkflowRows(filterRequests(permissions), "PERMISSIONS");
+  const visibleShoots = filterWorkflowRows(filterRequests(shoots), "SHOOTS");
+  const visibleOvertimes = filterWorkflowRows(overtimes, "OVERTIME");
+  const visibleExpenses = filterWorkflowRows(expenses, "EXPENSES");
+  const visibleCompOffs = filterWorkflowRows(compOffs, "COMPOFF");
+  const visibleDayOffWork = filterWorkflowRows(dayOffWork, "DAYOFF");
   const requestFilters: { value: RequestFilter; label: string }[] = [
     { value: "ALL", label: "All" },
     { value: "PENDING", label: "Pending" },
@@ -641,6 +708,51 @@ export default function ApprovalsInboxView() {
           </button>
         ))}
       </div>
+
+      {isReviewer && (
+        <section className="rounded-2xl border border-indigo-100 bg-indigo-50/45 p-4" aria-label="Approval workflow filters">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
+              <Filter className="h-4 w-4 text-indigo-600" />
+              Find approval work
+            </div>
+            {(workflowSearch || workflowStatus !== "ALL" || workflowFrom || workflowTo) && (
+              <button
+                type="button"
+                onClick={() => { setWorkflowSearch(""); setWorkflowStatus("ALL"); setWorkflowFrom(""); setWorkflowTo(""); }}
+                className="text-xs font-semibold text-indigo-700 hover:text-indigo-900"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+          <div className="grid gap-3 md:grid-cols-[minmax(220px,1.5fr)_minmax(150px,.7fr)_minmax(145px,.65fr)_minmax(145px,.65fr)]">
+            <label className="relative block">
+              <span className="sr-only">Search approvals</span>
+              <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input type="search" value={workflowSearch} onChange={(event) => setWorkflowSearch(event.target.value)} placeholder="Search employee, reason, request..." className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-xs text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" />
+            </label>
+            <label className="block">
+              <span className="sr-only">Workflow status</span>
+              <select value={workflowStatus} onChange={(event) => setWorkflowStatus(event.target.value as WorkflowStatus)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
+                <option value="ALL">All statuses</option>
+                <option value="PENDING">Needs action</option>
+                <option value="APPROVED">Approved</option>
+                <option value="REJECTED">Rejected</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="sr-only">From date</span>
+              <input type="date" value={workflowFrom} onChange={(event) => setWorkflowFrom(event.target.value)} aria-label="Filter approvals from date" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-700 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" />
+            </label>
+            <label className="block">
+              <span className="sr-only">To date</span>
+              <input type="date" value={workflowTo} onChange={(event) => setWorkflowTo(event.target.value)} aria-label="Filter approvals to date" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-700 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" />
+            </label>
+          </div>
+          <p className="mt-2 text-[11px] text-slate-500">Filters apply to the selected approval workflow tab and keep your role-based approval actions unchanged.</p>
+        </section>
+      )}
 
       {/* Tab Panels */}
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -846,7 +958,7 @@ export default function ApprovalsInboxView() {
             </TableShell>
           )
         ) : activeTab === "OVERTIME" ? (
-          overtimes.length === 0 ? (
+          visibleOvertimes.length === 0 ? (
             emptyNote("No pending overtime accumulation claims.")
           ) : (
             <TableShell
@@ -859,7 +971,7 @@ export default function ApprovalsInboxView() {
                 "Action",
               ]}
             >
-              {overtimes.map((ot) => (
+              {visibleOvertimes.map((ot) => (
                 <tr key={ot.id} className={rowClass}>
                   <PersonCell emp={ot.employee} />
                   <td className="whitespace-nowrap px-4 py-4 text-xs font-medium text-slate-700">
@@ -910,13 +1022,13 @@ export default function ApprovalsInboxView() {
             </TableShell>
           )
         ) : activeTab === "EXPENSES" ? (
-          expenses.length === 0 ? (
+          visibleExpenses.length === 0 ? (
             emptyNote("No reimbursement claims pending review.")
           ) : (
             <TableShell
               heads={["Employee", "Date", "Claim", "Amount", "Action"]}
             >
-              {expenses.map((claim) => (
+              {visibleExpenses.map((claim) => (
                 <tr key={claim.id} className={rowClass}>
                   <PersonCell emp={claim.employee} />
                   <td className="whitespace-nowrap px-4 py-4 text-xs font-medium text-slate-700">
@@ -1047,7 +1159,7 @@ export default function ApprovalsInboxView() {
             </TableShell>
           )
         ) : activeTab === "DAYOFF" ? (
-          dayOffWork.length === 0 ? (
+          visibleDayOffWork.length === 0 ? (
             emptyNote(
               "No one is waiting to work on a weekly off, holiday or company leave.",
             )
@@ -1055,7 +1167,7 @@ export default function ApprovalsInboxView() {
             <TableShell
               heads={["Employee", "Day", "Working on", "Details", "Action"]}
             >
-              {dayOffWork.map((req) => (
+              {visibleDayOffWork.map((req) => (
                 <tr key={req.id} className={rowClass}>
                   <PersonCell emp={req.employee} />
                   <td className="whitespace-nowrap px-4 py-4 text-xs">
@@ -1078,11 +1190,11 @@ export default function ApprovalsInboxView() {
               ))}
             </TableShell>
           )
-        ) : compOffs.length === 0 ? (
+        ) : visibleCompOffs.length === 0 ? (
           emptyNote("No comp-off requests pending review.")
         ) : (
           <TableShell heads={["Employee", "Date", "Days", "Reason", "Action"]}>
-            {compOffs.map((tx) => (
+            {visibleCompOffs.map((tx) => (
               <tr key={tx.id} className={rowClass}>
                 <PersonCell emp={tx.compOffBalance?.employee} />
                 <td className="whitespace-nowrap px-4 py-4 text-xs font-medium text-slate-700">
