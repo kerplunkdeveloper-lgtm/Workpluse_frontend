@@ -10,10 +10,6 @@ import { Asset, AssetCategory, AssetCondition, Employee } from "@/types";
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SUB-COMPONENTS: MODALS & DRAWERS
-// ─────────────────────────────────────────────────────────────────────────────
-
 export function AddEditAssetModal({
   asset,
   employees,

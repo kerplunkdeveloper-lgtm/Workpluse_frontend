@@ -1,26 +1,36 @@
-/* WorkPluse web push worker. It runs even when the dashboard tab is closed. */
-self.skipWaiting();
-self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+/* Firebase Cloud Messaging service worker. Keep this file at the site root. */
+importScripts("https://www.gstatic.com/firebasejs/13.2.0/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/13.2.0/firebase-messaging-compat.js");
+
+firebase.initializeApp({
+  apiKey: "AIzaSyBtk4kH5LSvUoy91w5dMbCTW3wZi0jVp-4",
+  authDomain: "workpluse-production.firebaseapp.com",
+  projectId: "workpluse-production",
+  storageBucket: "workpluse-production.firebasestorage.app",
+  messagingSenderId: "234972434015",
+  appId: "1:234972434015:web:6cdb1e5d6888b4668315ea",
 });
 
-self.addEventListener("push", (event) => {
-  let data = {};
-  try {
-    data = event.data ? event.data.json() : {};
-  } catch {
-    data = { body: event.data ? event.data.text() : "You have a new notification." };
-  }
+const messaging = firebase.messaging();
 
-  event.waitUntil(
-    self.registration.showNotification(data.title || "WorkPluse notification", {
-      body: data.body || "You have a new notification.",
-      icon: "/logo-v2-128.png",
-      badge: "/logo-v2-128.png",
-      tag: data.notificationId || "workpulse-notification",
-      data: { url: data.url || "/dashboard" },
-    }),
-  );
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+
+messaging.onBackgroundMessage((payload) => {
+  // FCM already displays payloads containing a notification. Only data-only
+  // messages need a manual notification, otherwise the user sees two alerts.
+  if (payload.notification) return;
+  const title = payload.notification?.title || payload.data?.title || "WorkPluse notification";
+  const body = payload.notification?.body || payload.data?.body || "You have a new notification.";
+  const url = payload.data?.url || "/dashboard";
+
+  return self.registration.showNotification(title, {
+    body,
+    icon: "/logo-v2-128.png",
+    badge: "/logo-v2-128.png",
+    tag: payload.data?.notificationId || "workpulse-notification",
+    data: { url },
+  });
 });
 
 self.addEventListener("notificationclick", (event) => {
