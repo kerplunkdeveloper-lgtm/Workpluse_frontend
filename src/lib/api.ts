@@ -1124,6 +1124,11 @@ export const employeesApi = {
     const res = await api.get("/employees", { params });
     return res.data;
   },
+  /** Birth month/day (no year) and joining date for the dashboard's People moments card. */
+  celebrations: async () => {
+    const res = await api.get("/employees/celebrations");
+    return res.data;
+  },
   exportCsv: async (params?: { status?: string; departmentId?: string; branchId?: string }) => {
     const res = await api.get("/employees/export", { params });
     return res.data;
@@ -1570,6 +1575,25 @@ export const overtimeApi = {
   },
   review: async (id: string, payload: { status: "APPROVED" | "REJECTED"; approvedMinutes?: number; reviewNote?: string }) => {
     const res = await api.patch(`/overtime/${id}/review`, payload);
+    return res.data;
+  },
+};
+
+export const overtimeAllocationApi = {
+  getMine: async (month?: number, year?: number) => {
+    const res = await api.get("/overtime-allocations/my", { params: { month, year } });
+    return res.data;
+  },
+  submit: async (payload: { month: number; year: number; permissionMinutes: number; leaveMinutes: number; compOffMinutes: number; employeeNote?: string }) => {
+    const res = await api.post("/overtime-allocations", payload);
+    return res.data;
+  },
+  getAll: async (params: { month?: number; year?: number; status?: string } = {}) => {
+    const res = await api.get("/overtime-allocations", { params });
+    return res.data;
+  },
+  review: async (id: string, payload: { status: "APPROVED" | "REJECTED"; reviewNote?: string }) => {
+    const res = await api.patch(`/overtime-allocations/${id}/review`, payload);
     return res.data;
   },
 };

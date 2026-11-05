@@ -16,6 +16,7 @@ import {
   type Feature,
   type FeatureId,
 } from "./content";
+import { AnimatedTrend, CountUp, DrawLine, LivePunchFeed, Reveal, Stagger, StaggerItem, TiltOnScroll } from "./motion";
 
 export const WRAP = "mx-auto w-full max-w-[1240px] px-4 sm:px-6 lg:px-8";
 
@@ -62,7 +63,7 @@ function SectionHeading({
   dark?: boolean;
 }) {
   return (
-    <div className={`lp-reveal ${center ? "mx-auto max-w-3xl text-center" : "max-w-2xl"}`}>
+    <Reveal className={center ? "mx-auto max-w-3xl text-center" : "max-w-2xl"}>
       <Eyebrow dark={dark}>{eyebrow}</Eyebrow>
       <h2
         className={`mt-4 text-balance text-3xl font-extrabold leading-[1.1] tracking-[-0.035em] sm:text-4xl lg:text-[2.85rem] ${
@@ -80,15 +81,36 @@ function SectionHeading({
           {body}
         </p>
       )}
-    </div>
+    </Reveal>
   );
 }
 
+const SERIF_CLASSES =
+  "font-display font-normal italic tracking-[-0.02em] bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-700 bg-clip-text text-transparent";
+
 const Serif = ({ children }: { children: React.ReactNode }) => (
-  <span className="font-display font-normal italic tracking-[-0.02em] bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-700 bg-clip-text text-transparent">
-    {children}
-  </span>
+  <span className={SERIF_CLASSES}>{children}</span>
 );
+
+/**
+ * Word-by-word headline entrance. Pure CSS (no hydration needed). The gradient is
+ * applied per word: background-clip:text breaks on children that have transforms.
+ */
+function AnimatedWords({ text, start = 0, className }: { text: string; start?: number; className?: string }) {
+  return (
+    <>
+      {text.split(" ").map((word, index) => (
+        <React.Fragment key={`${word}-${index}`}>
+          <span className={`lp-word ${className ?? ""}`} style={{ "--d": `${(start + index) * 75}ms` } as React.CSSProperties}>
+            {word}
+          </span>{" "}
+        </React.Fragment>
+      ))}
+    </>
+  );
+}
+
+const delay = (ms: number) => ({ "--d": `${ms}ms` }) as React.CSSProperties;
 
 /* ── Hero ─────────────────────────────────────────────────────────────────── */
 
@@ -105,12 +127,22 @@ export function Hero() {
         className="pointer-events-none absolute left-1/2 top-48 -z-10 h-[480px] w-[850px] -translate-x-1/2 rounded-full bg-gradient-to-tr from-indigo-500/10 via-purple-500/10 to-pink-500/5 blur-[120px]"
       />
       <div aria-hidden="true" className="lp-grid absolute inset-x-0 top-0 -z-10 h-[720px] opacity-70" />
+      {/* Slowly drifting colour fields give the hero depth without a video or canvas. */}
+      <div
+        aria-hidden="true"
+        className="lp-drift pointer-events-none absolute -left-24 top-24 -z-10 h-72 w-72 rounded-full bg-sky-400/20 blur-[90px]"
+      />
+      <div
+        aria-hidden="true"
+        className="lp-drift-slow pointer-events-none absolute -right-20 top-40 -z-10 h-80 w-80 rounded-full bg-violet-500/20 blur-[100px]"
+      />
 
       <div className={`${WRAP} text-center`}>
         {/* Release / Announcement pill */}
         <Link
           href="#features"
-          className="group mx-auto inline-flex items-center gap-2.5 rounded-full bg-white/90 p-1 pr-4 text-xs font-medium text-slate-700 ring-1 ring-slate-900/10 shadow-[0_2px_8px_rgba(15,23,42,0.06)] backdrop-blur-md transition-all duration-300 hover:ring-indigo-500/30 hover:shadow-md"
+          style={delay(0)}
+          className="lp-in group mx-auto inline-flex items-center gap-2.5 rounded-full bg-white/90 p-1 pr-4 text-xs font-medium text-slate-700 ring-1 ring-slate-900/10 shadow-[0_2px_8px_rgba(15,23,42,0.06)] backdrop-blur-md transition-all duration-300 hover:ring-indigo-500/30 hover:shadow-md"
         >
           <span className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-indigo-600 to-indigo-500 px-3 py-0.5 text-[11px] font-bold text-white shadow-sm shadow-indigo-500/30">
             <span className="text-xs leading-none" role="img" aria-label="India flag">🇮🇳</span>
@@ -124,21 +156,21 @@ export function Hero() {
 
         {/* Hero Headline */}
         <h1 className="mx-auto mt-8 max-w-4xl text-balance text-4xl font-extrabold leading-[1.04] tracking-[-0.04em] text-slate-950 sm:text-6xl lg:text-[4.85rem]">
-          <span>{HERO.headline[0]}</span>
+          <AnimatedWords text={HERO.headline[0]} start={2} />
           <br />
-          <Serif>{HERO.headline[1]}</Serif>
+          <AnimatedWords text={HERO.headline[1]} start={2 + HERO.headline[0].split(" ").length} className={SERIF_CLASSES} />
         </h1>
 
         {/* Subtitle */}
-        <p className="mx-auto mt-6 max-w-2xl text-pretty text-base leading-relaxed text-slate-600 sm:text-lg lg:text-xl">
+        <p style={delay(700)} className="lp-in mx-auto mt-6 max-w-2xl text-pretty text-base leading-relaxed text-slate-600 sm:text-lg lg:text-xl">
           {HERO.subhead}
         </p>
 
         {/* CTAs */}
-        <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-5">
+        <div style={delay(850)} className="lp-in mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-5">
           <Link
             href={HERO.primaryCta.href}
-            className="group relative inline-flex h-13 w-full max-w-xs items-center justify-center gap-2.5 overflow-hidden rounded-full bg-slate-950 px-8 text-base font-semibold text-white shadow-[0_8px_24px_-6px_rgba(15,23,42,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] transition-all duration-200 hover:bg-slate-800 active:scale-[0.98] sm:w-auto"
+            className="lp-sheen group relative inline-flex h-13 w-full max-w-xs items-center justify-center gap-2.5 overflow-hidden rounded-full bg-slate-950 px-8 text-base font-semibold text-white shadow-[0_8px_24px_-6px_rgba(15,23,42,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] transition-all duration-200 hover:bg-slate-800 active:scale-[0.98] sm:w-auto"
           >
             <span>{HERO.primaryCta.label}</span>
             <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
@@ -154,7 +186,7 @@ export function Hero() {
         </div>
 
         {/* Trust Badges */}
-        <ul className="mx-auto mt-10 flex max-w-3xl flex-wrap items-center justify-center gap-x-5 gap-y-3 text-xs font-semibold text-slate-600 sm:text-sm">
+        <ul style={delay(1000)} className="lp-in mx-auto mt-10 flex max-w-3xl flex-wrap items-center justify-center gap-x-5 gap-y-3 text-xs font-semibold text-slate-600 sm:text-sm">
           {HERO.trustPoints.map((t) => (
             <li
               key={t}
@@ -228,6 +260,43 @@ const PUNCHES = [
     tone: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
     avatar: "bg-purple-100 text-purple-800",
   },
+  // Extra entries the live feed cycles through.
+  {
+    initials: "MN",
+    name: "Meera Nair",
+    place: "Whitefield campus",
+    time: "09:29",
+    status: "Verified GPS",
+    tone: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
+    avatar: "bg-rose-100 text-rose-700",
+  },
+  {
+    initials: "AK",
+    name: "Arjun Kapoor",
+    place: "Noida hub",
+    time: "09:33",
+    status: "Synced Offline",
+    tone: "bg-amber-50 text-amber-700 ring-amber-600/20",
+    avatar: "bg-sky-100 text-sky-800",
+  },
+  {
+    initials: "SP",
+    name: "Sana Pathan",
+    place: "Bhiwandi warehouse",
+    time: "09:38",
+    status: "Late 4m (Grace)",
+    tone: "bg-sky-50 text-sky-700 ring-sky-600/20",
+    avatar: "bg-amber-100 text-amber-800",
+  },
+  {
+    initials: "DG",
+    name: "Dev Gupta",
+    place: "Pune plant",
+    time: "09:41",
+    status: "Verified GPS",
+    tone: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
+    avatar: "bg-indigo-100 text-indigo-700",
+  },
 ];
 
 export function DashboardPreview() {
@@ -248,7 +317,8 @@ function ProductPreview() {
         className="pointer-events-none absolute inset-x-[10%] top-12 -z-10 h-[70%] rounded-full bg-gradient-to-r from-indigo-500/15 via-purple-500/10 to-cyan-500/10 blur-[100px]"
       />
 
-      {/* Main Preview Container */}
+      {/* Main Preview Container: settles flat as it scrolls into view */}
+      <TiltOnScroll>
       <div className="rounded-[24px] bg-white/70 p-2 ring-1 ring-slate-900/[0.08] shadow-[0_25px_70px_-20px_rgba(15,23,42,0.18)] backdrop-blur-xl sm:rounded-[32px] sm:p-3">
         <div className="overflow-hidden rounded-[18px] bg-white text-left ring-1 ring-slate-900/10 shadow-sm sm:rounded-[24px]">
           {/* macOS styled window bar */}
@@ -341,21 +411,21 @@ function ProductPreview() {
                 {[
                   {
                     label: "Present Today",
-                    value: "98.2%",
+                    value: <CountUp to={98.2} decimals={1} suffix="%" />,
                     sub: "835 of 850 punched in",
                     accent: "text-emerald-600",
                     border: "border-slate-200/80 bg-slate-50/50",
                   },
                   {
                     label: "On-Time Punches",
-                    value: "94.6%",
+                    value: <CountUp to={94.6} decimals={1} suffix="%" />,
                     sub: "Only 12 late marks",
                     accent: "text-indigo-600",
                     border: "border-slate-200/80 bg-slate-50/50",
                   },
                   {
                     label: "Approved Leaves",
-                    value: "15",
+                    value: <CountUp to={15} />,
                     sub: "3 emergency covers",
                     accent: "text-amber-600",
                     border: "border-slate-200/80 bg-slate-50/50",
@@ -396,7 +466,7 @@ function ProductPreview() {
                   </div>
 
                   <p className="mt-3 text-3xl font-extrabold tracking-tight tabular-nums text-slate-950">
-                    99.4%
+                    <CountUp to={99.4} decimals={1} suffix="%" />
                   </p>
 
                   <svg
@@ -422,23 +492,7 @@ function ProductPreview() {
                         strokeWidth="1"
                       />
                     ))}
-                    <path d={area} fill="url(#lp-hero-trend-fill-light)" />
-                    <path
-                      d={line}
-                      fill="none"
-                      stroke="#4f46e5"
-                      strokeWidth="2.5"
-                      strokeLinejoin="round"
-                      strokeLinecap="round"
-                    />
-                    <circle
-                      cx={last[0]}
-                      cy={last[1]}
-                      r="4.5"
-                      fill="#4f46e5"
-                      stroke="#ffffff"
-                      strokeWidth="2"
-                    />
+                    <AnimatedTrend line={line} area={area} last={[last[0], last[1]]} />
                   </svg>
                 </div>
 
@@ -448,37 +502,14 @@ function ProductPreview() {
                     <p className="text-xs font-semibold text-slate-900">Live Punch Feed</p>
                     <span className="text-[11px] font-medium text-indigo-600">Auto-refreshing</span>
                   </div>
-                  <ul className="mt-3 space-y-2.5">
-                    {PUNCHES.map((p) => (
-                      <li
-                        key={p.name}
-                        className="flex items-center gap-2.5 rounded-xl bg-slate-50/60 p-2 ring-1 ring-slate-100"
-                      >
-                        <span
-                          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold ${p.avatar}`}
-                        >
-                          {p.initials}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-semibold text-slate-900">{p.name}</p>
-                          <p className="truncate text-[10px] text-slate-500">
-                            {p.place} • {p.time}
-                          </p>
-                        </div>
-                        <span
-                          className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold ring-1 ${p.tone}`}
-                        >
-                          {p.status}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                  <LivePunchFeed items={PUNCHES} />
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+      </TiltOnScroll>
 
       {/* Floating Callout Badges with micro-motion */}
       <div
@@ -509,7 +540,7 @@ function ProductPreview() {
           </span>
         </div>
         <p className="mt-2 text-2xl font-bold tracking-tight text-slate-950 tabular-nums">
-          ₹24,85,400
+          <CountUp to={2485400} prefix="₹" duration={2.2} />
         </p>
         <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
           <div className="h-full w-[100%] rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500" />
@@ -522,6 +553,18 @@ function ProductPreview() {
 
 /* ── Industries ───────────────────────────────────────────────────────────── */
 
+function IndustryChip({ item, copy = false }: { item: (typeof INDUSTRIES)[number]; copy?: boolean }) {
+  return (
+    <li
+      {...(copy ? { "aria-hidden": true, "data-marquee-copy": "" } : {})}
+      className="group flex shrink-0 items-center gap-2.5 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-900/[0.07] shadow-xs transition-all duration-200 hover:shadow-md hover:ring-indigo-500/30 hover:text-indigo-600"
+    >
+      <item.icon className="h-4 w-4 text-indigo-600 transition-colors group-hover:text-indigo-700" aria-hidden="true" />
+      <span>{item.label}</span>
+    </li>
+  );
+}
+
 export function ProofBar() {
   return (
     <section
@@ -533,20 +576,17 @@ export function ProofBar() {
         <p className="text-center text-xs font-semibold tracking-widest text-slate-500 uppercase">
           Built for fast-moving field & floor teams across India
         </p>
-        <ul className="mt-8 flex flex-wrap items-center justify-center gap-x-4 gap-y-3 sm:gap-x-6">
-          {INDUSTRIES.map((item) => (
-            <li
-              key={item.label}
-              className="group flex items-center gap-2.5 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-900/[0.07] shadow-xs transition-all duration-200 hover:shadow-md hover:ring-indigo-500/30 hover:text-indigo-600"
-            >
-              <item.icon
-                className="h-4 w-4 text-indigo-600 transition-colors group-hover:text-indigo-700"
-                aria-hidden="true"
-              />
-              <span>{item.label}</span>
-            </li>
-          ))}
-        </ul>
+        {/* Endless strip; the second copy is hidden from assistive tech and from reduced-motion users. */}
+        <div className="lp-marquee mt-8">
+          <ul className="lp-marquee-track items-center">
+            {INDUSTRIES.map((item) => (
+              <IndustryChip key={item.label} item={item} />
+            ))}
+            {INDUSTRIES.map((item) => (
+              <IndustryChip key={`copy-${item.label}`} item={item} copy />
+            ))}
+          </ul>
+        </div>
       </div>
     </section>
   );
@@ -576,17 +616,17 @@ export function Features() {
               </>
             }
           />
-          <p className="lp-reveal max-w-md text-pretty text-base leading-relaxed text-slate-600 lg:pb-1">
+          <Reveal delay={0.1} className="max-w-md text-pretty text-base leading-relaxed text-slate-600 lg:pb-1">
             Built specifically to eliminate buddy punching, handle poor connectivity, and run
             Indian statutory payroll with zero errors.
-          </p>
+          </Reveal>
         </div>
 
-        <div className="mt-16 grid gap-5 sm:grid-cols-2 lg:grid-cols-6">
+        <Stagger className="mt-16 grid gap-5 sm:grid-cols-2 lg:grid-cols-6" gap={0.1}>
           {FEATURES.map((f) => (
             <FeatureCard key={f.id} feature={f} className={FEATURE_LAYOUT[f.id]} />
           ))}
-        </div>
+        </Stagger>
       </div>
     </section>
   );
@@ -595,8 +635,11 @@ export function Features() {
 function FeatureCard({ feature, className }: { feature: Feature; className: string }) {
   const wide = feature.id === "geofence" || feature.id === "shifts";
   return (
+    // The motion wrapper must not carry CARD_WHITE: its `transition-all` would
+    // smooth every frame of the entrance animation and make it feel laggy.
+    <StaggerItem spotlight className={`min-w-0 ${className}`}>
     <article
-      className={`lp-reveal group flex min-w-0 flex-col overflow-hidden p-3 ${CARD_WHITE} ${className}`}
+      className={`group flex h-full min-w-0 flex-col overflow-hidden p-3 ${CARD_WHITE}`}
     >
       <div
         aria-hidden="true"
@@ -618,6 +661,7 @@ function FeatureCard({ feature, className }: { feature: Feature; className: stri
         </p>
       </div>
     </article>
+    </StaggerItem>
   );
 }
 
@@ -658,8 +702,11 @@ function FeatureVisual({ id }: { id: FeatureId }) {
 
           {/* Central Office Pin */}
           <div className="absolute left-1/2 top-[50%] flex -translate-x-1/2 -translate-y-1/2 flex-col items-center">
-            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-xl shadow-indigo-600/40 ring-4 ring-white">
-              <MapPin className="h-6 w-6" />
+            <span className="relative">
+              <span className="animate-lp-radar absolute inset-0 rounded-2xl bg-indigo-500/50" />
+              <span className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-xl shadow-indigo-600/40 ring-4 ring-white">
+                <MapPin className="h-6 w-6" />
+              </span>
             </span>
             <span className="mt-2 rounded-full bg-slate-900 px-3 py-1 text-[11px] font-bold text-white shadow-md">
               Andheri Office • 150m Radius
@@ -896,15 +943,17 @@ export function Workflow() {
           body="Everything works from the same single source of truth, so your HR team saves 15+ hours every month on attendance reconciliation."
         />
 
-        <ol className="relative mt-16 grid gap-6 md:grid-cols-3">
+        <Stagger as="ol" className="relative mt-16 grid gap-6 md:grid-cols-3" gap={0.22} delay={0.15}>
+          {/* Track + a gradient line that draws itself across the three steps */}
           <span
             aria-hidden="true"
             className="absolute left-[16%] right-[16%] top-[2.5rem] hidden border-t-2 border-dashed border-indigo-200 md:block"
           />
+          <DrawLine className="absolute left-[16%] right-[16%] top-[calc(2.5rem-1px)] hidden h-0.5 rounded-full bg-gradient-to-r from-indigo-300 via-indigo-500 to-violet-500 md:block" />
           {WORKFLOW.map((step, i) => (
-            <li
-              key={step.number}
-              className={`lp-reveal relative flex flex-col p-7 ${CARD_WHITE}`}
+            <StaggerItem as="li" key={step.number} className="relative">
+            <div
+              className={`relative flex h-full flex-col p-7 ${CARD_WHITE}`}
             >
               <div className="flex items-center justify-between">
                 <span className="relative z-10 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 to-indigo-500 font-mono text-base font-extrabold text-white shadow-lg shadow-indigo-600/30">
@@ -928,9 +977,10 @@ export function Workflow() {
                   </li>
                 ))}
               </ul>
-            </li>
+            </div>
+            </StaggerItem>
           ))}
-        </ol>
+        </Stagger>
 
         <div className="mt-12 text-center">
           <Link
@@ -963,7 +1013,7 @@ export function Offline() {
           />
 
           <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:gap-16">
-            <div className="lp-reveal">
+            <Reveal>
               <Eyebrow dark>{OFFLINE.eyebrow}</Eyebrow>
               <h2 className="mt-5 text-balance text-3xl font-extrabold leading-[1.12] tracking-[-0.035em] sm:text-4xl lg:text-5xl">
                 Punch in from a basement.{" "}
@@ -1002,7 +1052,7 @@ export function Offline() {
                   <p className="text-xs text-slate-400">Encrypted Local Storage</p>
                 </div>
               </div>
-            </div>
+            </Reveal>
 
             <PhoneMock />
           </div>
@@ -1014,7 +1064,8 @@ export function Offline() {
 
 function PhoneMock() {
   return (
-    <div aria-hidden="true" className="lp-reveal relative mx-auto w-full max-w-[320px]">
+    <Reveal delay={0.15} className="relative mx-auto w-full max-w-[320px]">
+    <div aria-hidden="true" className="animate-lp-float">
       <div className="rounded-[3rem] bg-slate-950 p-3 shadow-[0_30px_70px_rgba(0,0,0,0.8)] ring-2 ring-white/15">
         <div className="relative overflow-hidden rounded-[2.4rem] bg-slate-900 ring-1 ring-white/10">
           {/* Phone Top Notch */}
@@ -1060,9 +1111,10 @@ function PhoneMock() {
               ))}
             </div>
           </div>
-        </div>
-      </div>
     </div>
+    </div>
+    </div>
+    </Reveal>
   );
 }
 
@@ -1161,16 +1213,14 @@ export function Pricing({
         )}
 
         {plans.length > 0 && (
-          <div
-            className={`mt-14 grid items-stretch gap-6 md:grid-cols-2 ${cols}`}
-            aria-live="polite"
-          >
+          <Stagger className={`mt-14 grid items-stretch gap-6 md:grid-cols-2 ${cols}`} gap={0.12}>
+            <div className="contents" aria-live="polite">
             {plans.map((p) => {
               const dark = !!p.popular;
               return (
+                <StaggerItem key={p.id} className="h-full min-w-0">
                 <article
-                  key={p.id}
-                  className={`relative flex min-w-0 flex-col rounded-3xl p-7 transition-all duration-300 ${
+                  className={`relative flex h-full min-w-0 flex-col rounded-3xl p-7 transition-all duration-300 ${
                     dark
                       ? "bg-slate-950 text-white shadow-[0_24px_60px_-15px_rgba(79,70,229,0.35)] ring-2 ring-indigo-500 scale-[1.02] z-10"
                       : "bg-white text-slate-900 ring-1 ring-slate-900/[0.08] shadow-sm hover:shadow-xl hover:-translate-y-1"
@@ -1270,9 +1320,11 @@ export function Pricing({
                     ))}
                   </ul>
                 </article>
+                </StaggerItem>
               );
             })}
-          </div>
+            </div>
+          </Stagger>
         )}
 
         <div className="mt-12 text-center">
@@ -1328,9 +1380,10 @@ export function Security() {
               </>
             }
           />
+          <Stagger gap={0.14}>
           <dl className="mt-10 space-y-8">
             {SECURITY.map((s) => (
-              <div key={s.title} className="lp-reveal flex gap-4">
+              <StaggerItem key={s.title} className="flex gap-4">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-500/20 shadow-xs">
                   <s.icon className="h-5 w-5" aria-hidden="true" />
                 </span>
@@ -1340,12 +1393,14 @@ export function Security() {
                     {s.body}
                   </dd>
                 </div>
-              </div>
+              </StaggerItem>
             ))}
           </dl>
+          </Stagger>
         </div>
 
-        <div aria-hidden="true" className={`lp-reveal p-3 ${CARD_WHITE}`}>
+        <Reveal delay={0.1}>
+        <div aria-hidden="true" className={`p-3 ${CARD_WHITE}`}>
           <div className="rounded-2xl bg-slate-50 p-6 ring-1 ring-slate-900/[0.04]">
             <div className="flex items-center justify-between">
               <div>
@@ -1357,9 +1412,10 @@ export function Security() {
               </span>
             </div>
 
-            <ul className="mt-6 space-y-3">
+            <Stagger as="ul" className="mt-6 space-y-3" gap={0.15} delay={0.3}>
               {AUDIT.map((a) => (
-                <li
+                <StaggerItem
+                  as="li"
                   key={a.text}
                   className="flex items-center gap-3 rounded-xl bg-white p-3.5 shadow-sm ring-1 ring-slate-200/80"
                 >
@@ -1370,9 +1426,9 @@ export function Security() {
                   </span>
                   <p className="min-w-0 flex-1 text-xs font-semibold text-slate-800">{a.text}</p>
                   <span className="shrink-0 font-mono text-[11px] text-slate-400">{a.time}</span>
-                </li>
+                </StaggerItem>
               ))}
-            </ul>
+            </Stagger>
 
             <div className="mt-5 grid grid-cols-3 gap-2.5 text-center">
               {["AES-256 Storage", "Role-Based Access", "Tenant Isolated"].map((t) => (
@@ -1386,6 +1442,7 @@ export function Security() {
             </div>
           </div>
         </div>
+        </Reveal>
       </div>
     </section>
   );
@@ -1444,7 +1501,7 @@ export function FAQ() {
 export function CtaBand() {
   return (
     <section className="bg-white py-20 sm:py-32 relative isolate border-t border-slate-200/80">
-      <div className={WRAP}>
+      <Reveal className={WRAP} y={40}>
         <div className="relative isolate overflow-hidden rounded-[36px] bg-gradient-to-b from-slate-950 via-[#0d1230] to-slate-950 px-8 py-16 text-center shadow-[0_40px_100px_-20px_rgba(15,23,42,0.6)] ring-1 ring-slate-900 sm:px-16 sm:py-24">
           <div aria-hidden="true" className="lp-grid-dark absolute inset-0 -z-10 opacity-50" />
           <div
@@ -1466,7 +1523,7 @@ export function CtaBand() {
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6">
             <Link
               href="/register"
-              className="group relative inline-flex h-13 w-full max-w-xs items-center justify-center gap-2 overflow-hidden rounded-full bg-white px-8 text-base font-bold text-slate-950 shadow-xl transition-all duration-300 hover:bg-slate-100 active:scale-[0.98] sm:w-auto"
+              className="lp-sheen group relative inline-flex h-13 w-full max-w-xs items-center justify-center gap-2 overflow-hidden rounded-full bg-white px-8 text-base font-bold text-slate-950 shadow-xl transition-all duration-300 hover:bg-slate-100 active:scale-[0.98] sm:w-auto"
             >
               <span>Create Your Free Workspace</span>
               <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
@@ -1481,7 +1538,7 @@ export function CtaBand() {
             </Link>
           </div>
         </div>
-      </div>
+      </Reveal>
     </section>
   );
 }

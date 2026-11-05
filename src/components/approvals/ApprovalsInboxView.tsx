@@ -7,6 +7,7 @@ import {
   leavesApi,
   permissionsApi,
   overtimeApi,
+  overtimeAllocationApi,
   expensesApi,
   compOffApi,
   dayOffWorkApi,
@@ -47,6 +48,7 @@ type ApprovalCategory =
   | "LEAVES"
   | "PERMISSIONS"
   | "OVERTIME"
+  | "OT_ALLOCATIONS"
   | "EXPENSES"
   | "COMPOFF"
   | "DAYOFF"
@@ -150,6 +152,7 @@ const APPROVAL_LABELS: Record<ApprovalCategory, string> = {
   LEAVES: "Leave request",
   PERMISSIONS: "Permission request",
   OVERTIME: "Overtime request",
+  OT_ALLOCATIONS: "Monthly overtime choice",
   EXPENSES: "Expense claim",
   COMPOFF: "Comp-off request",
   DAYOFF: "Day-off work",
@@ -335,7 +338,6 @@ export default function ApprovalsInboxView() {
       "COMPOFF",
       "DAYOFF",
       "SHOOTS",
-      "SHOOT_SETTLEMENTS",
       "WORK_FROM_HOME",
     ].includes(requestedTab)
       ? requestedTab
@@ -358,6 +360,7 @@ export default function ApprovalsInboxView() {
   const [leaves, setLeaves] = useState<any[]>([]);
   const [permissions, setPermissions] = useState<any[]>([]);
   const [overtimes, setOvertimes] = useState<any[]>([]);
+  const [overtimeAllocations, setOvertimeAllocations] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [compOffs, setCompOffs] = useState<any[]>([]);
   const [dayOffWork, setDayOffWork] = useState<any[]>([]);
@@ -383,11 +386,11 @@ export default function ApprovalsInboxView() {
         "LEAVES",
         "PERMISSIONS",
         "OVERTIME",
+        "OT_ALLOCATIONS",
         "EXPENSES",
         "COMPOFF",
         "DAYOFF",
         "SHOOTS",
-        "SHOOT_SETTLEMENTS",
         "WORK_FROM_HOME",
       ].includes(requestedTab)
     )
@@ -423,6 +426,7 @@ export default function ApprovalsInboxView() {
         leaveRes,
         permissionRes,
         otRes,
+        otAllocationRes,
         expRes,
         compRes,
         dayOffRes,
@@ -436,6 +440,7 @@ export default function ApprovalsInboxView() {
           ? permissionsApi.list({ status: "ALL" })
           : permissionsApi.my(),
         isReviewer ? overtimeApi.getAll({ status: "ALL" }) : overtimeApi.getMy(),
+        isReviewer ? overtimeAllocationApi.getAll({ status: "ALL" }) : Promise.resolve(null),
         expensesApi.getAllClaims(),
         isReviewer ? compOffApi.getAll() : compOffApi.getHistory(),
         dayOffWorkApi.getRequests({ status: "ALL" }),
@@ -458,6 +463,8 @@ export default function ApprovalsInboxView() {
       if (otRes.status === "fulfilled") {
         setOvertimes(unwrapList(otRes.value));
       }
+      if (otAllocationRes.status === "fulfilled" && otAllocationRes.value)
+        setOvertimeAllocations(unwrapList(otAllocationRes.value));
       if (expRes.status === "fulfilled") {
         setExpenses(unwrapList(expRes.value));
       }
@@ -674,6 +681,19 @@ export default function ApprovalsInboxView() {
     status: "APPROVED" | "REJECTED",
     minutes: number,
   ) => {
+    if (kind === "TRAVEL" && status === "APPROVED") {
+      const enteredHours = window.prompt(
+        "Enter approved travel OT hours (for example, 2.5 = 2h 30m). You can correct this later.",
+        minutes > 0 ? String(minutes / 60) : "0",
+      );
+      if (enteredHours === null) return;
+      const hours = Number(enteredHours);
+      if (!Number.isFinite(hours) || hours < 0) {
+        toast.error("Enter a valid non-negative travel OT amount.");
+        return;
+      }
+      minutes = Math.round(hours * 60);
+    }
     const reviewNote = status === "REJECTED"
       ? window.prompt(`Reason for rejecting ${kind.toLowerCase()} overtime`)
       : undefined;
@@ -719,6 +739,7 @@ export default function ApprovalsInboxView() {
     leaves.filter((row) => row.status === "PENDING").length +
     permissions.filter((row) => row.status === "PENDING").length +
     overtimes.filter((row) => row.status === "PENDING").length +
+    overtimeAllocations.filter((row) => row.status === "PENDING").length +
     expenses.filter((row) => ["PENDING", "SUBMITTED", "UNDER_REVIEW"].includes(String(row.status))).length +
     compOffs.filter((row) => row.status === "PENDING").length +
     dayOffWork.filter((row) => row.status === "PENDING").length +
@@ -736,6 +757,7 @@ export default function ApprovalsInboxView() {
   const visibleShootSettlements = filterWorkflowRows(filterRequests(shootSettlements), "SHOOT_SETTLEMENTS");
   const visibleWorkFromHome = filterWorkflowRows(filterRequests(workFromHomeRequests), "WORK_FROM_HOME");
   const visibleOvertimes = filterWorkflowRows(filterRequests(overtimes), "OVERTIME");
+  const visibleOvertimeAllocations = filterWorkflowRows(filterRequests(overtimeAllocations), "OT_ALLOCATIONS");
   const visibleExpenses = filterWorkflowRows(filterRequests(expenses), "EXPENSES");
   const visibleCompOffs = filterWorkflowRows(filterRequests(compOffs), "COMPOFF");
   const visibleDayOffWork = filterWorkflowRows(filterRequests(dayOffWork), "DAYOFF");
@@ -747,6 +769,8 @@ export default function ApprovalsInboxView() {
         ? visiblePermissions
         : activeTab === "OVERTIME"
           ? visibleOvertimes
+      : activeTab === "OT_ALLOCATIONS"
+        ? visibleOvertimeAllocations
           : activeTab === "EXPENSES"
             ? visibleExpenses
             : activeTab === "COMPOFF"
@@ -797,12 +821,6 @@ export default function ApprovalsInboxView() {
       count: shoots.filter((row) => row.status === "PENDING").length,
     },
     {
-      key: "SHOOT_SETTLEMENTS",
-      label: "Shoot settlements",
-      icon: Clapperboard,
-      count: shootSettlements.filter((row) => row.status === "PENDING").length,
-    },
-    {
       key: "WORK_FROM_HOME",
       label: "Work from home",
       icon: Home,
@@ -827,6 +845,12 @@ export default function ApprovalsInboxView() {
       count: overtimes.filter((row) => row.status === "PENDING").length,
     },
     {
+      key: "OT_ALLOCATIONS",
+      label: "Monthly OT choices",
+      icon: Wallet,
+      count: overtimeAllocations.filter((row) => row.status === "PENDING").length,
+    },
+    {
       key: "EXPENSES",
       label: "Expense Claims",
       icon: Wallet,
@@ -849,6 +873,15 @@ export default function ApprovalsInboxView() {
   const emptyNote = (text: string) => (
     <div className="py-12 text-center text-xs text-slate-500">{text}</div>
   );
+
+  const handleReviewOvertimeAllocation = (id: string, status: "APPROVED" | "REJECTED") =>
+    review(
+      "overtime-allocation-act",
+      "Saving monthly overtime choice...",
+      (st) => `Monthly overtime choice ${st.toLowerCase()}!`,
+      () => overtimeAllocationApi.review(id, { status, reviewNote: "Reviewed in approvals inbox" }),
+      status,
+    );
 
   return (
     <div className="space-y-6">
@@ -1213,6 +1246,25 @@ export default function ApprovalsInboxView() {
               ))}
             </TableShell>
           )
+        ) : activeTab === "OT_ALLOCATIONS" ? (
+          visibleOvertimeAllocations.length === 0 ? (
+            emptyNote("No monthly overtime choices for this filter.")
+          ) : (
+            <TableShell heads={["Employee", "Month", "Approved OT", "Permission", "Leave", "Comp-off", "Cash payroll", "Action"]}>
+              {visibleOvertimeAllocations.map((allocation) => (
+                <tr key={allocation.id} className={rowClass}>
+                  <PersonCell emp={allocation.employee} />
+                  <td className="whitespace-nowrap px-4 py-4 text-xs font-medium text-slate-700">{allocation.month}/{allocation.year}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-xs font-semibold text-indigo-700">{minutesLabel(allocation.approvedMinutes)}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-600">{minutesLabel(allocation.permissionMinutes)}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-600">{minutesLabel(allocation.leaveMinutes)}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-600">{minutesLabel(allocation.compOffMinutes)}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-xs font-bold text-emerald-700">{minutesLabel(allocation.cashMinutes)}</td>
+                  <td className="px-4 py-4 text-right">{allocation.status === "PENDING" ? <ActionCell onApprove={() => handleReviewOvertimeAllocation(allocation.id, "APPROVED")} onReject={() => handleReviewOvertimeAllocation(allocation.id, "REJECTED")} /> : <StatusBadge status={allocation.status} />}</td>
+                </tr>
+              ))}
+            </TableShell>
+          )
         ) : activeTab === "EXPENSES" ? (
           visibleExpenses.length === 0 ? (
             emptyNote("No reimbursement claims pending review.")
@@ -1386,10 +1438,10 @@ export default function ApprovalsInboxView() {
                         <button type="button" onClick={() => handleReviewShootSettlementOvertime(settlement.id, "SHOOT", "APPROVED", Number(settlement.shootOvertimeMinutes || 0))} className="font-bold text-emerald-700 hover:underline">Approve</button>
                         <button type="button" onClick={() => handleReviewShootSettlementOvertime(settlement.id, "SHOOT", "REJECTED", 0)} className="font-bold text-rose-700 hover:underline">Reject</button>
                       </div>}
-                      {settlement.travelOvertimeStatus === "PENDING" && <div className="flex items-center justify-end gap-2 text-[11px]">
-                        <span className="font-semibold text-orange-700">Travel OT {minutesLabel(settlement.travelOvertimeMinutes)}</span>
-                        <button type="button" onClick={() => handleReviewShootSettlementOvertime(settlement.id, "TRAVEL", "APPROVED", Number(settlement.travelOvertimeMinutes || 0))} className="font-bold text-emerald-700 hover:underline">Approve</button>
-                        <button type="button" onClick={() => handleReviewShootSettlementOvertime(settlement.id, "TRAVEL", "REJECTED", 0)} className="font-bold text-rose-700 hover:underline">Reject</button>
+                      {settlement.travelOvertimeStatus !== "REJECTED" && settlement.status !== "REJECTED" && <div className="flex items-center justify-end gap-2 text-[11px]">
+                        <span className="font-semibold text-orange-700">Travel {minutesLabel(settlement.travelMinutes)} · approved OT {minutesLabel(settlement.approvedTravelOtMinutes || 0)}</span>
+                        <button type="button" onClick={() => handleReviewShootSettlementOvertime(settlement.id, "TRAVEL", "APPROVED", Number(settlement.approvedTravelOtMinutes || 0))} className="font-bold text-emerald-700 hover:underline">{settlement.travelOvertimeStatus === "APPROVED" ? "Correct OT" : "Enter OT"}</button>
+                        {settlement.travelOvertimeStatus === "PENDING" && <button type="button" onClick={() => handleReviewShootSettlementOvertime(settlement.id, "TRAVEL", "REJECTED", 0)} className="font-bold text-rose-700 hover:underline">Reject</button>}
                       </div>}
                       {settlement.status !== "PENDING" && settlement.shootOvertimeStatus !== "PENDING" && settlement.travelOvertimeStatus !== "PENDING" && <StatusBadge status={settlement.status} />}
                     </div>

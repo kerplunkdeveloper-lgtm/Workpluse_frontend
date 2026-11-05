@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { confetti } from "@/lib/confetti";
 import DatePicker from "@/components/ui/DatePicker";
 import Modal from "@/components/ui/Modal";
+import OvertimeAllocationPanel from "@/components/overtime/OvertimeAllocationPanel";
 
 export default function OvertimeAndCompOffView() {
   const [balance, setBalance] = useState<number>(0);
@@ -147,6 +148,7 @@ export default function OvertimeAndCompOffView() {
 
   return (
     <div className="space-y-6">
+      <OvertimeAllocationPanel />
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
