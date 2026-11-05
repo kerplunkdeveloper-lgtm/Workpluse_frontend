@@ -37,7 +37,16 @@ import {
   Wallet,
   RefreshCw,
   ArrowUpRight,
+  Download,
+  Loader2,
 } from "lucide-react";
+import { buildMoments, type CelebrationPerson, type Moment } from "@/lib/celebrations";
+import {
+  downloadMomentCard,
+  emptySaved,
+  readSavedTemplates,
+  type SavedTemplates,
+} from "@/lib/celebrationTemplates";
 import { useAuth } from "@/context/AuthContext";
 import { useAttendance } from "@/context/AttendanceContext";
 import {
@@ -115,6 +124,8 @@ export default function DashboardOverview() {
   const [allAttendance, setAllAttendance] = useState<any[]>([]);
   const [allLeaves, setAllLeaves] = useState<any[]>([]);
   const [allEmployees, setAllEmployees] = useState<any[]>([]);
+  // Birth month/day + joining date. The employee list omits birth dates for privacy.
+  const [celebrationPeople, setCelebrationPeople] = useState<any[]>([]);
   const [orgCounts, setOrgCounts] = useState<{
     branches: number | null;
     departments: number | null;
@@ -212,6 +223,7 @@ export default function DashboardOverview() {
         employeesRes,
         branchesRes,
         departmentsRes,
+        celebrationsRes,
       ] = canManage
         ? await Promise.allSettled([
             attendanceApi.getAllAttendance(attendanceParams),
@@ -225,8 +237,10 @@ export default function DashboardOverview() {
             employeesApi.list({ page: 1, limit: 200, status: "WORKING" }),
             branchesApi.list(),
             departmentsApi.list(),
+            employeesApi.celebrations(),
           ])
         : [
+            { status: "fulfilled", value: null },
             { status: "fulfilled", value: null },
             { status: "fulfilled", value: null },
             { status: "fulfilled", value: null },
@@ -256,6 +270,9 @@ export default function DashboardOverview() {
       }
       if (leavesRes.status === "fulfilled" && leavesRes.value) {
         setAllLeaves(unwrapList(leavesRes.value));
+      }
+      if (celebrationsRes.status === "fulfilled" && celebrationsRes.value) {
+        setCelebrationPeople(unwrapList(celebrationsRes.value));
       }
       if (employeesRes.status === "fulfilled" && employeesRes.value) {
         const empList = unwrapList(employeesRes.value);
@@ -679,71 +696,44 @@ export default function DashboardOverview() {
 
   const peakWindow = hourlyData.find((item) => item.peak);
 
-  const peopleMoments = useMemo(() => {
-    const year = currentTime.getFullYear();
-    const now = new Date(year, currentTime.getMonth(), currentTime.getDate());
-    const getNextDate = (value: string | Date | undefined) => {
-      if (!value) return null;
-      const source = new Date(value);
-      if (Number.isNaN(source.getTime())) return null;
-      let date = new Date(year, source.getMonth(), source.getDate());
-      if (date < now)
-        date = new Date(year + 1, source.getMonth(), source.getDate());
-      return date;
-    };
-    const getNextAnniversary = (value: string | Date | undefined) => {
-      if (!value) return null;
-      const source = new Date(value);
-      if (Number.isNaN(source.getTime())) return null;
+  // Same rules as the Celebrations page (lib/celebrations): one place decides who has a moment.
+  const peopleMoments = useMemo(
+    () =>
+      buildMoments(celebrationPeople as CelebrationPerson[], currentTime).map((moment) => ({
+        ...moment,
+        type: moment.kind,
+        month: moment.date.toLocaleDateString("en-IN", { month: "long" }),
+        day: moment.date.getDate(),
+      })),
+    [celebrationPeople, currentTime],
+  );
 
-      // Do not show an anniversary until the employee has completed one full year.
-      const firstAnniversary = new Date(
-        source.getFullYear() + 1,
-        source.getMonth(),
-        source.getDate(),
-      );
-      if (firstAnniversary > now) return null;
+  // Default card templates are set on the Celebrations page and reused here.
+  const orgIdForCards = String(user?.organization?.id || user?.organizationId || "org");
+  const [savedTemplates, setSavedTemplates] = useState<SavedTemplates>(emptySaved);
+  const [cardBusyId, setCardBusyId] = useState<string | null>(null);
+  useEffect(() => {
+    // localStorage is browser-only, so it is read after mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSavedTemplates(readSavedTemplates(orgIdForCards));
+  }, [orgIdForCards]);
 
-      let date = new Date(year, source.getMonth(), source.getDate());
-      if (date < now)
-        date = new Date(year + 1, source.getMonth(), source.getDate());
-      return date;
-    };
-    const moments: Array<{
-      id: string;
-      name: string;
-      type: "Birthday" | "Work anniversary";
-      date: Date;
-      month: string;
-      day: number;
-    }> = [];
-    allEmployees.forEach((employee: any, index) => {
-      const name = personName(employee);
-      const birthday = getNextDate(employee.dateOfBirth || employee.dob);
-      const joining = getNextAnniversary(
-        employee.dateOfJoining || employee.joiningDate || employee.hireDate,
+  const downloadMomentCardFor = async (moment: Moment) => {
+    setCardBusyId(moment.id);
+    try {
+      const { skippedRemote } = await downloadMomentCard(
+        moment,
+        { companyName: user?.organization?.name || "Your company", logoUrl: user?.organization?.logoUrl || null },
+        savedTemplates,
       );
-      if (birthday)
-        moments.push({
-          id: `${employee.id || index}-birthday`,
-          name,
-          type: "Birthday",
-          date: birthday,
-          month: birthday.toLocaleDateString("en-IN", { month: "long" }),
-          day: birthday.getDate(),
-        });
-      if (joining)
-        moments.push({
-          id: `${employee.id || index}-anniversary`,
-          name,
-          type: "Work anniversary",
-          date: joining,
-          month: joining.toLocaleDateString("en-IN", { month: "long" }),
-          day: joining.getDate(),
-        });
-    });
-    return moments.sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [allEmployees, currentTime]);
+      if (skippedRemote) toast.warning("Card saved without the photo/logo: their image host blocks downloads.");
+      else toast.success(`${moment.name}'s card downloaded`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not create the card.");
+    } finally {
+      setCardBusyId(null);
+    }
+  };
 
   const momentMonths = useMemo(
     () => Array.from(new Set(peopleMoments.map((moment) => moment.month))),
@@ -2140,8 +2130,30 @@ export default function DashboardOverview() {
                           {moment.type} · {moment.month} {moment.day}
                         </p>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => void downloadMomentCardFor(moment)}
+                        disabled={cardBusyId !== null}
+                        aria-label={`Download ${moment.name}'s ${moment.type === "Birthday" ? "birthday" : "anniversary"} card`}
+                        title="Download card (uses your default template)"
+                        className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-indigo-300 hover:text-indigo-700 disabled:opacity-50"
+                      >
+                        {cardBusyId === moment.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Download className="h-4 w-4" />
+                        )}
+                      </button>
                     </div>
                   ))}
+                </div>
+                <div className="mt-3 text-right">
+                  <Link
+                    href="/celebrations"
+                    className="text-xs font-bold text-indigo-600 hover:underline"
+                  >
+                    Set default templates and see everyone →
+                  </Link>
                 </div>
                 {momentMonths.length > 0 && (
                   <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-4">

@@ -117,6 +117,15 @@ body {
   background: var(--background);
 }
 
+/* Keep one clear Travel OT action area. The older duplicate review panels are
+   hidden while the inline verification workflow remains the source of truth. */
+.shoot-settlement-shell > section:nth-of-type(3),
+.shoot-settlement-shell > section:nth-of-type(4),
+.shoot-settlement-shell > section:nth-of-type(5) {
+  display: none;
+}
+
+
 .marketing-grid {
   background-image: radial-gradient(rgba(148, 163, 184, 0.35) 0.7px, transparent 0.7px);
   background-size: 18px 18px;
@@ -997,6 +1006,78 @@ table, .type-kpi { font-variant-numeric: tabular-nums; }
   100% {
     offset-distance: 100%;
   }
+}
+
+/* ── Landing motion ───────────────────────────────────────────────────────── */
+/* Above-the-fold entrance is pure CSS so it starts at first paint, with no
+   dependency on hydration (keeps the headline fast for LCP). */
+@keyframes lp-in {
+  from { opacity: 0; transform: translateY(22px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes lp-word-in {
+  from { opacity: 0; transform: translateY(0.45em); filter: blur(10px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+@keyframes lp-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@keyframes lp-sheen {
+  from { transform: translateX(-120%) skewX(-18deg); }
+  to { transform: translateX(260%) skewX(-18deg); }
+}
+@keyframes lp-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  33% { transform: translate3d(40px, -24px, 0) scale(1.08); }
+  66% { transform: translate3d(-30px, 18px, 0) scale(0.96); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lp-in { animation: lp-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: var(--d, 0ms); }
+  .lp-word { display: inline-block; animation: lp-word-in 0.85s cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: var(--d, 0ms); }
+  .lp-drift { animation: lp-drift 18s ease-in-out infinite; }
+  .lp-drift-slow { animation: lp-drift 26s ease-in-out infinite reverse; }
+  .lp-marquee-track { animation: lp-marquee 38s linear infinite; }
+  .lp-marquee:hover .lp-marquee-track { animation-play-state: paused; }
+  .lp-sheen::after {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 40%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+    transform: translateX(-120%) skewX(-18deg);
+    pointer-events: none;
+  }
+  .lp-sheen:hover::after { animation: lp-sheen 0.9s ease-out; }
+}
+.lp-word { display: inline-block; }
+
+/* Soft glow that follows the pointer across bento cards. */
+.lp-spot { position: relative; border-radius: 1.5rem; }
+.lp-spot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(99, 102, 241, 0.13), transparent 55%);
+}
+.lp-spot:hover::after { opacity: 1; }
+
+/* Logo / industry strip: edges fade out, track is duplicated for a seamless loop. */
+.lp-marquee {
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
+}
+.lp-marquee-track { display: flex; width: max-content; gap: 1rem; padding-right: 1rem; }
+@media (prefers-reduced-motion: reduce) {
+  .lp-marquee { mask-image: none; -webkit-mask-image: none; }
+  .lp-marquee-track { width: auto; flex-wrap: wrap; justify-content: center; padding-right: 0; }
+  .lp-marquee-track [data-marquee-copy] { display: none; }
 }
 
 

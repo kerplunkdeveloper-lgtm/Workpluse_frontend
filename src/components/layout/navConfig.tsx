@@ -167,6 +167,8 @@ export function itemMatches(item: NavItem, query: string) {
 
 /** Stable relative notification time. Floor elapsed units so "3 h" is not shown before 3 full hours. */
 export function timeAgo(value?: string) {
+  // API timestamps are UTC ISO strings. Keep relative time device-independent;
+  // absolute timestamps below are always rendered in the company timezone.
   const time = value ? new Date(value).getTime() : NaN;
   if (!Number.isFinite(time)) return "";
   const elapsed = Date.now() - time;

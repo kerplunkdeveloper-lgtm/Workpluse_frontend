@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Hero, ProofBar, Features, Workflow, Offline, Security, FAQ, CtaBand, SiteFooter } from "@/components/landing/LandingSections";
 import { PricingClient } from "@/components/landing/PricingClient";
 import { SiteHeader } from "@/components/landing/SiteHeader";
+import { ScrollProgress } from "@/components/landing/motion";
 import { FAQ as FAQ_ITEMS } from "@/components/landing/content";
 import type { SubscriptionPlanOption } from "@/types";
 
@@ -47,6 +48,7 @@ export default async function LandingPage() {
       <a href="#main" className="sr-only z-[70] rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
         Skip to content
       </a>
+      <ScrollProgress />
       <SiteHeader />
       <main id="main">
         <Hero />
