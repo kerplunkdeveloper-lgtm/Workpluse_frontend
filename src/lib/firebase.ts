@@ -1,4 +1,4 @@
-import { getApp, getApps, initializeApp } from "firebase/app";
+import { getApp, getApps, initializeApp, type FirebaseApp } from "firebase/app";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -13,8 +13,10 @@ const missingConfig = Object.entries(firebaseConfig)
   .filter(([, value]) => !value)
   .map(([key]) => key);
 
-if (missingConfig.length > 0) {
-  throw new Error(`Missing Firebase configuration: ${missingConfig.join(", ")}`);
-}
-
-export const firebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+// Firebase is optional for builds and for deployments that do not enable push
+// notifications. Do not throw while Next.js is prerendering pages; callers
+// can use this flag to report "not configured" at runtime instead.
+export const firebaseConfigured = missingConfig.length === 0;
+export const firebaseApp: FirebaseApp | null = firebaseConfigured
+  ? (getApps().length > 0 ? getApp() : initializeApp(firebaseConfig))
+  : null;

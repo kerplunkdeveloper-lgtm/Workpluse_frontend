@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/firebase", () => ({ firebaseApp: {} }));
+vi.mock("@/lib/firebase", () => ({ firebaseApp: {}, firebaseConfigured: true }));
 vi.mock("@/lib/api", () => ({ notificationsApi: { registerFcmToken: vi.fn() } }));
 vi.mock("firebase/messaging", () => ({
   getMessaging: vi.fn(), getToken: vi.fn(), isSupported: vi.fn(), onMessage: vi.fn(),

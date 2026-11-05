@@ -1,7 +1,45 @@
-/* Firebase Cloud Messaging service worker. Keep this file at the site root. */
-importScripts("https://www.gstatic.com/firebasejs/13.2.0/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/13.2.0/firebase-messaging-compat.js");
 
+/* Workpluse Firebase Cloud Messaging Service Worker */
+
+// Register click handler BEFORE Firebase imports.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  const rawUrl = event.notification.data?.url || "/dashboard";
+  const target = new URL(rawUrl, self.location.origin);
+
+  // Prevent notifications from opening external websites.
+  if (target.origin !== self.location.origin) return;
+
+  event.waitUntil(
+    self.clients.matchAll({
+      type: "window",
+      includeUncontrolled: true,
+    }).then(async (windows) => {
+      const existing = windows.find(
+        (client) => client.url.startsWith(self.location.origin)
+      );
+
+      if (existing) {
+        await existing.navigate(target.href);
+        return existing.focus();
+      }
+
+      return self.clients.openWindow(target.href);
+    })
+  );
+});
+
+// Firebase Compatibility SDK
+importScripts(
+  "https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"
+);
+
+importScripts(
+  "https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js"
+);
+
+// Firebase Web Configuration
 firebase.initializeApp({
   apiKey: "AIzaSyBtk4kH5LSvUoy91w5dMbCTW3wZi0jVp-4",
   authDomain: "workpluse-production.firebaseapp.com",
@@ -13,37 +51,31 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+self.addEventListener("install", () => {
+  self.skipWaiting();
+});
 
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
+// Receive messages when website is in background.
 messaging.onBackgroundMessage((payload) => {
-  // FCM already displays payloads containing a notification. Only data-only
-  // messages need a manual notification, otherwise the user sees two alerts.
+  // FCM displays notification payloads automatically.
+  // Avoid displaying them a second time.
   if (payload.notification) return;
-  const title = payload.notification?.title || payload.data?.title || "WorkPluse notification";
-  const body = payload.notification?.body || payload.data?.body || "You have a new notification.";
-  const url = payload.data?.url || "/dashboard";
+
+  const title = payload.data?.title || "Workpluse";
+  const body =
+    payload.data?.body || "You have a new notification";
 
   return self.registration.showNotification(title, {
     body,
     icon: "/logo-v2-128.png",
     badge: "/logo-v2-128.png",
-    tag: payload.data?.notificationId || "workpulse-notification",
-    data: { url },
+    tag: payload.data?.notificationId || undefined,
+    data: {
+      url: payload.data?.url || "/dashboard",
+    },
   });
-});
-
-self.addEventListener("notificationclick", (event) => {
-  event.notification.close();
-  const target = new URL(event.notification.data?.url || "/dashboard", self.location.origin).href;
-  event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
-      const existing = clients.find((client) => "focus" in client);
-      if (existing) {
-        existing.navigate(target);
-        return existing.focus();
-      }
-      return self.clients.openWindow(target);
-    }),
-  );
 });

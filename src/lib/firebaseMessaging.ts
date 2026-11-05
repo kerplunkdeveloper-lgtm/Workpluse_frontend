@@ -1,5 +1,5 @@
 import { getMessaging, getToken, isSupported, onMessage, type MessagePayload } from "firebase/messaging";
-import { firebaseApp } from "@/lib/firebase";
+import { firebaseApp, firebaseConfigured } from "@/lib/firebase";
 import { notificationsApi } from "@/lib/api";
 
 type FcmStatus = NotificationPermission | "unsupported" | "insecure" | "not-configured";
@@ -7,6 +7,7 @@ type FcmStatus = NotificationPermission | "unsupported" | "insecure" | "not-conf
 const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || "";
 
 export async function enableFirebaseNotifications({ requestPermission = true }: { requestPermission?: boolean } = {}): Promise<FcmStatus> {
+  if (!firebaseConfigured || !firebaseApp) return "not-configured";
   if (typeof window === "undefined" || !window.isSecureContext) return "insecure";
   if (!("Notification" in window) || !("serviceWorker" in navigator)) return "unsupported";
   if (!vapidKey) return "not-configured";
@@ -30,7 +31,7 @@ export async function enableFirebaseNotifications({ requestPermission = true }: 
 }
 
 export async function listenForFirebaseNotifications(onNotification: (payload: MessagePayload) => void) {
-  if (typeof window === "undefined" || !(await isSupported())) return () => {};
+  if (!firebaseConfigured || !firebaseApp || typeof window === "undefined" || !(await isSupported())) return () => {};
   return onMessage(getMessaging(firebaseApp), onNotification);
 }
 
