@@ -14,6 +14,8 @@ import {
   shootRequestsApi,
   shootSettlementsApi,
   workFromHomeApi,
+  branchesApi,
+  employeesApi,
 } from "@/lib/api";
 import {
   formatDate,
@@ -355,6 +357,9 @@ export default function ApprovalsInboxView() {
   const [corrSearch, setCorrSearch] = useState("");
   const [workflowSearch, setWorkflowSearch] = useState("");
   const [workflowStatus, setWorkflowStatus] = useState<WorkflowStatus>("ALL");
+  const [branchFilter, setBranchFilter] = useState("ALL");
+  const [branchOptions, setBranchOptions] = useState<any[]>([]);
+  const [employeeBranchMap, setEmployeeBranchMap] = useState<Record<string, string | null>>({});
   const [workflowFrom, setWorkflowFrom] = useState("");
   const [workflowTo, setWorkflowTo] = useState("");
   const [leaves, setLeaves] = useState<any[]>([]);
@@ -433,6 +438,8 @@ export default function ApprovalsInboxView() {
         shootRes,
         shootSettlementRes,
         wfhRes,
+        branchRes,
+        employeeRes,
       ] = await Promise.allSettled([
         loadCorrections(),
         leavesApi.getAllLeaves({ status: "ALL", limit: 200 }),
@@ -453,6 +460,8 @@ export default function ApprovalsInboxView() {
         isReviewer
           ? workFromHomeApi.getAll({ status: "ALL" })
           : Promise.resolve(null),
+        isReviewer ? branchesApi.list() : Promise.resolve(null),
+        isReviewer ? employeesApi.list({ limit: 500 }) : Promise.resolve(null),
       ]);
 
       if (leaveRes.status === "fulfilled") {
@@ -478,6 +487,15 @@ export default function ApprovalsInboxView() {
         setShootSettlements(unwrapList(shootSettlementRes.value));
       if (wfhRes.status === "fulfilled" && wfhRes.value)
         setWorkFromHomeRequests(unwrapList(wfhRes.value));
+      if (branchRes.status === "fulfilled" && branchRes.value)
+        setBranchOptions(unwrapList(branchRes.value));
+      if (employeeRes.status === "fulfilled" && employeeRes.value) {
+        const branchMap: Record<string, string | null> = {};
+        unwrapList(employeeRes.value).forEach((employee: any) => {
+          branchMap[employee.id] = employee.branchId || employee.branch?.id || null;
+        });
+        setEmployeeBranchMap(branchMap);
+      }
     } catch (err) {
       console.error("Failed to load approvals inbox:", err);
     } finally {
@@ -495,12 +513,18 @@ export default function ApprovalsInboxView() {
     loadCorrections(filter);
   };
 
+  const workflowBranchId = (row: any) => {
+    const employee = workflowEmployee(row);
+    return employee?.branchId || employee?.branch?.id || employeeBranchMap[employee?.id] || "UNASSIGNED";
+  };
+
   const filterWorkflowRows = (rows: any[], category: ApprovalCategory) =>
     rows.filter((row) => {
       const date = workflowDate(row, category);
       const search = workflowSearch.trim().toLowerCase();
       return (
         matchesWorkflowStatus(row, workflowStatus) &&
+        (branchFilter === "ALL" || workflowBranchId(row) === branchFilter) &&
         (!search || workflowSearchText(row).includes(search)) &&
         (!workflowFrom || !date || date >= workflowFrom) &&
         (!workflowTo || !date || date <= workflowTo)
@@ -514,7 +538,7 @@ export default function ApprovalsInboxView() {
         .toLowerCase()
         .includes(q),
     );
-  }, [corrRows, corrSearch, workflowSearch, workflowStatus, workflowFrom, workflowTo]);
+  }, [corrRows, corrSearch, workflowSearch, workflowStatus, branchFilter, employeeBranchMap, workflowFrom, workflowTo]);
 
   const review = async (
     toastId: string,
@@ -604,16 +628,24 @@ export default function ApprovalsInboxView() {
       (s) => `Overtime request ${s}!`,
       () => {
         const raw = approvedOvertimeMinutes[id];
-        const numericApprovedMinutes =
+        // The approval input is shown in hours for people, but the API and
+        // payroll ledger remain minute-based.  Convert only at this boundary.
+        const numericApprovedHours =
           raw !== undefined && raw !== "" ? Number(raw) : NaN;
+        const numericApprovedMinutes = Number.isFinite(numericApprovedHours)
+          ? Math.round(numericApprovedHours * 60)
+          : NaN;
+        const requested = Number(requestedMinutes || 0);
         if (
           status === "APPROVED" &&
-          (!Number.isInteger(numericApprovedMinutes) ||
+          (!Number.isFinite(numericApprovedHours) ||
+            numericApprovedHours < 0 ||
+            !Number.isInteger(numericApprovedMinutes) ||
             numericApprovedMinutes < 0 ||
-            numericApprovedMinutes > Number(requestedMinutes || 0))
+            numericApprovedMinutes > requested)
         ) {
           throw new Error(
-            `Approved minutes must be between 0 and ${requestedMinutes || 0}.`,
+            `Approved time must be between 0 and ${minutesLabel(requested)} (${(requested / 60).toFixed(2)} hours).`,
           );
         }
         const approvedMinutes =
@@ -945,17 +977,17 @@ export default function ApprovalsInboxView() {
               <Filter className="h-4 w-4 text-indigo-600" />
               Find approval work
             </div>
-            {(workflowSearch || workflowStatus !== "ALL" || workflowFrom || workflowTo) && (
+            {(workflowSearch || workflowStatus !== "ALL" || branchFilter !== "ALL" || workflowFrom || workflowTo) && (
               <button
                 type="button"
-                onClick={() => { setWorkflowSearch(""); setWorkflowStatus("ALL"); setWorkflowFrom(""); setWorkflowTo(""); }}
+                onClick={() => { setWorkflowSearch(""); setWorkflowStatus("ALL"); setBranchFilter("ALL"); setWorkflowFrom(""); setWorkflowTo(""); }}
                 className="text-xs font-semibold text-indigo-700 hover:text-indigo-900"
               >
                 Clear filters
               </button>
             )}
           </div>
-          <div className="grid gap-3 md:grid-cols-[minmax(220px,1.5fr)_minmax(150px,.7fr)_minmax(145px,.65fr)_minmax(145px,.65fr)]">
+          <div className="grid gap-3 md:grid-cols-[minmax(220px,1.5fr)_minmax(150px,.8fr)_minmax(150px,.8fr)_minmax(145px,.65fr)_minmax(145px,.65fr)]">
             <label className="relative block">
               <span className="sr-only">Search approvals</span>
               <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -968,6 +1000,16 @@ export default function ApprovalsInboxView() {
                 <option value="PENDING">Needs action</option>
                 <option value="APPROVED">Approved</option>
                 <option value="REJECTED">Rejected</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="sr-only">Branch</span>
+              <select value={branchFilter} onChange={(event) => setBranchFilter(event.target.value)} aria-label="Filter approvals by branch" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
+                <option value="ALL">All branches</option>
+                {branchOptions.map((branch) => (
+                  <option key={branch.id} value={branch.id}>{branch.name}</option>
+                ))}
+                <option value="UNASSIGNED">No branch assigned</option>
               </select>
             </label>
             <label className="block">
@@ -1191,7 +1233,7 @@ export default function ApprovalsInboxView() {
                 "Employee",
                 "Date",
                 "Overtime requested",
-                "Approve minutes",
+                "Approve hours",
                 "Reason",
                 "Action",
               ]}
@@ -1204,16 +1246,17 @@ export default function ApprovalsInboxView() {
                   </td>
                   <td className="whitespace-nowrap px-4 py-4 text-xs font-semibold text-slate-900">
                     {minutesLabel(ot.requestedMinutes)}
+                    <span className="ml-1 text-slate-500">({(Number(ot.requestedMinutes || 0) / 60).toFixed(2)}h)</span>
                   </td>
                   <td className="px-4 py-4">
                     <input
                       type="number"
                       min={0}
-                      max={Number(ot.requestedMinutes || 0)}
-                      step={1}
+                      max={Number(ot.requestedMinutes || 0) / 60}
+                      step={0.25}
                       value={
                         approvedOvertimeMinutes[ot.id] ??
-                        String(ot.requestedMinutes || 0)
+                        String((Number(ot.requestedMinutes || 0) / 60).toFixed(2))
                       }
                       onChange={(event) =>
                         setApprovedOvertimeMinutes((current) => ({
@@ -1222,7 +1265,7 @@ export default function ApprovalsInboxView() {
                         }))
                       }
                       className="w-24 rounded-lg border border-slate-200 px-2.5 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                      aria-label={`Approved overtime minutes for ${ot.employee?.firstName || "employee"}`}
+                      aria-label={`Approved overtime hours for ${ot.employee?.firstName || "employee"}`}
                     />
                   </td>
                   <ReasonCell text={ot.reason} />

@@ -54,7 +54,11 @@ export default function OvertimeAndCompOffView() {
         setHistory(unwrapList(histRes.value));
       }
       if (otRes.status === "fulfilled") {
-        setMyOvertimes(unwrapList(otRes.value));
+        setMyOvertimes(unwrapList(otRes.value).map((request: any) => ({
+          ...request,
+          plannedStartTime: request.plannedStartTime ? formatTime(request.plannedStartTime) : request.plannedStartTime,
+          plannedEndTime: request.plannedEndTime ? formatTime(request.plannedEndTime) : request.plannedEndTime,
+        })));
       }
     } catch (err) {
       console.error("Failed to load comp-off and overtime:", err);
@@ -376,7 +380,7 @@ export default function OvertimeAndCompOffView() {
 
       {overtimeModalOpen && (
         <Modal>
-          <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl">
+          <div className="wp-overtime-modal w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl">
             <h3 className="text-base font-semibold text-slate-900 mb-1">Request overtime</h3>
             <p className="text-xs text-slate-500 mb-4">
               Request planned overtime before you start it. Approval is required before the OT punch is enabled.

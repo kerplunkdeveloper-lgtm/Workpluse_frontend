@@ -30,6 +30,8 @@ const DEFAULTS = {
   payrollDayBasis: "ACTUAL_DAYS",
   workingDaysPerMonth: 26,
   probationMonths: 3,
+  monthlyPaidLeaveDays: 1,
+  paidLeaveCarryForward: true,
   monthlyPermissionHours: 3,
   permissionRequiresProbation: true,
   leaveEligibilityActive: true,
@@ -149,6 +151,8 @@ export default function PolicyView() {
           setForm({
             workingDaysPerMonth: Number(policy.workingDaysPerMonth ?? DEFAULTS.workingDaysPerMonth),
             probationMonths: Number(policy.probationMonths ?? DEFAULTS.probationMonths),
+            monthlyPaidLeaveDays: Number(policy.monthlyPaidLeaveDays ?? DEFAULTS.monthlyPaidLeaveDays),
+            paidLeaveCarryForward: Boolean(policy.paidLeaveCarryForward ?? DEFAULTS.paidLeaveCarryForward),
             monthlyPermissionHours: Number(policy.monthlyPermissionHours ?? DEFAULTS.monthlyPermissionHours),
             permissionRequiresProbation: Boolean(policy.permissionRequiresProbation ?? DEFAULTS.permissionRequiresProbation),
             leaveEligibilityActive: Boolean(policy.leaveEligibilityActive ?? policy.permissionRequiresProbation ?? DEFAULTS.leaveEligibilityActive),
@@ -430,6 +434,11 @@ export default function PolicyView() {
           <span className="text-xs text-slate-400">Hours per payroll cycle with no salary deduction. Example: 3 hours = 180 minutes.</span>
         </label>
         <label className="space-y-1.5">
+          <span className="text-xs font-semibold text-slate-600 uppercase">Paid leave earned / month</span>
+          <input type="number" step="0.5" min={0} max={31} value={form.monthlyPaidLeaveDays} onChange={(e) => setNum("monthlyPaidLeaveDays", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm" />
+          <span className="text-xs text-slate-400">Shared across paid leave types. Unpaid leave is not affected.</span>
+        </label>
+        <label className="space-y-1.5">
           <span className="text-xs font-semibold text-slate-600 uppercase">Half-day threshold (minutes)</span>
           <input
             type="number"
@@ -485,6 +494,10 @@ export default function PolicyView() {
             })}
           </div>
         </div>
+        <label className="flex items-start gap-2 text-sm text-slate-800 sm:col-span-2">
+          <input type="checkbox" checked={form.paidLeaveCarryForward} onChange={(e) => setForm((p) => ({ ...p, paidLeaveCarryForward: e.target.checked }))} className="mt-0.5" />
+          <span><span className="font-semibold">Carry forward unused paid leave</span><span className="mt-1 block text-xs text-slate-400">When enabled, unused paid leave rolls into the next month. When disabled, only the current month's allowance can be used.</span></span>
+        </label>
         <label className="flex items-center gap-2 text-sm text-slate-800 sm:col-span-2">
           <input
             type="checkbox"

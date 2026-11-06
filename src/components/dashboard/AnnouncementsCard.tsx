@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import { Loader2, Megaphone, Pin, PinOff, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { announcementsApi } from "@/lib/api";
@@ -26,6 +27,13 @@ const errorOf = (err: any, fallback: string) => err?.response?.data?.message || 
 
 const when = (iso: string) =>
   new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+
+const celebrationImage = (title: string) =>
+  title.startsWith("Birthday today:")
+    ? { src: "/celebrations/birthday.svg", alt: "Birthday celebration" }
+    : title.startsWith("Work anniversary today:")
+      ? { src: "/celebrations/anniversary.svg", alt: "Work anniversary celebration" }
+      : null;
 
 /** Company notice board: everyone reads, HR and admins post. Hidden entirely when there is nothing to show to an employee. */
 export default function AnnouncementsCard() {
@@ -114,6 +122,7 @@ export default function AnnouncementsCard() {
         <ul className="mt-4 space-y-3">
           {visible.map((item) => {
             const mayChange = isAdmin || item.createdByUserId === user?.id;
+            const artwork = celebrationImage(item.title);
             return (
               <li key={item.id} className={`rounded-2xl p-4 ring-1 ${item.pinned ? "bg-indigo-50/60 ring-indigo-200" : "bg-slate-50/70 ring-slate-200/70"} ${item.isExpired ? "opacity-60" : ""}`}>
                 <div className="flex items-start justify-between gap-3">
@@ -129,6 +138,11 @@ export default function AnnouncementsCard() {
                       {item.expiresAt && !item.isExpired ? ` · until ${when(item.expiresAt)}` : ""}
                     </p>
                   </div>
+                  {artwork && (
+                    <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-xl bg-white/80 ring-1 ring-indigo-100 sm:h-20 sm:w-24">
+                      <Image src={artwork.src} alt={artwork.alt} fill sizes="96px" className="object-contain p-1.5" />
+                    </div>
+                  )}
                   {canPost && mayChange && (
                     <div className="flex shrink-0 items-center gap-1">
                       <button type="button" onClick={() => void togglePin(item)} aria-label={item.pinned ? "Unpin" : "Pin to top"} title={item.pinned ? "Unpin" : "Pin to top"} className="rounded-lg p-1.5 text-slate-400 transition hover:bg-white hover:text-indigo-600">
