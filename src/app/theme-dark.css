@@ -454,3 +454,51 @@ html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) :is(input, sel
   outline-color: #818cf8;
   outline-offset: 2px;
 }
+
+/* Overtime request uses the lightweight backdrop modal, which is mounted
+   outside .wp-main-canvas. Keep its surface and controls in the same dark
+   palette instead of leaving a bright light-mode island over the app. */
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-overtime-modal {
+  background-color: #121829 !important;
+  border-color: #2a3249 !important;
+  color: #eef0f6;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-overtime-modal :is(.text-slate-900, .text-slate-700) {
+  color: #eef0f6;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-overtime-modal .text-slate-600 {
+  color: #c0c7d8;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-overtime-modal .text-slate-500 {
+  color: #9aa4bc;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-overtime-modal :is(.border-slate-200, .border-slate-300) {
+  border-color: #35405b;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-overtime-modal :is(input, textarea) {
+  background-color: #0f1526 !important;
+  border-color: #35405b;
+  color: #eef0f6;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-overtime-modal :is(input, textarea)::placeholder {
+  color: #7f8aa5;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-overtime-modal .bg-slate-100 {
+  background-color: #202941;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-overtime-modal .text-slate-400 {
+  color: #8f9ab4;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-overtime-modal .text-indigo-600 {
+  color: #a5b4fc;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-overtime-modal .bg-indigo-50 {
+  background-color: rgba(99, 102, 241, 0.16);
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-overtime-modal .border-t {
+  border-color: #2a3249;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-overtime-modal .bg-white\/95 {
+  background-color: rgba(18, 24, 41, 0.98) !important;
+  border-color: #35405b;
+}
