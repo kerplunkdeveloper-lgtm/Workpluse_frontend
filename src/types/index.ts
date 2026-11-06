@@ -313,6 +313,13 @@ export interface LeaveBalance {
   totalDays: number;
   usedDays: number;
   remainingDays: number;
+  monthlyPaidLeave?: {
+    monthlyAllowance: number;
+    carryForward: boolean;
+    accruedDays: number;
+    usedDays: number;
+    remainingDays: number;
+  } | null;
   leaveType?: LeaveType;
 }
 

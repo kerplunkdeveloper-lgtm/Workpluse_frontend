@@ -127,9 +127,17 @@ export function formatTime(timeValue?: string | Date | number | null): string {
     const str = String(timeValue).trim();
     if (!str || str === "null" || str === "undefined" || str === "-") return "-";
 
-    // If it's already a formatted time like "09:30 AM" or "9:30 PM"
-    if (/^\d{1,2}:\d{2}(\s*(AM|PM))?$/i.test(str)) {
-      return str.toUpperCase();
+    // Stored clock values are 24-hour HH:mm. Display them consistently in
+    // India time with AM/PM; keep already formatted values unchanged.
+    const clock = /^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i.exec(str);
+    if (clock) {
+      const hour = Number(clock[1]);
+      const minute = clock[2];
+      if (clock[3]) return `${hour}:${minute} ${clock[3].toUpperCase()}`;
+      if (hour >= 0 && hour <= 23) {
+        return `${((hour + 11) % 12) + 1}:${minute} ${hour < 12 ? "AM" : "PM"}`;
+      }
+      return str;
     }
 
     // ISO timestamp or standard date-time string
