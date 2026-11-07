@@ -20,6 +20,10 @@ const BACKGROUND_REQUEST = { skipGlobalError: true } as const;
 const RETRYABLE_STATUSES = new Set([500, 502, 503, 504]);
 const MAX_TRANSIENT_RETRIES = 2;
 const TRANSIENT_RETRY_DELAY_MS = 400;
+const API_TIMEOUT_MS = Math.max(
+  1000,
+  Number(process.env.NEXT_PUBLIC_API_TIMEOUT_MS) || 20000,
+);
 
 // Whether the outage overlay is currently up, so the next success can clear it.
 let outageSignalled = false;
@@ -135,6 +139,7 @@ async function refreshAccessTokenSilently(): Promise<string | null> {
 }
 export const api = axios.create({
   baseURL: API_BASE_URL,
+  timeout: API_TIMEOUT_MS,
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
@@ -210,8 +215,13 @@ api.interceptors.response.use(
 
     if (typeof window !== "undefined" && serverFailure && !originalRequest.skipGlobalError) {
       outageSignalled = true;
+      const requestId = error.response?.headers?.["x-request-id"] || error.response?.headers?.["X-Request-Id"];
       window.dispatchEvent(new CustomEvent("workpulse:server-error", {
-        detail: { kind: error.response ? "server" : "network", status: error.response?.status ?? 0 },
+        detail: {
+          kind: error.response ? "server" : "network",
+          status: error.response?.status ?? 0,
+          ...(typeof requestId === "string" && requestId ? { requestId } : {}),
+        },
       }));
     }
 
@@ -1287,6 +1297,7 @@ export const shiftsApi = {
   /** Cached for a minute and shared between screens. Pass `fresh` on a screen that edits the list. */
   list: (options?: { fresh?: boolean }) =>
     cachedFetch("shifts:list", async () => (await api.get("/shifts")).data, { fresh: options?.fresh }),
+  getById: async (id: string) => (await api.get(`/shifts/${id}`)).data,
   create: async (payload: any) => {
     const res = await api.post("/shifts", payload);
     invalidate("shifts:");
@@ -1304,6 +1315,11 @@ export const shiftsApi = {
   },
   assign: async (id: string, employeeIds: string[], flexibleEmployeeIds: string[] = []) => {
     const res = await api.post(`/shifts/${id}/assign`, { employeeIds, flexibleEmployeeIds });
+    invalidate("shifts:");
+    return res.data;
+  },
+  removeEmployee: async (shiftId: string, employeeId: string) => {
+    const res = await api.delete(`/shifts/${shiftId}/employees/${employeeId}`);
     invalidate("shifts:");
     return res.data;
   },

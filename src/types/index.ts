@@ -126,6 +126,7 @@ export interface Employee {
   branchId?: string;
   departmentId?: string;
   shiftId?: string;
+  flexiblePunching?: boolean;
   ctc?: number;
   gender?: "MALE" | "FEMALE" | null;
   dateOfBirth?: string | null;

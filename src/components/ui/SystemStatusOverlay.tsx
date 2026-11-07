@@ -5,17 +5,18 @@ import Link from "next/link";
 import { ArrowLeft, Home, RefreshCw, ServerCrash, WifiOff } from "lucide-react";
 
 type StatusKind = "server" | "network";
-type StatusState = { kind: StatusKind; status: number };
+type StatusState = { kind: StatusKind; status: number; requestId?: string };
 
 export default function SystemStatusOverlay() {
   const [statusState, setStatusState] = useState<StatusState | null>(null);
 
   useEffect(() => {
     const handleFailure = (event: Event) => {
-      const detail = (event as CustomEvent<{ kind?: StatusKind; status?: number }>).detail;
+      const detail = (event as CustomEvent<{ kind?: StatusKind; status?: number; requestId?: string }>).detail;
       setStatusState({
         kind: detail?.kind === "network" ? "network" : "server",
         status: Number(detail?.status) || 0,
+        ...(detail?.requestId ? { requestId: detail.requestId } : {}),
       });
     };
 
@@ -53,6 +54,11 @@ export default function SystemStatusOverlay() {
         <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-400" aria-label={`Error code ${errorCode}`}>
           Error code <span className="font-mono text-slate-600">{errorCode}</span>
         </p>
+        {statusState.requestId && (
+          <p className="mb-3 text-xs text-slate-400">
+            Support reference <span className="font-mono text-slate-600">{statusState.requestId}</span>
+          </p>
+        )}
         <h1 className="text-4xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-5xl">
           {isNetwork ? "We lost the connection" : "The service needs a moment"}
         </h1>

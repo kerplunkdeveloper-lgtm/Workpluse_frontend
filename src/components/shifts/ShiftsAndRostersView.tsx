@@ -5,7 +5,7 @@ import { Employee, Shift } from "@/types";
 import { employeesApi, shiftsApi, shiftOverridesApi } from "@/lib/api";
 import { formatDate, unwrapList } from "@/lib/utils";
 import { formatHm, shiftLengthMinutes } from "@/components/attendance/attendanceUtils";
-import { CalendarRange, Clock, Plus, Loader2, Pencil } from "lucide-react";
+import { CalendarRange, Clock, Plus, Loader2, Pencil, Search, Users, X, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
@@ -16,6 +16,10 @@ export default function ShiftsAndRostersView() {
   const [overrides, setOverrides] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [assignShift, setAssignShift] = useState<Shift | null>(null);
+  const [assignedPeopleShift, setAssignedPeopleShift] = useState<Shift | null>(null);
+  const [assignedPeople, setAssignedPeople] = useState<Employee[]>([]);
+  const [assignedPeopleLoading, setAssignedPeopleLoading] = useState(false);
+  const [assignedPeopleSearch, setAssignedPeopleSearch] = useState("");
   const [selectedEmpIds, setSelectedEmpIds] = useState<string[]>([]);
   const [assigning, setAssigning] = useState(false);
   const [ovEmp, setOvEmp] = useState("");
@@ -154,6 +158,37 @@ export default function ShiftsAndRostersView() {
       toast.error(err.response?.data?.message || err.message || "Assign failed");
     } finally {
       setAssigning(false);
+    }
+  };
+
+  const openAssignedPeople = async (shift: Shift) => {
+    setAssignedPeopleShift(shift);
+    setAssignedPeopleSearch("");
+    setAssignedPeople([]);
+    setAssignedPeopleLoading(true);
+    try {
+      const res = await shiftsApi.getById(shift.id);
+      setAssignedPeople((res?.data?.employees || res?.employees || []).filter((employee: Employee) => employee.status !== "TERMINATED"));
+    } catch (err: any) {
+      setAssignedPeopleShift(null);
+      toast.error(err.response?.data?.message || err.message || "Could not load assigned people");
+    } finally {
+      setAssignedPeopleLoading(false);
+    }
+  };
+
+  const removeAssignedPerson = async (employee: Employee) => {
+    if (!assignedPeopleShift) return;
+    const name = `${employee.firstName} ${employee.lastName || ""}`.trim();
+    if (!window.confirm(`Remove ${name} from ${assignedPeopleShift.name}? Their historical attendance will not change.`)) return;
+    try {
+      const res = await shiftsApi.removeEmployee(assignedPeopleShift.id, employee.id);
+      if (res?.success === false) throw new Error(res.message || "Could not remove employee");
+      setAssignedPeople((current) => current.filter((person) => person.id !== employee.id));
+      setShifts((current) => current.map((shift) => shift.id === assignedPeopleShift.id ? { ...shift, _count: { ...(shift as any)._count, employees: Math.max(0, Number((shift as any)._count?.employees ?? 0) - 1) } } as Shift : shift));
+      toast.success(`${name} removed from ${assignedPeopleShift.name}`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || "Could not remove employee");
     }
   };
 
@@ -308,15 +343,21 @@ export default function ShiftsAndRostersView() {
                 <span className="text-xs text-slate-500">
                   {(s as any)._count?.employees ?? (s as any).employeeCount ?? 0} assigned
                 </span>
-                <button
-                  onClick={() => {
-                    setAssignShift(s);
-                    setSelectedEmpIds([]);
-                  }}
-                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-700"
-                >
-                  Assign people
-                </button>
+                <div className="flex items-center gap-3">
+                  <button type="button" onClick={() => void openAssignedPeople(s)} className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 hover:text-indigo-700">
+                    <Users className="h-3.5 w-3.5" /> View people
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAssignShift(s);
+                      setSelectedEmpIds([]);
+                    }}
+                    className="text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+                  >
+                    Assign people
+                  </button>
+                </div>
               </div>
             </div>
           ))
@@ -440,6 +481,27 @@ export default function ShiftsAndRostersView() {
                 {assigning ? "Saving…" : `Assign ${selectedEmpIds.length}`}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {assignedPeopleShift && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4" role="dialog" aria-modal="true" aria-labelledby="assigned-people-title">
+          <div className="flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 sm:p-6">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-indigo-600">Roster analysis</p>
+                <h3 id="assigned-people-title" className="mt-1 text-lg font-semibold text-slate-900">People assigned to {assignedPeopleShift.name}</h3>
+                <p className="mt-1 text-xs text-slate-500">Review the current roster, branch coverage, departments, and punching setup.</p>
+              </div>
+              <button type="button" onClick={() => setAssignedPeopleShift(null)} aria-label="Close assigned people" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><X className="h-5 w-5" /></button>
+            </div>
+
+            {assignedPeopleLoading ? (
+              <div className="flex min-h-56 items-center justify-center text-sm text-slate-500"><Loader2 className="mr-2 h-5 w-5 animate-spin text-indigo-600" /> Loading assigned people...</div>
+            ) : (
+              <AssignedPeopleContent people={assignedPeople} search={assignedPeopleSearch} onSearch={setAssignedPeopleSearch} onRemove={removeAssignedPerson} />
+            )}
           </div>
         </div>
       )}
@@ -580,6 +642,58 @@ export default function ShiftsAndRostersView() {
           </div>
         </Modal>
       )}
+    </div>
+  );
+}
+
+function AssignedPeopleContent({ people, search, onSearch, onRemove }: { people: Employee[]; search: string; onSearch: (value: string) => void; onRemove: (employee: Employee) => void }) {
+  const query = search.trim().toLowerCase();
+  const filtered = people.filter((employee) => `${employee.firstName} ${employee.lastName} ${employee.employeeCode} ${employee.department?.name || ""} ${employee.branch?.name || ""}`.toLowerCase().includes(query));
+  const departments = new Set(people.map((employee) => employee.department?.name).filter(Boolean));
+  const branches = new Set(people.map((employee) => employee.branch?.name).filter(Boolean));
+  const active = people.filter((employee) => ["ACTIVE", "PROBATION", "NOTICE_PERIOD"].includes(employee.status)).length;
+  const flexible = people.filter((employee) => employee.flexiblePunching === true).length;
+
+  return (
+    <div className="min-h-0 space-y-5 overflow-y-auto p-5 sm:p-6">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {[
+          ["Assigned", people.length, "text-indigo-700"],
+          ["Active", active, "text-emerald-700"],
+          ["Departments", departments.size, "text-violet-700"],
+          ["Branches", branches.size, "text-amber-700"],
+        ].map(([label, value, tone]) => (
+          <div key={String(label)} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{label}</p>
+            <p className={`mt-1 text-xl font-bold ${tone}`}>{value}</p>
+          </div>
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-slate-500">{flexible} people allow any-time punching · {filtered.length} shown</p>
+        <label className="relative block w-full sm:w-72">
+          <span className="sr-only">Search assigned people</span>
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input value={search} onChange={(event) => onSearch(event.target.value)} placeholder="Search name, code, branch..." className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-xs text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" />
+        </label>
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-slate-200">
+        <table className="w-full min-w-[620px] text-left text-xs">
+          <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500"><tr><th className="px-4 py-3">Employee</th><th className="px-4 py-3">Department</th><th className="px-4 py-3">Branch</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Punching</th><th className="px-4 py-3 text-right">Action</th></tr></thead>
+          <tbody className="divide-y divide-slate-100">
+            {filtered.length === 0 ? <tr><td colSpan={6} className="px-4 py-10 text-center text-slate-500">No assigned people match this search.</td></tr> : filtered.map((employee) => (
+              <tr key={employee.id} className="hover:bg-indigo-50/40">
+                <td className="px-4 py-3"><p className="font-semibold text-slate-900">{employee.firstName} {employee.lastName}</p><p className="mt-0.5 text-slate-500">{employee.employeeCode}</p></td>
+                <td className="px-4 py-3 text-slate-600">{employee.department?.name || "Unassigned"}</td>
+                <td className="px-4 py-3 text-slate-600">{employee.branch?.name || "Unassigned"}</td>
+                <td className="px-4 py-3"><span className="rounded-full bg-emerald-50 px-2 py-1 font-semibold text-emerald-700">{employee.status || "Active"}</span></td>
+                <td className="px-4 py-3 text-slate-600">{employee.flexiblePunching ? "Any time" : "Shift hours"}</td>
+                <td className="px-4 py-3 text-right"><button type="button" onClick={() => void onRemove(employee)} className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 font-semibold text-rose-600 hover:bg-rose-50" title="Remove from this shift"><Trash2 className="h-3.5 w-3.5" /> Remove</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
