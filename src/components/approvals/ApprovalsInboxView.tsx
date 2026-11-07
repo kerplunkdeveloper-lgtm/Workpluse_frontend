@@ -630,12 +630,12 @@ export default function ApprovalsInboxView() {
         const raw = approvedOvertimeMinutes[id];
         // The approval input is shown in hours for people, but the API and
         // payroll ledger remain minute-based.  Convert only at this boundary.
+        const requested = Number(requestedMinutes || 0);
         const numericApprovedHours =
-          raw !== undefined && raw !== "" ? Number(raw) : NaN;
+          raw !== undefined && raw !== "" ? Number(raw) : requested / 60;
         const numericApprovedMinutes = Number.isFinite(numericApprovedHours)
           ? Math.round(numericApprovedHours * 60)
           : NaN;
-        const requested = Number(requestedMinutes || 0);
         if (
           status === "APPROVED" &&
           (!Number.isFinite(numericApprovedHours) ||

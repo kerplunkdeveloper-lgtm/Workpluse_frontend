@@ -35,6 +35,11 @@ export const metadata: Metadata = {
     icon: "/logo-v2-128.png",
     apple: "/logo-v2-128.png",
   },
+  appleWebApp: {
+    capable: true,
+    title: "WorkPluse",
+    statusBarStyle: "default",
+  },
 };
 
 export const viewport: Viewport = {

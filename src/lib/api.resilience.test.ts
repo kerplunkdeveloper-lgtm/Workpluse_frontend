@@ -5,7 +5,7 @@ import { api } from "./api";
 type Step = number | "ok" | "network" | "cancel";
 
 const g = globalThis as unknown as { window?: EventTarget; localStorage?: unknown };
-const events: { type: string; status?: number }[] = [];
+const events: { type: string; status?: number; requestId?: string }[] = [];
 
 /** Makes every request answer with the next step in the sequence (the last one repeats). */
 function respondWith(sequence: Step[]) {
@@ -42,7 +42,12 @@ describe("API failure handling", () => {
     const target = new EventTarget();
     for (const type of ["workpulse:server-error", "workpulse:server-recovered"]) {
       target.addEventListener(type, (event) => {
-        events.push({ type, status: (event as CustomEvent<{ status?: number }>).detail?.status });
+        const detail = (event as CustomEvent<{ status?: number; requestId?: string }>).detail;
+        events.push({
+          type,
+          ...(detail?.status !== undefined ? { status: detail.status } : {}),
+          ...(detail?.requestId ? { requestId: detail.requestId } : {}),
+        });
       });
     }
     g.window = target;
@@ -59,6 +64,10 @@ describe("API failure handling", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it("uses a bounded global timeout for stalled connections", () => {
+    expect(api.defaults.timeout).toBeGreaterThanOrEqual(1000);
   });
 
   it("retries a GET through a brief server error without ever showing the outage screen", async () => {
@@ -89,6 +98,27 @@ describe("API failure handling", () => {
     expect(result.ok).toBe(false);
     expect(calls.count).toBe(3);
     expect(events).toEqual([{ type: "workpulse:server-error", status: 503 }]);
+  });
+
+  it("includes the server request id for support correlation", async () => {
+    api.defaults.adapter = async (config: InternalAxiosRequestConfig) => {
+      throw new AxiosError("status 503", "ERR_BAD_RESPONSE", config, null, {
+        data: {},
+        status: 503,
+        statusText: "",
+        headers: { "x-request-id": "req-support-123" },
+        config,
+      });
+    };
+
+    const result = await settle(api.get("/health"));
+
+    expect(result.ok).toBe(false);
+    expect(events).toContainEqual({
+      type: "workpulse:server-error",
+      status: 503,
+      requestId: "req-support-123",
+    });
   });
 
   it("never retries a write, which could be applied twice", async () => {
