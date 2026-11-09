@@ -5,6 +5,7 @@ export const STATUS_META: Record<string, { label: string; dot: string; badge: st
   PRESENT: { label: "Present", dot: "bg-emerald-500", badge: "bg-emerald-50 text-emerald-700 ring-emerald-600/15" },
   LATE: { label: "Late", dot: "bg-amber-500", badge: "bg-amber-50 text-amber-800 ring-amber-600/20" },
   HALF_DAY: { label: "Half day", dot: "bg-orange-400", badge: "bg-orange-50 text-orange-700 ring-orange-600/20" },
+  SHORT_HOURS: { label: "Short hours", dot: "bg-violet-500", badge: "bg-violet-50 text-violet-700 ring-violet-600/20" },
   WORK_FROM_HOME: { label: "Remote", dot: "bg-sky-500", badge: "bg-sky-50 text-sky-700 ring-sky-600/15" },
   ON_LEAVE: { label: "On leave", dot: "bg-violet-500", badge: "bg-violet-50 text-violet-700 ring-violet-600/15" },
   ABSENT: { label: "Absent", dot: "bg-rose-500", badge: "bg-rose-50 text-rose-700 ring-rose-600/15" },
@@ -16,7 +17,7 @@ export const statusMeta = (status?: AttendanceStatus | string | null) =>
   STATUS_META[String(status || "")] || { label: String(status || "—").replace(/_/g, " ").toLowerCase(), dot: "bg-slate-300", badge: "bg-slate-100 text-slate-600 ring-slate-500/15" };
 
 /** Statuses that count as a day worked. */
-export const WORKED_STATUSES = ["PRESENT", "LATE", "WORK_FROM_HOME", "HALF_DAY"];
+export const WORKED_STATUSES = ["PRESENT", "LATE", "WORK_FROM_HOME", "HALF_DAY", "SHORT_HOURS"];
 
 /** YYYY-MM-DD in the viewer's local time (toISOString would use UTC and shift late-night dates). */
 export const localDateKey = (date: Date) =>

@@ -16,6 +16,7 @@ const STATUSES: { value: AttendanceStatus; label: string }[] = [
   { value: "PRESENT", label: "Present" },
   { value: "LATE", label: "Late" },
   { value: "HALF_DAY", label: "Half day" },
+  { value: "SHORT_HOURS", label: "Short hours" },
   { value: "WORK_FROM_HOME", label: "Work from home" },
   { value: "ON_LEAVE", label: "On leave" },
   { value: "ABSENT", label: "Absent" },
@@ -28,6 +29,12 @@ const NO_TIMES: AttendanceStatus[] = ["ON_LEAVE", "ABSENT"];
  * local time — appending "Z" (as before) stored 09:00 as 09:00 UTC, i.e. 2:30 PM IST.
  */
 const toInstant = (date: string, time: string) => new Date(`${date}T${time}:00`).toISOString();
+
+const nextDate = (date: string) => {
+  const value = new Date(`${date}T00:00:00`);
+  value.setDate(value.getDate() + 1);
+  return value.toISOString().slice(0, 10);
+};
 
 export interface AdminMarkInitial {
   employee?: EmployeeOption | null;
@@ -57,7 +64,6 @@ function AdminMarkForm({ initial, onClose, onSaved }: { initial?: AdminMarkIniti
     e.preventDefault();
     setError(null);
     if (!employee) return setError("Choose the employee you're marking attendance for.");
-    if (needsTimes && outTime <= inTime) return setError("Punch out must be after punch in.");
     if (reason.trim().length < 3) return setError("Add a short reason so the change is clear in the audit log.");
 
     setSaving(true);
@@ -66,7 +72,12 @@ function AdminMarkForm({ initial, onClose, onSaved }: { initial?: AdminMarkIniti
         employeeId: employee.id,
         date,
         status,
-        ...(needsTimes ? { checkIn: toInstant(date, inTime), checkOut: toInstant(date, outTime) } : {}),
+        ...(needsTimes ? {
+          checkIn: toInstant(date, inTime),
+          // An earlier checkout time is an overnight checkout for flexible
+          // and night shifts: 23 Nov 20:00 -> 24 Nov 01:00.
+          checkOut: toInstant(outTime <= inTime ? nextDate(date) : date, outTime),
+        } : {}),
         reason: reason.trim(),
       });
       if (res?.success === false) throw new Error(res?.message);

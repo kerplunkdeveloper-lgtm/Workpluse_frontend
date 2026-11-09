@@ -5,6 +5,7 @@ export type AttendanceStatus =
   | "ABSENT"
   | "LATE"
   | "HALF_DAY"
+  | "SHORT_HOURS"
   | "ON_LEAVE"
   | "HOLIDAY"
   | "WEEK_OFF"
