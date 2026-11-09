@@ -13,7 +13,6 @@ import {
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import axios from "axios";
-
 interface RegistrationPayload {
   organizationName: string;
   firstName: string;
@@ -23,7 +22,6 @@ interface RegistrationPayload {
   subscriptionPlan?: string;
   billingCycle?: "MONTHLY" | "ANNUAL";
 }
-
 const getErrorMessage = (error: unknown, fallback: string) => {
   if (axios.isAxiosError<{ message?: string; code?: string }>(error)) {
     const status = error.response?.status || 0;
@@ -66,9 +64,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, 0);
   };
 
-  // A session is absolute: refresh-token rotation cannot extend this 30-day window.
-  // Browsers cap setTimeout at roughly 24.8 days, so schedule the expiry in
-  // safe chunks instead of passing the full 30-day duration at once.
   useEffect(() => {
     if (!user || user.role === "SUPER_ADMIN") return;
 
@@ -86,7 +81,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const expireSession = async () => {
       if (expired) return;
       expired = true;
-      try { await authApi.logout(); } catch { /* session expiry is local even if the API is offline */ }
+      try { await authApi.logout(); } catch {  }
       localStorage.removeItem(key);
       localStorage.removeItem("workpulse_access_token");
       localStorage.removeItem("workpulse_refresh_token");
