@@ -167,6 +167,7 @@ const STATUS_FILTERS = [
   { value: "LATE", label: "Late" },
   { value: "WORK_FROM_HOME", label: "WFH" },
   { value: "HALF_DAY", label: "Half day" },
+  { value: "SHORT_HOURS", label: "Short hours" },
   { value: "ON_LEAVE", label: "On leave" },
   { value: "ABSENT", label: "Absent" },
 ];
