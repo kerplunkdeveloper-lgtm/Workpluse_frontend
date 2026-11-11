@@ -340,7 +340,7 @@ useEffect(() => {
     if (!isTeamView) return setRegularize(row);
     const e = row.employee;
     setMarkInitial({
-      employee: e ? { id: e.id, name: `${e.firstName} ${e.lastName || ""}`.trim(), meta: e.employeeCode || "" } : null,
+      employee: e ? { id: e.id, name: `${e.firstName} ${e.lastName || ""}`.trim(), meta: e.employeeCode || "", shift: e.shift } : null,
       date: recordDateKey(row),
       status: row.status,
       inTime: row.checkIn ? toHHmm(row.checkIn) : undefined,

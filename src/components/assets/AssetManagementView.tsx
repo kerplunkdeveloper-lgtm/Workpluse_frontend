@@ -16,6 +16,7 @@ import { ReturnAssetModal } from "./ReturnAssetModal";
 import { TransferAssetModal } from "./TransferAssetModal";
 import { MaintenanceModal, CompleteMaintenanceModal } from "./MaintenanceModals";
 import { AssetDetailDrawer } from "./AssetDetailDrawer";
+import { BulkAssetImportModal } from "./BulkAssetImportModal";
 
 const CATEGORIES: { id: AssetCategory | "ALL"; label: string; icon: React.ElementType }[] = [
   { id: "ALL", label: "All Assets", icon: Box },
@@ -43,6 +44,7 @@ export default function AssetManagementView() {
 
   // Modals & Drawers
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [assignModalAsset, setAssignModalAsset] = useState<Asset | null>(null);
   const [returnModalAsset, setReturnModalAsset] = useState<Asset | null>(null);
@@ -149,6 +151,13 @@ export default function AssetManagementView() {
             title="Refresh"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+          </button>
+          <button
+            onClick={() => setIsBulkImportOpen(true)}
+            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-medium transition-colors"
+          >
+            <Copy className="w-4 h-4" />
+            <span>Bulk import</span>
           </button>
           <button
             onClick={() => {
@@ -576,6 +585,16 @@ export default function AssetManagementView() {
       </div>
 
       {/* ── Add / Edit Asset Modal ────────────────────────────────────────── */}
+      {isBulkImportOpen && (
+        <BulkAssetImportModal
+          employees={employees}
+          onClose={() => setIsBulkImportOpen(false)}
+          onSuccess={() => {
+            setIsBulkImportOpen(false);
+            loadData();
+          }}
+        />
+      )}
       {isAddModalOpen && (
         <AddEditAssetModal
           asset={editingAsset}

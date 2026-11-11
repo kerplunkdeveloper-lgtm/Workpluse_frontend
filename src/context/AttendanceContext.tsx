@@ -78,6 +78,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [locationDenied, setLocationDenied] = useState(false);
   const [currentPlace, setCurrentPlace] = useState<string | null>(null);
+  const lastAttendanceMutationAt = useRef(0);
   const placedAtRef = useRef<{ lat: number; lng: number } | null>(null);
 
    const [isOnline, setIsOnline] = useState<boolean>(
@@ -284,13 +285,16 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
         ? "error"
         : "locating";
 
-  const fetchTodayStatus = useCallback(async () => {
+  const fetchTodayStatus = useCallback(async (background = false) => {
     if (!token || !isOnline) return;
-    setIsLoading(true);
+    const requestStartedAt = Date.now();
+    if (!background) setIsLoading(true);
     try {
       const res = await attendanceApi.getTodayStatus();
       const raw = res?.data || res;
-      if (raw) {
+      // A refresh that started before a punch/break/lunch mutation may return
+      // the old row. Never let that stale response undo the instant UI state.
+      if (raw && requestStartedAt >= lastAttendanceMutationAt.current) {
         const hasCheckedIn = Boolean(
           raw.hasCheckedIn ||
           raw.clockedIn ||
@@ -343,7 +347,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
     } catch (err: any) {
       console.warn("Could not fetch today status:", err.message);
     } finally {
-      setIsLoading(false);
+      if (!background) setIsLoading(false);
     }
   }, [token, isOnline, user?.employee?.branch?.name]);
 
@@ -398,6 +402,11 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
             hasCheckedIn: true,
             hasCheckedOut: false,
             checkInTime: punchTimestamp,
+            attendance: {
+              ...(prev?.attendance || {}),
+              checkIn: prev?.attendance?.checkIn || punchTimestamp,
+              checkOut: null,
+            },
             isOfflinePunch: true,
           }));
         } else if (type === "CHECK_OUT") {
@@ -405,6 +414,10 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
             ...(prev || {}),
             hasCheckedOut: true,
             checkOutTime: punchTimestamp,
+            attendance: {
+              ...(prev?.attendance || {}),
+              checkOut: prev?.attendance?.checkOut || punchTimestamp,
+            },
             isOfflinePunch: true,
           }));
         } else if (type === "BREAK_START") {
@@ -448,7 +461,12 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
                 : "Shift completed. Working hours safely logged to timesheet.",
           });
           triggerCelebration();
-          await fetchTodayStatus();
+          // Update the controls immediately. The follow-up status request is
+          // useful for reconciling server-side fields, but it must not keep a
+          // punch/break/lunch button disabled while it waits on the database.
+          markPunchedLocally();
+          lastAttendanceMutationAt.current = Date.now();
+          void fetchTodayStatus(true);
           return true;
         }
         toast.error(res?.message || `${type} failed`);
@@ -498,8 +516,12 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
    */
   const captureLocationForPunch = useCallback(
     async (action: "in" | "out"): Promise<GeoCoordinates | null> => {
+      // GPS can take several seconds on a cold fix. Show the same busy state
+      // during that wait so the user cannot submit duplicate punch attempts.
+      setIsActionLoading(true);
       const coords = await requestBrowserLocation(true);
       if (coords) return coords;
+      setIsActionLoading(false);
       toast.error(`Turn on GPS to punch ${action}`, {
         id: "gps-required",
         duration: 12000,
@@ -624,7 +646,20 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
       if (res?.success) {
         toast.success("Remote WFH Punch-in successful!");
         triggerCelebration();
-        await fetchTodayStatus();
+        setTodayStatus((prev: any) => ({
+          ...(prev || {}),
+          hasCheckedIn: true,
+          hasCheckedOut: false,
+          isWorkFromHome: true,
+          attendance: {
+            ...(prev?.attendance || {}),
+            checkIn: prev?.attendance?.checkIn || punchTimestamp,
+            checkOut: null,
+            status: "WORK_FROM_HOME",
+          },
+        }));
+        lastAttendanceMutationAt.current = Date.now();
+        void fetchTodayStatus(true);
         return true;
       }
       toast.error(res?.message || "WFH punch-in failed");

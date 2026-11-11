@@ -2098,8 +2098,7 @@ export default function DashboardOverview() {
                         .map((moment) => moment.name)
                         .join(", ")}{" "}
                       {tomorrowBirthdays.length === 1 ? "has" : "have"} a
-                      birthday tomorrow. This reminder is visible to HR and
-                      admins only.
+                      birthday tomorrow.
                     </p>
                   </div>
                 </div>
@@ -2190,8 +2189,7 @@ export default function DashboardOverview() {
           </section>
         </div>
 
-        {/* Right Column (4 cols): Shift Completion Donut & Summary */}
-        <div
+            <div
           className={`grid gap-5 md:grid-cols-2 ${canManage ? "" : "hidden"}`}
         >
           {/* Shift completion gauge */}
