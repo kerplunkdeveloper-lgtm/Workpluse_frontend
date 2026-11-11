@@ -782,7 +782,7 @@ export default function ApprovalsInboxView() {
   const filterRequests = (rows: any[]) =>
     requestFilter === "ALL"
       ? rows
-      : rows.filter((row) => row.status === requestFilter);
+      : rows.filter((row) => String(row.status || "PENDING").toUpperCase() === requestFilter);
   const visibleLeaves = filterWorkflowRows(filterRequests(leaves), "LEAVES");
   const visiblePermissions = filterWorkflowRows(filterRequests(permissions), "PERMISSIONS");
   const visibleShoots = filterWorkflowRows(filterRequests(shoots), "SHOOTS");
@@ -1235,7 +1235,7 @@ export default function ApprovalsInboxView() {
                 "Overtime requested",
                 "Approve hours",
                 "Reason",
-                "Action",
+                requestFilter === "PENDING" ? "Action" : "Status",
               ]}
             >
               {visibleOvertimes.map((ot) => (
@@ -1248,43 +1248,57 @@ export default function ApprovalsInboxView() {
                     {minutesLabel(ot.requestedMinutes)}
                     <span className="ml-1 text-slate-500">({(Number(ot.requestedMinutes || 0) / 60).toFixed(2)}h)</span>
                   </td>
-                  <td className="px-4 py-4">
-                    <input
-                      type="number"
-                      min={0}
-                      max={Number(ot.requestedMinutes || 0) / 60}
-                      step={0.25}
-                      value={
-                        approvedOvertimeMinutes[ot.id] ??
-                        String((Number(ot.requestedMinutes || 0) / 60).toFixed(2))
-                      }
-                      onChange={(event) =>
-                        setApprovedOvertimeMinutes((current) => ({
-                          ...current,
-                          [ot.id]: event.target.value,
-                        }))
-                      }
-                      className="w-24 rounded-lg border border-slate-200 px-2.5 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                      aria-label={`Approved overtime hours for ${ot.employee?.firstName || "employee"}`}
-                    />
-                  </td>
+                  {String(ot.status || "PENDING").toUpperCase() === "PENDING" ? (
+                    <td className="px-4 py-4">
+                      <input
+                        type="number"
+                        min={0}
+                        max={Number(ot.requestedMinutes || 0) / 60}
+                        step={0.25}
+                        value={
+                          approvedOvertimeMinutes[ot.id] ??
+                          String((Number(ot.requestedMinutes || 0) / 60).toFixed(2))
+                        }
+                        onChange={(event) =>
+                          setApprovedOvertimeMinutes((current) => ({
+                            ...current,
+                            [ot.id]: event.target.value,
+                          }))
+                        }
+                        className="w-24 rounded-lg border border-slate-200 px-2.5 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                        aria-label={`Approved overtime hours for ${ot.employee?.firstName || "employee"}`}
+                      />
+                    </td>
+                  ) : (
+                    <td className="whitespace-nowrap px-4 py-4 text-xs font-semibold text-emerald-700">
+                      {String(ot.status || "").toUpperCase() === "APPROVED"
+                        ? `${(Number(ot.approvedMinutes ?? ot.requestedMinutes ?? 0) / 60).toFixed(2)}h`
+                        : "—"}
+                    </td>
+                  )}
                   <ReasonCell text={ot.reason} />
-                  <ActionCell
-                    onApprove={() =>
-                      handleReviewOvertime(
-                        ot.id,
-                        "APPROVED",
-                        Number(ot.requestedMinutes || 0),
-                      )
-                    }
-                    onReject={() =>
-                      handleReviewOvertime(
-                        ot.id,
-                        "REJECTED",
-                        Number(ot.requestedMinutes || 0),
-                      )
-                    }
-                  />
+                  {String(ot.status || "PENDING").toUpperCase() === "PENDING" ? (
+                    <ActionCell
+                      onApprove={() =>
+                        handleReviewOvertime(
+                          ot.id,
+                          "APPROVED",
+                          Number(ot.requestedMinutes || 0),
+                        )
+                      }
+                      onReject={() =>
+                        handleReviewOvertime(
+                          ot.id,
+                          "REJECTED",
+                          Number(ot.requestedMinutes || 0),
+                        )
+                      }
+                    />
+                  ) : (
+                    <td className="whitespace-nowrap px-4 py-4 text-right">
+                      <StatusBadge status={ot.status} />
+                    </td>
+                  )}
                 </tr>
               ))}
             </TableShell>
