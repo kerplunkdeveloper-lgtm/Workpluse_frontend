@@ -51,6 +51,21 @@ const parseDetails = (raw?: string | null): Record<string, any> | null => {
   }
 };
 
+const friendlyMessage = (entry: AuditEntry, details: Record<string, any> | null) => {
+  const path = String(details?.path || "").toLowerCase();
+  if (path.includes("/notifications/fcm/token")) return "Push notification device registered.";
+  const actionText: Record<string, string> = {
+    CREATE: "created",
+    UPDATE: "updated",
+    DELETE: "deleted",
+    APPROVE: "approved",
+    REJECT: "rejected",
+    CANCEL: "cancelled",
+    EXPORT: "exported",
+  };
+  return `${actionText[entry.action] || "changed"} ${label(entry.entity).toLowerCase()}.`;
+};
+
 const stamp = (iso: string) => {
   const date = new Date(iso);
   return {
@@ -183,7 +198,7 @@ function Row({ entry, open, onToggle }: { entry: AuditEntry; open: boolean; onTo
   const details = useMemo(() => parseDetails(entry.details), [entry.details]);
   const when = stamp(entry.createdAt);
   const who = entry.actor?.name || entry.actor?.email || "Unknown user";
-  const request = details?.method && details?.path ? `${details.method} ${String(details.path).split("?")[0]}` : null;
+  const message = friendlyMessage(entry, details);
 
   return (
     <li>
@@ -207,15 +222,9 @@ function Row({ entry, open, onToggle }: { entry: AuditEntry; open: boolean; onTo
           <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
             <Item term="Done by" value={`${who}${entry.actor?.email && entry.actor.name !== entry.actor.email ? ` (${entry.actor.email})` : ""}`} />
             <Item term="From IP address" value={entry.ipAddress || "Not recorded"} />
-            <Item term="Request" value={request || "Not recorded"} mono />
+            <Item term="Message" value={message} />
             <Item term="Record ID" value={entry.entityId || "—"} mono />
           </dl>
-          {details?.body && (
-            <div>
-              <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">What was sent</p>
-              <pre className="max-h-64 overflow-auto rounded-xl bg-white p-3 text-xs leading-5 text-slate-700 ring-1 ring-slate-200">{JSON.stringify(details.body, null, 2)}</pre>
-            </div>
-          )}
         </div>
       )}
     </li>

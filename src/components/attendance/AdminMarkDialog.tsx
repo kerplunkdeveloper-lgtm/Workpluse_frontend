@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { attendanceApi } from "@/lib/api";
@@ -8,7 +8,7 @@ import type { AttendanceStatus } from "@/types";
 import DatePicker from "@/components/ui/DatePicker";
 import TimeSelect from "@/components/ui/TimeSelect";
 import EmployeeCombobox, { type EmployeeOption } from "./EmployeeCombobox";
-import { localDateKey } from "./attendanceUtils";
+import { attendanceStatusForPunches, localDateKey } from "./attendanceUtils";
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
 
@@ -59,6 +59,12 @@ function AdminMarkForm({ initial, onClose, onSaved }: { initial?: AdminMarkIniti
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const needsTimes = !NO_TIMES.includes(status);
+
+  useEffect(() => {
+    if (!needsTimes || !employee?.shift) return;
+    const derivedStatus = attendanceStatusForPunches(inTime, outTime, employee.shift);
+    if (derivedStatus) setStatus(derivedStatus);
+  }, [employee, inTime, outTime, needsTimes]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,6 +132,7 @@ function AdminMarkForm({ initial, onClose, onSaved }: { initial?: AdminMarkIniti
             <Select id="admin-mark-status" value={status} onChange={(e) => setStatus(e.target.value as AttendanceStatus)} className={field}>
               {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
             </Select>
+            {employee?.shift && needsTimes && <p className="mt-1 text-[11px] text-slate-500">Calculated automatically from punch duration and shift target.</p>}
           </div>
         </div>
 

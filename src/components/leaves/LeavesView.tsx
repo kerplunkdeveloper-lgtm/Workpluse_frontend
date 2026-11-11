@@ -68,6 +68,7 @@ export default function LeavesView() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [isHalfDay, setIsHalfDay] = useState(false);
+  const [halfDayPeriod, setHalfDayPeriod] = useState<"MORNING" | "AFTERNOON">("MORNING");
   const [reason, setReason] = useState("");
   const [submittingApply, setSubmittingApply] = useState(false);
   const [newTypeName, setNewTypeName] = useState("");
@@ -219,6 +220,7 @@ export default function LeavesView() {
         startDate,
         endDate,
         totalDays: isHalfDay ? 0.5 : undefined,
+        halfDayPeriod: isHalfDay ? halfDayPeriod : undefined,
         reason,
       });
 
@@ -226,6 +228,7 @@ export default function LeavesView() {
         toast.success("Leave application submitted successfully!");
         setApplyModalOpen(false);
         setReason("");
+        setHalfDayPeriod("MORNING");
         loadData();
       } else {
         toast.error(res?.message || "Failed to apply for leave");
@@ -590,6 +593,7 @@ export default function LeavesView() {
                         setStartDate(selectedDay);
                         setEndDate(selectedDay);
                         setIsHalfDay(false);
+                        setHalfDayPeriod("MORNING");
                         setReason("");
                         setApplyModalOpen(true);
                       }}
@@ -636,7 +640,7 @@ export default function LeavesView() {
                       <div className="min-w-0"><p className="truncate text-sm font-bold text-slate-900">{request.leaveType?.name || "Leave"}</p><p className="mt-1 text-xs font-medium text-slate-500">{formatDate(request.startDate)}{request.startDate !== request.endDate ? ` – ${formatDate(request.endDate)}` : ""}</p></div>
                       <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-bold ${tone.badge}`}><StatusIcon className="h-3 w-3" />{tone.label}</span>
                     </div>
-                    <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-slate-500"><span>{request.isHalfDay ? "Half day" : `${request.totalDays} day${Number(request.totalDays) === 1 ? "" : "s"}`}</span><span className="max-w-[65%] truncate text-right" title={request.reason}>{request.reason}</span></div>
+                    <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-slate-500"><span>{request.halfDayPeriod ? `${request.halfDayPeriod === "MORNING" ? "Morning" : "Afternoon"} half day` : `${request.totalDays} day${Number(request.totalDays) === 1 ? "" : "s"}`}</span><span className="max-w-[65%] truncate text-right" title={request.reason}>{request.reason}</span></div>
                   </div>;
                 })}
                 {upcomingLeave.length > 6 && <p className="text-center text-xs font-semibold text-indigo-600">See all details in My Leave Applications below.</p>}
@@ -680,7 +684,7 @@ export default function LeavesView() {
                         {formatDate(req.startDate)} to {formatDate(req.endDate)}
                       </td>
                       <td className="py-3.5 px-4 font-semibold text-indigo-600">
-                        {req.totalDays} {req.isHalfDay ? "(Half Day)" : "day(s)"}
+                        {req.totalDays} {req.halfDayPeriod ? `(${req.halfDayPeriod === "MORNING" ? "Morning" : "Afternoon"} Half Day)` : "day(s)"}
                       </td>
                       <td className="py-3.5 px-4 text-slate-500 max-w-xs truncate">
                         {req.reason}
@@ -821,7 +825,7 @@ export default function LeavesView() {
                 Apply for Leave
               </h3>
               <button
-                onClick={() => { setApplyModalOpen(false); setSelectedTypeId(""); setStartDate(""); setEndDate(""); setIsHalfDay(false); setReason(""); }}
+                onClick={() => { setApplyModalOpen(false); setSelectedTypeId(""); setStartDate(""); setEndDate(""); setIsHalfDay(false); setHalfDayPeriod("MORNING"); setReason(""); }}
                 className="text-slate-400 hover:text-slate-700"
               >
                 ✕
@@ -901,6 +905,26 @@ export default function LeavesView() {
                 </label>
               </div>
 
+              {isHalfDay && (
+                <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3">
+                  <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
+                    Half-Day Timing <span className="text-rose-500">*</span>
+                  </label>
+                  <Select
+                    value={halfDayPeriod}
+                    onChange={(e) => setHalfDayPeriod(e.target.value as "MORNING" | "AFTERNOON")}
+                    className="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900"
+                    required
+                  >
+                    <option value="MORNING">Morning half-day — punch in after the company-hours midpoint</option>
+                    <option value="AFTERNOON">Afternoon half-day — punch out by the company-hours midpoint</option>
+                  </Select>
+                  <p className="mt-1.5 text-[11px] text-slate-500">
+                    The exact opening/closing time is calculated from your assigned shift hours.
+                  </p>
+                </div>
+              )}
+
               <div>
                 <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
                   Reason for Time-Off <span className="text-rose-500">*</span>
@@ -918,7 +942,7 @@ export default function LeavesView() {
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
                 <button
                   type="button"
-                  onClick={() => { setApplyModalOpen(false); setSelectedTypeId(""); setStartDate(""); setEndDate(""); setIsHalfDay(false); setReason(""); }}
+                  onClick={() => { setApplyModalOpen(false); setSelectedTypeId(""); setStartDate(""); setEndDate(""); setIsHalfDay(false); setHalfDayPeriod("MORNING"); setReason(""); }}
                   className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
                 >
                   Cancel

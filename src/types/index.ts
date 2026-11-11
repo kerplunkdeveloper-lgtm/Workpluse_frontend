@@ -333,6 +333,7 @@ export interface LeaveRequest {
   endDate: string;
   totalDays: number;
   isHalfDay?: boolean;
+  halfDayPeriod?: "MORNING" | "AFTERNOON" | null;
   reason: string;
   status: RequestStatus;
   reviewNote?: string;

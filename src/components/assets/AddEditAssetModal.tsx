@@ -39,6 +39,9 @@ export function AddEditAssetModal({
   );
   const [condition, setCondition] = useState<AssetCondition>(asset?.condition || "NEW");
   const [assignedToId, setAssignedToId] = useState(asset?.assignedToId || "");
+  const [employeeCode, setEmployeeCode] = useState(
+    asset?.assignedTo?.employeeCode || ""
+  );
   const [ram, setRam] = useState(asset?.specifications?.ram || "");
   const [storage, setStorage] = useState(asset?.specifications?.storage || "");
   const [processor, setProcessor] = useState(asset?.specifications?.processor || "");
@@ -55,6 +58,16 @@ export function AddEditAssetModal({
 
     setIsSubmitting(true);
     setError(null);
+
+    const normalizedEmployeeCode = employeeCode.trim().toUpperCase();
+    const matchedEmployee = normalizedEmployeeCode
+      ? employees.find((employee) => employee.employeeCode?.toUpperCase() === normalizedEmployeeCode)
+      : null;
+    if (!isEdit && normalizedEmployeeCode && !matchedEmployee) {
+      setError("Employee Code was not found. Enter the exact code from the employee directory.");
+      setIsSubmitting(false);
+      return;
+    }
 
     const specs: Record<string, string> = {};
     if (ram.trim()) specs.ram = ram.trim();
@@ -90,7 +103,8 @@ export function AddEditAssetModal({
           condition,
           specifications: Object.keys(specs).length > 0 ? specs : null,
           notes: notes.trim() || null,
-          assignedToId: assignedToId || undefined,
+          assignedToId: matchedEmployee?.id || assignedToId || undefined,
+          employeeCode: normalizedEmployeeCode || undefined,
         });
       }
       onSuccess();
@@ -335,8 +349,21 @@ export function AddEditAssetModal({
           {!isEdit && (
             <div>
               <label className="block font-medium text-slate-700 mb-1">
-                Assign Immediately to Employee (Optional)
+                Employee Code (Optional)
               </label>
+              <input
+                type="text"
+                placeholder="e.g. EMP001 — enter exact employee code"
+                value={employeeCode}
+                onChange={(e) => {
+                  const value = e.target.value.toUpperCase();
+                  setEmployeeCode(value);
+                  const match = employees.find((employee) => employee.employeeCode?.toUpperCase() === value.trim());
+                  setAssignedToId(match?.id || "");
+                }}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50/50 text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono"
+              />
+              <p className="text-xs text-slate-400 mt-0.5">Leave blank to keep the asset in inventory. Entering a valid code records who received it.</p>
               <Select
                 value={assignedToId}
                 onChange={(e) => setAssignedToId(e.target.value)}

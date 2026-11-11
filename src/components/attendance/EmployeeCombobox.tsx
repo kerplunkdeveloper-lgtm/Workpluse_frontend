@@ -10,11 +10,13 @@ export interface EmployeeOption {
   id: string;
   name: string;
   meta: string;
+  shift?: Employee["shift"];
 }
 
 const toOption = (e: Employee): EmployeeOption => ({
   id: e.id,
   name: `${e.firstName} ${e.lastName || ""}`.trim(),
+  shift: e.shift,
   meta: [e.employeeCode, e.designation].filter(Boolean).join(" · "),
 });
 

@@ -590,6 +590,7 @@ export const leavesApi = {
     endDate: string;
     reason: string;
     totalDays?: number;
+    halfDayPeriod?: "MORNING" | "AFTERNOON";
   }) => {
     const res = await api.post("/leaves/apply", payload);
     return res.data;
@@ -1682,6 +1683,10 @@ export const assetsApi = {
   },
   create: async (data: any) => {
     const res = await api.post("/assets", data);
+    return res.data;
+  },
+  bulkCreate: async (assets: any[]) => {
+    const res = await api.post("/assets/bulk", { assets });
     return res.data;
   },
   update: async (id: string, data: any) => {

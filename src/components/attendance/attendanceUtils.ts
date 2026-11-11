@@ -66,6 +66,41 @@ export const shiftLengthMinutes = (start?: string, end?: string) => {
   return diff > 0 ? diff : diff + 24 * 60;
 };
 
+/** Derives the status from the completed punch duration for admin corrections. */
+export const attendanceStatusForPunches = (
+  inTime?: string,
+  outTime?: string,
+  shift?: Pick<NonNullable<Attendance["shift"]>, "startTime" | "endTime" | "flexiblePunching"> & {
+    breakMinutes?: number;
+    lunchMinutes?: number;
+    breakIncluded?: boolean;
+    lunchIncluded?: boolean;
+    totalWorkingMinutes?: number | null;
+  },
+) => {
+  if (!inTime || !outTime) return null;
+  const parse = (value: string) => {
+    const match = value.match(/^(\d{1,2}):(\d{2})/);
+    return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+  };
+  const start = parse(inTime);
+  const end = parse(outTime);
+  if (start === null || end === null) return null;
+  const elapsed = end > start ? end - start : end - start + 24 * 60;
+  const scheduledMinutes = Number(shift?.totalWorkingMinutes) > 0
+    ? Number(shift?.totalWorkingMinutes)
+    : shiftLengthMinutes(shift?.startTime, shift?.endTime) || 480;
+  const scheduledWorkMinutes = Math.max(0, scheduledMinutes
+    - (shift?.breakIncluded === false ? 0 : Number(shift?.breakMinutes || 0))
+    - (shift?.lunchIncluded === false ? 0 : Number(shift?.lunchMinutes || 0)));
+  // Keep this aligned with the backend's default AttendancePolicy threshold.
+  const halfDayThreshold = 240;
+  if (elapsed < halfDayThreshold) return "HALF_DAY" as const;
+  if (elapsed < scheduledWorkMinutes) return "SHORT_HOURS" as const;
+  if (!shift?.flexiblePunching && start > (parse(shift?.startTime || "") ?? start)) return "LATE" as const;
+  return "PRESENT" as const;
+};
+
 /** "09:30" → "9:30 AM". */
 export const formatShiftTime = (value?: string) => {
   const m = String(value || "").match(/^(\d{1,2}):(\d{2})/);
