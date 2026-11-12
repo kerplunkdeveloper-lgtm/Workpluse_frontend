@@ -403,20 +403,20 @@ export const attendanceApi = {
     });
     return res.data;
   },
-  startBreak: async (coords?: { latitude: number; longitude: number }) => {
-    const res = await api.post("/attendance/break-start", coords || {});
+  startBreak: async (coords?: { latitude: number; longitude: number; accuracy?: number }) => {
+    const res = await api.post("/attendance/break-start", { ...(coords || {}), timestamp: new Date().toISOString() });
     return res.data;
   },
-  endBreak: async (coords?: { latitude: number; longitude: number }) => {
-    const res = await api.post("/attendance/break-end", coords || {});
+  endBreak: async (coords?: { latitude: number; longitude: number; accuracy?: number }) => {
+    const res = await api.post("/attendance/break-end", { ...(coords || {}), timestamp: new Date().toISOString() });
     return res.data;
   },
-  startLunch: async (coords?: { latitude: number; longitude: number }) => {
-    const res = await api.post("/attendance/lunch-start", coords || {});
+  startLunch: async (coords?: { latitude: number; longitude: number; accuracy?: number }) => {
+    const res = await api.post("/attendance/lunch-start", { ...(coords || {}), timestamp: new Date().toISOString() });
     return res.data;
   },
-  endLunch: async (coords?: { latitude: number; longitude: number }) => {
-    const res = await api.post("/attendance/lunch-end", coords || {});
+  endLunch: async (coords?: { latitude: number; longitude: number; accuracy?: number }) => {
+    const res = await api.post("/attendance/lunch-end", { ...(coords || {}), timestamp: new Date().toISOString() });
     return res.data;
   },
   // Both fall back gracefully in their callers, so a failure here is not an outage.

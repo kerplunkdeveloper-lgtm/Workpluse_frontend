@@ -386,8 +386,8 @@ useEffect(() => {
         )}
       </div>
 
-      <div className="flex flex-col gap-3 rounded-2xl bg-white p-3 ring-1 ring-slate-900/[0.06] lg:flex-row lg:items-center lg:justify-between">
-        <div role="tablist" aria-label="Filter by status" className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-0.5 lg:pb-0">
+      <div className="flex w-full flex-col gap-3 overflow-hidden rounded-2xl bg-white p-3 ring-1 ring-slate-900/[0.06]">
+        <div role="tablist" aria-label="Filter by status" className="flex min-w-0 w-full gap-1 overflow-x-auto px-1 pb-1">
           {STATUS_FILTERS.map((s) => {
             const selected = status === s.value;
             return (
@@ -408,7 +408,7 @@ useEffect(() => {
           })}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-2 xl:justify-end">
           <AttendanceDateFilter
             range={range}
             singleDate={singleDate}
