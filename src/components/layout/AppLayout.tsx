@@ -22,6 +22,7 @@ import CompanyLogo from "@/components/ui/CompanyLogo";
 import ShortcutsHelpModal from "./ShortcutsHelpModal";
 import { NAV_SECTIONS, PLATFORM_SECTIONS, DESKTOP_NAV_SCROLL_KEY, MOBILE_NAV_SCROLL_KEY, isNavActive, itemVisible, itemMatches, timeAgo } from "./navConfig";
 import { enableFirebaseNotifications, listenForFirebaseNotifications } from "@/lib/firebaseMessaging";
+import { playNotificationSound, unlockNotificationSound } from "@/lib/notificationSound";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -63,6 +64,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [roleAccess, setRoleAccess] = useState<Record<string, Record<string, boolean>> | null>(null);
   const [pushPermission, setPushPermission] = useState<NotificationPermission | "unsupported" | "insecure" | "not-configured" | "error" | null>(null);
   const [pushBusy, setPushBusy] = useState(false);
+  const knownNotificationIdsRef = useRef<Set<string>>(new Set());
+  const notificationsLoadedRef = useRef(false);
+
+  useEffect(() => {
+    const unlock = () => unlockNotificationSound();
+    window.addEventListener("pointerdown", unlock, { passive: true });
+    window.addEventListener("keydown", unlock, { passive: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
 
   const requestBrowserNotifications = async () => {
     setPushBusy(true);
@@ -199,9 +212,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       const title = payload.notification?.title || "WorkPluse notification";
       const message = payload.notification?.body || "You have a new notification.";
       toast(title, { description: message });
+      playNotificationSound();
       void notificationsApi.getAll().then((updated) => {
         if (cancelled) return;
         const items = unwrapList<NotificationItem>(updated);
+        knownNotificationIdsRef.current = new Set(items.map((item) => String(item.id)));
+        notificationsLoadedRef.current = true;
         setNotifications(items);
         setUnreadCount(typeof updated?.unreadCount === "number" ? updated.unreadCount : items.filter((n) => !n.isRead).length);
       }).catch(() => {});
@@ -243,12 +259,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       try {
         const res = await notificationsApi.getAll();
         const items = unwrapList<NotificationItem>(res);
+        const newUnread = notificationsLoadedRef.current && items.some(
+          (item) => !item.isRead && !knownNotificationIdsRef.current.has(String(item.id))
+        );
+        knownNotificationIdsRef.current = new Set(items.map((item) => String(item.id)));
+        notificationsLoadedRef.current = true;
         setNotifications(items);
         setUnreadCount(
           typeof res?.unreadCount === "number"
             ? res.unreadCount
             : items.filter((n) => !n.isRead).length
         );
+        if (newUnread) playNotificationSound();
       } catch {
         // ignore
       }

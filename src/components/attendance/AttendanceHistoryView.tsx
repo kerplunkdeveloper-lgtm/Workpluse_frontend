@@ -3,11 +3,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Download, ExternalLink, FileSearch, MapPin, Pencil, Plus, RefreshCw } from "lucide-react";
-import { attendanceApi, correctionsApi } from "@/lib/api";
+import { attendanceApi, branchesApi, correctionsApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { formatTime, unwrapList } from "@/lib/utils";
 import { toast } from "sonner";
-import type { Attendance } from "@/types";
+import type { Attendance, Branch } from "@/types";
 import Pagination from "@/components/ui/Pagination";
 import RegularizationModal from "./RegularizationModal";
 import AdminMarkDialog, { type AdminMarkInitial } from "./AdminMarkDialog";
@@ -221,6 +221,7 @@ export default function AttendanceHistoryView() {
   const singleDate = params?.get("date") || params?.get("from") || localDateKey(new Date());
   const customFrom = params?.get("from") || "";
   const customTo = params?.get("to") || "";
+  const branchId = params?.get("branchId") || "ALL";
   const employee: EmployeeOption | null = params?.get("employee")
     ? { id: params.get("employee")!, name: params.get("employeeName") || "Selected employee", meta: "" }
     : null;
@@ -240,6 +241,12 @@ export default function AttendanceHistoryView() {
   const [correctionsLoading, setCorrectionsLoading] = useState(false);
   const [clockNow, setClockNow] = useState(() => Date.now());
   const [exporting, setExporting] = useState(false);
+  const [branches, setBranches] = useState<Branch[]>([]);
+
+  useEffect(() => {
+    if (!isTeamView) return;
+    branchesApi.list().then((res) => setBranches(unwrapList<Branch>(res))).catch(() => setBranches([]));
+  }, [isTeamView]);
 
   const setFilters = useCallback(
     (next: Record<string, string | null>) => {
@@ -263,6 +270,7 @@ export default function AttendanceHistoryView() {
         to,
         status: status !== "ALL" ? status : undefined,
         employeeId: isTeamView ? employee?.id : undefined,
+        branchId: isTeamView && branchId !== "ALL" ? branchId : undefined,
         page,
         limit: pageSize,
       })
@@ -278,7 +286,7 @@ export default function AttendanceHistoryView() {
     return () => {
       active = false;
     };
-  }, [from, to, status, employee?.id, isTeamView, page, pageSize, reloadKey]);
+  }, [from, to, status, employee?.id, branchId, isTeamView, page, pageSize, reloadKey]);
 
 useEffect(() => {
     let active = true;
@@ -317,6 +325,7 @@ useEffect(() => {
           to,
           status: status !== "ALL" ? status : undefined,
           employeeId: employee?.id,
+          branchId: branchId !== "ALL" ? branchId : undefined,
           page: currentPage,
           limit: 500,
         });
@@ -422,11 +431,22 @@ useEffect(() => {
             }}
           />
           {isTeamView && (
-            <EmployeeCombobox
-              value={employee}
-              onChange={(o) => setFilters({ employee: o?.id || null, employeeName: o?.name || null })}
-              className="w-full sm:w-56"
-            />
+            <>
+              <select
+                value={branchId}
+                onChange={(e) => setFilters({ branchId: e.target.value === "ALL" ? null : e.target.value, employee: null, employeeName: null })}
+                aria-label="Filter attendance by branch"
+                className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-indigo-400 sm:w-48"
+              >
+                <option value="ALL">All branches</option>
+                {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
+              </select>
+              <EmployeeCombobox
+                value={employee}
+                onChange={(o) => setFilters({ employee: o?.id || null, employeeName: o?.name || null })}
+                className="w-full sm:w-56"
+              />
+            </>
           )}
           <button type="button" onClick={reload} className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 ring-1 ring-slate-200 transition hover:bg-slate-50 hover:text-slate-800" aria-label="Refresh">
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
@@ -439,9 +459,9 @@ useEffect(() => {
         loading={loading}
         failed={failed}
         isTeamView={isTeamView}
-        filtered={status !== "ALL" || Boolean(employee) || range !== "month"}
+        filtered={status !== "ALL" || Boolean(employee) || branchId !== "ALL" || range !== "month"}
         onRetry={reload}
-        onClearFilters={() => setFilters({ status: null, range: "month", date: null, from: null, to: null, employee: null, employeeName: null })}
+        onClearFilters={() => setFilters({ status: null, range: "month", date: null, from: null, to: null, employee: null, employeeName: null, branchId: null })}
         onCorrect={openCorrection}
         correctionRequests={correctionRequests}
         now={clockNow}

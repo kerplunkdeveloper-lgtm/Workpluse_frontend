@@ -24,6 +24,7 @@ import AdminTwoFactorPolicy from "@/components/settings/AdminTwoFactorPolicy";
 import { confirmDialog } from "@/components/ui/confirmDialog";
 import CompanyLogoSetting from "@/components/settings/CompanyLogoSetting";
 import Select from "@/components/ui/Select";
+import BiometricSettings from "@/components/settings/BiometricSettings";
 
 const COMMON_TIMEZONES: [string, string][] = [
   ["Asia/Kolkata", "India (IST, UTC+5:30)"],
@@ -795,6 +796,7 @@ export default function SubscriptionSettingsView() {
       </div>
 
       {user?.role === "COMPANY_ADMIN" && <div id="security" className="scroll-mt-24"><AdminTwoFactorPolicy /></div>}
+      {user?.features?.hasApiAccess && <div className="mt-6"><BiometricSettings /></div>}
       {user?.features?.hasApiAccess && <div id="webhooks" className="scroll-mt-24"><WebhooksSettings /></div>}
       </div>
       </div>

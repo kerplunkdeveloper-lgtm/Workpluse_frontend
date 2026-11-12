@@ -190,7 +190,7 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div className="w-full max-w-4xl bg-white text-slate-900 rounded-3xl p-6 sm:p-10 shadow-2xl relative my-8 print:p-0 print:m-0 print:shadow-none print:w-full print:max-w-none">
+      <div className="w-full max-w-5xl overflow-hidden bg-white text-slate-900 rounded-3xl p-4 sm:p-8 lg:p-10 shadow-2xl relative my-8 print:p-0 print:m-0 print:shadow-none print:w-full print:max-w-none">
         
         {/* Top Control Bar (Hidden on print) */}
         <div className="flex flex-wrap items-center justify-between gap-3 pb-6 border-b border-slate-200 mb-6 print:hidden">
@@ -260,7 +260,7 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
           {/* 1. Header rendered based on Company Template headerLayout */}
           {headerLayout === "BANNER" ? (
             <div
-              className="p-6 rounded-2xl text-white flex items-center justify-between shadow-sm"
+              className="p-6 rounded-2xl text-white flex flex-wrap items-center justify-between gap-5 shadow-sm"
               style={{ backgroundColor: primaryColor }}
             >
               <div className="flex items-center gap-3">
@@ -305,7 +305,7 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
             </div>
           ) : (
             /* SPLIT DUAL LAYOUT */
-            <div className="flex items-start justify-between pb-6 border-b-2" style={{ borderColor: primaryColor }}>
+            <div className="flex flex-col items-start justify-between gap-5 pb-6 border-b-2 sm:flex-row" style={{ borderColor: primaryColor }}>
               <div>
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl overflow-hidden shrink-0 shadow-xs border border-slate-200 p-1 flex items-center justify-center bg-white">
@@ -324,7 +324,7 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
                 )}
               </div>
 
-              <div className="text-right">
+              <div className="text-left sm:text-right">
                 <span className="inline-block px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-slate-100 text-slate-700 mb-1">
                   Salary Payslip
                 </span>
@@ -342,25 +342,25 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-2xl bg-slate-50/80 border border-slate-200 text-xs">
             <div>
               <span className="text-slate-400 block text-xs uppercase font-bold tracking-wider">Employee Name</span>
-              <span className="font-bold text-slate-900 text-sm">
+              <span className="block break-words font-bold text-slate-900 text-sm">
                 {details?.employee?.name || `${payslip.employee?.firstName} ${payslip.employee?.lastName || ""}`.trim()}
               </span>
             </div>
             <div>
               <span className="text-slate-400 block text-xs uppercase font-bold tracking-wider">Employee Code</span>
-              <span className="font-bold text-slate-900 font-mono">
+              <span className="block break-words font-bold text-slate-900 font-mono">
                 {details?.employee?.employeeCode || payslip.employee?.employeeCode || "WP-EMP-001"}
               </span>
             </div>
             <div>
               <span className="text-slate-400 block text-xs uppercase font-bold tracking-wider">Designation</span>
-              <span className="font-semibold text-slate-800">
+              <span className="block break-words font-semibold text-slate-800">
                 {details?.employee?.designation || (payslip.employee as any)?.designation || "Staff Professional"}
               </span>
             </div>
             <div>
               <span className="text-slate-400 block text-xs uppercase font-bold tracking-wider">Department</span>
-              <span className="font-semibold text-slate-800">
+              <span className="block break-words font-semibold text-slate-800">
                 {details?.employee?.department || payslip.employee?.department?.name || "General Operations"}
               </span>
             </div>
@@ -487,9 +487,9 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
                 
                 <div className="p-4 space-y-3 text-xs">
                   {earningsItems.map((item: any, idx: number) => (
-                    <div key={idx} className="flex justify-between items-center border-b border-slate-100 pb-2 last:border-none last:pb-0">
-                      <span className="text-slate-600 font-medium">{item.label}</span>
-                      <span className="font-semibold text-slate-900">{formatCurrency(item.amount)}</span>
+                    <div key={idx} className="flex items-start justify-between gap-4 border-b border-slate-100 pb-2 last:border-none last:pb-0">
+                      <span className="min-w-0 break-words text-slate-600 font-medium">{item.label}</span>
+                      <span className="shrink-0 whitespace-nowrap text-right font-semibold text-slate-900">{formatCurrency(item.amount)}</span>
                     </div>
                   ))}
                 </div>
@@ -520,12 +520,12 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
                         Attendance & Hours Deductions
                       </span>
                       {attendanceDeductionItems.map((item, idx) => (
-                        <div key={idx} className="flex justify-between items-start">
-                          <div>
+                        <div key={idx} className="flex items-start justify-between gap-4">
+                          <div className="min-w-0 break-words">
                             <span className="text-rose-700 font-semibold block">{item.label}</span>
-                            {item.note && <span className="text-xs text-slate-400 block">{item.note}</span>}
+                            {item.note && <span className="text-xs text-slate-400 block break-words">{item.note}</span>}
                           </div>
-                          <span className="font-semibold text-rose-600">-{formatCurrency(item.amount)}</span>
+                          <span className="shrink-0 whitespace-nowrap text-right font-semibold text-rose-600">-{formatCurrency(item.amount)}</span>
                         </div>
                       ))}
                     </div>
@@ -541,9 +541,9 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
 
                     {statutoryAndOtherDeductions.length > 0 ? (
                       statutoryAndOtherDeductions.map((item, idx) => (
-                        <div key={idx} className="flex justify-between items-center border-b border-slate-100 pb-2 last:border-none last:pb-0">
-                          <span className="text-slate-600 font-medium">{item.label}</span>
-                          <span className="font-semibold text-slate-800">{formatCurrency(item.amount)}</span>
+                        <div key={idx} className="flex items-start justify-between gap-4 border-b border-slate-100 pb-2 last:border-none last:pb-0">
+                          <span className="min-w-0 break-words text-slate-600 font-medium">{item.label}</span>
+                          <span className="shrink-0 whitespace-nowrap text-right font-semibold text-slate-800">{formatCurrency(item.amount)}</span>
                         </div>
                       ))
                     ) : attendanceDeductionItems.length === 0 ? (
@@ -599,20 +599,20 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs leading-relaxed text-slate-600">
-              <div>
-                <p>
+              <div className="min-w-0 break-words">
+                <p className="break-words">
                   • <strong className="text-slate-800">Per Day Rate:</strong> {formatCurrency(dailyRate)}/day (Calculated as Basic Salary ÷ {workingDays} working days).
                 </p>
-                <p className="mt-1">
+                <p className="mt-1 break-words">
                   • <strong className="text-slate-800">Hourly Rate:</strong> {formatCurrency(hourlyRate)}/hr (Calculated as Day Rate ÷ 8 hours for overtime and permission deductions).
                 </p>
               </div>
 
-              <div>
-                <p>
+              <div className="min-w-0 break-words">
+                <p className="break-words">
                   • <strong className="text-slate-800">Leave Deduction (LOP):</strong> {unpaidLeaveDays > 0 ? `${unpaidLeaveDays} absent day(s) × ${formatCurrency(dailyRate)} = ${formatCurrency(lopDeduction)}` : "No unpaid leave days taken."}
                 </p>
-                <p className="mt-1">
+                <p className="mt-1 break-words">
                   • <strong className="text-slate-800">Equation:</strong> Gross ({formatCurrency(grossSalary)}) - Deductions ({formatCurrency(totalDeductions)}) {reimbursements > 0 ? `+ Reimbursements (${formatCurrency(reimbursements)})` : ""} = <strong className="text-emerald-700 font-bold">{formatCurrency(netSalary)}</strong>
                 </p>
               </div>

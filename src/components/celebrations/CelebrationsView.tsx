@@ -14,7 +14,7 @@ import {
   type Moment,
   type MomentKind,
 } from "@/lib/celebrations";
-import { CARD_STYLES, defaultBackground, fileToBackground, overlayCss } from "@/lib/celebrationCard";
+import { CARD_STYLES, defaultBackground, fileToBackground, overlayCss, type CardOrientation } from "@/lib/celebrationCard";
 import {
   downloadMomentCard,
   emptySaved,
@@ -113,7 +113,9 @@ export default function CelebrationsView() {
   // The template being edited and previewed is the one for the selected person's occasion.
   const editingKind: Kind = selected?.kind ?? "Birthday";
   const template = saved[editingKind];
+  const isPortraitTemplate = template.orientation === "portrait";
   const background = template.background || defaultBackground(editingKind);
+  const isRoyalPortrait = isPortraitTemplate && template.styleId === "royalPortrait";
   const firstOfKind = (kind: Kind) => moments.find((m) => m.kind === kind);
   const useSameForBoth = () => {
     const other: Kind = editingKind === "Birthday" ? "Work anniversary" : "Birthday";
@@ -127,7 +129,7 @@ export default function CelebrationsView() {
   const onUpload = async (file?: File) => {
     if (!file) return;
     try {
-      updateTemplate(editingKind, { background: await fileToBackground(file) });
+      updateTemplate(editingKind, { background: await fileToBackground(file, template.orientation) });
       toast.success(`Background updated for all ${editingKind === "Birthday" ? "birthday" : "anniversary"} cards`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not use that image.");
@@ -297,10 +299,11 @@ export default function CelebrationsView() {
               </div>
 
               <div className="overflow-hidden rounded-2xl shadow-lg ring-1 ring-slate-900/10" style={{ containerType: "inline-size" }}>
-                <div className="relative w-full" style={{ aspectRatio: "1200 / 630", backgroundImage: `url(${background})`, backgroundSize: "cover", backgroundPosition: "center", fontFamily: '"Segoe UI", system-ui, sans-serif' }}>
+                <div className="relative mx-auto w-full max-w-[760px]" style={{ aspectRatio: template.orientation === "portrait" ? "630 / 1200" : "1200 / 630", backgroundColor: isRoyalPortrait ? "#071bc4" : undefined, backgroundImage: isRoyalPortrait ? undefined : `url(${background})`, backgroundSize: "cover", backgroundPosition: "center", fontFamily: '"Segoe UI", system-ui, sans-serif' }}>
                   <div className="absolute inset-0" style={{ backgroundImage: overlayCss(template.styleId) }} />
-                  <div className="absolute text-white" style={{ inset: "5.3cqw" }}>
-                    <div className="flex items-center" style={{ gap: "1.6cqw" }}>
+                  <div className="absolute text-white" style={{ inset: "5.3cqw", display: "flex", flexDirection: "column", justifyContent: isPortraitTemplate ? "center" : "flex-start", textAlign: isPortraitTemplate ? "center" : "left", paddingBottom: isPortraitTemplate ? "6cqw" : 0 }}>
+                    {isRoyalPortrait && <div className="pointer-events-none absolute left-0 right-0 top-[8cqw] font-semibold leading-none text-amber-300" style={{ fontSize: "5.4cqw" }}>{editingKind === "Work anniversary" ? "Happy Anniversary" : "Happy Birthday"}</div>}
+                    <div className="flex items-center" style={{ gap: "1.6cqw", justifyContent: isPortraitTemplate ? "center" : "flex-start" }}>
                       <span className="grid place-items-center overflow-hidden bg-white/90" style={{ width: "6cqw", height: "6cqw", borderRadius: "1.5cqw" }}>
                         {logoUrl && !logoFailed ? (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -312,7 +315,7 @@ export default function CelebrationsView() {
                       <span className="truncate font-bold uppercase tracking-wide text-white/90" style={{ fontSize: "2.1cqw" }}>{companyName}</span>
                     </div>
 
-                    <div className="flex items-center" style={{ marginTop: "3.2cqw", gap: "3.6cqw" }}>
+                    <div className="flex items-center" style={{ marginTop: "3.2cqw", gap: isPortraitTemplate ? "1.8cqw" : "3.6cqw", flexDirection: isPortraitTemplate ? "column" : "row" }}>
                       <span className="grid shrink-0 place-items-center overflow-hidden rounded-full bg-white/20 font-extrabold ring-white/80" style={{ width: "14cqw", height: "14cqw", fontSize: "5cqw", boxShadow: "0 0 0 0.5cqw rgba(255,255,255,0.85)" }}>
                         {photoUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -321,15 +324,15 @@ export default function CelebrationsView() {
                           personInitials(selected.name)
                         )}
                       </span>
-                      <div className="min-w-0">
+                      <div className="min-w-0" style={{ width: isPortraitTemplate ? "100%" : undefined }}>
                         <p className="font-bold uppercase text-white/80" style={{ fontSize: "2cqw", letterSpacing: "0.18em" }}>{kindLabel}</p>
                         <h3 className="truncate font-extrabold leading-tight text-white" style={{ fontSize: "5.3cqw" }}>{selected.name}</h3>
                         {subtitle && <p className="truncate text-white/80" style={{ fontSize: "2.3cqw" }}>{subtitle}</p>}
                       </div>
                     </div>
 
-                    <p className="line-clamp-4 text-white/95" style={{ marginTop: "3.4cqw", fontSize: "2.6cqw", lineHeight: 1.45 }}>{message}</p>
-                    <p className="absolute bottom-0 left-0 font-semibold text-white/70" style={{ fontSize: "1.85cqw" }}>With appreciation, {companyName} People Team</p>
+                    <p className="line-clamp-4 text-white/95" style={{ marginTop: isPortraitTemplate ? "5cqw" : "3.4cqw", fontSize: "2.6cqw", lineHeight: 1.45 }}>{message}</p>
+                    <p className="absolute bottom-0 left-0 right-0 font-semibold text-white/70" style={{ fontSize: "1.85cqw", textAlign: isPortraitTemplate ? "center" : "left" }}>With appreciation, {companyName} People Team</p>
                   </div>
                 </div>
               </div>
@@ -341,8 +344,21 @@ export default function CelebrationsView() {
                   </p>
                   <p className="mb-2 text-xs font-bold text-slate-700">Card style</p>
                   <div className="flex flex-wrap gap-2">
-                    {CARD_STYLES.map((s) => (
+                    {CARD_STYLES.filter((s) => s.id !== "royalPortrait" || isPortraitTemplate).map((s) => (
                       <button key={s.id} onClick={() => updateTemplate(editingKind, { styleId: s.id })} className={`rounded-xl border px-3 py-2 text-xs font-semibold transition ${template.styleId === s.id ? "border-indigo-500 bg-indigo-50 text-indigo-800" : "border-slate-200 text-slate-600 hover:border-indigo-200"}`}>{s.name}</button>
+                    ))}
+                  </div>
+
+                  <p className="mb-2 mt-4 text-xs font-bold text-slate-700">Card orientation</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(["landscape", "portrait"] as CardOrientation[]).map((orientation) => (
+                      <button
+                        key={orientation}
+                        onClick={() => updateTemplate(editingKind, { orientation })}
+                        className={`rounded-xl border px-3 py-2 text-xs font-semibold capitalize transition ${template.orientation === orientation ? "border-indigo-500 bg-indigo-50 text-indigo-800" : "border-slate-200 text-slate-600 hover:border-indigo-200"}`}
+                      >
+                        {orientation}
+                      </button>
                     ))}
                   </div>
 
