@@ -47,7 +47,7 @@ export default function PunchConfirmDialog(props: PunchConfirmDialogProps) {
   // On a weekly off, holiday or company leave punch-in is closed until HR or an admin approves the work.
   // Punching out is never blocked, and neither is someone who is already in.
   const dayOff = todayStatus?.dayOff;
-  if (props.action === "CHECK_IN" && dayOff?.kind === "PERSONAL_LEAVE" && !todayStatus?.hasCheckedIn) {
+  if (props.action === "CHECK_IN" && dayOff?.kind === "PERSONAL_LEAVE" && !dayOff.halfDayPeriod && !todayStatus?.hasCheckedIn) {
     return <ApprovedLeaveDialog onCancel={props.onCancel} />;
   }
   if (props.action === "CHECK_IN" && dayOff && !dayOff.canPunch && !todayStatus?.hasCheckedIn) {
@@ -303,7 +303,7 @@ function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm,
           />
           {isCheckIn ? (
             <>
-              {todayStatus?.dayOff?.canPunch && (
+              {todayStatus?.dayOff?.canPunch && todayStatus.dayOff.kind !== "PERSONAL_LEAVE" && (
                 <div role="status" className="flex items-start gap-2 rounded-2xl bg-emerald-50 px-3.5 py-2.5 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200">
                   <CheckCircle2 aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
                   <span>Approved to work today ({todayStatus.dayOff.title}). Every hour is logged as overtime.</span>

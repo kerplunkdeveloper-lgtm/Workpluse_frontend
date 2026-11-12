@@ -900,6 +900,13 @@ export default function DashboardOverview() {
 
   const timeBadge = timeContextBadge(currentTime);
   const hourlyMax = Math.max(...hourlyData.map((entry) => entry.count), 1);
+  const chartPoints = hourlyData.map((item, index) => ({
+    ...item,
+    x: 46 + (index / Math.max(hourlyData.length - 1, 1)) * 520,
+    y: 142 - (item.count / hourlyMax) * 108,
+  }));
+  const chartPolyline = chartPoints.map((point) => `${point.x},${point.y}`).join(" ");
+  const chartArea = `${chartPoints[0]?.x || 46},142 ${chartPolyline} ${chartPoints.at(-1)?.x || 566},142`;
 
   if (loading) {
     return (
@@ -1715,66 +1722,36 @@ export default function DashboardOverview() {
               viewBox="0 0 600 205"
               role="img"
               aria-label="Number of team clock-ins in each time block"
-              className="h-48 w-full"
+              className="h-52 w-full overflow-visible"
             >
-              {[36, 71, 106, 141].map((y) => (
-                <line
-                  key={y}
-                  x1="34"
-                  x2="580"
-                  y1={y}
-                  y2={y}
-                  style={{ stroke: "var(--color-slate-200)" }}
-                  strokeDasharray="3 5"
-                />
+              <defs>
+                <linearGradient id="punchAreaGradient" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor="#6366f1" stopOpacity="0.28" />
+                  <stop offset="100%" stopColor="#6366f1" stopOpacity="0.02" />
+                </linearGradient>
+                <linearGradient id="punchLineGradient" x1="0" x2="1">
+                  <stop offset="0%" stopColor="#818cf8" />
+                  <stop offset="100%" stopColor="#4f46e5" />
+                </linearGradient>
+              </defs>
+              {[34, 70, 106, 142].map((y) => (
+                <line key={y} x1="34" x2="580" y1={y} y2={y} style={{ stroke: "var(--color-slate-200)" }} strokeDasharray="2 6" />
               ))}
-              <text x="28" y="39" textAnchor="end" fontSize="10" fontWeight="600" style={{ fill: "var(--color-slate-400)" }}>{hourlyMax}</text>
-              <text x="28" y="145" textAnchor="end" fontSize="10" fontWeight="600" style={{ fill: "var(--color-slate-400)" }}>0</text>
-              <line x1="34" x2="580" y1="142" y2="142" style={{ stroke: "var(--color-slate-300)" }} />
-              {hourlyData.map((item, index) => {
-                const x =
-                  (index / Math.max(hourlyData.length, 1)) * 546 + 42;
-                const barHeight = Math.max((item.count / hourlyMax) * 106, item.count > 0 ? 4 : 0);
-                const y = 142 - barHeight;
-                return (
-                  <g key={item.time}>
-                    <title>{`${item.time}: ${item.count} ${item.count === 1 ? "clock-in" : "clock-ins"}`}</title>
-                    {item.count > 0 && <text x={x + 20} y={y - 6} textAnchor="middle" fontSize="11" fontWeight="700" style={{ fill: item.peak ? "#047857" : "#3730a3" }}>{item.count}</text>}
-                    <rect
-                      x={x}
-                      y={y}
-                      width="40"
-                      height={barHeight}
-                      rx="8"
-                      fill={item.peak ? "#10b981" : "#6366f1"}
-                    />
-                    <text
-                      x={x + 20}
-                      y="174"
-                      textAnchor="middle"
-                      fontSize="9"
-                      fontWeight="600"
-                      style={{ fill: "var(--color-slate-400)" }}
-                    >
-                      {item.time}
-                    </text>
-                  </g>
-                );
-              })}
-              {clockInsToday === 0 && (
-                <text
-                  x="320"
-                  y="100"
-                  textAnchor="middle"
-                  fontSize="12"
-                  fontWeight="600"
-                  style={{ fill: "var(--color-slate-400)" }}
-                >
-                  No clock-ins yet today
-                </text>
-              )}
+              <text x="28" y="39" textAnchor="end" fontSize="10" fontWeight="700" style={{ fill: "var(--color-slate-400)" }}>{hourlyMax}</text>
+              <text x="28" y="145" textAnchor="end" fontSize="10" fontWeight="700" style={{ fill: "var(--color-slate-400)" }}>0</text>
+              <polygon points={chartArea} fill="url(#punchAreaGradient)" />
+              <polyline points={chartPolyline} fill="none" stroke="url(#punchLineGradient)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+              {chartPoints.map((point) => (
+                <g key={point.time}>
+                  <title>{`${point.time}: ${point.count} ${point.count === 1 ? "clock-in" : "clock-ins"}`}</title>
+                  <circle cx={point.x} cy={point.y} r={point.peak ? 7 : 5} fill={point.peak ? "#10b981" : "#ffffff"} stroke={point.peak ? "#047857" : "#4f46e5"} strokeWidth="3" />
+                  {point.count > 0 && <text x={point.x} y={point.y - 13} textAnchor="middle" fontSize="11" fontWeight="800" style={{ fill: point.peak ? "#047857" : "#3730a3" }}>{point.count}</text>}
+                  <text x={point.x} y="174" textAnchor="middle" fontSize="9" fontWeight="700" style={{ fill: "var(--color-slate-400)" }}>{point.time}</text>
+                </g>
+              ))}
+              {clockInsToday === 0 && <text x="320" y="100" textAnchor="middle" fontSize="12" fontWeight="700" style={{ fill: "var(--color-slate-400)" }}>No clock-ins yet today</text>}
             </svg>
-            <p className="mt-1 text-center text-[11px] text-slate-500">The taller the bar, the more people clocked in during that window.</p>
+            <p className="mt-1 text-center text-[11px] text-slate-500">The line shows the team&apos;s clock-in rhythm across the day. Hover a point for the exact count.</p>
           </div>
 
           <div className="mt-4 grid grid-cols-3 gap-2">

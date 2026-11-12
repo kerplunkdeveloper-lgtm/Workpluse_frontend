@@ -449,6 +449,7 @@ export const attendanceApi = {
     date?: string;
     status?: string;
     employeeId?: string;
+    branchId?: string;
     page?: number;
     limit?: number;
   }) => {
@@ -1036,6 +1037,18 @@ export const biometricApi = {
   },
   revoke: async (id: string) => {
     const res = await api.delete(`/biometric/${id}`);
+    return res.data;
+  },
+  listCredentials: async () => {
+    const res = await api.get("/biometric/credentials");
+    return res.data;
+  },
+  assignCard: async (payload: { employeeId: string; cardUid: string; credentialType?: string; label?: string }) => {
+    const res = await api.post("/biometric/credentials", payload);
+    return res.data;
+  },
+  removeCard: async (id: string) => {
+    const res = await api.delete(`/biometric/credentials/${id}`);
     return res.data;
   },
 };

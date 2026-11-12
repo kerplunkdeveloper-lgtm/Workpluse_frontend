@@ -240,6 +240,8 @@ export interface DayOffInfo {
   title: string;
   reason?: string | null;
   isPaid?: boolean;
+  /** Set for approved half-day leave; full-day leave leaves this null. */
+  halfDayPeriod?: "MORNING" | "AFTERNOON" | null;
   /** The employee's request to work today, if they made one. */
   workRequest?: {
     id: string;

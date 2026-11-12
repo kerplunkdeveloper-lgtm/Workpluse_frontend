@@ -1,4 +1,4 @@
-import { CARD_STYLES, defaultBackground, renderCardPng, type CardStyleId } from "./celebrationCard";
+import { CARD_STYLES, defaultBackground, renderCardPng, type CardOrientation, type CardStyleId } from "./celebrationCard";
 import { defaultMessage, personInitials, type Moment, type MomentKind } from "./celebrations";
 
 /**
@@ -6,11 +6,11 @@ import { defaultMessage, personInitials, type Moment, type MomentKind } from "./
  * used wherever a person's birthday/anniversary is listed (dashboard and Celebrations).
  * Stored per workspace in this browser.
  */
-export type Template = { styleId: CardStyleId; background: string | null };
+export type Template = { styleId: CardStyleId; background: string | null; orientation: CardOrientation };
 export type SavedTemplates = Record<MomentKind, Template>;
 
 const storageKey = (orgId: string) => `wp-celebration-template:${orgId}`;
-export const emptyTemplate = (): Template => ({ styleId: "default", background: null });
+export const emptyTemplate = (): Template => ({ styleId: "default", background: null, orientation: "landscape" });
 export const emptySaved = (): SavedTemplates => ({ Birthday: emptyTemplate(), "Work anniversary": emptyTemplate() });
 
 function cleanTemplate(value: unknown): Template {
@@ -18,6 +18,7 @@ function cleanTemplate(value: unknown): Template {
   return {
     styleId: CARD_STYLES.some((s) => s.id === raw.styleId) ? (raw.styleId as CardStyleId) : "default",
     background: typeof raw.background === "string" ? raw.background : null,
+    orientation: raw.orientation === "portrait" ? "portrait" : "landscape",
   };
 }
 
@@ -68,6 +69,7 @@ export async function downloadMomentCard(
   const { blob, skippedRemote } = await renderCardPng({
     background: template.background || defaultBackground(moment.kind),
     styleId: template.styleId,
+    orientation: template.orientation,
     kindLabel: momentKindLabel(moment),
     name: moment.name,
     subtitle: momentSubtitle(moment),
