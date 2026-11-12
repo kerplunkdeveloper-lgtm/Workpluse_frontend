@@ -86,8 +86,7 @@ function StatusTile({ icon: Icon, label, value, tone = "text-slate-900" }: { ico
   );
 }
 
-/** "Friday, 9 October · 10:42 AM" — updates each minute, not each second, to avoid needless renders. */
-function LiveDate() {
+  function LiveDate() {
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
     const update = () => setNow(new Date());

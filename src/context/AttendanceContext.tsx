@@ -590,7 +590,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
 
   const startBreak = useCallback(async (): Promise<boolean> => {
     const coords = currentLocation
-      ? { latitude: currentLocation.latitude, longitude: currentLocation.longitude }
+      ? { latitude: currentLocation.latitude, longitude: currentLocation.longitude, accuracy: currentLocation.accuracy }
       : undefined;
     return handlePunch(
       "BREAK_START",
@@ -604,7 +604,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
 
   const endBreak = useCallback(async (): Promise<boolean> => {
     const coords = currentLocation
-      ? { latitude: currentLocation.latitude, longitude: currentLocation.longitude }
+      ? { latitude: currentLocation.latitude, longitude: currentLocation.longitude, accuracy: currentLocation.accuracy }
       : undefined;
     return handlePunch(
       "BREAK_END",
@@ -617,12 +617,12 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
   }, [currentLocation, handlePunch]);
 
   const startLunch = useCallback(async (): Promise<boolean> => {
-    const coords = currentLocation ? { latitude: currentLocation.latitude, longitude: currentLocation.longitude } : undefined;
+    const coords = currentLocation ? { latitude: currentLocation.latitude, longitude: currentLocation.longitude, accuracy: currentLocation.accuracy } : undefined;
     return handlePunch("LUNCH_START", () => attendanceApi.startLunch(coords), "Lunch started!", coords);
   }, [currentLocation, handlePunch]);
 
   const endLunch = useCallback(async (): Promise<boolean> => {
-    const coords = currentLocation ? { latitude: currentLocation.latitude, longitude: currentLocation.longitude } : undefined;
+    const coords = currentLocation ? { latitude: currentLocation.latitude, longitude: currentLocation.longitude, accuracy: currentLocation.accuracy } : undefined;
     return handlePunch("LUNCH_END", () => attendanceApi.endLunch(coords), "Lunch ended!", coords);
   }, [currentLocation, handlePunch]);
 
