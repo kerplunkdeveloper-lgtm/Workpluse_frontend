@@ -1317,7 +1317,7 @@ export default function ApprovalsInboxView() {
                   <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-600">{minutesLabel(allocation.leaveMinutes)}</td>
                   <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-600">{minutesLabel(allocation.compOffMinutes)}</td>
                   <td className="whitespace-nowrap px-4 py-4 text-xs font-bold text-emerald-700">{minutesLabel(allocation.cashMinutes)}</td>
-                  <td className="px-4 py-4 text-right">{allocation.status === "PENDING" ? <ActionCell onApprove={() => handleReviewOvertimeAllocation(allocation.id, "APPROVED")} onReject={() => handleReviewOvertimeAllocation(allocation.id, "REJECTED")} /> : <StatusBadge status={allocation.status} />}</td>
+                  {allocation.status === "PENDING" ? <ActionCell onApprove={() => handleReviewOvertimeAllocation(allocation.id, "APPROVED")} onReject={() => handleReviewOvertimeAllocation(allocation.id, "REJECTED")} /> : <td className="px-4 py-4 text-right"><StatusBadge status={allocation.status} /></td>}
                 </tr>
               ))}
             </TableShell>
