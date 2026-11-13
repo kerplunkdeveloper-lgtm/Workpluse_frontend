@@ -195,8 +195,9 @@ function PunchConfirmBody({ action, loading, locationLabel, onCancel, onConfirm,
   const [note, setNote] = useState("");
   const cancelRef = useRef<HTMLButtonElement>(null);
 
-  const officeBlocked = isCheckIn && workMode === "OFFICE" && !isWithinGeofence;
-  const officeCheck = isCheckIn && workMode === "OFFICE";
+  const anyTimeShift = Boolean(todayStatus?.flexiblePunching || todayStatus?.shift?.flexiblePunching);
+  const officeCheck = isCheckIn && workMode === "OFFICE" && !anyTimeShift;
+  const officeBlocked = officeCheck && !isWithinGeofence;
   const workModeLabel = workMode === "WORK_FROM_HOME" ? "WFH" : workMode === "CLIENT_VISIT" ? "Client visit" : workMode === "TRAVEL" ? "Travel" : workMode === "SHOOT" ? "Shoot" : "Office";
   const shootInProgress = todayStatus?.attendance?.wfhNote?.startsWith("SHOOT:") === true;
   // No punch without a captured GPS position: it is what the attendance record says about where you were.

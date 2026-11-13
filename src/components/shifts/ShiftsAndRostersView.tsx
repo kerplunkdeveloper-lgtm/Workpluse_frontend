@@ -54,7 +54,9 @@ export default function ShiftsAndRostersView() {
       ]);
       if (shiftRes.status === "fulfilled") setShifts(unwrapList<Shift>(shiftRes.value));
       if (empRes.status === "fulfilled") {
-        setEmployees(unwrapList<Employee>(empRes.value).filter((e) => !e.status || e.status === "ACTIVE"));
+        // The API already requests WORKING employees. Keep probation and notice-period
+        // employees available for assignment too; only inactive/terminated staff are excluded.
+        setEmployees(unwrapList<Employee>(empRes.value).filter((e) => !e.status || !["INACTIVE", "TERMINATED"].includes(e.status)));
       }
       if (ovRes.status === "fulfilled") {
         const raw = ovRes.value;
