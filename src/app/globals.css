@@ -601,6 +601,27 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
   .wp-page-header button,
   .wp-page-header a { min-height: 2.65rem; }
   .wp-main-canvas .overflow-x-auto { margin-inline: -0.25rem; padding-inline: 0.25rem; }
+
+  /* Keep action bars from forcing their siblings underneath them on phones.
+     Wide tables remain intentionally scrollable through their existing
+     `.overflow-x-auto` wrappers. */
+  .wp-main-canvas .flex-row { flex-wrap: wrap; }
+  .wp-main-canvas .grid-cols-3,
+  .wp-main-canvas .grid-cols-4,
+  .wp-main-canvas .grid-cols-5,
+  .wp-main-canvas .grid-cols-6,
+  .wp-main-canvas .grid-cols-7 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  /* The fixed workspace header has several independent controls. Give the
+     breadcrumb the flexible track so it truncates instead of colliding with
+     notifications, chat, or the profile control. */
+  .wp-topbar { gap: 0.5rem; padding-inline: 0.75rem; }
+  .wp-topbar > :first-child { flex: 1 1 auto; min-width: 0; }
+  .wp-topbar > :last-child { gap: 0.25rem; }
+  .wp-topbar nav { min-width: 0; }
+  .wp-topbar nav > span:last-child { min-width: 0; max-width: 100%; }
 }
 
 /* Very narrow phones cannot safely hold the dense desktop card grids used by

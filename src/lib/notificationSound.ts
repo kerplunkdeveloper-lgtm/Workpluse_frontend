@@ -2,7 +2,16 @@ let audioContext: AudioContext | null = null;
 
 function getAudioContext() {
   if (typeof window === "undefined") return null;
-  if (!audioContext) audioContext = new AudioContext();
+  const AudioContextConstructor = window.AudioContext ||
+    (window as Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioContextConstructor) return null;
+  if (!audioContext) {
+    try {
+      audioContext = new AudioContextConstructor();
+    } catch {
+      return null;
+    }
+  }
   return audioContext;
 }
 
@@ -36,5 +45,7 @@ export function playNotificationSound() {
   };
 
   if (context.state === "suspended") void context.resume().then(start).catch(() => {});
-  else start();
+  else {
+    try { start(); } catch { /* Some browsers reject Web Audio after a locked-down gesture. */ }
+  }
 }
