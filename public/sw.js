@@ -73,6 +73,9 @@ messaging.onBackgroundMessage((payload) => {
     body,
     icon: "/logo-v2-128.png",
     badge: "/logo-v2-128.png",
+    silent: false,
+    renotify: true,
+    vibrate: [120, 80, 120],
     tag: payload.data?.notificationId || undefined,
     data: {
       url: payload.data?.url || "/dashboard",

@@ -77,12 +77,21 @@ export default function OvertimeAndCompOffView() {
       toast.error("Please pick a date to redeem comp-off");
       return;
     }
+    const requestedDays = Number(days);
+    if (!Number.isFinite(requestedDays) || requestedDays <= 0) {
+      toast.error("Choose at least 1 comp-off day");
+      return;
+    }
+    if (requestedDays > balance) {
+      toast.error(`You can claim up to ${balance} available comp-off day${balance === 1 ? "" : "s"}.`);
+      return;
+    }
 
     setIsSubmitting(true);
     try {
       const res = await compOffApi.redeem({
         requestedDate,
-        days: Number(days),
+        days: requestedDays,
         reason,
       });
 
@@ -90,13 +99,16 @@ export default function OvertimeAndCompOffView() {
         toast.success("Comp-off redemption submitted for manager review!");
         confetti({ particleCount: 50, spread: 60 });
         setModalOpen(false);
+        setRequestedDate("");
+        setDays(1);
         setReason("");
-        loadData();
+        await loadData();
       } else {
         toast.error(res?.message || "Failed to redeem comp-off");
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || err.message || "Failed to redeem comp-off");
+      const message = err?.response?.data?.message || err?.response?.data?.error || err?.message || "Failed to redeem comp-off";
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -152,7 +164,7 @@ export default function OvertimeAndCompOffView() {
 
   return (
     <div className="space-y-6">
-      <OvertimeAllocationPanel />
+      <OvertimeAllocationPanel onClaimCompOff={() => setModalOpen(true)} />
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>

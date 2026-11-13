@@ -13,6 +13,7 @@ export const ATTENDANCE_RANGES = [
   { value: "month", label: "This month" },
   { value: "lastMonth", label: "Last month" },
   { value: "custom", label: "Custom range" },
+  { value: "all", label: "All dates" },
 ] as const;
 
 export type AttendanceRangeValue = (typeof ATTENDANCE_RANGES)[number]["value"];

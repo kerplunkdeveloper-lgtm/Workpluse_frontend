@@ -1,61 +1,42 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Coins, Loader2, WalletCards } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CheckCircle2, Coins, Clock3, Info, Loader2, WalletCards } from "lucide-react";
 import { toast } from "sonner";
-import { overtimeAllocationApi } from "@/lib/api";
+import { compOffApi, overtimeAllocationApi } from "@/lib/api";
 import { unwrapItem } from "@/lib/utils";
 
 const hm = (minutes: number) => `${Math.floor(Math.max(0, minutes) / 60)}h ${String(Math.max(0, minutes) % 60).padStart(2, "0")}m`;
+const MINUTES_PER_DAY = 8 * 60;
 
-export default function OvertimeAllocationPanel() {
-  const now = new Date();
-  const month = now.getMonth() + 1;
-  const year = now.getFullYear();
-  const [balance, setBalance] = useState<any>(null);
-  const [permission, setPermission] = useState(0);
-  const [leave, setLeave] = useState(0);
-  const [compOff, setCompOff] = useState(0);
-  const [note, setNote] = useState("");
-  const [saving, setSaving] = useState(false);
+function DurationField({ label, hours, minutes, setHours, setMinutes, hint }: { label: string; hours: string; minutes: number; setHours: (value: string) => void; setMinutes: (value: number) => void; hint: string }) {
+  return <div className="rounded-2xl border border-slate-200 bg-white p-4"><label className="text-xs font-bold uppercase tracking-wide text-slate-600">{label}</label><div className="mt-2 flex items-center gap-2"><input aria-label={`${label} hours`} inputMode="numeric" value={hours} onChange={(e) => setHours(e.target.value.replace(/\D/g, "").replace(/^0+(?=\d)/, "") || "0")} className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-base font-semibold outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" /><span className="text-lg font-bold text-slate-400">:</span><select aria-label={`${label} minutes`} value={minutes} onChange={(e) => setMinutes(Number(e.target.value))} className="w-28 rounded-xl border border-slate-300 px-3 py-2.5 text-base font-semibold outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"><option value={0}>00</option><option value={15}>15</option><option value={30}>30</option><option value={45}>45</option></select></div><p className="mt-2 text-[11px] text-slate-500">{hint}</p></div>;
+}
 
-  const load = async () => {
-    try {
-      const nextBalance = unwrapItem<any>(await overtimeAllocationApi.getMine(month, year));
-      setBalance(nextBalance);
-      const allocation = nextBalance?.allocation;
-      if (allocation) {
-        setPermission(Number(allocation.permissionMinutes || 0));
-        setLeave(Number(allocation.leaveMinutes || 0));
-        setCompOff(Number(allocation.compOffMinutes || 0));
-        setNote(allocation.employeeNote || "");
-      }
-    }
-    catch (error: any) { toast.error(error?.response?.data?.message || "Could not load monthly overtime balance"); }
-  };
+function DayDropdown({ label, value, setValue, maxHours = 8 }: { label: string; value: number; setValue: (value: number) => void; maxHours?: number }) {
+  return <div className="rounded-2xl border border-slate-200 bg-white p-4"><label className="text-xs font-bold uppercase tracking-wide text-slate-600">{label}</label><select aria-label={`${label} choice`} value={value} onChange={(e) => setValue(Number(e.target.value))} className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-base font-semibold outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"><option value={0}>No {label.toLowerCase()}</option><option value={4} disabled={maxHours < 4}>Half day (4 hours)</option><option value={8} disabled={maxHours < 8}>Full day (8 hours)</option></select><p className="mt-2 text-[11px] text-slate-500">Choose half-day or full-day. One day is the maximum for this claim.</p></div>;
+}
+
+function CompOffBalanceField({ availableDays, creditedDays, usedDays, onClaim }: { availableDays: number; creditedDays: number; usedDays: number; onClaim: () => void }) {
+  return <div className="rounded-2xl border border-slate-200 bg-white p-4"><div className="flex items-center justify-between"><label className="text-xs font-bold uppercase tracking-wide text-slate-600">Comp-off balance</label><span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">From Sunday / holiday work</span></div><div className="mt-3 grid grid-cols-3 gap-2 text-center"><div className="rounded-xl bg-slate-50 p-2"><p className="text-[10px] uppercase text-slate-500">Earned</p><p className="mt-1 text-lg font-black text-slate-900">{creditedDays}</p><p className="text-[10px] text-slate-500">days</p></div><div className="rounded-xl bg-slate-50 p-2"><p className="text-[10px] uppercase text-slate-500">Used</p><p className="mt-1 text-lg font-black text-slate-900">{usedDays}</p><p className="text-[10px] text-slate-500">days</p></div><div className="rounded-xl bg-indigo-50 p-2"><p className="text-[10px] uppercase text-indigo-600">Available</p><p className="mt-1 text-lg font-black text-indigo-900">{availableDays}</p><p className="text-[10px] text-indigo-600">days</p></div></div><button type="button" disabled={availableDays <= 0} onClick={onClaim} className="mt-3 w-full rounded-xl bg-indigo-600 px-3 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400">{availableDays > 0 ? `Claim ${availableDays} comp-off day${availableDays === 1 ? "" : "s"}` : "No comp-off available"}</button><p className="mt-2 text-[11px] text-slate-500">Claim this earned balance separately. It does not reduce this month’s approved OT hours.</p></div>;
+}
+
+const statusCopy: Record<string, { label: string; tone: string }> = { PENDING: { label: "Waiting for HR review", tone: "text-amber-700 bg-amber-50 border-amber-200" }, APPROVED: { label: "Approved and sent to payroll", tone: "text-emerald-700 bg-emerald-50 border-emerald-200" }, REJECTED: { label: "Needs changes", tone: "text-rose-700 bg-rose-50 border-rose-200" } };
+
+export default function OvertimeAllocationPanel({ onClaimCompOff }: { onClaimCompOff?: () => void }) {
+  const now = new Date(); const month = now.getMonth() + 1; const year = now.getFullYear();
+  const [balance, setBalance] = useState<any>(null); const [compOffBalance, setCompOffBalance] = useState<any>(null); const [permissionHours, setPermissionHours] = useState("0"); const [permissionMinutesPart, setPermissionMinutesPart] = useState(0); const [leave, setLeave] = useState(0); const [compOff, setCompOff] = useState(0); const [note, setNote] = useState(""); const [saving, setSaving] = useState(false);
+  const load = async () => { try { const [overtimeResult, compOffResult] = await Promise.all([overtimeAllocationApi.getMine(month, year), compOffApi.getBalance()]); const nextBalance = unwrapItem<any>(overtimeResult); const nextCompOff = unwrapItem<any>(compOffResult) || compOffResult; setBalance(nextBalance); setCompOffBalance(nextCompOff); const allocation = nextBalance?.allocation; if (allocation) { const permissionTotal = Number(allocation.permissionMinutes || 0); setPermissionHours(String(Math.floor(permissionTotal / 60))); setPermissionMinutesPart(permissionTotal % 60); setLeave(Number(allocation.leaveMinutes || 0)); setCompOff(Number(allocation.compOffMinutes || 0)); setNote(allocation.employeeNote || ""); } } catch (error: any) { toast.error(error?.response?.data?.message || "Could not load monthly overtime balance"); } };
   useEffect(() => { void load(); }, []);
 
-  const approved = Number(balance?.approvedMinutes || 0);
-  const nonCash = permission + leave + compOff;
-  const cash = Math.max(0, approved - nonCash);
-  const allocation = balance?.allocation;
-  const settledPermission = Number(allocation?.settledPermissionMinutes ?? (allocation?.status === "APPROVED" ? allocation?.permissionMinutes : 0));
-  const settledLeave = Number(allocation?.settledLeaveMinutes ?? (allocation?.status === "APPROVED" ? allocation?.leaveMinutes : 0));
-  const settledCompOff = Number(allocation?.settledCompOffMinutes ?? (allocation?.status === "APPROVED" ? allocation?.compOffMinutes : 0));
-  const valid = nonCash <= approved && permission >= settledPermission && leave >= settledLeave && compOff >= settledCompOff;
-  const submit = async () => {
-    if (!valid) return toast.error("Your conversion choices cannot exceed the approved overtime balance.");
-    setSaving(true);
-    try { await overtimeAllocationApi.submit({ month, year, permissionMinutes: permission, leaveMinutes: leave, compOffMinutes: compOff, employeeNote: note }); toast.success("Monthly overtime choice sent to HR"); await load(); }
-    catch (error: any) { toast.error(error?.response?.data?.message || "Could not submit overtime choice"); }
-    finally { setSaving(false); }
-  };
+  const approved = Number(balance?.approvedMinutes || 0); const permissionMinutes = (Number(permissionHours) || 0) * 60 + permissionMinutesPart; const nonCash = permissionMinutes + leave + compOff; const cash = Math.max(0, approved - nonCash); const allocation = balance?.allocation; const settledPermission = Number(allocation?.settledPermissionMinutes ?? (allocation?.status === "APPROVED" ? allocation?.permissionMinutes : 0)); const settledLeave = Number(allocation?.settledLeaveMinutes ?? (allocation?.status === "APPROVED" ? allocation?.leaveMinutes : 0)); const settledCompOff = Number(allocation?.settledCompOffMinutes ?? (allocation?.status === "APPROVED" ? allocation?.compOffMinutes : 0)); const valid = nonCash <= approved && permissionMinutes >= settledPermission && leave >= settledLeave && compOff >= settledCompOff; const remaining = Math.max(0, approved - nonCash); const allocationPercent = approved ? Math.min(100, Math.round((nonCash / approved) * 100)) : 0; const status = allocation?.status ? statusCopy[allocation.status] : null; const creditedCompOffDays = Number(compOffBalance?.creditedDays || 0); const usedCompOffDays = Number(compOffBalance?.usedDays || 0); const availableCompOffDays = Number(compOffBalance?.availableDays ?? compOffBalance?.balanceDays ?? Math.max(0, creditedCompOffDays - usedCompOffDays));
+  const submit = async () => { if (!valid) return toast.error("Your choices cannot exceed approved overtime or reduce an approved claim."); setSaving(true); try { await overtimeAllocationApi.submit({ month, year, permissionMinutes, leaveMinutes: leave, compOffMinutes: compOff, employeeNote: note }); toast.success("Your overtime choice was sent to HR"); await load(); } catch (error: any) { toast.error(error?.response?.data?.message || "Could not submit overtime choice"); } finally { setSaving(false); } };
 
-  return <section className="rounded-3xl border border-indigo-100 bg-indigo-50/50 p-5 shadow-sm sm:p-6">
-    <div className="flex items-start gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-600 text-white"><WalletCards className="h-5 w-5" /></span><div><h2 className="text-lg font-black text-indigo-950">Monthly overtime choice</h2><p className="mt-1 text-xs leading-5 text-indigo-800">Use approved OT as permission, leave or comp-off. Only the remaining hours go to payroll as cash OT.</p></div></div>
-    <div className="mt-4 grid gap-3 sm:grid-cols-4"><div className="rounded-2xl bg-white p-3"><p className="text-[10px] font-bold uppercase text-slate-500">Approved OT</p><p className="mt-1 text-lg font-black text-indigo-900">{hm(approved)}</p></div><label className="rounded-2xl bg-white p-3"><span className="text-[10px] font-bold uppercase text-slate-500">Permission hours</span><input type="number" min="0" step="0.25" value={permission / 60} onChange={(e) => setPermission(Math.round(Math.max(0, Number(e.target.value) || 0) * 60))} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm" /></label><label className="rounded-2xl bg-white p-3"><span className="text-[10px] font-bold uppercase text-slate-500">OT leave hours</span><input type="number" min="0" step="4" value={leave / 60} onChange={(e) => setLeave(Math.round(Math.max(0, Number(e.target.value) || 0) / 4) * 240)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm" /><span className="mt-1 block text-[10px] text-slate-500">8 hours = 1 OT Leave day</span></label><label className="rounded-2xl bg-white p-3"><span className="text-[10px] font-bold uppercase text-slate-500">Comp-off hours</span><input type="number" min="0" step="4" value={compOff / 60} onChange={(e) => setCompOff(Math.round(Math.max(0, Number(e.target.value) || 0) / 4) * 240)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm" /></label></div>
-    <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-100 bg-white px-4 py-3 text-sm"><span className="flex items-center gap-2 font-semibold text-slate-700"><Coins className="h-4 w-4 text-emerald-600" />Cash OT to payroll</span><strong className={valid ? "text-emerald-700" : "text-rose-700"}>{hm(cash)}{!valid ? " · exceeds balance" : ""}</strong></div>
-    <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Optional note for HR" className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
-    <div className="mt-3 flex flex-wrap items-center justify-between gap-3"><p className="text-xs text-slate-500">Status: <strong>{allocation?.status || "Not submitted"}</strong>. You can claim additional leave or comp-off before payroll; already approved claims cannot be reduced.</p><button type="button" onClick={() => void submit()} disabled={saving || !approved || !valid} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}{allocation?.status === "APPROVED" ? "Submit additional claim" : "Submit monthly choice"}</button></div>
-  </section>;
+  return <section className="rounded-3xl border border-indigo-100 bg-indigo-50/50 p-5 shadow-sm sm:p-6"><div className="flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white"><WalletCards className="h-5 w-5" /></span><div><h2 className="text-lg font-black text-indigo-950">Choose how to use your overtime</h2><p className="mt-1 text-xs leading-5 text-indigo-800">Enter permission as hours and minutes. Choose OT leave or comp-off as half day or full day.</p></div></div>
+    <div className="mt-5 rounded-2xl border border-indigo-100 bg-white p-4"><div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">This payroll period</p><p className="mt-1 font-bold text-slate-900">{new Date(year, month - 1).toLocaleString("en", { month: "long" })} {year}</p></div><div className="text-right"><p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Approved OT</p><p className="mt-1 text-xl font-black text-indigo-900">{hm(approved)}</p></div></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-indigo-600 transition-all" style={{ width: `${allocationPercent}%` }} /></div><p className="mt-2 text-xs text-slate-500">{hm(nonCash)} allocated · {hm(remaining)} will remain as cash OT</p></div>
+    <div className="mt-4 grid gap-3 sm:grid-cols-3"><DurationField label="Permission time" hours={permissionHours} minutes={permissionMinutesPart} setHours={setPermissionHours} setMinutes={setPermissionMinutesPart} hint="Example: 1:30. Minutes can be 00, 15, 30 or 45." /><DayDropdown label="OT leave" value={leave} setValue={setLeave} maxHours={Math.floor(approved / 60)} /><CompOffBalanceField availableDays={availableCompOffDays} creditedDays={creditedCompOffDays} usedDays={usedCompOffDays} onClaim={() => onClaimCompOff?.()} /></div>
+    <div className={`mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-sm ${valid ? "border-emerald-100 bg-emerald-50" : "border-rose-200 bg-rose-50"}`}><span className="flex items-center gap-2 font-semibold text-slate-700"><Coins className="h-4 w-4 text-emerald-600" />Cash OT to payroll</span><strong className={valid ? "text-emerald-700" : "text-rose-700"}>{hm(cash)}{!valid ? " · check your allocation" : ""}</strong></div>
+    <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={500} placeholder="Add a note for HR (optional)" className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" />
+    <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4"><div className="flex items-start gap-2"><Info className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600" /><div className="text-xs leading-5 text-slate-600"><p className="font-bold text-slate-800">Complete workflow</p><p>1. Choose permission time or a half/full day. 2. Submit to HR. 3. HR approves or rejects. 4. Permission and cash go to payroll; OT leave and comp-off are added after approval.</p></div></div>{status && <div className={`mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold ${status.tone}`}><Clock3 className="h-3.5 w-3.5" />{status.label}</div>}{allocation?.reviewNote && <p className="mt-2 text-xs text-rose-700">HR note: {allocation.reviewNote}</p>}</div>
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-3"><p className="text-xs text-slate-500">Approved claims cannot be reduced. You can add leave or comp-off before payroll.</p><button type="button" onClick={() => void submit()} disabled={saving || !approved || !valid} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}{allocation?.status === "APPROVED" ? "Submit an additional claim" : "Submit choice to HR"}</button></div></section>;
 }

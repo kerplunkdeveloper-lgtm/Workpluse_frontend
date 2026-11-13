@@ -26,16 +26,10 @@ const parse = (csv: string) =>
   );
 
 interface WeeklyOffCardProps {
-  /** The saved weekly off as CSV (0 = Sunday), "0" when the company has not set one. */
-  saved: string;
+   saved: string;
   onSaved: (weeklyOffDays: string) => void;
 }
-
-/**
- * The company's weekly off. Tap a day to make it a working day or a day off; the default is Sunday off and
- * Monday to Saturday working. Saving applies it to every shift. Holidays and company leave that fall on a
- * working day are set separately, under Leaves.
- */
+ 
 export default function WeeklyOffCard({ saved, onSaved }: WeeklyOffCardProps) {
   const [off, setOff] = useState<Set<number>>(() => parse(saved));
   const [saving, setSaving] = useState(false);

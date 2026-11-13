@@ -203,6 +203,11 @@ const rangeDates = (
       return { from: key(new Date(today.getFullYear(), today.getMonth() - 1, 1)), to: key(new Date(today.getFullYear(), today.getMonth(), 0)) };
     case "custom":
       return { from: customFrom || undefined, to: customTo || undefined };
+    case "all":
+      // No date bounds: the API returns the complete organization history via
+      // normal pagination instead of accidentally limiting the Team log to the
+      // current month.
+      return {};
     default:
       return {};
   }
@@ -386,7 +391,7 @@ useEffect(() => {
         )}
       </div>
 
-      <div className="flex w-full flex-col gap-3 overflow-hidden rounded-2xl bg-white p-3 ring-1 ring-slate-900/[0.06]">
+      <div className="relative z-20 flex w-full flex-col gap-3 overflow-visible rounded-2xl bg-white p-3 ring-1 ring-slate-900/[0.06]">
         <div role="tablist" aria-label="Filter by status" className="flex min-w-0 w-full gap-1 overflow-x-auto px-1 pb-1">
           {STATUS_FILTERS.map((s) => {
             const selected = status === s.value;
