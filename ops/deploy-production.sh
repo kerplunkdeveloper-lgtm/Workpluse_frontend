@@ -17,7 +17,18 @@ mkdir -p "$RELEASES"
 PREVIOUS=""
 if [[ -L "$CURRENT" ]]; then PREVIOUS=$(readlink -f "$CURRENT"); fi
 RELEASE="$RELEASES/$SHA"
-[[ ! -e "$RELEASE" ]] || { echo 'Release already exists; refusing to overwrite'; exit 4; }
+if [[ -e "$RELEASE" ]]; then
+  ACTIVE_RELEASE=""
+  if [[ -L "$CURRENT" ]]; then ACTIVE_RELEASE=$(readlink -f "$CURRENT"); fi
+  if [[ "$ACTIVE_RELEASE" == "$RELEASE" ]]; then
+    echo "Release $SHA is already active; nothing to deploy"
+    exit 0
+  fi
+  # A previous build can leave a partial, inactive release behind. It is safe
+  # to remove only this exact inactive release so the same commit can retry.
+  echo "Removing inactive partial release $SHA"
+  rm -rf -- "$RELEASE"
+fi
 WORKDIR=$(mktemp -d /tmp/workpulse-frontend.XXXXXX)
 trap 'rm -rf "$WORKDIR"' EXIT
 git clone --quiet --no-checkout "$REPO" "$WORKDIR/source"
