@@ -12,10 +12,13 @@ const EVENTS = [
 
 export default function WorkflowLivePreview() {
   const reduce = useReducedMotion();
-  const [now, setNow] = useState(() => new Date());
+  // Keep the server and first browser render identical. Reading the current
+  // time during render causes a hydration mismatch on the landing page.
+  const [now, setNow] = useState<Date | null>(null);
   const [eventIndex, setEventIndex] = useState(0);
 
   useEffect(() => {
+    setNow(new Date());
     const clock = window.setInterval(() => setNow(new Date()), 1000);
     const events = window.setInterval(() => setEventIndex((value) => (value + 1) % EVENTS.length), 3600);
     return () => {
@@ -26,7 +29,9 @@ export default function WorkflowLivePreview() {
 
   const event = EVENTS[eventIndex];
   const EventIcon = event.icon;
-  const time = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const time = now
+    ? now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    : "--:--:--";
 
   return (
     <div className="mt-4 overflow-hidden rounded-2xl bg-slate-950 p-3 text-white shadow-[0_18px_40px_-22px_rgba(15,23,42,0.75)] ring-1 ring-indigo-300/20 sm:p-4">
