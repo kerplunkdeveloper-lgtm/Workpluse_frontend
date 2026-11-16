@@ -54,15 +54,27 @@ export default function ExitDocumentsModal({
   };
 
   const org = docData?.organization || {
-    name: "WorkPluse Enterprise Technologies Pvt Ltd",
+    name: "Clocked Enterprise Technologies Pvt Ltd",
     address: "Global Tech Park, Outer Ring Road, Bellandur, Bengaluru, KA 560103",
-    email: "hr@workpulse.io",
+    email: "hr@clocked.work",
     phone: "+91 80 4911 2000",
   };
 
   const emp = docData?.employee || {};
   const settlement = docData?.settlement;
   const clearances = docData?.clearances || [];
+  const template = docData?.template || {};
+  const primaryColor = template.branding?.primaryColor || "#4f46e5";
+  const interpolate = (value: string) => String(value || "")
+    .replaceAll("{{companyName}}", org.name)
+    .replaceAll("{{employeeName}}", emp.name || "")
+    .replaceAll("{{employeeCode}}", emp.code || "")
+    .replaceAll("{{designation}}", emp.designation || "")
+    .replaceAll("{{department}}", emp.department || "")
+    .replaceAll("{{branch}}", emp.branch || "")
+    .replaceAll("{{joiningDate}}", emp.joiningDate || "")
+    .replaceAll("{{lastWorkingDay}}", emp.lastWorkingDay || "")
+    .replaceAll("{{resignationDate}}", docData?.exit?.resignationDate || "");
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-6 overflow-y-auto print:p-0 print:bg-white print:fixed print:inset-0">
@@ -171,13 +183,14 @@ export default function ExitDocumentsModal({
           ) : (
             <div
               id="print-document-container"
-              className="w-full max-w-3xl bg-white text-slate-900 rounded-2xl p-8 sm:p-12 shadow-xl border border-slate-200 space-y-6 print:border-none print:shadow-none print:p-0 text-xs sm:text-sm font-sans"
+              style={{ borderColor: primaryColor }}
+              className="w-full max-w-3xl bg-white text-slate-900 rounded-2xl p-8 sm:p-12 shadow-xl border space-y-6 print:border-none print:shadow-none print:p-0 text-xs sm:text-sm font-sans"
             >
               {/* Official Company Letterhead Header */}
-              <div className="border-b-2 border-indigo-600 pb-5 flex items-start justify-between gap-4">
+              <div className="border-b-2 pb-5 flex items-start justify-between gap-4" style={{ borderColor: primaryColor }}>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-sm">
+                    <span className="w-7 h-7 rounded-lg text-white flex items-center justify-center font-bold text-sm" style={{ backgroundColor: primaryColor }}>
                       W
                     </span>
                     <h1 className="text-xl font-bold text-indigo-950 tracking-tight">{org.name}</h1>
@@ -200,9 +213,9 @@ export default function ExitDocumentsModal({
                 <div className="space-y-6">
                   <div className="text-center py-1">
                     <h2 className="text-lg font-semibold text-slate-900 uppercase tracking-wide">
-                      Full & Final Settlement Statement
+                      {template.FF_STATEMENT?.title || "Full & Final Settlement Statement"}
                     </h2>
-                    <p className="text-xs text-slate-500">Formal Statement of Accounts & Separation Dues</p>
+                    <p className="text-xs text-slate-500">{template.FF_STATEMENT?.subtitle || "Formal Statement of Accounts & Separation Dues"}</p>
                   </div>
 
                   {/* Employee Details Box */}
@@ -237,7 +250,7 @@ export default function ExitDocumentsModal({
                     </div>
                     <div>
                       <p className="text-slate-500 uppercase text-xs font-bold">Payment Mode</p>
-                      <p className="font-medium text-slate-900 mt-0.5">Bank NEFT / Direct Credit</p>
+                      <p className="font-medium text-slate-900 mt-0.5">{template.FF_STATEMENT?.paymentMode || "Bank NEFT / Direct Credit"}</p>
                     </div>
                   </div>
 
@@ -371,14 +384,14 @@ export default function ExitDocumentsModal({
                     <div>
                       <div className="h-12"></div>
                       <div className="border-t border-slate-400 pt-1 text-slate-700 font-bold text-xs">
-                        Authorized Signatory (HR / Finance)
+                        {template.FF_STATEMENT?.signatoryTitle || "Authorized Signatory (HR / Finance)"}
                       </div>
                       <p className="text-xs text-slate-500">{org.name}</p>
                     </div>
                     <div className="text-right">
                       <div className="h-12"></div>
                       <div className="border-t border-slate-400 pt-1 text-slate-700 font-bold text-xs">
-                        Employee Acceptance Signature
+                        {template.FF_STATEMENT?.acceptanceTitle || "Employee Acceptance Signature"}
                       </div>
                       <p className="text-xs text-slate-500">{emp.name} ({emp.code})</p>
                     </div>
@@ -391,16 +404,13 @@ export default function ExitDocumentsModal({
                 <div className="space-y-6">
                   <div className="text-center py-1">
                     <h2 className="text-lg font-semibold text-slate-900 uppercase tracking-wide">
-                      No-Dues Clearance Certificate
+                      {template.CLEARANCE_CERTIFICATE?.title || "No-Dues Clearance Certificate"}
                     </h2>
-                    <p className="text-xs text-slate-500">Official Departmental Exit Sign-Off Form</p>
+                    <p className="text-xs text-slate-500">{template.CLEARANCE_CERTIFICATE?.subtitle || "Official Departmental Exit Sign-Off Form"}</p>
                   </div>
 
                   <p className="text-xs text-slate-700 leading-relaxed">
-                    This is to certify that <strong>{emp.name}</strong> (Employee Code:{" "}
-                    <strong>{emp.code}</strong>), working in the <strong>{emp.department}</strong> department, has
-                    completed all necessary separation protocols and project handovers. The clearance status across all
-                    functional business units is recorded below:
+                    {interpolate(template.CLEARANCE_CERTIFICATE?.introduction || "This is to certify that {{employeeName}} (Employee Code: {{employeeCode}}), working in the {{department}} department, has completed all necessary separation protocols and project handovers. The clearance status across all functional business units is recorded below:")}
                   </p>
 
                   <div className="border border-slate-200 rounded-xl overflow-hidden">
@@ -444,21 +454,21 @@ export default function ExitDocumentsModal({
                   </div>
 
                   <p className="text-xs text-slate-600 italic">
-                    Based on the verified endorsements above, the organization confirms that no assets or financial liabilities are outstanding.
+                    {interpolate(template.CLEARANCE_CERTIFICATE?.closing || "Based on the verified endorsements above, the organization confirms that no assets or financial liabilities are outstanding.")}
                   </p>
 
                   <div className="pt-8 grid grid-cols-2 gap-8 border-t border-slate-200">
                     <div>
                       <div className="h-12"></div>
                       <div className="border-t border-slate-400 pt-1 text-slate-700 font-bold text-xs">
-                        Head of Human Resources
+                        {template.CLEARANCE_CERTIFICATE?.leftSignatoryTitle || "Head of Human Resources"}
                       </div>
                       <p className="text-xs text-slate-500">{org.name}</p>
                     </div>
                     <div className="text-right">
                       <div className="h-12"></div>
                       <div className="border-t border-slate-400 pt-1 text-slate-700 font-bold text-xs">
-                        Corporate Finance Controller
+                        {template.CLEARANCE_CERTIFICATE?.rightSignatoryTitle || "Corporate Finance Controller"}
                       </div>
                       <p className="text-xs text-slate-500">{org.name}</p>
                     </div>
@@ -471,7 +481,7 @@ export default function ExitDocumentsModal({
                 <div className="space-y-6">
                   <div className="text-center py-1">
                     <h2 className="text-lg font-semibold text-slate-900 uppercase tracking-wide">
-                      Relieving Order
+                      {template.RELIEVING_LETTER?.title || "Relieving Order"}
                     </h2>
                   </div>
 
@@ -490,37 +500,32 @@ export default function ExitDocumentsModal({
                     </p>
 
                     <p className="font-bold text-slate-900 pt-2">
-                      Sub: Relieving Letter from Services of {org.name}
+                      Sub: {interpolate(template.RELIEVING_LETTER?.subject || "Relieving Letter from Services of {{companyName}}")}
                     </p>
 
                     <p>
-                      Dear <strong>{emp.name}</strong>,
+                      {interpolate(template.RELIEVING_LETTER?.greeting || "Dear {{employeeName}},")}
                     </p>
 
                     <p>
-                      This has reference to your formal resignation letter dated <strong>{docData?.exit?.resignationDate}</strong>.
-                      We would like to confirm that your resignation has been accepted and you are hereby officially relieved
-                      from your duties and services at <strong>{org.name}</strong> with effect from the close of business
-                      hours on <strong>{emp.lastWorkingDay}</strong>.
+                      {interpolate(template.RELIEVING_LETTER?.paragraph1 || "This has reference to your formal resignation letter dated {{resignationDate}}. We would like to confirm that your resignation has been accepted and you are hereby officially relieved from your duties and services at {{companyName}} with effect from the close of business hours on {{lastWorkingDay}}.")}
                     </p>
 
                     <p>
-                      We confirm that all company assets, credentials, and documentation under your stewardship have been
-                      satisfactorily returned and your Full & Final accounts have been settled in accordance with organizational
-                      policy.
+                      {interpolate(template.RELIEVING_LETTER?.paragraph2 || "We confirm that all company assets, credentials, and documentation under your stewardship have been satisfactorily returned and your Full & Final accounts have been settled in accordance with organizational policy.")}
                     </p>
 
                     <p>
-                      We take this opportunity to appreciate your contributions during your tenure with the organization and
-                      wish you every success in your future personal and professional endeavors.
+                      {interpolate(template.RELIEVING_LETTER?.paragraph3 || "We take this opportunity to appreciate your contributions during your tenure with the organization and wish you every success in your future personal and professional endeavors.")}
                     </p>
 
                     <div className="pt-10">
                       <p>Sincerely,</p>
                       <p className="font-bold text-slate-900 mt-1">For {org.name}</p>
                       <div className="h-12"></div>
-                      <p className="font-bold text-slate-900">Authorized Signatory</p>
-                      <p className="text-xs text-slate-500">People Operations & Human Resources</p>
+                      {template.branding?.signatoryName && <p className="font-semibold text-slate-900">{template.branding.signatoryName}</p>}
+                      <p className="font-bold text-slate-900">{template.RELIEVING_LETTER?.signatoryTitle || "Authorized Signatory"}</p>
+                      <p className="text-xs text-slate-500">{template.RELIEVING_LETTER?.signatorySubtitle || "People Operations & Human Resources"}</p>
                     </div>
                   </div>
                 </div>
@@ -531,44 +536,39 @@ export default function ExitDocumentsModal({
                 <div className="space-y-6">
                   <div className="text-center py-1">
                     <h2 className="text-lg font-semibold text-slate-900 uppercase tracking-wide">
-                      Service & Experience Certificate
+                      {template.EXPERIENCE_LETTER?.title || "Service & Experience Certificate"}
                     </h2>
-                    <p className="text-xs text-slate-500">To Whomsoever It May Concern</p>
+                    <p className="text-xs text-slate-500">{template.EXPERIENCE_LETTER?.subtitle || "To Whomsoever It May Concern"}</p>
                   </div>
 
                   <div className="space-y-4 text-xs sm:text-sm text-slate-800 leading-relaxed">
                     <p>
-                      This is to certify that <strong>{emp.name}</strong> (Employee ID: <strong>{emp.code}</strong>) was
-                      gainfully employed with <strong>{org.name}</strong> from <strong>{emp.joiningDate}</strong> to{" "}
-                      <strong>{emp.lastWorkingDay}</strong>.
+                      {interpolate(template.EXPERIENCE_LETTER?.paragraph1 || "This is to certify that {{employeeName}} (Employee ID: {{employeeCode}}) was gainfully employed with {{companyName}} from {{joiningDate}} to {{lastWorkingDay}}.")}
                     </p>
 
                     <p>
-                      At the time of leaving the organization, {emp.name} was holding the position of{" "}
-                      <strong>{emp.designation}</strong> in the <strong>{emp.department}</strong> department, operating out
-                      of our <strong>{emp.branch}</strong> office.
+                      {interpolate(template.EXPERIENCE_LETTER?.paragraph2 || "At the time of leaving the organization, {{employeeName}} was holding the position of {{designation}} in the {{department}} department, operating out of our {{branch}} office.")}
                     </p>
 
                     <p>
-                      During their tenure of employment with us, we observed them to be diligent, sincere, result-oriented,
-                      and professional in their conduct. Their character and commitment towards assigned responsibilities have
-                      been exemplary.
+                      {interpolate(template.EXPERIENCE_LETTER?.paragraph3 || "During their tenure of employment with us, we observed them to be diligent, sincere, result-oriented, and professional in their conduct. Their character and commitment towards assigned responsibilities have been exemplary.")}
                     </p>
 
                     <p>
-                      We certify that they have performed their duties to our complete satisfaction and we wish them great
-                      success in all their future pursuits.
+                      {interpolate(template.EXPERIENCE_LETTER?.paragraph4 || "We certify that they have performed their duties to our complete satisfaction and we wish them great success in all their future pursuits.")}
                     </p>
 
                     <div className="pt-12">
                       <p>For {org.name},</p>
                       <div className="h-12"></div>
-                      <p className="font-bold text-slate-900">Head of Human Resources</p>
+                      {template.branding?.signatoryName && <p className="font-semibold text-slate-900">{template.branding.signatoryName}</p>}
+                      <p className="font-bold text-slate-900">{template.EXPERIENCE_LETTER?.signatoryTitle || "Head of Human Resources"}</p>
                       <p className="text-xs text-slate-500">{org.name}</p>
                     </div>
                   </div>
                 </div>
               )}
+              {template.branding?.footer && <p className="border-t border-slate-200 pt-4 text-center text-[10px] text-slate-400">{template.branding.footer}</p>}
             </div>
           )}
         </div>

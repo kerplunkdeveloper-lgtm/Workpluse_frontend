@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
+import Pagination from "@/components/ui/Pagination";
 import {
   correctionsApi,
   leavesApi,
@@ -164,8 +165,14 @@ const APPROVAL_LABELS: Record<ApprovalCategory, string> = {
 };
 
 const csvCell = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+const leaveTypeLabel = (row: any) =>
+  row.leaveType?.name || row.leaveType?.code || row.leaveTypeName || "Leave type unavailable";
+const leavePeriodLabel = (row: any) =>
+  row.halfDayPeriod
+    ? `${row.halfDayPeriod === "MORNING" ? "Morning" : "Afternoon"} half day`
+    : `${Number(row.totalDays || 1)} day${Number(row.totalDays || 1) === 1 ? "" : "s"}`;
 const approvalDetail = (row: any, category: ApprovalCategory) => {
-  if (category === "LEAVES") return `${row.leaveType?.name || "Leave"} · ${Number(row.totalDays || 1)} day(s) · ${row.reason || "No reason"}`;
+  if (category === "LEAVES") return `${leaveTypeLabel(row)} · ${leavePeriodLabel(row)} · ${row.reason || "No reason"}`;
   if (category === "PERMISSIONS") return `${Number(row.hours || 0)}h · ${row.reason || "No reason"}`;
   if (category === "OVERTIME") return `${minutesLabel(row.requestedMinutes)} · ${row.reason || "No reason"}`;
   if (category === "EXPENSES") return `${row.title || "Claim"} · ${formatCurrency(Number(row.amount || 0))}`;
@@ -191,7 +198,7 @@ const downloadApprovalCsv = (rows: any[], category: ApprovalCategory) => {
   ];
   const link = document.createElement("a");
   link.href = URL.createObjectURL(new Blob(["\ufeff", lines.join("\n")], { type: "text/csv;charset=utf-8" }));
-  link.download = `WorkPluse_Approvals_${category.toLowerCase()}.csv`;
+  link.download = `Clocked_Approvals_${category.toLowerCase()}.csv`;
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -203,7 +210,7 @@ const printApprovalPdf = (rows: any[], category: ApprovalCategory) => {
   const body = rows.length
     ? rows.map((row, index) => `<tr><td>${index + 1}</td><td><b>${esc(personName(workflowEmployee(row)))}</b><br><span>${esc(workflowEmployee(row)?.employeeCode || "—")}</span></td><td>${esc(workflowDate(row, category) || "—")}</td><td>${esc(row.status || "PENDING")}</td><td>${esc(approvalDetail(row, category))}</td></tr>`).join("")
     : `<tr><td colspan="5" class="empty">No approval requests match these filters.</td></tr>`;
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(APPROVAL_LABELS[category])}</title><style>@page{size:A4 landscape;margin:12mm}body{font:12px Arial;color:#0f172a}header{border-bottom:2px solid #4f46e5;margin-bottom:16px;padding-bottom:10px}h1{margin:0 0 4px;font-size:20px}p{margin:0;color:#64748b}table{width:100%;border-collapse:collapse}th{background:#eef2ff;text-align:left;font-size:10px;text-transform:uppercase}th,td{padding:7px;border-bottom:1px solid #e2e8f0;vertical-align:top}td span{color:#64748b;font-size:10px}.empty{text-align:center;color:#94a3b8;padding:18px}</style></head><body><header><h1>${esc(APPROVAL_LABELS[category])}</h1><p>WorkPluse approvals · Generated ${esc(new Date().toLocaleString("en-IN"))} · ${rows.length} request(s)</p></header><table><thead><tr><th>#</th><th>Employee</th><th>Date</th><th>Status</th><th>Details</th></tr></thead><tbody>${body}</tbody></table></body></html>`;
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(APPROVAL_LABELS[category])}</title><style>@page{size:A4 landscape;margin:12mm}body{font:12px Arial;color:#0f172a}header{border-bottom:2px solid #4f46e5;margin-bottom:16px;padding-bottom:10px}h1{margin:0 0 4px;font-size:20px}p{margin:0;color:#64748b}table{width:100%;border-collapse:collapse}th{background:#eef2ff;text-align:left;font-size:10px;text-transform:uppercase}th,td{padding:7px;border-bottom:1px solid #e2e8f0;vertical-align:top}td span{color:#64748b;font-size:10px}.empty{text-align:center;color:#94a3b8;padding:18px}</style></head><body><header><h1>${esc(APPROVAL_LABELS[category])}</h1><p>Clocked approvals · Generated ${esc(new Date().toLocaleString("en-IN"))} · ${rows.length} request(s)</p></header><table><thead><tr><th>#</th><th>Employee</th><th>Date</th><th>Status</th><th>Details</th></tr></thead><tbody>${body}</tbody></table></body></html>`;
   const frame = document.createElement("iframe");
   frame.setAttribute("aria-hidden", "true");
   frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
@@ -362,6 +369,8 @@ export default function ApprovalsInboxView() {
   const [employeeBranchMap, setEmployeeBranchMap] = useState<Record<string, string | null>>({});
   const [workflowFrom, setWorkflowFrom] = useState("");
   const [workflowTo, setWorkflowTo] = useState("");
+  const [approvalPage, setApprovalPage] = useState(1);
+  const [approvalPageSize, setApprovalPageSize] = useState(10);
   const [leaves, setLeaves] = useState<any[]>([]);
   const [permissions, setPermissions] = useState<any[]>([]);
   const [overtimes, setOvertimes] = useState<any[]>([]);
@@ -815,6 +824,25 @@ export default function ApprovalsInboxView() {
                     ? visibleShootSettlements
                   : visibleWorkFromHome;
 
+  // Pagination is intentionally client-side for the inbox: the workflows are
+  // already loaded together for cross-tab counts and the existing review
+  // actions. Filtering happens first, then the selected workflow is paged.
+  const approvalTotalPages = Math.max(1, Math.ceil(visibleApprovalRows.length / approvalPageSize));
+  const safeApprovalPage = Math.min(approvalPage, approvalTotalPages);
+  const approvalStart = (safeApprovalPage - 1) * approvalPageSize;
+  const pageRows = <T,>(rows: T[]) => rows.slice(approvalStart, approvalStart + approvalPageSize);
+  const pagedCorrections = pageRows(visibleCorrections);
+  const pagedLeaves = pageRows(visibleLeaves);
+  const pagedPermissions = pageRows(visiblePermissions);
+  const pagedOvertimes = pageRows(visibleOvertimes);
+  const pagedOvertimeAllocations = pageRows(visibleOvertimeAllocations);
+  const pagedExpenses = pageRows(visibleExpenses);
+  const pagedCompOffs = pageRows(visibleCompOffs);
+  const pagedDayOffWork = pageRows(visibleDayOffWork);
+  const pagedShoots = pageRows(visibleShoots);
+  const pagedShootSettlements = pageRows(visibleShootSettlements);
+  const pagedWorkFromHome = pageRows(visibleWorkFromHome);
+
   const exportApprovals = (kind: "CSV" | "PDF") => {
     setExporting(kind);
     try {
@@ -1047,6 +1075,20 @@ export default function ApprovalsInboxView() {
               ))}
             </div>
           )}
+        {!loading && visibleApprovalRows.length > 0 && (
+          <div className="mb-4 overflow-hidden rounded-2xl border border-slate-200">
+            <Pagination
+              page={safeApprovalPage}
+              totalPages={approvalTotalPages}
+              total={visibleApprovalRows.length}
+              pageSize={approvalPageSize}
+              onPageChange={setApprovalPage}
+              onPageSizeChange={(size) => { setApprovalPageSize(size); setApprovalPage(1); }}
+              pageSizeOptions={[10, 20, 50]}
+              noun="approval requests"
+            />
+          </div>
+        )}
         {loading ? (
           <div className="py-16 text-center text-slate-500">
             <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-indigo-500" />
@@ -1128,7 +1170,7 @@ export default function ApprovalsInboxView() {
                   corrFilter === "PENDING" ? "Action" : "Status",
                 ]}
               >
-                {visibleCorrections.map((corr) => (
+                {pagedCorrections.map((corr) => (
                   <tr key={corr.id} className={rowClass}>
                     <PersonCell emp={corr.employee} />
                     {/* The day being corrected, not the day the request was filed */}
@@ -1192,11 +1234,16 @@ export default function ApprovalsInboxView() {
                 requestFilter === "PENDING" ? "Action" : "Status",
               ]}
             >
-              {visibleLeaves.map((leave) => (
+              {pagedLeaves.map((leave) => (
                 <tr key={leave.id} className={rowClass}>
                   <PersonCell emp={leave.employee} />
-                  <td className="whitespace-nowrap px-4 py-4 text-xs font-medium text-slate-700">
-                    {leave.leaveType?.name || "Leave"}
+                  <td className="px-4 py-4 text-xs font-medium text-slate-700">
+                    <span className="block whitespace-nowrap">{leaveTypeLabel(leave)}</span>
+                    {leave.leaveType?.code && leave.leaveType.code !== leave.leaveType.name && (
+                      <span className="mt-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                        {leave.leaveType.code}
+                      </span>
+                    )}
                   </td>
                   <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-600">
                     {dayOf(leave.startDate)}
@@ -1205,8 +1252,7 @@ export default function ApprovalsInboxView() {
                       <> to {dayOf(leave.endDate)}</>
                     )}
                     <span className="ml-1.5 font-semibold text-slate-900">
-                      ({Number(leave.totalDays || 1)}{" "}
-                      {Number(leave.totalDays || 1) === 1 ? "day" : "days"})
+                      ({leavePeriodLabel(leave)})
                     </span>
                   </td>
                   <ReasonCell text={leave.reason} />
@@ -1238,7 +1284,7 @@ export default function ApprovalsInboxView() {
                 requestFilter === "PENDING" ? "Action" : "Status",
               ]}
             >
-              {visibleOvertimes.map((ot) => (
+              {pagedOvertimes.map((ot) => (
                 <tr key={ot.id} className={rowClass}>
                   <PersonCell emp={ot.employee} />
                   <td className="whitespace-nowrap px-4 py-4 text-xs font-medium text-slate-700">
@@ -1308,7 +1354,7 @@ export default function ApprovalsInboxView() {
             emptyNote("No monthly overtime choices for this filter.")
           ) : (
             <TableShell heads={["Employee", "Month", "Approved OT", "Permission", "Leave", "Comp-off", "Cash payroll", "Action"]}>
-              {visibleOvertimeAllocations.map((allocation) => (
+              {pagedOvertimeAllocations.map((allocation) => (
                 <tr key={allocation.id} className={rowClass}>
                   <PersonCell emp={allocation.employee} />
                   <td className="whitespace-nowrap px-4 py-4 text-xs font-medium text-slate-700">{allocation.month}/{allocation.year}</td>
@@ -1329,7 +1375,7 @@ export default function ApprovalsInboxView() {
             <TableShell
               heads={["Employee", "Date", "Claim", "Amount", "Action"]}
             >
-              {visibleExpenses.map((claim) => (
+              {pagedExpenses.map((claim) => (
                 <tr key={claim.id} className={rowClass}>
                   <PersonCell emp={claim.employee} />
                   <td className="whitespace-nowrap px-4 py-4 text-xs font-medium text-slate-700">
@@ -1377,7 +1423,7 @@ export default function ApprovalsInboxView() {
                 requestFilter === "PENDING" ? "Action" : "Status",
               ]}
             >
-              {visiblePermissions.map((request) => (
+              {pagedPermissions.map((request) => (
                 <tr key={request.id} className={rowClass}>
                   <PersonCell emp={request.employee} />
                   <td className="whitespace-nowrap px-4 py-4 text-xs font-medium text-slate-700">
@@ -1428,7 +1474,7 @@ export default function ApprovalsInboxView() {
                 requestFilter === "PENDING" ? "Action" : "Status",
               ]}
             >
-              {visibleShoots.map((req) => (
+              {pagedShoots.map((req) => (
                 <tr key={req.id} className={rowClass}>
                   <PersonCell emp={req.employee} />
                   <td className="px-4 py-4 text-xs font-semibold text-slate-900">
@@ -1468,7 +1514,7 @@ export default function ApprovalsInboxView() {
             )
           ) : (
             <TableShell heads={["Employee", "Shoot", "Date", "Shoot time", "Travel", "Claims", "Status / action"]}>
-              {visibleShootSettlements.map((settlement) => (
+              {pagedShootSettlements.map((settlement) => (
                 <tr key={settlement.id} className={rowClass}>
                   <PersonCell emp={settlement.employee} />
                   <td className="px-4 py-4 text-xs font-semibold text-slate-900">
@@ -1516,7 +1562,7 @@ export default function ApprovalsInboxView() {
             )
           ) : (
             <TableShell heads={["Employee", "Dates", "Reason", "Status / action"]}>
-              {visibleWorkFromHome.map((request) => (
+              {pagedWorkFromHome.map((request) => (
                 <tr key={request.id} className={rowClass}>
                   <PersonCell emp={request.employee} />
                   <td className="whitespace-nowrap px-4 py-4 text-xs font-medium text-slate-700">
@@ -1544,7 +1590,7 @@ export default function ApprovalsInboxView() {
             <TableShell
               heads={["Employee", "Day", "Working on", "Details", "Action"]}
             >
-              {visibleDayOffWork.map((req) => (
+              {pagedDayOffWork.map((req) => (
                 <tr key={req.id} className={rowClass}>
                   <PersonCell emp={req.employee} />
                   <td className="whitespace-nowrap px-4 py-4 text-xs">
@@ -1571,7 +1617,7 @@ export default function ApprovalsInboxView() {
           emptyNote("No comp-off requests pending review.")
         ) : (
           <TableShell heads={["Employee", "Date", "Days", "Reason", "Action"]}>
-            {visibleCompOffs.map((tx) => (
+            {pagedCompOffs.map((tx) => (
               <tr key={tx.id} className={rowClass}>
                 <PersonCell emp={tx.compOffBalance?.employee} />
                 <td className="whitespace-nowrap px-4 py-4 text-xs font-medium text-slate-700">

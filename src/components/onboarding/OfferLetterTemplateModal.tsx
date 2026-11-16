@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Building2, FilePenLine, Loader2, MapPin, Plus, Save, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Building2, FilePenLine, FileUp, Loader2, MapPin, Plus, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import Modal from "@/components/ui/Modal";
 import { orgApi } from "@/lib/api";
@@ -28,11 +28,66 @@ const FALLBACK: OfferTemplate = {
   footer: "This is a digitally generated offer letter. Please retain a copy for your records.",
 };
 
+const parseCsv = (source: string) => {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let quoted = false;
+  for (let index = 0; index < source.length; index += 1) {
+    const char = source[index];
+    const next = source[index + 1];
+    if (char === '"' && quoted && next === '"') { cell += '"'; index += 1; continue; }
+    if (char === '"') { quoted = !quoted; continue; }
+    if (char === "," && !quoted) { row.push(cell.trim()); cell = ""; continue; }
+    if ((char === "\n" || char === "\r") && !quoted) {
+      if (char === "\r" && next === "\n") index += 1;
+      row.push(cell.trim());
+      if (row.some(Boolean)) rows.push(row);
+      row = []; cell = ""; continue;
+    }
+    cell += char;
+  }
+  row.push(cell.trim());
+  if (row.some(Boolean)) rows.push(row);
+  return rows;
+};
+
+const csvTemplate = (source: string): Partial<OfferTemplate> => {
+  const rows = parseCsv(source);
+  if (!rows.length) throw new Error("The selected CSV file is empty.");
+  const headers = rows[0].map((header) => header.toLowerCase().replace(/[^a-z0-9]/g, ""));
+  const values = rows[1] || [];
+  const fields: Record<string, string> = {};
+  const aliases: Record<string, keyof OfferTemplate> = {
+    title: "title", lettertitle: "title", greeting: "greeting", introduction: "introduction", body: "introduction",
+    terms: "terms", termsandconditions: "terms", signatoryname: "signatoryName", signatorytitle: "signatoryTitle",
+    primarycolor: "primaryColor", accentcolor: "primaryColor", footer: "footer",
+  };
+  headers.forEach((header, index) => {
+    const field = aliases[header];
+    if (field) fields[field] = values[index] || "";
+  });
+  // Also accept a simple two-column CSV: field,value on each row.
+  if (!Object.keys(fields).length) {
+    rows.forEach(([key, value]) => {
+      const field = aliases[key.toLowerCase().replace(/[^a-z0-9]/g, "")];
+      if (field) fields[field] = value || "";
+    });
+  }
+  if (!Object.keys(fields).length) throw new Error("CSV headers were not recognized. Use columns such as title, greeting, introduction, terms, signatoryName, signatoryTitle, primaryColor and footer.");
+  return {
+    ...fields,
+    terms: fields.terms ? fields.terms.split(/\s*(?:\||;|\n)\s*/).map((term) => term.replace(/^(?:[-*•]|\d+[.)])\s+/, "").trim()).filter(Boolean) : undefined,
+  } as Partial<OfferTemplate>;
+};
+
 export default function OfferLetterTemplateModal({ open, onClose, inline = false }: { open: boolean; onClose: () => void; inline?: boolean }) {
   const [form, setForm] = useState<OfferTemplate>(FALLBACK);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [organization, setOrganization] = useState<any>(null);
+  const [importing, setImporting] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -56,7 +111,77 @@ export default function OfferLetterTemplateModal({ open, onClose, inline = false
   };
 
   const update = (key: keyof OfferTemplate, value: string) => setForm((current) => ({ ...current, [key]: value }));
-  const interpolate = (value: string) => value.replaceAll("{{candidateName}}", "Candidate Name").replaceAll("{{companyName}}", organization?.name || "Company Name");
+  const importTemplate = async (file: File) => {
+    setImporting(true);
+    try {
+      if (file.size > 2 * 1024 * 1024) throw new Error("Please choose a file smaller than 2 MB.");
+      const text = await file.text();
+      const extension = file.name.toLowerCase();
+      const isJson = extension.endsWith(".json") || file.type === "application/json";
+      const isCsv = extension.endsWith(".csv") || file.type === "text/csv";
+      if (isJson) {
+        const parsed = JSON.parse(text) as Partial<OfferTemplate> & { template?: Partial<OfferTemplate> };
+        const imported = parsed.template && typeof parsed.template === "object" ? parsed.template : parsed;
+        const terms = Array.isArray(imported.terms) ? imported.terms.map(String).map((term) => term.trim()).filter(Boolean) : [];
+        setForm({
+          ...FALLBACK,
+          ...imported,
+          terms: terms.length ? terms : FALLBACK.terms,
+          primaryColor: typeof imported.primaryColor === "string" && /^#[0-9a-f]{6}$/i.test(imported.primaryColor) ? imported.primaryColor : FALLBACK.primaryColor,
+        });
+      } else if (isCsv) {
+        const imported = csvTemplate(text);
+        setForm((current) => ({
+          ...current,
+          ...imported,
+          terms: imported.terms?.length ? imported.terms : current.terms,
+          primaryColor: imported.primaryColor && /^#[0-9a-f]{6}$/i.test(imported.primaryColor) ? imported.primaryColor : current.primaryColor,
+        }));
+      } else {
+        const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+        if (!lines.length) throw new Error("The selected file is empty.");
+        const terms = lines.filter((line) => /^(?:[-*•]|\d+[.)])\s+/.test(line)).map((line) => line.replace(/^(?:[-*•]|\d+[.)])\s+/, "").trim()).filter(Boolean);
+        const body = lines.filter((line) => !/^(?:[-*•]|\d+[.)])\s+/.test(line));
+        setForm((current) => ({
+          ...current,
+          title: body[0]?.slice(0, 120) || current.title,
+          introduction: body.slice(1).join("\n\n") || text.trim(),
+          terms: terms.length ? terms : current.terms,
+        }));
+      }
+      toast.success("Template content imported. Review it and save to use it in onboarding.");
+    } catch (error: any) {
+      toast.error(error?.message || "Could not import this template file.");
+    } finally {
+      setImporting(false);
+      if (importInputRef.current) importInputRef.current.value = "";
+    }
+  };
+  const interpolate = (value: string) => value
+    .replaceAll("{{candidateName}}", "Candidate Name")
+    .replaceAll("{{employeeName}}", "Candidate Name")
+    .replaceAll("{{employeeCode}}", "EMP-0001")
+    .replaceAll("{{email}}", "candidate@company.com")
+    .replaceAll("{{phone}}", "+91 98765 43210")
+    .replaceAll("{{currentAddress}}", "Candidate address")
+    .replaceAll("{{companyName}}", organization?.name || "Company Name")
+    .replaceAll("{{organizationName}}", organization?.name || "Company Name")
+    .replaceAll("{{companyAddress}}", organization?.address || "Company address not configured")
+    .replaceAll("{{designation}}", "To be confirmed")
+    .replaceAll("{{department}}", "General")
+    .replaceAll("{{workLocation}}", "Corporate Headquarters")
+    .replaceAll("{{branch}}", "Corporate Headquarters")
+    .replaceAll("{{joiningDate}}", "To be confirmed")
+    .replaceAll("{{annualCtc}}", "INR 0")
+    .replaceAll("{{monthlyCtc}}", "INR 0")
+    .replaceAll("{{basicMonthly}}", "INR 0")
+    .replaceAll("{{hraMonthly}}", "INR 0")
+    .replaceAll("{{specialAllowanceMonthly}}", "INR 0")
+    .replaceAll("{{probationMonths}}", "3")
+    .replaceAll("{{noticePeriodDays}}", "30")
+    .replaceAll("{{workingHours}}", "09:00 AM - 06:00 PM")
+    .replaceAll("{{issuedDate}}", "Date")
+    .replaceAll("{{referenceNo}}", "WP-OFFER");
   const termsPerPage = 4;
   const termPages = Array.from({ length: Math.max(1, Math.ceil(form.terms.length / termsPerPage)) }, (_, index) => form.terms.slice(index * termsPerPage, index * termsPerPage + termsPerPage));
   const previewPage = (terms: string[], pageIndex: number) => <div key={pageIndex} className="relative mx-auto mb-4 aspect-[1/1.414] w-full max-w-[340px] overflow-hidden bg-white p-5 text-[8px] leading-[1.45] text-slate-700 shadow-lg sm:p-7">
@@ -65,9 +190,11 @@ export default function OfferLetterTemplateModal({ open, onClose, inline = false
   </div>;
   const preview = <div className="rounded-xl border border-slate-200 bg-slate-100 p-3 shadow-inner"><div className="mb-2 flex items-center justify-between"><span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">A4 document preview</span><span className="rounded-full bg-white px-2 py-1 text-[10px] font-bold text-slate-500">{termPages.length} page{termPages.length === 1 ? "" : "s"}</span></div>{termPages.map((terms, index) => previewPage(terms, index))}</div>;
   const editor = <div className={`relative w-full ${inline ? "max-w-none" : "max-w-2xl"} rounded-3xl border border-slate-200 bg-white p-4 shadow-2xl sm:p-8`}>
-      <div className="flex items-start justify-between gap-4"><div><div className="flex items-center gap-2"><FilePenLine className="h-5 w-5 text-indigo-600" /><h2 className="text-lg font-bold text-slate-950">Offer & joining letter template</h2></div><p className="mt-1 text-xs text-slate-500">Company template used when HR creates and sends an offer letter.</p></div><button type="button" onClick={onClose} className="text-sm font-semibold text-slate-400 hover:text-slate-700">Close</button></div>
+      <div className="flex flex-wrap items-start justify-between gap-4"><div><div className="flex items-center gap-2"><FilePenLine className="h-5 w-5 text-indigo-600" /><h2 className="text-lg font-bold text-slate-950">Offer & joining letter template</h2></div><p className="mt-1 text-xs text-slate-500">Company template used when HR creates and sends an offer letter.</p></div><div className="flex items-center gap-2"><input ref={importInputRef} type="file" accept=".json,.csv,.txt,.md,application/json,text/csv,text/plain,text/markdown" className="sr-only" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importTemplate(file); }} /><button type="button" onClick={() => importInputRef.current?.click()} disabled={loading || importing} className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100 disabled:opacity-60"><FileUp className="h-3.5 w-3.5" />{importing ? "Importing…" : "Import content"}</button><button type="button" onClick={onClose} className="rounded-xl px-2 py-2 text-sm font-semibold text-slate-400 hover:bg-slate-50 hover:text-slate-700">Close</button></div></div>
+      <p className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50/60 px-3 py-2 text-[11px] leading-5 text-indigo-800">Import JSON or CSV to fill every field, or TXT/MD to import the body and bullet terms. CSV supports one row with template columns or multiple <strong>field,value</strong> rows. Review the content, then select <strong>Save template</strong> to use it in onboarding.</p>
+      <p className="mt-2 text-[11px] leading-5 text-slate-500">Available employee fields: <code>{"{{candidateName}}"}</code>, <code>{"{{employeeCode}}"}</code>, <code>{"{{designation}}"}</code>, <code>{"{{department}}"}</code>, <code>{"{{monthlyCtc}}"}</code>, <code>{"{{annualCtc}}"}</code>, <code>{"{{joiningDate}}"}</code>, <code>{"{{branch}}"}</code>, <code>{"{{email}}"}</code>, <code>{"{{phone}}"}</code>, <code>{"{{probationMonths}}"}</code>, <code>{"{{noticePeriodDays}}"}</code>, and <code>{"{{workingHours}}"}</code>.</p>
       {inline && <div className="mb-4 rounded-xl border border-indigo-100 bg-indigo-50/60 px-3 py-2 text-xs font-semibold text-indigo-800 lg:hidden">A4 preview is shown beside the editor on larger screens.</div>}
-      {inline && <div className="absolute right-6 top-24 hidden w-[360px] lg:block"><div className="mb-2 flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-wider text-slate-500">Live A4 preview</p><span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">Auto-updating</span></div>{preview}</div>}
+      {inline && <div className="absolute right-6 top-44 hidden w-[360px] lg:block"><div className="mb-2 flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-wider text-slate-500">Live A4 preview</p><span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">Auto-updating</span></div>{preview}</div>}
       {loading ? <div className="flex min-h-48 items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-indigo-600" /></div> : <div className={`mt-5 max-h-[70vh] space-y-4 overflow-y-auto pr-1 ${inline ? "lg:pr-[390px]" : ""}`}><div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto]"><label className="text-xs font-semibold text-slate-600">Letter title<input value={form.title} onChange={(e) => update("title", e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /></label><label className="text-xs font-semibold text-slate-600">Accent color<input type="color" value={form.primaryColor} onChange={(e) => update("primaryColor", e.target.value)} className="mt-1 h-10 w-16 rounded-lg border border-slate-200 bg-white p-1" /></label></div><label className="block text-xs font-semibold text-slate-600">Greeting<textarea value={form.greeting} onChange={(e) => update("greeting", e.target.value)} rows={2} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /><span className="font-normal text-slate-400">Use {"{{candidateName}}"} for the candidate name.</span></label><label className="block text-xs font-semibold text-slate-600">Introduction<textarea value={form.introduction} onChange={(e) => update("introduction", e.target.value)} rows={3} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /><span className="font-normal text-slate-400">Use {"{{companyName}}"} for the company name.</span></label><div><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><label className="text-xs font-semibold text-slate-600">Terms and conditions</label><button type="button" onClick={() => setForm((current) => ({ ...current, terms: [...current.terms, ""] }))} className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600"><Plus className="h-3.5 w-3.5" />Add term</button></div>{form.terms.map((term, index) => <div key={`${index}-${term}`} className="mb-2 flex min-w-0 gap-2"><input value={term} onChange={(e) => setForm((current) => ({ ...current, terms: current.terms.map((item, itemIndex) => itemIndex === index ? e.target.value : item) }))} className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm" /><button type="button" onClick={() => setForm((current) => ({ ...current, terms: current.terms.filter((_, itemIndex) => itemIndex !== index) }))} className="shrink-0 rounded-lg p-2 text-rose-500 hover:bg-rose-50" aria-label="Remove term"><Trash2 className="h-4 w-4" /></button></div>)}</div><div className="grid gap-4 sm:grid-cols-2"><label className="text-xs font-semibold text-slate-600">Signatory name<input value={form.signatoryName} onChange={(e) => update("signatoryName", e.target.value)} placeholder="Company name if blank" className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /></label><label className="text-xs font-semibold text-slate-600">Signatory title<input value={form.signatoryTitle} onChange={(e) => update("signatoryTitle", e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /></label></div><label className="block text-xs font-semibold text-slate-600">Footer<textarea value={form.footer} onChange={(e) => update("footer", e.target.value)} rows={2} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /></label></div>}
       <div className="mt-6 flex justify-end gap-2 border-t border-slate-100 pt-4"><button type="button" onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">Cancel</button><button type="button" onClick={() => void save()} disabled={loading || saving} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-60">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}Save template</button></div>
     </div>;

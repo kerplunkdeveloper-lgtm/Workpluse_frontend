@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Hero, ProofBar, Features, Workflow, Offline, Security, FAQ, CtaBand, SiteFooter } from "@/components/landing/LandingSections";
 import { PricingClient } from "@/components/landing/PricingClient";
 import { SiteHeader } from "@/components/landing/SiteHeader";
-import { ScrollProgress } from "@/components/landing/motion";
 import { FAQ as FAQ_ITEMS } from "@/components/landing/content";
 import type { SubscriptionPlanOption } from "@/types";
 
@@ -11,8 +10,8 @@ export const revalidate = 300;
 const jsonLd = (data: object) => JSON.stringify(data).replace(/</g, "\\u003c");
 
 export const metadata: Metadata = {
-  title: "WorkPluse | One powerful platform for your workplace",
-  description: "Make attendance, leave, payroll, and everyday HR effortless with WorkPluse.",
+  title: "Clocked | One calm command center for your workplace",
+  description: "Make attendance, leave, payroll, and everyday HR effortless with Clocked.",
   alternates: { canonical: "/" },
 };
 
@@ -48,7 +47,6 @@ export default async function LandingPage() {
       <a href="#main" className="sr-only z-[70] rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
         Skip to content
       </a>
-      <ScrollProgress />
       <SiteHeader />
       <main id="main">
         <Hero />
@@ -69,13 +67,13 @@ export default async function LandingPage() {
             {
               "@type": "Organization",
               "@id": `${siteUrl}/#organization`,
-              name: "WorkPluse",
+              name: "Clocked",
               url: siteUrl,
               logo: `${siteUrl}/logo-v2-128.png`,
             },
             {
               "@type": "SoftwareApplication",
-              name: "WorkPluse",
+              name: "Clocked",
               applicationCategory: "BusinessApplication",
               operatingSystem: "Web, Android",
               publisher: { "@id": `${siteUrl}/#organization` },

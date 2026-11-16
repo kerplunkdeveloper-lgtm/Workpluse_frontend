@@ -123,7 +123,7 @@ const permissions: { module: string; description: string; access: Record<Role, A
   },
   {
     module: "Subscription & invoices",
-    description: "Your WorkPluse plan, payments and receipts",
+    description: "Your Clocked plan, payments and receipts",
     access: { COMPANY_ADMIN: true, MANAGER: false, EMPLOYEE: false },
   },
   {
@@ -256,7 +256,7 @@ export default function PermissionsView() {
       </section>
 
       <p className="rounded-2xl bg-slate-50 px-5 py-4 text-xs leading-5 text-slate-600">
-        WorkPluse itself, the company that provides this software, manages plan pricing and platform settings across all customers. That access is separate from your workspace and
+        Clocked itself, the company that provides this software, manages plan pricing and platform settings across all customers. That access is separate from your workspace and
         does not include your employee, attendance or payroll data.
       </p>
     </div>

@@ -1,5 +1,5 @@
 {
-  "name": "workpulse-frontend",
+  "name": "clocked-frontend",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run",
+    "test": "vitest run --exclude e2e/**",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
     "audit:ui": "node scripts/ui-audit.mjs"
   },
   "dependencies": {
@@ -29,6 +31,7 @@
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "^5.16.0",
+    "@playwright/test": "^1.65.0",
     "@tailwindcss/postcss": "^4",
     "@types/canvas-confetti": "^1.9.0",
     "@types/leaflet": "^1.9.22",

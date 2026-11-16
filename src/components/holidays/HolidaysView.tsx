@@ -113,7 +113,7 @@ export default function HolidaysView() {
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = "workpulse-holidays-template.csv";
+    anchor.download = "clocked-holidays-template.csv";
     anchor.click();
     URL.revokeObjectURL(url);
   };

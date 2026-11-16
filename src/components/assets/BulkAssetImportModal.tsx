@@ -38,7 +38,7 @@ function parseCsv(text: string) {
   const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/).filter((line) => line.trim());
   if (lines.length < 2) throw new Error("Add at least one asset row after the header");
   const headers = parseCsvLine(lines[0]).map((item) => item.trim());
-  const missing = ["name", "category", "employeeCode"].filter((item) => !headers.includes(item));
+  const missing = ["name", "category"].filter((item) => !headers.includes(item));
   if (missing.length) throw new Error(`Template is missing required columns: ${missing.join(", ")}`);
   return lines.slice(1).map((line) => {
     const cells = parseCsvLine(line);
@@ -56,7 +56,7 @@ function downloadTemplate() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "workpulse-asset-import-template.csv";
+  link.download = "clocked-asset-import-template.csv";
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -88,11 +88,14 @@ export function BulkAssetImportModal({
     event.target.value = "";
   }
 
-  const invalidRows = rows.filter((row) => !row.name?.trim() || !row.category?.trim() || !row.employeeCode?.trim() || !employeeCodes.has(row.employeeCode.trim().toUpperCase()));
+  const invalidRows = rows.filter((row) => {
+    const employeeCode = row.employeeCode?.trim();
+    return !row.name?.trim() || !row.category?.trim() || (employeeCode && !employeeCodes.has(employeeCode.toUpperCase()));
+  });
 
   async function submit() {
     if (!rows.length) { setError("Upload the completed template first"); return; }
-    if (invalidRows.length) { setError("Fix the highlighted rows before importing. Employee Code must match an active employee."); return; }
+    if (invalidRows.length) { setError("Fix the highlighted rows before importing. Employee Code is optional, but when supplied it must match an active employee."); return; }
     setIsSubmitting(true);
     setError(null);
     try {
@@ -136,7 +139,7 @@ export function BulkAssetImportModal({
           <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-5 py-8 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/30">
             <Upload className="w-6 h-6 text-indigo-500" />
             <span className="font-semibold text-slate-700">Choose completed CSV file</span>
-            <span className="text-slate-400">Required columns: name, category, employeeCode</span>
+            <span className="text-slate-400">Required columns: name, category · employeeCode is optional for unassigned inventory</span>
             <input type="file" accept=".csv,text/csv" onChange={handleFile} className="hidden" />
           </label>
 
@@ -144,7 +147,7 @@ export function BulkAssetImportModal({
 
           {rows.length > 0 && <div className="rounded-xl border border-slate-200 overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200"><span className="font-semibold text-slate-800">Preview · {rows.length} row(s)</span><span className={invalidRows.length ? "text-rose-600" : "text-emerald-600"}>{invalidRows.length ? `${invalidRows.length} need attention` : <><CheckCircle2 className="inline w-3.5 h-3.5 mr-1" />Ready to import</>}</span></div>
-            <div className="max-h-64 overflow-auto"><table className="w-full text-left"><thead className="bg-white sticky top-0 border-b border-slate-100"><tr><th className="px-3 py-2">Row</th><th className="px-3 py-2">Asset</th><th className="px-3 py-2">Category</th><th className="px-3 py-2">Employee Code</th><th className="px-3 py-2">Validation</th></tr></thead><tbody className="divide-y divide-slate-100">{rows.map((row, index) => { const invalid = !row.name?.trim() || !row.category?.trim() || !row.employeeCode?.trim() || !employeeCodes.has(row.employeeCode.trim().toUpperCase()); return <tr key={`${index}-${row.name}`} className={invalid ? "bg-rose-50/70" : ""}><td className="px-3 py-2 text-slate-400">{index + 2}</td><td className="px-3 py-2 font-medium text-slate-800">{row.name || "Missing name"}</td><td className="px-3 py-2 text-slate-600">{row.category || "Missing"}</td><td className="px-3 py-2 font-mono text-slate-700">{row.employeeCode || "Missing"}</td><td className={`px-3 py-2 ${invalid ? "text-rose-600" : "text-emerald-600"}`}>{invalid ? "Check required fields / employee code" : "Valid"}</td></tr>; })}</tbody></table></div>
+            <div className="max-h-64 overflow-auto"><table className="w-full text-left"><thead className="bg-white sticky top-0 border-b border-slate-100"><tr><th className="px-3 py-2">Row</th><th className="px-3 py-2">Asset</th><th className="px-3 py-2">Category</th><th className="px-3 py-2">Employee Code</th><th className="px-3 py-2">Validation</th></tr></thead><tbody className="divide-y divide-slate-100">{rows.map((row, index) => { const employeeCode = row.employeeCode?.trim(); const invalid = !row.name?.trim() || !row.category?.trim() || Boolean(employeeCode && !employeeCodes.has(employeeCode.toUpperCase())); return <tr key={`${index}-${row.name}`} className={invalid ? "bg-rose-50/70" : ""}><td className="px-3 py-2 text-slate-400">{index + 2}</td><td className="px-3 py-2 font-medium text-slate-800">{row.name || "Missing name"}</td><td className="px-3 py-2 text-slate-600">{row.category || "Missing"}</td><td className="px-3 py-2 font-mono text-slate-700">{employeeCode || "Unassigned"}</td><td className={`px-3 py-2 ${invalid ? "text-rose-600" : "text-emerald-600"}`}>{invalid ? "Check required fields / employee code" : "Valid"}</td></tr>; })}</tbody></table></div>
           </div>}
 
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200"><button onClick={onClose} className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium">Cancel</button><button onClick={submit} disabled={isSubmitting || !rows.length || Boolean(invalidRows.length)} className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-sm disabled:opacity-50">{isSubmitting ? "Importing..." : `Import ${rows.length || ""} asset${rows.length === 1 ? "" : "s"}`}</button></div>

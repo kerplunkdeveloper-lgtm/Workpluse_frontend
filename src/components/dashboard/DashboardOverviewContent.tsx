@@ -92,6 +92,28 @@ import {
 } from "./dashboardUtils";
 import { LiveClock } from "./LiveClock";
 
+/** Load a complete paginated collection for dashboard breakdowns. */
+async function fetchAllPages<T>(
+  fetchPage: (page: number, limit: number) => Promise<any>,
+  limit = 500,
+): Promise<T[]> {
+  const first = await fetchPage(1, limit);
+  const firstRows = unwrapList<T>(first);
+  const totalPages = Math.max(
+    1,
+    Number(first?.totalPages ?? first?.pagination?.totalPages ?? 1),
+  );
+
+  if (totalPages === 1) return firstRows;
+
+  const remaining = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, index) =>
+      fetchPage(index + 2, limit).then((response) => unwrapList<T>(response)),
+    ),
+  );
+  return [firstRows, ...remaining].flat();
+}
+
 export default function DashboardOverview() {
   const { user, role, refreshUser } = useAuth();
   const {
@@ -113,8 +135,8 @@ export default function DashboardOverview() {
   const [activeBreakdownTab, setActiveBreakdownTab] =
     useState<KpiStatus | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  // Branch filter for the staff list. The dashboard only preloads the first 200 people, so a chosen branch
-  // loads its own complete list from the server instead of trimming that partial one.
+  // Branch filter for the staff list. A chosen branch loads its own complete
+  // list from the server instead of filtering a partial organization roster.
   const [branchOptions, setBranchOptions] = useState<
     { id: string; name: string }[]
   >([]);
@@ -199,18 +221,19 @@ export default function DashboardOverview() {
       // Only today's rows: without the date the API returns every day ever
       // recorded, newest first, so older days crowd today out of the page.
       const attendanceParams = {
-        page: 1,
-        limit: 200,
         ...(todayKey ? { date: todayKey } : {}),
       };
       if (silent) {
         const liveRes = await Promise.allSettled([
-          attendanceApi.getAllAttendance(attendanceParams, {
-            background: true,
-          }),
+          fetchAllPages<any>((page, limit) =>
+            attendanceApi.getAllAttendance(
+              { ...attendanceParams, page, limit },
+              { background: true },
+            ),
+          ),
         ]);
         if (liveRes[0].status === "fulfilled" && liveRes[0].value)
-          setAllAttendance(unwrapList(liveRes[0].value));
+          setAllAttendance(liveRes[0].value);
         return;
       }
 
@@ -226,7 +249,9 @@ export default function DashboardOverview() {
         celebrationsRes,
       ] = canManage
         ? await Promise.allSettled([
-            attendanceApi.getAllAttendance(attendanceParams),
+          fetchAllPages<any>((page, limit) =>
+            attendanceApi.getAllAttendance({ ...attendanceParams, page, limit }),
+          ),
             // The list endpoint returns the newest 50 of every status; ask for what the dashboard needs.
             Promise.all([
               leavesApi.getAllLeaves({ status: "PENDING", limit: 200 }),
@@ -234,7 +259,9 @@ export default function DashboardOverview() {
             ]).then(([pending, approved]) => ({
               data: [...unwrapList(pending), ...unwrapList(approved)],
             })),
-            employeesApi.list({ page: 1, limit: 200, status: "WORKING" }),
+            fetchAllPages<any>((page, limit) =>
+              employeesApi.list({ page, limit, status: "WORKING" }),
+            ),
             branchesApi.list(),
             departmentsApi.list(),
             employeesApi.celebrations(),
@@ -266,7 +293,11 @@ export default function DashboardOverview() {
             : current.departments,
       }));
       if (allAttendanceRes.status === "fulfilled" && allAttendanceRes.value) {
-        setAllAttendance(unwrapList(allAttendanceRes.value));
+        setAllAttendance(
+          Array.isArray(allAttendanceRes.value)
+            ? allAttendanceRes.value
+            : unwrapList(allAttendanceRes.value),
+        );
       }
       if (leavesRes.status === "fulfilled" && leavesRes.value) {
         setAllLeaves(unwrapList(leavesRes.value));
@@ -275,7 +306,9 @@ export default function DashboardOverview() {
         setCelebrationPeople(unwrapList(celebrationsRes.value));
       }
       if (employeesRes.status === "fulfilled" && employeesRes.value) {
-        const empList = unwrapList(employeesRes.value);
+        const empList = Array.isArray(employeesRes.value)
+          ? employeesRes.value
+          : unwrapList(employeesRes.value);
         setAllEmployees(empList);
         setEmployeeTotal(
           Number(
@@ -420,22 +453,29 @@ export default function DashboardOverview() {
     let cancelled = false;
     setBranchRosterLoading(true);
     Promise.all([
-      employeesApi.list({
-        page: 1,
-        limit: 500,
-        status: "WORKING",
-        branchId: branchFilter,
-      }),
-      attendanceApi.getAllAttendance({
-        page: 1,
-        limit: 500,
-        employeeBranchId: branchFilter,
-        ...(todayKey ? { date: todayKey } : {}),
-      }),
+      fetchAllPages<any>((page, limit) =>
+        employeesApi.list({
+          page,
+          limit,
+          status: "WORKING",
+          branchId: branchFilter,
+        }),
+      ),
+      fetchAllPages<any>((page, limit) =>
+        attendanceApi.getAllAttendance({
+          page,
+          limit,
+          employeeBranchId: branchFilter,
+          ...(todayKey ? { date: todayKey } : {}),
+        }),
+      ),
     ])
       .then(([empRes, attRes]) => {
         if (!cancelled)
-          setBranchRoster(buildRoster(unwrapList(empRes), unwrapList(attRes)));
+          setBranchRoster(buildRoster(
+            Array.isArray(empRes) ? empRes : unwrapList(empRes),
+            Array.isArray(attRes) ? attRes : unwrapList(attRes),
+          ));
       })
       .catch(() => {
         if (!cancelled) {
@@ -1314,7 +1354,7 @@ export default function DashboardOverview() {
         >
           <article className="rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-emerald-50 p-5 shadow-sm">
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">
-              Your WorkPluse
+              Your Clocked
             </p>
             <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">
               Everything for your workday

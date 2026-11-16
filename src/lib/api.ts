@@ -93,7 +93,7 @@ function forceSessionLogout(failedToken?: string) {
   // sign-in can never render the previous workspace's data first.
   clearQueryCache();
   delete api.defaults.headers.common.Authorization;
-  // Remove credentials left by older WorkPluse releases.
+  // Remove credentials left by older Clocked releases.
   localStorage.removeItem("workpulse_access_token");
   localStorage.removeItem("workpulse_refresh_token");
   localStorage.removeItem("workpulse_user");
@@ -905,6 +905,14 @@ export const orgApi = {
     const res = await api.put("/organization/offer-letter-template", payload);
     return res.data;
   },
+  getExitDocumentTemplates: async () => {
+    const res = await api.get("/organization/exit-document-templates");
+    return res.data;
+  },
+  updateExitDocumentTemplates: async (payload: any) => {
+    const res = await api.put("/organization/exit-document-templates", payload);
+    return res.data;
+  },
 };
 
 export const loansApi = {
@@ -1163,6 +1171,10 @@ export const employeesApi = {
   },
   getById: async (id: string) => {
     const res = await api.get(`/employees/${id}`);
+    return res.data;
+  },
+  nextCode: async (params?: { role?: string; dateOfJoining?: string }) => {
+    const res = await api.get("/employees/next-code", { params });
     return res.data;
   },
   getMe: async () => {

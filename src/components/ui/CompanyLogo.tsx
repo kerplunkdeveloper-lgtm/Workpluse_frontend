@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Building2 } from "lucide-react";
+import Image from "next/image";
 
 const SIZES = {
   xs: "h-6 w-6 rounded-md text-[10px]",
@@ -46,7 +46,7 @@ export default function CompanyLogo({
   }
   return (
     <span aria-hidden="true" className={`${box} keep-white inline-flex items-center justify-center ${fallbackIcon ? "bg-[#202653]" : "bg-gradient-to-br from-indigo-500 to-indigo-700"} font-serif font-semibold tracking-wide`}>
-      {fallbackIcon ? <Building2 className="h-4 w-4" strokeWidth={1.8} /> : initialsOf(name)}
+      {fallbackIcon ? <Image src="/clocked-clock-icon.png" alt="" width={128} height={128} sizes="32px" className="h-[78%] w-[78%] object-contain" /> : initialsOf(name)}
     </span>
   );
 }

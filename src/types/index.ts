@@ -499,13 +499,27 @@ export interface OnboardingCandidate {
   documents?: CandidateDocument[];
   department?: Department;
   branch?: Branch;
+  organization?: { id: string; name: string; logoUrl?: string | null };
+  dateOfBirth?: string;
+  gender?: string;
+  bloodGroup?: string;
+  maritalStatus?: string;
+  currentAddress?: string;
+  permanentAddress?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  bankName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  panNumber?: string;
+  aadhaarNumber?: string;
   createdAt: string;
 }
 
 export interface CandidateDocument {
   id: string;
   candidateId: string;
-  documentType: "AADHAAR" | "PAN" | "DEGREE_CERTIFICATE" | "RELIEVING_LETTER" | "OTHER";
+  documentType: "GOVT_ID" | "TAX_ID" | "DEGREE_CERTIFICATE" | "PREVIOUS_EXPERIENCE" | "BANK_PROOF" | "PHOTO" | "OTHER";
   fileUrl: string;
   status: "PENDING" | "VERIFIED" | "REJECTED";
   verifiedAt?: string;

@@ -1,6 +1,3 @@
-// Usage: node _split.js config.json
-// config: { file, moves: [{ to: "X.tsx", names: ["A","B"] }] }
-// Moves the named top-level declarations into new files beside `file`, exports them, and wires the imports.
 const fs = require("fs"), path = require("path"), ts = require("typescript");
 const cfg = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
 const src = fs.readFileSync(cfg.file, "utf8");

@@ -50,7 +50,7 @@ const downloadAttendanceCsv = (rows: Attendance[], selectedStatus: string, from?
   const link = document.createElement("a");
   link.href = URL.createObjectURL(new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8" }));
   const category = selectedStatus.toLowerCase();
-  link.download = `WorkPluse_Attendance_${category}_${suffix}.csv`;
+  link.download = `Clocked_Attendance_${category}_${suffix}.csv`;
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -70,6 +70,17 @@ const workModeDisplay = (row: Attendance) => {
     note,
   };
 };
+
+const isMissedPunchOut = (row: Attendance) =>
+  Boolean(row.checkIn && !row.checkOut && (row.status === "ABSENT" || recordDateKey(row) < localDateKey(new Date())));
+
+const displayStatus = (row: Attendance) =>
+  isMissedPunchOut(row) ? "ABSENT" : row.status;
+
+const absentReason = (row: Attendance) =>
+  isMissedPunchOut(row)
+    ? "You forgot to punch out, so this date was marked Absent. Submit an attendance correction if this was a mistake."
+    : null;
 
 const pauseSummary = (row: Attendance, kind: "BREAK" | "LUNCH", minutes: number, now = Date.now()) => {
   const starts = row.events?.filter((event) => event.type === `${kind}_START`) || [];
@@ -107,10 +118,6 @@ const mapsHref = (lat: unknown, lng: unknown, label?: string | null) => {
 
 const formatMeters = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`);
 
-/**
- * One punch (in or out): where it happened, a link to the map, and how far from the branch it was.
- * Only admins and HR receive these fields; the server leaves them out for everyone else.
- */
 function PunchPlace({ kind, happened, label, lat, lng, branch }: { kind: "In" | "Out"; happened: boolean; label?: string | null; lat?: unknown; lng?: unknown; branch?: Attendance["branch"] }) {
   const href = mapsHref(lat, lng, label);
   const la = Number(lat);
@@ -213,6 +220,25 @@ const rangeDates = (
   }
 };
 
+/**
+ * Attendance history has existed behind both the legacy `{ records, total }`
+ * response and the canonical `{ data, pagination }` envelope. Keep the table
+ * and pager in sync with either shape, including older deployed APIs.
+ */
+const attendancePageMeta = (res: any, rowCount: number, pageSize: number) => {
+  const nested = res?.data && !Array.isArray(res.data) ? res.data : undefined;
+  const pagination = res?.pagination || nested?.pagination || res?.meta || nested?.meta;
+  const totalValue = res?.total ?? nested?.total ?? pagination?.total;
+  const parsedTotal = Number(totalValue);
+  const total = Number.isFinite(parsedTotal) && parsedTotal >= 0 ? parsedTotal : rowCount;
+  const pagesValue = res?.totalPages ?? nested?.totalPages ?? pagination?.totalPages;
+  const parsedPages = Number(pagesValue);
+  const totalPages = Number.isFinite(parsedPages) && parsedPages > 0
+    ? parsedPages
+    : Math.max(1, Math.ceil(total / pageSize));
+  return { total, totalPages };
+};
+
 /** Container: owns filters (mirrored in the URL so views can be shared) and data loading. */
 export default function AttendanceHistoryView() {
   const { role } = useAuth();
@@ -281,9 +307,12 @@ export default function AttendanceHistoryView() {
       })
       .then((res) => {
         if (!active) return;
-        setRows(unwrapList<Attendance>(res));
-        setTotal(Number(res?.total ?? res?.pagination?.total ?? 0));
-        setTotalPages(Number(res?.totalPages ?? res?.pagination?.totalPages ?? 1));
+        const nextRows = unwrapList<Attendance>(res);
+        const nextMeta = attendancePageMeta(res, nextRows.length, pageSize);
+        setRows(nextRows);
+        setTotal(nextMeta.total);
+        setTotalPages(nextMeta.totalPages);
+        if (page > nextMeta.totalPages) setPage(nextMeta.totalPages);
         setFailed(false);
       })
       .catch(() => active && setFailed(true))
@@ -742,13 +771,13 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
                       )}
                       {isTeamView && (
                         <td className="hidden max-w-[18rem] px-4 py-3 lg:table-cell">
-                          {(row.correctionReason || correction?.reason) ? (
-                            <ReasonCell text={String(row.correctionReason || correction?.reason)} maxW="max-w-[16rem]" />
+                          {(row.correctionReason || correction?.reason || absentReason(row)) ? (
+                            <ReasonCell text={String(row.correctionReason || correction?.reason || absentReason(row))} maxW="max-w-[16rem]" />
                           ) : <span className="text-xs text-slate-400">—</span>}
                         </td>
                       )}
 
-                      <td className="whitespace-nowrap px-4 py-3"><StatusBadge status={row.status} /></td>
+                      <td className="whitespace-nowrap px-4 py-3"><StatusBadge status={displayStatus(row)} /></td>
                       <td className="py-3 pl-4 pr-5 text-right">
                         <button
                           type="button"
@@ -794,7 +823,7 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
                           <p className="text-xs text-slate-500">{day.weekday}</p>
                         </div>
                       )}
-                      <StatusBadge status={row.status} />
+                      <StatusBadge status={displayStatus(row)} />
                     </div>
                   </div>
                   <dl className="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-xs">
@@ -812,10 +841,10 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
                       <PunchLocations row={row} />
                     </div>
                   )}
-{(row.correctionReason || correction?.reason) && (
+                  {(row.correctionReason || correction?.reason || absentReason(row)) && (
                     <div className="mt-2 rounded-xl bg-indigo-50/70 px-3 py-2 ring-1 ring-indigo-100">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-indigo-600">Correction reason</p>
-                      <p className="mt-1 text-xs leading-5 text-slate-700">{row.correctionReason || correction?.reason}</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-indigo-600">Attendance note</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-700">{row.correctionReason || correction?.reason || absentReason(row)}</p>
                     </div>
                   )}
                   <div className="mt-2.5 flex items-center justify-between">

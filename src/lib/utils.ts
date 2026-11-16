@@ -2,7 +2,7 @@ import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { format, parseISO } from "date-fns";
 
-/** WorkPulse's default company timezone: Indian Standard Time (Mumbai/Asia/Kolkata). */
+/** Clocked's default company timezone: Indian Standard Time (Mumbai/Asia/Kolkata). */
 export const INDIA_TIME_ZONE = "Asia/Kolkata";
 
 const indiaTimeFormatter = new Intl.DateTimeFormat("en-IN", {
