@@ -92,7 +92,7 @@ jobs:
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
-            --parameters "{\"commands\":[\"sudo -iu ubuntu /home/ubuntu/bin/deploy-alpha-frontend.sh ${DEPLOY_SHA}\"]}" \
+            --parameters "{\"commands\":[\"sudo -iu ubuntu env NODE_OPTIONS='--max-old-space-size=2048' /home/ubuntu/bin/deploy-alpha-frontend.sh ${DEPLOY_SHA}\"]}" \
             --timeout-seconds 1800 \
             --query 'Command.CommandId' \
             --output text)
