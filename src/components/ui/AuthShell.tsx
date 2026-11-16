@@ -155,7 +155,7 @@ export default function AuthShell({
         <div className="relative z-10 my-auto py-8">
           <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-200 backdrop-blur">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
-            WorkPluse workspace
+            Clocked workspace
           </span>
 
           <h1 className="mt-6 max-w-[30rem] text-balance bg-gradient-to-br from-white via-white to-indigo-200 bg-clip-text text-4xl font-bold leading-[1.1] tracking-tight text-transparent xl:text-[46px]">

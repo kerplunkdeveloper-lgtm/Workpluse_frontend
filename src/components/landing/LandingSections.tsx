@@ -17,6 +17,7 @@ import {
   type FeatureId,
 } from "./content";
 import { AnimatedTrend, CountUp, DrawLine, LivePunchFeed, Reveal, Stagger, StaggerItem, TiltOnScroll } from "./motion";
+import WorkflowLivePreview from "./WorkflowLivePreview";
 
 export const WRAP = "mx-auto w-full max-w-[1240px] px-4 sm:px-6 lg:px-8";
 
@@ -307,7 +308,7 @@ function ProductPreview() {
   const { line, area, last } = trendPaths(TREND);
   return (
     <div
-      aria-label="WorkPluse dashboard preview"
+      aria-label="Clocked dashboard preview"
       role="img"
       className="relative mx-auto mt-16 max-w-[1160px] pb-4 sm:mt-20"
     >
@@ -331,7 +332,7 @@ function ProductPreview() {
 
             <div className="flex items-center gap-2 rounded-lg bg-white px-4 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200 shadow-xs">
               <Lock className="h-3 w-3 text-indigo-600" aria-hidden="true" />
-              <span className="font-mono text-[11px]">app.workpulse.in/dashboard/live</span>
+              <span className="font-mono text-[11px]">app.clocked.work/dashboard/live</span>
             </div>
 
             <div className="flex items-center gap-2">
@@ -405,6 +406,8 @@ function ProductPreview() {
                   </span>
                 </div>
               </div>
+
+              <WorkflowLivePreview />
 
               {/* KPI Cards Grid */}
               <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -569,7 +572,7 @@ export function ProofBar() {
   return (
     <section
       id="solutions"
-      aria-label="Who WorkPluse is built for"
+      aria-label="Who Clocked is built for"
       className="border-y border-slate-200/80 bg-slate-50/80 py-12 text-slate-600"
     >
       <div className={WRAP}>
@@ -884,7 +887,7 @@ function FeatureVisual({ id }: { id: FeatureId }) {
               </div>
             </div>
             <div className="mt-3 rounded-xl bg-slate-50 p-2.5 font-mono text-[11px] text-slate-600 ring-1 ring-slate-200">
-              workpulse.in/join?token=x89d2k • Passcode generated
+              clocked.work/join?token=x89d2k • Passcode generated
             </div>
             <div className="mt-3 flex h-9 items-center justify-center rounded-xl bg-slate-950 text-xs font-bold text-white shadow-sm">
               Staff sets permanent PIN on 1st punch
@@ -1550,7 +1553,7 @@ export function SiteFooter() {
     <footer className="border-t border-slate-200 bg-[#f8fafc] text-slate-600">
       <div className={`${WRAP} grid gap-12 py-16 md:grid-cols-[1.4fr_repeat(3,1fr)]`}>
         <div className="max-w-xs">
-          <Brand size="md" />
+          <Brand size="md" landing />
           <p className="mt-4 text-pretty text-sm leading-relaxed text-slate-500">
             India&apos;s geofenced attendance, leave and statutory payroll platform. Engineered for
             factories, retail, construction and modern field operations.
@@ -1594,7 +1597,7 @@ export function SiteFooter() {
           className={`${WRAP} flex flex-col items-center justify-between gap-5 py-6 text-xs text-slate-500 md:flex-row`}
         >
           <p className="text-center md:text-left">
-            © {new Date().getFullYear()} WorkPluse Technologies Pvt Ltd. All rights reserved.
+            © {new Date().getFullYear()} Clocked Technologies Pvt Ltd. All rights reserved.
           </p>
 
           {/* Centered Kerplunk Media Logo Link (Only logo, no box, no arrow) */}

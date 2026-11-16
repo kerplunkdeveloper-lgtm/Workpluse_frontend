@@ -106,6 +106,8 @@ export default function EmployeeDirectory() {
   const [password, setPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [employeeCode, setEmployeeCode] = useState("");
+  const [nextEmployeeCode, setNextEmployeeCode] = useState("");
+  const [loadingNextEmployeeCode, setLoadingNextEmployeeCode] = useState(false);
   const [role, setRole] = useState("EMPLOYEE");
   const [showCreateDepartment, setShowCreateDepartment] = useState(false);
   const [newDepartmentName, setNewDepartmentName] = useState("");
@@ -212,6 +214,26 @@ export default function EmployeeDirectory() {
     setModalOpen(true);
   };
 
+  useEffect(() => {
+    if (!modalOpen || role === "COMPANY_ADMIN") {
+      setNextEmployeeCode("");
+      return;
+    }
+    let cancelled = false;
+    setLoadingNextEmployeeCode(true);
+    employeesApi.nextCode({ role, dateOfJoining: form.dateOfJoining || undefined })
+      .then((res) => {
+        if (!cancelled) setNextEmployeeCode(res?.data?.employeeCode || "");
+      })
+      .catch(() => {
+        if (!cancelled) setNextEmployeeCode("");
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingNextEmployeeCode(false);
+      });
+    return () => { cancelled = true; };
+  }, [modalOpen, role, form.dateOfJoining]);
+
   const handleCreateEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     const errors = role === "COMPANY_ADMIN"
@@ -267,6 +289,7 @@ export default function EmployeeDirectory() {
         setFormErrors({});
         setPassword("");
         setEmployeeCode("");
+        setNextEmployeeCode("");
         setPhotoFile(null);
         loadData();
       } else {
@@ -1008,12 +1031,19 @@ export default function EmployeeDirectory() {
               <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200 mb-4 flex items-start gap-2.5">
                 {/* <Sparkles className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" /> */}
                 <p className="text-xs text-indigo-900 leading-relaxed">
-                  WorkPluse will generate a secure temporary password and email it to the employee with their company sign-in link. They must change password upon first login.
+                  Clocked will generate a secure temporary password and email it to the employee with their company sign-in link. They must change password upon first login.
                 </p>
               </div>
             )}
 
             <form onSubmit={handleCreateEmployee} className="space-y-4">
+              <ProfilePhotoPicker
+                size="md"
+                initials={form.firstName?.[0] || "E"}
+                hint="Add profile photo"
+                onFile={(file) => setPhotoFile(file)}
+              />
+
               <ProfilePhotoPicker
                 size="md"
                 initials={form.firstName?.[0] || "E"}
@@ -1053,6 +1083,13 @@ export default function EmployeeDirectory() {
                     placeholder="Auto: KM001"
                     className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
                   />
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    {loadingNextEmployeeCode
+                      ? "Finding next available ID..."
+                      : nextEmployeeCode
+                        ? <>Next available: <span className="font-mono font-semibold text-indigo-700">{nextEmployeeCode}</span> (leave blank to auto-use)</>
+                        : "Leave blank to generate automatically"}
+                  </p>
                 </div>}
                 <div>
                   <label htmlFor="emp-role" className="block text-[13px] font-medium text-slate-700 mb-1">System Role *</label>

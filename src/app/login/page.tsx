@@ -112,7 +112,7 @@ export default function LoginPage() {
   return (
     <AuthShell
       eyebrow="Welcome back"
-      title="Sign in to WorkPluse"
+      title="Sign in to Clocked"
       description="Use your work email, personal email, or employee code to continue to your workspace."
       asideTitle="Everything your workplace needs, in rhythm."
       asideDescription="Check attendance, approve leave, and keep payroll-ready records moving from one beautifully simple workspace."

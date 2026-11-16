@@ -36,7 +36,7 @@ export function SiteHeader() {
         }`}
       >
         <div className="flex h-16 items-center justify-between gap-4 pl-3 pr-2 sm:pl-4">
-          <Brand size="sm" subtitle="Workforce, in rhythm" />
+          <Brand size="sm" landing subtitle="Workforce, in rhythm" />
 
           <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
             {NAV_LINKS.map((l) => (

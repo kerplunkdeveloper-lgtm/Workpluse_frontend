@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "WorkPluse Workforce",
-    short_name: "WorkPluse",
+    name: "Clocked Workforce",
+    short_name: "Clocked",
     description: "Attendance, people operations, leave, payroll, and onboarding in one workspace.",
     start_url: "/dashboard",
     scope: "/",
@@ -13,7 +13,7 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: "portrait-primary",
     icons: [
       {
-        src: "/logo-v2-128.png",
+        src: "/clocked-clock-icon.png",
         sizes: "128x128",
         type: "image/png",
         purpose: "maskable",

@@ -209,7 +209,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     let stopListening: (() => void) | undefined;
     void listenForFirebaseNotifications((payload) => {
       if (cancelled) return;
-      const title = payload.notification?.title || "WorkPluse notification";
+      const title = payload.notification?.title || "Clocked notification";
       const message = payload.notification?.body || "You have a new notification.";
       toast(title, { description: message });
       playNotificationSound();
@@ -367,7 +367,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const isOnBreak = todayStatus?.isOnBreak;
   const punchInBlockedByLeave = !isCheckedIn && todayStatus?.dayOff?.kind === "PERSONAL_LEAVE";
 
-  const orgName = user?.organization?.name || "WorkPluse";
+  const orgName = user?.organization?.name || "Clocked";
   const planName = isPlatformOwner ? "Platform owner" : user?.organization?.subscriptionPlan || "Standard Plan";
   const maxEmps = user?.features?.maxEmployees || user?.organization?.maxEmployees || 10;
   const countedSeats = Number(
@@ -697,7 +697,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* ─────────────────────────────────────────────────────────────────────────────
           2. Right Main Application Shell (Header + Breadcrumb + Canvas)
       ───────────────────────────────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col h-full min-w-0 overflow-visible">
+      <div className="flex-1 flex flex-col h-full min-h-0 min-w-0 overflow-hidden">
         {/* Top Header Bar */}
         <header className="wp-topbar relative h-16 shrink-0 bg-white/85 backdrop-blur-xl border-b border-slate-200/80 px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 z-50">
           {/* Left: Mobile Toggle & Breadcrumb Navigator */}
@@ -717,7 +717,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 className="flex items-center gap-1 hover:text-slate-900 transition shrink-0 font-semibold"
               >
                 <Home className="w-3.5 h-3.5 text-indigo-600" />
-                <span className="hidden sm:inline">WorkPluse</span>
+                <span className="hidden sm:inline">Clocked</span>
               </Link>
 
               {/* The section label only appears where there is room; its chevron
@@ -978,6 +978,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {/* Direct Team Chat shortcut */}
             <Link
               href="/chat"
+              data-mobile-hide="chat"
               className="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition relative"
               title="Team Chat"
             >
@@ -1279,7 +1280,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </AnimatePresence>
 
         {/* Main Application Canvas */}
-        <main className="wp-main-canvas min-w-0 flex-1 h-full overflow-y-auto p-3 sm:p-6 lg:p-8 bg-slate-50 pb-[max(5rem,calc(env(safe-area-inset-bottom)+2rem))] sm:pb-8">
+        <main className="wp-main-canvas relative min-h-0 min-w-0 flex-1 h-full overflow-y-auto overscroll-contain p-3 sm:p-6 lg:p-8 bg-slate-50 pb-[max(5rem,calc(env(safe-area-inset-bottom)+2rem))] sm:pb-8">
           <motion.div
             key={pathname}
             initial={{ opacity: 0, y: 6 }}

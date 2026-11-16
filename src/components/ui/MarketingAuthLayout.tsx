@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   BarChart3,
   CalendarDays,
@@ -15,18 +16,10 @@ import {
   Wallet,
 } from "lucide-react";
 
-export function WorkPluseMark({ size = 36 }: { size?: number }) {
+export function ClockedMark({ size = 36 }: { size?: number }) {
   return (
-    <span
-      className="inline-flex shrink-0 items-center justify-center rounded-full bg-[#4d46e8] text-white shadow-[0_8px_18px_-10px_rgba(37,99,235,0.7)] font-serif"
-      style={{ width: size, height: size }}
-    >
-      <span
-        className="font-bold leading-none tracking-tight"
-        style={{ fontSize: Math.max(11, Math.round(size * 0.42)) }}
-      >
-        W
-      </span>
+    <span className="inline-flex shrink-0 items-center" style={{ width: size * 3.02, height: size }}>
+      <Image src="/clocked-hrms-lockup.png" alt="Clocked HRMS" width={866} height={288} sizes={`${size * 3.02}px`} className="h-auto w-full object-contain" priority />
     </span>
   );
 }
@@ -49,8 +42,7 @@ function DashboardPreview() {
       <div className="flex min-h-[260px]">
         <aside className="hidden w-[118px] shrink-0 flex-col border-r border-slate-100 bg-slate-950 px-2.5 py-3 sm:flex">
           <div className="mb-3 flex items-center gap-1.5 px-1">
-            <WorkPluseMark size={22} />
-            <span className="text-xs font-bold text-white">WorkPluse</span>
+            <ClockedMark size={22} />
           </div>
           <nav className="space-y-0.5">
             {[
@@ -249,8 +241,7 @@ export default function MarketingAuthLayout({ children }: { children: ReactNode 
 
           <header className="relative flex items-center justify-between gap-3 px-5 py-3 sm:px-8">
             <Link href="/" className="flex items-center gap-2.5">
-              <WorkPluseMark />
-              <span className="font-serif text-[17px] font-semibold tracking-tight text-slate-900">WorkPluse</span>
+              <ClockedMark />
             </Link>
 
             <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 text-[13px] font-medium text-slate-500 md:flex">
@@ -262,7 +253,7 @@ export default function MarketingAuthLayout({ children }: { children: ReactNode 
             </nav>
 
             <a
-              href="mailto:support@workpulse.app"
+              href="mailto:support@clocked.work"
               className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-3 py-1.5 text-[13px] font-medium text-slate-500 shadow-[0_6px_16px_-12px_rgba(15,23,42,0.45)] hover:text-slate-900"
             >
               <CircleHelp className="h-4 w-4" />

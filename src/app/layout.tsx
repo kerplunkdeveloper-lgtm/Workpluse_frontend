@@ -10,34 +10,34 @@ import CookieConsent from "@/components/legal/CookieConsent";
 
 export const metadata: Metadata = {
   title: {
-    default: "WorkPluse | Workforce that stays in rhythm",
-    template: "%s | WorkPluse",
+    default: "Clocked | Workforce that stays in rhythm",
+    template: "%s | Clocked",
   },
   description:
     "Attendance, people operations, leave, payroll, and onboarding in one focused workspace.",
-  applicationName: "WorkPluse",
+  applicationName: "Clocked",
   keywords: ["workforce management", "attendance", "payroll", "HR software", "geofencing"],
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
   openGraph: {
     type: "website",
-    siteName: "WorkPluse",
-    title: "WorkPluse | Workforce that stays in rhythm",
+    siteName: "Clocked",
+    title: "Clocked | Workforce that stays in rhythm",
     description: "Attendance, people operations, leave, payroll, and onboarding in one focused workspace.",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "WorkPluse workforce management" }],
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Clocked workforce management" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "WorkPluse | Workforce that stays in rhythm",
+    title: "Clocked | Workforce that stays in rhythm",
     description: "Attendance, people operations, leave, payroll, and onboarding in one focused workspace.",
     images: ["/og.png"],
   },
   icons: {
-    icon: "/logo-v2-128.png",
-    apple: "/logo-v2-128.png",
+    icon: "/clocked-clock-icon.png",
+    apple: "/clocked-clock-icon.png",
   },
   appleWebApp: {
     capable: true,
-    title: "WorkPluse",
+    title: "Clocked",
     statusBarStyle: "default",
   },
 };

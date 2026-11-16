@@ -300,8 +300,18 @@ export default function CelebrationsView() {
 
               <div className="overflow-hidden rounded-2xl shadow-lg ring-1 ring-slate-900/10" style={{ containerType: "inline-size" }}>
                 <div className="relative mx-auto w-full max-w-[760px]" style={{ aspectRatio: template.orientation === "portrait" ? "630 / 1200" : "1200 / 630", backgroundColor: isRoyalPortrait ? "#071bc4" : undefined, backgroundImage: isRoyalPortrait ? undefined : `url(${background})`, backgroundSize: "cover", backgroundPosition: "center", fontFamily: '"Segoe UI", system-ui, sans-serif' }}>
-                  <div className="absolute inset-0" style={{ backgroundImage: overlayCss(template.styleId) }} />
-                  <div className="absolute text-white" style={{ inset: "5.3cqw", display: "flex", flexDirection: "column", justifyContent: isPortraitTemplate ? "center" : "flex-start", textAlign: isPortraitTemplate ? "center" : "left", paddingBottom: isPortraitTemplate ? "6cqw" : 0 }}>
+                  <div
+                    className="pointer-events-none absolute inset-0"
+                    style={{
+                      // Uploaded images can be much brighter than the built-in artwork.
+                      // Keep the selected style's treatment, but add a light readability
+                      // veil so names and messages remain legible on arbitrary photos.
+                      backgroundImage: template.background
+                        ? `linear-gradient(180deg, rgba(2, 6, 23, 0.16), rgba(2, 6, 23, 0.22)), ${overlayCss(template.styleId)}`
+                        : overlayCss(template.styleId),
+                    }}
+                  />
+                  <div className="absolute min-w-0 overflow-hidden text-white" style={{ inset: "5.3cqw", display: "flex", flexDirection: "column", justifyContent: isPortraitTemplate ? "center" : "flex-start", textAlign: isPortraitTemplate ? "center" : "left", paddingBottom: isPortraitTemplate ? "6cqw" : 0 }}>
                     {isRoyalPortrait && <div className="pointer-events-none absolute left-0 right-0 top-[8cqw] font-semibold leading-none text-amber-300" style={{ fontSize: "5.4cqw" }}>{editingKind === "Work anniversary" ? "Happy Anniversary" : "Happy Birthday"}</div>}
                     <div className="flex items-center" style={{ gap: "1.6cqw", justifyContent: isPortraitTemplate ? "center" : "flex-start" }}>
                       <span className="grid place-items-center overflow-hidden bg-white/90" style={{ width: "6cqw", height: "6cqw", borderRadius: "1.5cqw" }}>
@@ -331,7 +341,7 @@ export default function CelebrationsView() {
                       </div>
                     </div>
 
-                    <p className="line-clamp-4 text-white/95" style={{ marginTop: isPortraitTemplate ? "5cqw" : "3.4cqw", fontSize: "2.6cqw", lineHeight: 1.45 }}>{message}</p>
+                    <p className="line-clamp-4 break-words text-white/95" style={{ marginTop: isPortraitTemplate ? "5cqw" : "3.4cqw", fontSize: "2.6cqw", lineHeight: 1.45, paddingBottom: "4cqw" }}>{message}</p>
                     <p className="absolute bottom-0 left-0 right-0 font-semibold text-white/70" style={{ fontSize: "1.85cqw", textAlign: isPortraitTemplate ? "center" : "left" }}>With appreciation, {companyName} People Team</p>
                   </div>
                 </div>

@@ -37,7 +37,7 @@ export default function CookieConsent() {
       <div className="min-w-0 flex-1">
         <h2 className="text-sm font-bold text-slate-950">Your cookie choices</h2>
         <p id="cookie-consent-copy" className="mt-1 text-xs leading-5 text-slate-600">
-          WorkPluse uses necessary storage for sign-in, security and preferences. Optional analytics cookies are off until you choose them. Read the <Link href="/cookies" className="font-semibold text-indigo-700 underline underline-offset-2">Cookie Notice</Link> and <Link href="/privacy" className="font-semibold text-indigo-700 underline underline-offset-2">Privacy Notice</Link>.
+          Clocked uses necessary storage for sign-in, security and preferences. Optional analytics cookies are off until you choose them. Read the <Link href="/cookies" className="font-semibold text-indigo-700 underline underline-offset-2">Cookie Notice</Link> and <Link href="/privacy" className="font-semibold text-indigo-700 underline underline-offset-2">Privacy Notice</Link>.
         </p>
       </div>
       <div className="mt-3 flex shrink-0 flex-wrap gap-2 sm:mt-0">

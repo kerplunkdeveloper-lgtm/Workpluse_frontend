@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { EmployeeExit, Employee } from "@/types";
 import { offboardingApi, employeesApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -10,7 +11,8 @@ const exitStatusLabel = (status: string) =>
   status === "RESIGNED" ? "AWAITING HR" : status === "UNDER_HR_REVIEW" ? "AWAITING ADMIN" : status.replace(/_/g, " ");
 import { formatDate } from "@/lib/utils";
 import ExitDocumentsModal from "./ExitDocumentsModal";
-import { UserMinus, Search, Plus, Clock, CheckCircle2, FileText, DollarSign, ShieldCheck, Calendar, X, ChevronRight, Loader2, Calculator, Printer, Award, ScrollText, MessageSquare, RefreshCw, UserCheck } from "lucide-react";
+import ExitDocumentTemplatesSetting from "@/components/settings/ExitDocumentTemplatesSetting";
+import { UserMinus, Search, Plus, Clock, CheckCircle2, FileText, DollarSign, ShieldCheck, Calendar, X, ChevronRight, Loader2, Calculator, Printer, Award, ScrollText, MessageSquare, RefreshCw, UserCheck, Palette } from "lucide-react";
 import { toast } from "sonner";
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
@@ -44,6 +46,7 @@ export default function OffboardingView() {
 
   // Documents Modal State
   const [docsModalOpen, setDocsModalOpen] = useState(false);
+  const [templateEditorOpen, setTemplateEditorOpen] = useState(false);
   const [activeDocType, setActiveDocType] = useState<
     "FF_STATEMENT" | "CLEARANCE_CERTIFICATE" | "RELIEVING_LETTER" | "EXPERIENCE_LETTER"
   >("FF_STATEMENT");
@@ -370,6 +373,16 @@ export default function OffboardingView() {
           >
             <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
           </button>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setTemplateEditorOpen(true)}
+              className="flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3.5 py-2.5 text-sm font-semibold text-indigo-700 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-100"
+            >
+              <Palette className="h-4 w-4" />
+              Customize Templates
+            </button>
+          )}
           <button
             onClick={() => setInitiateModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-semibold text-sm shadow-sm transition"
@@ -809,6 +822,19 @@ export default function OffboardingView() {
                   <Printer className="w-3.5 h-3.5 text-indigo-600" />
                   Print Official Letters
                 </button>
+                {isAdmin && (
+                  <Link
+                    href="#customize-exit-templates"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      setTemplateEditorOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 shadow-xs transition hover:border-indigo-300 hover:bg-indigo-100"
+                  >
+                    <Palette className="h-3.5 w-3.5" />
+                    Customize Templates
+                  </Link>
+                )}
               </div>
 
               {/* Navigation Tabs */}
@@ -1525,6 +1551,18 @@ export default function OffboardingView() {
             </div>
           </div>
         </Modal>
+      )}
+
+      {templateEditorOpen && isAdmin && (
+        <div id="customize-exit-templates" className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm sm:p-6">
+          <div className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-[2rem] bg-slate-100 shadow-2xl ring-1 ring-white/20">
+            <div className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 sm:px-7">
+              <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600">Offboarding studio</p><h2 className="mt-1 text-lg font-bold text-slate-950">Customize official exit documents</h2></div>
+              <button type="button" onClick={() => setTemplateEditorOpen(false)} className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-600" aria-label="Close template editor"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="overflow-y-auto p-3 sm:p-6"><ExitDocumentTemplatesSetting /></div>
+          </div>
+        </div>
       )}
 
       {/* ─── PRINTABLE DOCUMENTS MODAL ────────────────────────────────────────── */}

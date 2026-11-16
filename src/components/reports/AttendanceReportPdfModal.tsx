@@ -15,6 +15,7 @@ interface AttendanceReportPdfModalProps {
   selectedDate?: string;
   selectedMonth?: number;
   selectedYear?: number;
+  companyLogoUrl?: string | null;
 }
 
 const STATUS_SHORT: Record<string, string> = {
@@ -35,6 +36,7 @@ export default function AttendanceReportPdfModal({
   selectedDate,
   selectedMonth,
   selectedYear,
+  companyLogoUrl,
 }: AttendanceReportPdfModalProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
@@ -110,7 +112,9 @@ export default function AttendanceReportPdfModal({
   const orgName =
     dailyData?.organizationName ||
     monthlyData?.organizationName ||
-    "WorkPluse Enterprise Workforce";
+    "Clocked Enterprise Workforce";
+  const reportLogoUrl =
+    companyLogoUrl || dailyData?.organizationLogoUrl || monthlyData?.organizationLogoUrl || null;
 
   const allDailyRecords: any[] = dailyData?.records || dailyData?.attendances || [];
   const allMonthlyRecords: any[] = monthlyData?.report || [];
@@ -254,9 +258,9 @@ export default function AttendanceReportPdfModal({
           <div className="flex items-start justify-between pb-6 border-b-2 border-slate-900">
             <div>
               <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 shadow-sm">
+                <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 shadow-sm bg-slate-50">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/logo-v2.png" alt="Logo" className="w-full h-full object-cover" />
+                  {reportLogoUrl ? <img src={reportLogoUrl} alt={`${orgName} logo`} className="w-full h-full object-contain p-1" /> : <div className="grid h-full w-full place-items-center text-xs font-black text-indigo-700">{orgName.slice(0, 2).toUpperCase()}</div>}
                 </div>
                 <div>
                   <h2 className="text-xl font-semibold tracking-tight text-slate-900 leading-tight">
@@ -510,7 +514,7 @@ export default function AttendanceReportPdfModal({
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
                 Verified ISO 27001 / Indian Labour Code Form D/E Muster Roll Compliance
               </span>
-              <span>WorkPluse AI Timesheet Engine v2.0</span>
+              <span>Clocked AI Timesheet Engine v2.0</span>
             </div>
 
             <div className="grid grid-cols-3 gap-8 pt-10 text-center text-xs">

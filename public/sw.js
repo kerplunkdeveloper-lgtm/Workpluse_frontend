@@ -1,5 +1,5 @@
 
-/* Workpluse Firebase Cloud Messaging Service Worker */
+/* Clocked Firebase Cloud Messaging Service Worker */
 
 // Register click handler BEFORE Firebase imports.
 self.addEventListener("notificationclick", (event) => {
@@ -65,7 +65,7 @@ messaging.onBackgroundMessage((payload) => {
   // Avoid displaying them a second time.
   if (payload.notification) return;
 
-  const title = payload.data?.title || "Workpluse";
+  const title = payload.data?.title || "Clocked";
   const body =
     payload.data?.body || "You have a new notification";
 
