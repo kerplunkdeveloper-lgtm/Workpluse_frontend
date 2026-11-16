@@ -38,7 +38,7 @@ jobs:
           git checkout --detach "$RELEASE_SHA"
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: npm
       - run: npm ci
       - run: npm run lint
@@ -91,7 +91,7 @@ jobs:
           set -euo pipefail
           SCRIPT_URL="https://raw.githubusercontent.com/kerplunkdeveloper-lgtm/Workpluse_frontend/$DEPLOY_SCRIPT_SHA/ops/deploy-production.sh"
           SCRIPT_PATH="/tmp/workpulse-frontend-deploy-$RELEASE_SHA.sh"
-          printf -v INNER 'curl -fsSL %q -o %q && bash %q %q %q' "$SCRIPT_URL" "$SCRIPT_PATH" "$SCRIPT_PATH" "$RELEASE_SHA" "$API_URL"
+          printf -v INNER 'export NODE_OPTIONS="--max-old-space-size=2048"; curl -fsSL %q -o %q && bash %q %q %q' "$SCRIPT_URL" "$SCRIPT_PATH" "$SCRIPT_PATH" "$RELEASE_SHA" "$API_URL"
           printf -v REMOTE 'sudo -iu ubuntu bash -lc %q' "$INNER"
           PARAMETERS=$(jq -nc --arg cmd "$REMOTE" '{commands:[$cmd]}')
           COMMAND_ID=$(aws ssm send-command --instance-ids "$INSTANCE_ID" --document-name AWS-RunShellScript --parameters "$PARAMETERS" --timeout-seconds 2400 --query Command.CommandId --output text)

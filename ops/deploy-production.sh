@@ -27,7 +27,9 @@ git -C "$WORKDIR/source" checkout --quiet --detach FETCH_HEAD
 mkdir -p "$RELEASE"
 tar -C "$WORKDIR/source" --exclude=.git -cf - . | tar -C "$RELEASE" -xf -
 if [[ -f "$APP_ROOT/.env.production" ]]; then ln -s "$APP_ROOT/.env.production" "$RELEASE/.env.production"; fi
-(cd "$RELEASE" && npm ci && NEXT_PUBLIC_API_URL="$API_URL" npm run build)
+# Next.js can exceed Node's default heap during the TypeScript phase on the
+# small production instances. Keep the limit explicit for reproducible deploys.
+(cd "$RELEASE" && npm ci && NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=2048" NEXT_PUBLIC_API_URL="$API_URL" npm run build)
 ln -sfn "$RELEASE" "$CURRENT.next"
 mv -Tf "$CURRENT.next" "$CURRENT"
 restart_from() {
