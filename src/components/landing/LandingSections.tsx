@@ -2,7 +2,7 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import Brand from "@/components/ui/Brand";
-import { ArrowRight, ArrowUpRight, Bell, CalendarCheck, Check, CheckCircle2, ChevronRight, CircleCheck, Clock3, Globe2, KeyRound, LayoutDashboard, Lock, MapPin, Plus, RefreshCw, Search, ShieldCheck, Users, Wallet, WifiOff } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Bell, CalendarCheck, Check, CheckCircle2, ChevronDown, ChevronRight, CircleCheck, Clock3, Globe2, KeyRound, LayoutDashboard, Lock, MapPin, Plus, RefreshCw, Search, ShieldCheck, Users, Wallet, WifiOff } from "lucide-react";
 import type { SubscriptionPlanOption } from "@/types";
 import {
   FAQ as FAQ_ITEMS,
@@ -128,6 +128,34 @@ export function Hero() {
         className="pointer-events-none absolute left-1/2 top-48 -z-10 h-[480px] w-[850px] -translate-x-1/2 rounded-full bg-gradient-to-tr from-indigo-500/10 via-purple-500/10 to-pink-500/5 blur-[120px]"
       />
       <div aria-hidden="true" className="lp-grid absolute inset-x-0 top-0 -z-10 h-[720px] opacity-70" />
+      {/* Animated particles / sparkles behind the hero text */}
+      <div aria-hidden="true" className="particle-field">
+        <span className="particle particle--1" />
+        <span className="particle particle--2" />
+        <span className="particle particle--3" />
+        <span className="particle particle--4" />
+        <span className="particle particle--5" />
+        <span className="particle particle--6" />
+        <span className="sparkle sparkle--1" />
+        <span className="sparkle sparkle--2" />
+        <span className="sparkle sparkle--3" />
+        <span className="sparkle sparkle--4" />
+      </div>
+      {/* Animated gradient mesh morph blobs */}
+      <div
+        aria-hidden="true"
+        className="lp-morph-blob pointer-events-none absolute -left-32 top-16 -z-10 h-[420px] w-[420px] rounded-full bg-gradient-to-tr from-indigo-400/20 via-violet-400/15 to-fuchsia-400/10 blur-[100px]"
+      />
+      <div
+        aria-hidden="true"
+        className="lp-morph-blob pointer-events-none absolute -right-24 top-56 -z-10 h-[380px] w-[380px] rounded-full bg-gradient-to-bl from-cyan-400/15 via-sky-400/10 to-indigo-400/15 blur-[110px]"
+        style={{ animationDelay: "-4s" }}
+      />
+      <div
+        aria-hidden="true"
+        className="lp-morph-blob pointer-events-none absolute left-1/3 top-80 -z-10 h-[300px] w-[300px] rounded-full bg-gradient-to-r from-purple-400/10 via-pink-400/10 to-indigo-400/10 blur-[90px]"
+        style={{ animationDelay: "-8s" }}
+      />
       {/* Slowly drifting colour fields give the hero depth without a video or canvas. */}
       <div
         aria-hidden="true"
@@ -171,7 +199,7 @@ export function Hero() {
         <div style={delay(850)} className="lp-in mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-5">
           <Link
             href={HERO.primaryCta.href}
-            className="lp-sheen group relative inline-flex h-13 w-full max-w-xs items-center justify-center gap-2.5 overflow-hidden rounded-full bg-slate-950 px-8 text-base font-semibold text-white shadow-[0_8px_24px_-6px_rgba(15,23,42,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] transition-all duration-200 hover:bg-slate-800 active:scale-[0.98] sm:w-auto"
+            className="lp-sheen btn-magnetic lp-btn-glow group relative inline-flex h-13 w-full max-w-xs items-center justify-center gap-2.5 overflow-hidden rounded-full bg-slate-950 px-8 text-base font-semibold text-white shadow-[0_8px_24px_-6px_rgba(15,23,42,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] transition-all duration-300 hover:bg-slate-800 active:scale-[0.98] sm:w-auto"
           >
             <span>{HERO.primaryCta.label}</span>
             <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
@@ -179,7 +207,7 @@ export function Hero() {
 
           <Link
             href={HERO.secondaryCta.href}
-            className="group inline-flex h-13 w-full max-w-xs items-center justify-center gap-2 rounded-full bg-white px-7 text-base font-medium text-slate-700 ring-1 ring-slate-900/10 shadow-sm backdrop-blur-md transition-all duration-200 hover:bg-slate-50 hover:text-slate-950 hover:ring-slate-900/20 sm:w-auto"
+            className="btn-magnetic group inline-flex h-13 w-full max-w-xs items-center justify-center gap-2 rounded-full bg-white px-7 text-base font-medium text-slate-700 ring-1 ring-slate-900/10 shadow-sm backdrop-blur-md transition-all duration-300 hover:bg-slate-50 hover:text-slate-950 hover:shadow-md hover:ring-slate-900/20 sm:w-auto"
           >
             <span>{HERO.secondaryCta.label}</span>
             <ArrowUpRight className="h-4 w-4 text-slate-400 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-slate-700" />
@@ -320,7 +348,7 @@ function ProductPreview() {
 
       {/* Main Preview Container: settles flat as it scrolls into view */}
       <TiltOnScroll>
-      <div className="rounded-[24px] bg-white/70 p-2 ring-1 ring-slate-900/[0.08] shadow-[0_25px_70px_-20px_rgba(15,23,42,0.18)] backdrop-blur-xl sm:rounded-[32px] sm:p-3">
+      <div className="border-beam rounded-[24px] bg-white/70 p-2 ring-1 ring-slate-900/[0.08] shadow-[0_25px_70px_-20px_rgba(15,23,42,0.18)] backdrop-blur-xl sm:rounded-[32px] sm:p-3 transition-shadow duration-500 hover:shadow-[0_30px_90px_-20px_rgba(79,70,229,0.25)]">
         <div className="overflow-hidden rounded-[18px] bg-white text-left ring-1 ring-slate-900/10 shadow-sm sm:rounded-[24px]">
           {/* macOS styled window bar */}
           <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 px-4 py-3 sm:px-6">
@@ -642,11 +670,11 @@ function FeatureCard({ feature, className }: { feature: Feature; className: stri
     // smooth every frame of the entrance animation and make it feel laggy.
     <StaggerItem spotlight className={`min-w-0 ${className}`}>
     <article
-      className={`group flex h-full min-w-0 flex-col overflow-hidden p-3 ${CARD_WHITE}`}
+      className={`group border-beam tilt-3d-shine flex h-full min-w-0 flex-col overflow-hidden p-3 ${CARD_WHITE}`}
     >
       <div
         aria-hidden="true"
-        className={`relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/70 ring-1 ring-slate-900/[0.06] ${
+        className={`relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/70 ring-1 ring-slate-900/[0.06] transition-transform duration-500 group-hover:scale-[1.01] ${
           wide ? "h-64 sm:h-72" : "h-60"
         }`}
       >
@@ -654,10 +682,10 @@ function FeatureCard({ feature, className }: { feature: Feature; className: stri
       </div>
       <div className="flex flex-1 flex-col px-4 pb-4 pt-5 sm:px-5">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 ring-1 ring-indigo-500/20">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 ring-1 ring-indigo-500/20 transition-all duration-300 group-hover:bg-indigo-600 group-hover:text-white group-hover:shadow-md group-hover:shadow-indigo-600/30">
             <feature.icon className="h-4 w-4" aria-hidden="true" />
           </div>
-          <h3 className="text-lg font-bold tracking-tight text-slate-950">{feature.title}</h3>
+          <h3 className="text-lg font-bold tracking-tight text-slate-950 transition-colors duration-200 group-hover:text-indigo-600">{feature.title}</h3>
         </div>
         <p className="mt-2.5 max-w-md text-pretty text-sm leading-relaxed text-slate-600">
           {feature.body}
@@ -1005,7 +1033,7 @@ export function Offline() {
   return (
     <section id="offline" className="scroll-mt-24 py-20 sm:py-28 bg-white relative isolate border-t border-slate-200/80">
       <div className={WRAP}>
-        <div className="relative isolate overflow-hidden rounded-[32px] bg-gradient-to-br from-slate-950 via-[#0a0f2c] to-slate-900 p-8 text-white shadow-[0_30px_90px_-20px_rgba(0,0,0,0.4)] ring-1 ring-slate-900 sm:p-14 lg:p-16">
+        <div className="cta-glow relative isolate overflow-hidden rounded-[32px] bg-gradient-to-br from-slate-950 via-[#0a0f2c] to-slate-900 p-8 text-white shadow-[0_30px_90px_-20px_rgba(0,0,0,0.4)] ring-1 ring-slate-900 sm:p-14 lg:p-16">
           <div
             aria-hidden="true"
             className="lp-grid-dark absolute inset-0 -z-10 opacity-40 [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,#000,transparent)]"
@@ -1225,8 +1253,8 @@ export function Pricing({
                 <article
                   className={`relative flex h-full min-w-0 flex-col rounded-3xl p-7 transition-all duration-300 ${
                     dark
-                      ? "bg-slate-950 text-white shadow-[0_24px_60px_-15px_rgba(79,70,229,0.35)] ring-2 ring-indigo-500 scale-[1.02] z-10"
-                      : "bg-white text-slate-900 ring-1 ring-slate-900/[0.08] shadow-sm hover:shadow-xl hover:-translate-y-1"
+                      ? "gradient-border-animated gradient-border-animated--glow bg-slate-950 text-white shadow-[0_24px_60px_-15px_rgba(79,70,229,0.35)] scale-[1.02] z-10"
+                      : "border-beam bg-white text-slate-900 ring-1 ring-slate-900/[0.08] shadow-sm hover:shadow-xl hover:-translate-y-1"
                   }`}
                 >
                   {dark && (
@@ -1286,7 +1314,7 @@ export function Pricing({
                   {/* Action CTA Button */}
                   <Link
                     href={`/register?plan=${p.id}`}
-                    className={`relative mt-6 inline-flex h-12 items-center justify-center gap-2 rounded-full text-sm font-bold transition-all active:scale-[0.98] ${
+                    className={`btn-magnetic relative mt-6 inline-flex h-12 items-center justify-center gap-2 rounded-full text-sm font-bold transition-all active:scale-[0.98] ${
                       dark
                         ? "bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/40 hover:from-indigo-600 hover:to-indigo-700"
                         : "bg-slate-950 text-white hover:bg-slate-800"
@@ -1403,15 +1431,16 @@ export function Security() {
         </div>
 
         <Reveal delay={0.1}>
-        <div aria-hidden="true" className={`p-3 ${CARD_WHITE}`}>
+        <div aria-hidden="true" className={`p-3 border-beam ${CARD_WHITE}`}>
           <div className="rounded-2xl bg-slate-50 p-6 ring-1 ring-slate-900/[0.04]">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-bold text-slate-950">Immutable Audit Trail</p>
                 <p className="text-xs text-slate-500">Every sensitive event logged</p>
               </div>
-              <span className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
-                <Lock className="h-3.5 w-3.5 text-indigo-600" /> Tamper-resistant
+              <span className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 shadow-xs">
+                <span className="badge-dot badge-dot--info" />
+                <span>Tamper-resistant</span>
               </span>
             </div>
 
@@ -1505,7 +1534,7 @@ export function CtaBand() {
   return (
     <section className="bg-white py-20 sm:py-32 relative isolate border-t border-slate-200/80">
       <Reveal className={WRAP} y={40}>
-        <div className="relative isolate overflow-hidden rounded-[36px] bg-gradient-to-b from-slate-950 via-[#0d1230] to-slate-950 px-8 py-16 text-center shadow-[0_40px_100px_-20px_rgba(15,23,42,0.6)] ring-1 ring-slate-900 sm:px-16 sm:py-24">
+        <div className="cta-glow cta-glow--intense relative isolate overflow-hidden rounded-[36px] bg-gradient-to-b from-slate-950 via-[#0d1230] to-slate-950 px-8 py-16 text-center shadow-[0_40px_100px_-20px_rgba(15,23,42,0.6)] ring-1 ring-slate-900 sm:px-16 sm:py-24">
           <div aria-hidden="true" className="lp-grid-dark absolute inset-0 -z-10 opacity-50" />
           <div
             aria-hidden="true"
@@ -1526,7 +1555,7 @@ export function CtaBand() {
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6">
             <Link
               href="/register"
-              className="lp-sheen group relative inline-flex h-13 w-full max-w-xs items-center justify-center gap-2 overflow-hidden rounded-full bg-white px-8 text-base font-bold text-slate-950 shadow-xl transition-all duration-300 hover:bg-slate-100 active:scale-[0.98] sm:w-auto"
+              className="lp-sheen btn-magnetic group relative inline-flex h-13 w-full max-w-xs items-center justify-center gap-2 overflow-hidden rounded-full bg-white px-8 text-base font-bold text-slate-950 shadow-xl transition-all duration-300 hover:bg-slate-100 hover:shadow-[0_0_30px_rgba(255,255,255,0.4)] active:scale-[0.98] sm:w-auto"
             >
               <span>Create Your Free Workspace</span>
               <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
@@ -1534,7 +1563,7 @@ export function CtaBand() {
 
             <Link
               href="/login"
-              className="group inline-flex h-13 w-full max-w-xs items-center justify-center gap-2 rounded-full bg-white/10 px-8 text-base font-semibold text-white ring-1 ring-white/20 backdrop-blur transition-all duration-200 hover:bg-white/15 sm:w-auto"
+              className="btn-magnetic group inline-flex h-13 w-full max-w-xs items-center justify-center gap-2 rounded-full bg-white/10 px-8 text-base font-semibold text-white ring-1 ring-white/20 backdrop-blur transition-all duration-200 hover:bg-white/15 hover:ring-white/35 sm:w-auto"
             >
               <span>Sign in to Workspace</span>
               <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />

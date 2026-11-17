@@ -1209,3 +1209,898 @@ table, .type-kpi { font-variant-numeric: tabular-nums; }
     cursor: not-allowed;
   }
 }
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   PREMIUM SaaS ANIMATIONS & EFFECTS
+   GPU-accelerated · prefers-reduced-motion aware · ready for component use
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Particle / Sparkle System ────────────────────────────────────────────
+   CSS-only floating particles that drift across the hero section.
+   Usage: add .particle-field to a positioned container, then place
+   <span class="particle particle--1"> through particle--6 inside it. ──── */
+
+@keyframes particle-float {
+  0%   { transform: translate3d(0, 0, 0) scale(0); opacity: 0; }
+  10%  { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  90%  { opacity: 0.7; }
+  100% { transform: translate3d(var(--px, 80px), var(--py, -320px), 0) scale(0.3); opacity: 0; }
+}
+
+@keyframes sparkle-twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.4) rotate(0deg); }
+  50%      { opacity: 1; transform: scale(1) rotate(180deg); }
+}
+
+.particle-field {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(129, 140, 248, 0.6);
+  box-shadow: 0 0 6px 1px rgba(99, 102, 241, 0.4);
+  will-change: transform, opacity;
+}
+
+.sparkle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: radial-gradient(circle, #fff 0%, rgba(165, 180, 252, 0.6) 60%, transparent 100%);
+  border-radius: 50%;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .particle--1 { left: 10%; bottom: 10%; --px: 40px; --py: -280px; animation: particle-float 7s cubic-bezier(0.16, 1, 0.3, 1) infinite; }
+  .particle--2 { left: 25%; bottom: 5%;  --px: -30px; --py: -350px; animation: particle-float 9s cubic-bezier(0.16, 1, 0.3, 1) infinite 1.2s; }
+  .particle--3 { left: 50%; bottom: 15%; --px: 60px; --py: -300px; animation: particle-float 8s cubic-bezier(0.16, 1, 0.3, 1) infinite 2.4s; }
+  .particle--4 { left: 70%; bottom: 8%;  --px: -50px; --py: -360px; animation: particle-float 10s cubic-bezier(0.16, 1, 0.3, 1) infinite 0.8s; }
+  .particle--5 { left: 85%; bottom: 12%; --px: 20px; --py: -290px; animation: particle-float 7.5s cubic-bezier(0.16, 1, 0.3, 1) infinite 3s; }
+  .particle--6 { left: 40%; bottom: 20%; --px: -40px; --py: -340px; animation: particle-float 11s cubic-bezier(0.16, 1, 0.3, 1) infinite 1.8s; }
+
+  .sparkle--1 { top: 20%; left: 15%; animation: sparkle-twinkle 3s ease-in-out infinite 0.5s; }
+  .sparkle--2 { top: 35%; left: 60%; animation: sparkle-twinkle 4s ease-in-out infinite 1s; }
+  .sparkle--3 { top: 15%; left: 80%; animation: sparkle-twinkle 3.5s ease-in-out infinite 2s; }
+  .sparkle--4 { top: 50%; left: 30%; animation: sparkle-twinkle 5s ease-in-out infinite 0.2s; }
+}
+
+
+/* ── 2. Gradient Border Beam ─────────────────────────────────────────────────
+   Animated border highlight that travels around cards on hover (Linear-style).
+   Usage: .border-beam on a positioned container with overflow:hidden ──────── */
+
+@keyframes border-beam-travel {
+  0%   { transform: translateX(-100%) rotate(0deg); }
+  100% { transform: translateX(300%) rotate(0deg); }
+}
+
+@keyframes border-beam-travel-y {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(300%); }
+}
+
+.border-beam {
+  position: relative;
+  overflow: hidden;
+}
+
+.border-beam::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(99, 102, 241, 0.05) 25%,
+    rgba(129, 140, 248, 0.6) 50%,
+    rgba(99, 102, 241, 0.05) 75%,
+    transparent 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .border-beam:hover::before {
+    opacity: 1;
+    animation: border-beam-travel 2.5s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  }
+}
+
+
+/* ── 3. Morphing Blob Backgrounds ────────────────────────────────────────────
+   Large organic shapes that slowly morph and drift behind sections.
+   Usage: .morphing-blob, .morphing-blob--alt inside a positioned container ─ */
+
+@keyframes blob-morph {
+  0%, 100% {
+    border-radius: 42% 58% 70% 30% / 45% 45% 55% 55%;
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  25% {
+    border-radius: 70% 30% 50% 50% / 30% 60% 40% 70%;
+    transform: translate3d(20px, -15px, 0) rotate(72deg) scale(1.05);
+  }
+  50% {
+    border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
+    transform: translate3d(-10px, 20px, 0) rotate(144deg) scale(0.95);
+  }
+  75% {
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+    transform: translate3d(15px, 10px, 0) rotate(216deg) scale(1.02);
+  }
+}
+
+.morphing-blob {
+  position: absolute;
+  width: clamp(300px, 40vw, 600px);
+  height: clamp(300px, 40vw, 600px);
+  background: radial-gradient(circle at 30% 30%,
+    rgba(99, 102, 241, 0.12),
+    rgba(129, 140, 248, 0.06) 50%,
+    transparent 70%
+  );
+  filter: blur(60px);
+  pointer-events: none;
+  will-change: transform, border-radius;
+}
+
+.morphing-blob--alt {
+  background: radial-gradient(circle at 70% 60%,
+    rgba(6, 182, 212, 0.1),
+    rgba(14, 165, 233, 0.05) 50%,
+    transparent 70%
+  );
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .morphing-blob {
+    animation: blob-morph 20s ease-in-out infinite;
+  }
+  .morphing-blob--alt {
+    animation: blob-morph 25s ease-in-out infinite reverse;
+    animation-delay: -8s;
+  }
+}
+
+
+/* ── 4. Text Shimmer on Hover ────────────────────────────────────────────────
+   Premium shimmer sweep across heading text on hover.
+   Usage: .text-shimmer on a heading element ──────────────────────────────── */
+
+@keyframes text-shimmer-sweep {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.text-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    currentColor 0%,
+    currentColor 40%,
+    rgba(165, 180, 252, 0.9) 50%,
+    currentColor 60%,
+    currentColor 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-position: 0% center;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .text-shimmer:hover {
+    animation: text-shimmer-sweep 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+}
+
+
+/* ── 5. Smooth Section Transitions ───────────────────────────────────────────
+   Parallax-like scroll separators between sections.
+   Usage: .section-fade-in on each major <section> ───────────────────────── */
+
+@keyframes section-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(48px) scale(0.98);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .section-fade-in {
+      animation: section-rise-in linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 32%;
+    }
+  }
+}
+
+/* Fallback: simple opacity transition for browsers without scroll timelines */
+.section-fade-in {
+  will-change: transform, opacity;
+}
+
+
+/* ── 6. Magnetic Button Effect ───────────────────────────────────────────────
+   Buttons that glow and pulse subtly.
+   Usage: .btn-magnetic on a <button> or <a> ─────────────────────────────── */
+
+@keyframes btn-magnetic-pulse {
+  0%, 100% { box-shadow: 0 0 20px -6px rgba(99, 102, 241, 0.4), 0 4px 14px -4px rgba(0, 0, 0, 0.2); }
+  50%      { box-shadow: 0 0 32px -4px rgba(99, 102, 241, 0.6), 0 6px 18px -4px rgba(0, 0, 0, 0.25); }
+}
+
+.btn-magnetic {
+  position: relative;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+.btn-magnetic::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(129, 140, 248, 0.1), rgba(6, 182, 212, 0.2));
+  opacity: 0;
+  filter: blur(12px);
+  z-index: -1;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+
+.btn-magnetic:hover::after {
+  opacity: 1;
+}
+
+.btn-magnetic:hover {
+  transform: translateY(-2px) scale(1.02);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .btn-magnetic:hover {
+    animation: btn-magnetic-pulse 2.5s ease-in-out infinite;
+  }
+}
+
+
+/* ── 7. Glass Morphism Card Upgrades ─────────────────────────────────────────
+   Enhanced frosted glass with subtle noise texture.
+   Usage: .glass-premium on a card element ───────────────────────────────── */
+
+.glass-premium {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow:
+    0 1px 2px rgba(19, 25, 49, 0.03),
+    0 8px 24px -8px rgba(40, 36, 120, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  position: relative;
+  overflow: hidden;
+}
+
+/* SVG noise texture overlay */
+.glass-premium::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.03;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  border-radius: inherit;
+  z-index: 1;
+}
+
+.glass-premium-dark {
+  background: rgba(10, 15, 36, 0.65);
+  backdrop-filter: blur(24px) saturate(1.3);
+  -webkit-backdrop-filter: blur(24px) saturate(1.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    0 12px 32px -8px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-premium-dark::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.04;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  border-radius: inherit;
+  z-index: 1;
+}
+
+
+/* ── 8. Animated Gradient Borders ────────────────────────────────────────────
+   Rotating gradient borders for the pricing "popular" card.
+   Usage: .gradient-border-animated on a card ────────────────────────────── */
+
+@keyframes gradient-border-rotate {
+  0%   { --gradient-angle: 0deg; }
+  100% { --gradient-angle: 360deg; }
+}
+
+@property --gradient-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.gradient-border-animated {
+  position: relative;
+  border: none !important;
+  isolation: isolate;
+}
+
+.gradient-border-animated::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(
+    from var(--gradient-angle, 0deg),
+    #6366f1,
+    #818cf8,
+    #38bdf8,
+    #a78bfa,
+    #6366f1
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: -1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .gradient-border-animated::before {
+    animation: gradient-border-rotate 4s linear infinite;
+  }
+}
+
+/* Stronger glow version for popular/featured cards */
+.gradient-border-animated--glow::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--gradient-angle, 0deg),
+    rgba(99, 102, 241, 0.3),
+    rgba(129, 140, 248, 0.15),
+    rgba(56, 189, 248, 0.3),
+    rgba(167, 139, 250, 0.15),
+    rgba(99, 102, 241, 0.3)
+  );
+  filter: blur(16px);
+  z-index: -2;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .gradient-border-animated--glow::after {
+    animation: gradient-border-rotate 4s linear infinite;
+  }
+}
+
+
+/* ── 9. Scroll-triggered Counter Animation ───────────────────────────────────
+   CSS counting animation for stat numbers.
+   Usage: .counter-animate with CSS custom property --target-count ─────── */
+
+@property --counter-value {
+  syntax: "<integer>";
+  initial-value: 0;
+  inherits: false;
+}
+
+@keyframes counter-tick {
+  to { --counter-value: var(--target-count, 100); }
+}
+
+.counter-animate {
+  counter-reset: count var(--counter-value, 0);
+}
+
+.counter-animate::after {
+  content: counter(count);
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .counter-animate {
+      animation: counter-tick 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation-timeline: view();
+      animation-range: entry 10% entry 60%;
+    }
+  }
+}
+
+/* Fallback: JS-triggered class for browsers without scroll timelines */
+@media (prefers-reduced-motion: no-preference) {
+  .counter-animate--active {
+    animation: counter-tick 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+}
+
+
+/* ── 10. Premium Hover States — 3D Tilt ──────────────────────────────────────
+   3D perspective tilt on bento cards via CSS.
+   Usage: .tilt-3d on a card, with --rx and --ry set via JS or CSS ──────── */
+
+.tilt-3d {
+  --rx: 0deg;
+  --ry: 0deg;
+  perspective: 800px;
+  transform-style: preserve-3d;
+}
+
+.tilt-3d > * {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tilt-3d:hover > * {
+    transform: rotateX(var(--rx, -3deg)) rotateY(var(--ry, 3deg)) translateZ(10px);
+  }
+}
+
+/* Static subtle tilt preset variations */
+.tilt-3d--subtle:hover > * {
+  --rx: -2deg;
+  --ry: 2deg;
+}
+
+.tilt-3d--left:hover > * {
+  --rx: -1deg;
+  --ry: -4deg;
+}
+
+.tilt-3d--right:hover > * {
+  --rx: -1deg;
+  --ry: 4deg;
+}
+
+/* Glossy reflection on tilt */
+.tilt-3d-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.tilt-3d-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.08) 45%,
+    rgba(255, 255, 255, 0.14) 50%,
+    rgba(255, 255, 255, 0.08) 55%,
+    transparent 60%
+  );
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tilt-3d-shine:hover::after {
+    opacity: 1;
+  }
+}
+
+
+/* ── 11. Animated Underlines ─────────────────────────────────────────────────
+   Sliding underline animation for nav links.
+   Usage: .underline-slide on <a> or nav link elements ───────────────────── */
+
+.underline-slide {
+  position: relative;
+  text-decoration: none;
+}
+
+.underline-slide::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #6366f1, #818cf8);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+.underline-slide:hover::after,
+.underline-slide:focus-visible::after,
+.underline-slide[aria-current="page"]::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+/* Variant: expanding from center */
+.underline-slide--center::after {
+  transform-origin: center;
+}
+
+.underline-slide--center:hover::after,
+.underline-slide--center:focus-visible::after {
+  transform-origin: center;
+}
+
+/* Variant: thicker accent underline */
+.underline-slide--thick::after {
+  height: 3px;
+  background: linear-gradient(90deg, #6366f1, #38bdf8);
+}
+
+
+/* ── 12. Pulsing Badge Animations ────────────────────────────────────────────
+   Trust badges and status indicator pulses.
+   Usage: .badge-pulse, .badge-pulse--success, .badge-pulse--warning ────── */
+
+@keyframes badge-ping {
+  0%   { transform: scale(1); opacity: 0.8; }
+  70%  { transform: scale(1.8); opacity: 0; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+@keyframes badge-breathe {
+  0%, 100% { opacity: 0.5; transform: scale(0.95); }
+  50%      { opacity: 1; transform: scale(1.05); }
+}
+
+.badge-pulse {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.badge-pulse::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 2px solid currentColor;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .badge-pulse::before {
+    animation: badge-ping 2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  }
+}
+
+/* Live status dot */
+.badge-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  position: relative;
+}
+
+.badge-dot::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: inherit;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .badge-dot::after {
+    animation: badge-ping 2.5s ease-in-out infinite;
+  }
+  .badge-dot {
+    animation: badge-breathe 3s ease-in-out infinite;
+  }
+}
+
+.badge-dot--warning { background: #f59e0b; }
+.badge-dot--error   { background: #ef4444; }
+.badge-dot--info    { background: #6366f1; }
+
+
+/* ── 13. Section Divider Animations ──────────────────────────────────────────
+   Wavy / diagonal dividers between sections using CSS clip-path.
+   Usage: .divider-wave, .divider-diagonal, .divider-curve on a div ───── */
+
+.divider-wave {
+  position: relative;
+  width: 100%;
+  height: 80px;
+  overflow: hidden;
+}
+
+.divider-wave::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: -5%;
+  width: 110%;
+  height: 100%;
+  background: var(--divider-color, var(--background, #f6f7fb));
+  clip-path: polygon(
+    0% 65%, 5% 55%, 10% 50%, 15% 48%, 20% 50%, 25% 55%, 30% 60%,
+    35% 58%, 40% 52%, 45% 48%, 50% 45%, 55% 48%, 60% 52%, 65% 58%,
+    70% 60%, 75% 55%, 80% 50%, 85% 48%, 90% 50%, 95% 55%, 100% 65%,
+    100% 100%, 0% 100%
+  );
+}
+
+@keyframes wave-shift {
+  0%   { transform: translateX(0); }
+  50%  { transform: translateX(-2.5%); }
+  100% { transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .divider-wave::before {
+    animation: wave-shift 8s ease-in-out infinite;
+  }
+}
+
+.divider-diagonal {
+  position: relative;
+  width: 100%;
+  height: 80px;
+  overflow: hidden;
+}
+
+.divider-diagonal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--divider-color, var(--background, #f6f7fb));
+  clip-path: polygon(0 60%, 100% 0%, 100% 100%, 0% 100%);
+}
+
+.divider-curve {
+  position: relative;
+  width: 100%;
+  height: 100px;
+  overflow: hidden;
+}
+
+.divider-curve::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--divider-color, var(--background, #f6f7fb));
+  clip-path: ellipse(55% 65% at 50% 100%);
+}
+
+
+/* ── 14. Enhanced Skeleton Loading ───────────────────────────────────────────
+   Premium multi-layer shimmer loading state.
+   Usage: .skeleton-premium, .skeleton-premium--line, --circle, --card ─── */
+
+@keyframes skeleton-wave {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+@keyframes skeleton-pulse-layer {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 0.8; }
+}
+
+.skeleton-premium {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(90deg, #e1e4ee 0%, #eef0f6 50%, #e1e4ee 100%);
+  background-size: 200% 100%;
+  border-radius: 0.75rem;
+}
+
+.skeleton-premium::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.4) 20%,
+    rgba(255, 255, 255, 0.7) 50%,
+    rgba(255, 255, 255, 0.4) 80%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+}
+
+/* Second shimmer layer for depth */
+.skeleton-premium::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(99, 102, 241, 0.04) 30%,
+    rgba(99, 102, 241, 0.08) 50%,
+    rgba(99, 102, 241, 0.04) 70%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton-premium::before {
+    animation: skeleton-wave 2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  }
+  .skeleton-premium::after {
+    animation: skeleton-wave 2s cubic-bezier(0.16, 1, 0.3, 1) infinite 0.5s;
+  }
+  .skeleton-premium {
+    animation: skeleton-pulse-layer 2.5s ease-in-out infinite;
+  }
+}
+
+.skeleton-premium--line {
+  height: 14px;
+  border-radius: 6px;
+}
+
+.skeleton-premium--line-sm {
+  height: 10px;
+  border-radius: 4px;
+  width: 65%;
+}
+
+.skeleton-premium--circle {
+  border-radius: 50%;
+}
+
+.skeleton-premium--card {
+  border-radius: 1.25rem;
+  min-height: 120px;
+}
+
+/* Dark variant */
+.skeleton-premium--dark {
+  background: linear-gradient(90deg, #1f2639 0%, #2a2f42 50%, #1f2639 100%);
+  background-size: 200% 100%;
+}
+
+.skeleton-premium--dark::before {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.05) 20%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.05) 80%,
+    transparent 100%
+  );
+}
+
+
+/* ── 15. Breathing Glow for CTA Sections ─────────────────────────────────────
+   Subtle ambient light animation on dark CTA backgrounds.
+   Usage: .cta-glow on a dark section / CTA container ──────────────────── */
+
+@keyframes cta-breathe {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+  33% {
+    opacity: 0.5;
+    transform: scale(1.08) translate3d(10px, -8px, 0);
+  }
+  66% {
+    opacity: 0.4;
+    transform: scale(0.96) translate3d(-8px, 6px, 0);
+  }
+}
+
+@keyframes cta-breathe-alt {
+  0%, 100% {
+    opacity: 0.25;
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+  40% {
+    opacity: 0.45;
+    transform: scale(1.1) translate3d(-12px, 10px, 0);
+  }
+  80% {
+    opacity: 0.35;
+    transform: scale(0.94) translate3d(8px, -6px, 0);
+  }
+}
+
+.cta-glow {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.cta-glow::before,
+.cta-glow::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(80px);
+  will-change: transform, opacity;
+  z-index: -1;
+}
+
+.cta-glow::before {
+  width: 400px;
+  height: 400px;
+  top: -15%;
+  left: 10%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.35), transparent 65%);
+}
+
+.cta-glow::after {
+  width: 350px;
+  height: 350px;
+  bottom: -10%;
+  right: 10%;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.25), transparent 65%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cta-glow::before {
+    animation: cta-breathe 10s ease-in-out infinite;
+  }
+  .cta-glow::after {
+    animation: cta-breathe-alt 12s ease-in-out infinite;
+  }
+}
+
+/* Stronger glow variant */
+.cta-glow--intense::before {
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.5), transparent 60%);
+  width: 500px;
+  height: 500px;
+}
+
+.cta-glow--intense::after {
+  background: radial-gradient(circle, rgba(129, 140, 248, 0.35), transparent 60%);
+  width: 450px;
+  height: 450px;
+}

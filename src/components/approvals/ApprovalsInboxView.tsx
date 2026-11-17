@@ -1075,20 +1075,6 @@ export default function ApprovalsInboxView() {
               ))}
             </div>
           )}
-        {!loading && visibleApprovalRows.length > 0 && (
-          <div className="mb-4 overflow-hidden rounded-2xl border border-slate-200">
-            <Pagination
-              page={safeApprovalPage}
-              totalPages={approvalTotalPages}
-              total={visibleApprovalRows.length}
-              pageSize={approvalPageSize}
-              onPageChange={setApprovalPage}
-              onPageSizeChange={(size) => { setApprovalPageSize(size); setApprovalPage(1); }}
-              pageSizeOptions={[10, 20, 50]}
-              noun="approval requests"
-            />
-          </div>
-        )}
         {loading ? (
           <div className="py-16 text-center text-slate-500">
             <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-indigo-500" />
@@ -1634,6 +1620,20 @@ export default function ApprovalsInboxView() {
               </tr>
             ))}
           </TableShell>
+        )}
+        {!loading && visibleApprovalRows.length > 0 && (
+          <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200">
+            <Pagination
+              page={safeApprovalPage}
+              totalPages={approvalTotalPages}
+              total={visibleApprovalRows.length}
+              pageSize={approvalPageSize}
+              onPageChange={setApprovalPage}
+              onPageSizeChange={(size) => { setApprovalPageSize(size); setApprovalPage(1); }}
+              pageSizeOptions={[10, 20, 50]}
+              noun="approval requests"
+            />
+          </div>
         )}
       </div>
     </div>

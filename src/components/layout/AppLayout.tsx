@@ -790,11 +790,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <button
                   onClick={() => setPendingPunch("CHECK_IN")}
                   disabled={isActionLoading || punchInBlockedByLeave}
-                  className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white shadow-2xs transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                  aria-busy={isActionLoading}
+                  className="relative overflow-hidden px-2.5 py-1 text-xs font-semibold rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white shadow-2xs transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
                   title={punchInBlockedByLeave ? "Punch-in disabled while approved leave is active" : "Clock in with geolocation"}
                 >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  Clock In
+                  {isActionLoading && <span aria-hidden="true" className="absolute inset-0 animate-pulse bg-white/15" />}
+                  <span className="relative flex items-center gap-1">
+                    {isActionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                    {isActionLoading ? "Clocking in..." : "Clock In"}
+                  </span>
                 </button>
             ) : isOnBreak ? (
                 <button
@@ -1171,10 +1175,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     if (!punchInBlockedByLeave) setPendingPunch("CHECK_IN");
                     }}
                     disabled={punchInBlockedByLeave}
+                    aria-busy={isActionLoading}
                     title={punchInBlockedByLeave ? "Punch-in disabled while approved leave is active" : "Punch in"}
                     className="px-3 py-1 text-xs font-semibold rounded-lg bg-indigo-600 text-white disabled:cursor-not-allowed disabled:bg-slate-600 disabled:opacity-70"
                   >
-                    {punchInBlockedByLeave ? "On Leave" : "Punch In"}
+                    {isActionLoading ? <span className="inline-flex items-center gap-1.5"><Loader2 className="h-3 w-3 animate-spin" />Punching in...</span> : punchInBlockedByLeave ? "On Leave" : "Punch In"}
                   </button>
                 ) : null}
               </div>
