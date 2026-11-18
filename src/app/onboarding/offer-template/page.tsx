@@ -7,6 +7,7 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
 import OfferLetterTemplateModal from "@/components/onboarding/OfferLetterTemplateModal";
 import { orgApi } from "@/lib/api";
+import AuthenticatedImage from "@/components/ui/AuthenticatedImage";
 
 export default function OfferLetterTemplatePage() {
   const router = useRouter();
@@ -33,7 +34,7 @@ export default function OfferLetterTemplatePage() {
           </div>
           <div className="mt-4 grid gap-3 rounded-2xl border border-slate-200 bg-white/90 p-4 sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] sm:items-center">
             <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-indigo-100 bg-indigo-50">
-              {organization?.logoUrl ? <img src={organization.logoUrl} alt={`${organization.name || "Company"} logo`} className="h-full w-full object-contain p-2" /> : <ImageIcon className="h-6 w-6 text-indigo-400" />}
+              {organization?.logoUrl ? <AuthenticatedImage src={organization.logoUrl} alt={`${organization.name || "Company"} logo`} className="h-full w-full object-contain p-2" /> : <ImageIcon className="h-6 w-6 text-indigo-400" />}
             </div>
             <div className="min-w-0"><p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400"><Building2 className="h-3.5 w-3.5" />Company branding</p><p className="mt-1 truncate text-sm font-bold text-slate-900">{organization?.name || "Company name will be used"}</p><p className="mt-1 text-xs text-slate-500">Logo and name are captured automatically in new offer PDFs.</p></div>
             <div className="min-w-0"><p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400"><MapPin className="h-3.5 w-3.5" />Letter address</p><p className="mt-1 break-words text-sm font-semibold text-slate-700">{organization?.address || "Company address not configured"}</p><p className="mt-1 text-xs text-slate-500">Update it in Company Settings to change future letters.</p></div>

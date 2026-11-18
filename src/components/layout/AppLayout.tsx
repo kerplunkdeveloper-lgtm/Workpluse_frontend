@@ -19,6 +19,7 @@ import PunchConfirmDialog, { PunchConfirmAction } from "@/components/attendance/
 import { SubscriptionBanner } from "@/components/billing/WorkspaceBilling";
 import CommandPalette from "./CommandPalette";
 import CompanyLogo from "@/components/ui/CompanyLogo";
+import AuthenticatedImage from "@/components/ui/AuthenticatedImage";
 import ShortcutsHelpModal from "./ShortcutsHelpModal";
 import { NAV_SECTIONS, PLATFORM_SECTIONS, DESKTOP_NAV_SCROLL_KEY, MOBILE_NAV_SCROLL_KEY, isNavActive, itemVisible, itemMatches, timeAgo } from "./navConfig";
 import { enableFirebaseNotifications, listenForFirebaseNotifications } from "@/lib/firebaseMessaging";
@@ -1011,7 +1012,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               >
                 <div className="relative">
                   {user?.avatarUrl || user?.employee?.avatarUrl ? (
-                    <img
+                    <AuthenticatedImage
                       src={user.avatarUrl || user.employee?.avatarUrl}
                       alt={displayName}
                       className="w-8 h-8 rounded-full object-cover shadow-xs ring-2 ring-indigo-100"

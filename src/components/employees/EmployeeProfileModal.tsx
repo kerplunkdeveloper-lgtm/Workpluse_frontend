@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { sanitizeIndianPhone } from "@/components/ui/PhoneInput";
 import { Asset, AssetAssignment } from "@/types";
 import DatePicker from "@/components/ui/DatePicker";
+import AuthenticatedImage from "@/components/ui/AuthenticatedImage";
 
 interface EmployeeProfileModalProps {
   employee: Employee | null;
@@ -277,7 +278,7 @@ export default function EmployeeProfileModal({
                 }}
               />
             ) : avatarUrl ? (
-              <img
+              <AuthenticatedImage
                 src={avatarUrl}
                 alt={`${employee.firstName} ${employee.lastName || ""}`}
                 className="w-16 h-16 rounded-2xl object-cover shadow-md shrink-0 border border-slate-200"

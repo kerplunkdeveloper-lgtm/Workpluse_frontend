@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
+import AuthenticatedImage from "./AuthenticatedImage";
 
 const SIZES = {
   xs: "h-6 w-6 rounded-md text-[10px]",
@@ -40,7 +41,7 @@ export default function CompanyLogo({
     return (
       <span className={`${box} inline-flex items-center justify-center bg-white ring-1 ring-black/5`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={logoUrl} alt={`${name} logo`} onError={() => setFailed(true)} className="h-full w-full object-contain p-0.5" />
+        <AuthenticatedImage src={logoUrl} alt={`${name} logo`} onError={() => setFailed(true)} className="h-full w-full object-contain p-0.5" />
       </span>
     );
   }

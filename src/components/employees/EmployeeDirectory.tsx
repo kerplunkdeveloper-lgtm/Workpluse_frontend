@@ -28,6 +28,7 @@ import Pagination from "@/components/ui/Pagination";
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
 import PhoneInput, { toE164, validatePhone, type CountryCode } from "@/components/ui/PhoneInput";
+import AuthenticatedImage from "@/components/ui/AuthenticatedImage";
 
 export default function EmployeeDirectory() {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -745,7 +746,7 @@ export default function EmployeeDirectory() {
                         className="flex min-w-0 cursor-pointer items-center gap-3"
                       >
                         {emp.avatarUrl ? (
-                          <img
+                          <AuthenticatedImage
                             src={emp.avatarUrl}
                             alt={`${emp.firstName} ${emp.lastName || ""}`}
                             className="w-8 h-8 rounded-full object-cover shadow-xs group-hover:ring-2 group-hover:ring-indigo-400/40 transition"
