@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { isAuthenticatedApiImage } from "../../lib/privateMedia";
+import { isAuthenticatedApiImage, toAuthenticatedApiPath } from "../../lib/privateMedia";
 
 describe("authenticated media contract", () => {
+  it("does not duplicate the /api prefix with Axios base URL", () => {
+    expect(toAuthenticatedApiPath("/api/employees/emp-1/avatar-file")).toBe("/employees/emp-1/avatar-file");
+    expect(toAuthenticatedApiPath("/api/organization/logo-file")).toBe("/organization/logo-file");
+  });
   it("routes private API media through the authenticated fetch path", () => {
     expect(isAuthenticatedApiImage("/api/organization/logo-file")).toBe(true);
     expect(isAuthenticatedApiImage("/api/employees/emp-1/avatar-file")).toBe(true);
