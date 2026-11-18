@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { ImgHTMLAttributes } from "react";
 import { api } from "@/lib/api";
-import { isAuthenticatedApiImage } from "@/lib/privateMedia";
+import { isAuthenticatedApiImage, toAuthenticatedApiPath } from "@/lib/privateMedia";
 
 /** Renders legacy public URLs directly and fetches private API media with the session token. */
 export default function AuthenticatedImage({
@@ -25,7 +25,7 @@ export default function AuthenticatedImage({
     const privateSrc = src;
     if (!privateSrc) return () => { cancelled = true; };
 
-    api.get(privateSrc, { responseType: "blob", skipGlobalError: true })
+    api.get(toAuthenticatedApiPath(privateSrc), { responseType: "blob", skipGlobalError: true })
       .then((response) => {
         if (!cancelled) setObjectUrl(URL.createObjectURL(response.data));
       })
