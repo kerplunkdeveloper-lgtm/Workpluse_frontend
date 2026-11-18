@@ -6,6 +6,7 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { payrollApi } from "@/lib/api";
 import { Printer, Download, X, QrCode, Loader2, HelpCircle, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 import { toast } from "sonner";
+import AuthenticatedImage from "@/components/ui/AuthenticatedImage";
 
 interface PayslipModalProps {
   payslip: Payslip | null;
@@ -266,7 +267,7 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
               <div className="flex items-center gap-3">
                 {logoUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={logoUrl} alt="Logo" className="w-12 h-12 object-contain bg-white rounded-xl p-1 shrink-0" />
+                  <AuthenticatedImage src={logoUrl} alt="Logo" className="w-12 h-12 object-contain bg-white rounded-xl p-1 shrink-0" />
                 )}
                 <div>
                   <h2 className="text-xl font-bold tracking-tight">{companyName}</h2>
@@ -287,7 +288,7 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
             <div className="text-center pb-6 border-b-2" style={{ borderColor: primaryColor }}>
               {logoUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={logoUrl} alt="Logo" className="w-12 h-12 object-contain mx-auto mb-2" />
+                <AuthenticatedImage src={logoUrl} alt="Logo" className="w-12 h-12 object-contain mx-auto mb-2" />
               )}
               <h2 className="text-xl font-bold text-slate-900 tracking-tight">{companyName}</h2>
               <p className="text-xs text-slate-500 mt-0.5">{companyAddress}</p>
@@ -310,7 +311,7 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl overflow-hidden shrink-0 shadow-xs border border-slate-200 p-1 flex items-center justify-center bg-white">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={logoUrl} alt="Company Logo" className="max-w-full max-h-full object-contain" />
+                <AuthenticatedImage src={logoUrl} alt="Company Logo" className="max-w-full max-h-full object-contain" />
                   </div>
                   <div>
                     <h2 className="text-xl font-bold tracking-tight text-slate-900">{companyName}</h2>
