@@ -1106,6 +1106,10 @@ export const onboardingApi = {
     const res = await api.get(`/onboarding/${id}`);
     return res.data;
   },
+  getCandidateDocumentContent: async (candidateId: string, documentId: string) => {
+    const res = await api.get(`/onboarding/${candidateId}/documents/${documentId}/content`, { responseType: "blob" });
+    return res.data as Blob;
+  },
   hrVerify: async (id: string, payload: any) => {
     const res = await api.put(`/onboarding/${id}/hr-verify`, payload);
     return res.data;
@@ -1125,6 +1129,10 @@ export const onboardingApi = {
   getPortalCandidate: async (token: string) => {
     const res = await api.get(`/onboarding/portal/${token}`);
     return res.data;
+  },
+  getPortalDocumentContent: async (token: string, documentId: string) => {
+    const res = await api.get(`/onboarding/portal/${token}/documents/${documentId}/content`, { responseType: "blob" });
+    return res.data as Blob;
   },
   updatePortalProfile: async (token: string, payload: any) => {
     const res = await api.put(`/onboarding/portal/${token}/profile`, payload);

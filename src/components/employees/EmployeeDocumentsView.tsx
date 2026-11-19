@@ -853,7 +853,7 @@ export default function EmployeeDocumentsView({
                   <Loader2 className="h-7 w-7 animate-spin text-indigo-600" />
                   Loading document…
                 </div>
-              ) : previewUrl && (previewDoc.mimeType === "application/pdf" || previewDoc.fileUrl.split(/[?#]/)[0].toLowerCase().endsWith(".pdf")) ? (
+              ) : previewUrl && (previewDoc.mimeType === "application/pdf" || (previewDoc.fileUrl || "").split(/[?#]/)[0].toLowerCase().endsWith(".pdf")) ? (
                 <iframe
                   src={previewUrl}
                   className="w-full h-[650px] rounded-xl border border-slate-200"
