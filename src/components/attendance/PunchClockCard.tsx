@@ -419,14 +419,18 @@ export function TodayPanel({ firstName, attendance, shift, hasCheckedIn, hasChec
                 type="button"
                 onClick={() => onPunch(hasCheckedIn ? "CHECK_OUT" : "CHECK_IN")}
                 disabled={busy || hasCheckedOut || (punchingClosed && !hasCheckedIn && !hasApprovedShoot && !hasFlexiblePunching)}
-                className={`inline-flex h-14 w-full items-center sm:w-auto sm:min-w-[12.5rem] justify-center gap-2.5 rounded-2xl px-7 text-sm font-semibold tracking-[-0.01em] transition duration-200 hover:-translate-y-px active:translate-y-0 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0f24] disabled:cursor-not-allowed disabled:translate-y-0 disabled:bg-white/[0.06] disabled:text-white/40 disabled:shadow-none ${
+                aria-busy={busy}
+                className={`relative inline-flex h-14 w-full items-center overflow-hidden sm:w-auto sm:min-w-[12.5rem] justify-center gap-2.5 rounded-2xl px-7 text-sm font-semibold tracking-[-0.01em] transition duration-200 hover:-translate-y-px active:translate-y-0 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0f24] disabled:cursor-not-allowed disabled:translate-y-0 disabled:bg-white/[0.06] disabled:text-white/40 disabled:shadow-none ${
                   hasCheckedIn
                     ? "bg-gradient-to-b from-rose-500 to-rose-600 text-white shadow-[0_12px_30px_-10px_rgba(244,63,94,0.75),inset_0_1px_0_rgba(255,255,255,0.28)] hover:from-rose-400 hover:to-rose-600"
                     : "bg-white text-[#0a0f24] shadow-[0_12px_30px_-12px_rgba(255,255,255,0.5),inset_0_-1px_0_rgba(15,23,42,0.08)] hover:bg-indigo-50"
                 }`}
               >
-                {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : hasCheckedOut ? <LockKeyhole className="h-4 w-4" /> : hasCheckedIn ? <Square className="h-3.5 w-3.5 fill-current" /> : <Play className="h-4 w-4 fill-current" />}
-                {hasCheckedOut ? "Shift completed" : hasCheckedIn ? "Punch out" : punchingClosed && !hasApprovedShoot && !hasFlexiblePunching ? "Punching closed" : hasApprovedShoot ? "Shoot punch in" : hasFlexiblePunching ? "Any-time punch in" : "Punch in"}
+                {busy && <span aria-hidden="true" className="absolute inset-0 animate-pulse bg-white/10" />}
+                <span className="relative inline-flex items-center gap-2.5">
+                  {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : hasCheckedOut ? <LockKeyhole className="h-4 w-4" /> : hasCheckedIn ? <Square className="h-3.5 w-3.5 fill-current" /> : <Play className="h-4 w-4 fill-current" />}
+                  {busy ? (hasCheckedIn ? "Punching out..." : "Punching in...") : hasCheckedOut ? "Shift completed" : hasCheckedIn ? "Punch out" : punchingClosed && !hasApprovedShoot && !hasFlexiblePunching ? "Punching closed" : hasApprovedShoot ? "Shoot punch in" : hasFlexiblePunching ? "Any-time punch in" : "Punch in"}
+                </span>
               </button>
               {working && !isOnBreak && (
                 <button type="button" onClick={onStartLunch} disabled={busy} className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl sm:w-auto bg-indigo-400/15 px-5 text-sm font-medium text-indigo-100 ring-1 ring-indigo-300/30 hover:bg-indigo-400/25 disabled:opacity-50">
@@ -457,6 +461,12 @@ export function TodayPanel({ firstName, attendance, shift, hasCheckedIn, hasChec
                 </button>
               )}
             </div>
+            {busy && (
+              <p className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-indigo-200" role="status" aria-live="polite">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-indigo-300" />
+                Verifying location and saving your attendance...
+              </p>
+            )}
             {punchingClosed && !hasCheckedIn && !hasApprovedShoot && !hasFlexiblePunching && (
               <p className="mt-3 max-w-md text-xs text-amber-300" role="status">
                 {punchingClosedReason || "Punch-in is unavailable after the shift end time."}

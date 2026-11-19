@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { CheckCircle2, ExternalLink, FileText, Hourglass, Loader2, RefreshCw, XCircle } from "lucide-react";
 import { onboardingApi } from "@/lib/api";
 import Modal from "@/components/ui/Modal";
@@ -9,7 +9,7 @@ interface CandidateDocument {
   id: string;
   documentType: string;
   fileName: string;
-  fileUrl: string;
+  fileUrl?: string | null;
   fileSize?: number | null;
   mimeType?: string | null;
   status: "PENDING" | "VERIFIED" | "REJECTED" | string;
@@ -38,7 +38,7 @@ const STATUS = {
   PENDING: { text: "Awaiting review", cls: "bg-amber-50 text-amber-700 ring-amber-200", Icon: Hourglass },
 } as const;
 
-const isPdf = (doc: CandidateDocument) => doc.mimeType === "application/pdf" || doc.fileUrl.split(/[?#]/)[0].toLowerCase().endsWith(".pdf");
+const isPdf = (doc: CandidateDocument) => doc.mimeType === "application/pdf" || (doc.fileUrl || "").split(/[?#]/)[0].toLowerCase().endsWith(".pdf");
 const sizeText = (bytes?: number | null) => (!bytes ? "" : bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
 
 interface Props {
@@ -58,6 +58,8 @@ export default function CandidateDocumentsModal({ candidateId, candidateName, on
   // A file that fails to load is usually a link that needs refreshing, so offer a retry that fetches fresh links.
   const [brokenIds, setBrokenIds] = useState<Set<string>>(new Set());
   const [reloadKey, setReloadKey] = useState(0);
+  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
+  const previewUrlsRef = useRef<Record<string, string>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -75,6 +77,19 @@ export default function CandidateDocumentsModal({ candidateId, candidateName, on
       cancelled = true;
     };
   }, [candidateId, reloadKey]);
+
+  useEffect(() => () => {
+    Object.values(previewUrlsRef.current).forEach((url) => URL.revokeObjectURL(url));
+  }, []);
+
+  const loadPreview = async (doc: CandidateDocument) => {
+    if (previewUrls[doc.id]) return previewUrls[doc.id];
+    const blob = await onboardingApi.getCandidateDocumentContent(candidateId, doc.id);
+    const url = URL.createObjectURL(blob);
+    previewUrlsRef.current[doc.id] = url;
+    setPreviewUrls((current) => ({ ...current, [doc.id]: url }));
+    return url;
+  };
 
   const reload = () => {
     setDocs(null);
@@ -139,14 +154,18 @@ export default function CandidateDocumentsModal({ candidateId, candidateName, on
                   </span>
                   <button
                     type="button"
-                    onClick={() => setOpenId(open ? null : doc.id)}
+                    onClick={() => {
+                      if (open) { setOpenId(null); return; }
+                      setOpenId(doc.id);
+                      void loadPreview(doc).catch(() => setBrokenIds((prev) => new Set(prev).add(doc.id)));
+                    }}
                     aria-expanded={open}
                     className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
                   >
                     {open ? "Hide" : "View"}
                   </button>
                   <a
-                    href={doc.fileUrl}
+                    href={previewUrls[doc.id] || doc.fileUrl || undefined}
                     target="_blank"
                     rel="noreferrer"
                     aria-label={`Open ${labelOf(doc.documentType)} in a new tab`}
@@ -169,11 +188,11 @@ export default function CandidateDocumentsModal({ candidateId, candidateName, on
                         </button>
                       </div>
                     ) : isPdf(doc) ? (
-                      <iframe src={doc.fileUrl} title={`${labelOf(doc.documentType)} preview`} className="h-[60vh] w-full rounded-xl border border-slate-200 bg-white" />
+                      <iframe src={previewUrls[doc.id] || undefined} title={`${labelOf(doc.documentType)} preview`} className="h-[60vh] w-full rounded-xl border border-slate-200 bg-white" />
                     ) : (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={doc.fileUrl}
+                        src={previewUrls[doc.id] || undefined}
                         alt={`${labelOf(doc.documentType)} uploaded by ${candidateName}`}
                         onError={() => setBrokenIds((prev) => new Set(prev).add(doc.id))}
                         className="mx-auto max-h-[60vh] max-w-full rounded-xl object-contain shadow-sm"

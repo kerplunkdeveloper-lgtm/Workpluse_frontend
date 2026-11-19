@@ -63,7 +63,6 @@ export interface Organization {
   trialEndsAt?: string | Date | null;
   maxEmployees?: number;
   planLocked?: boolean;
-  unlockCode?: string;
   createdAt?: string | Date;
   branches?: Branch[];
   departments?: Department[];
@@ -520,7 +519,7 @@ export interface CandidateDocument {
   id: string;
   candidateId: string;
   documentType: "GOVT_ID" | "TAX_ID" | "DEGREE_CERTIFICATE" | "PREVIOUS_EXPERIENCE" | "BANK_PROOF" | "PHOTO" | "OTHER";
-  fileUrl: string;
+  fileUrl?: string | null;
   status: "PENDING" | "VERIFIED" | "REJECTED";
   verifiedAt?: string;
 }
@@ -562,7 +561,7 @@ export interface EmployeeDocument {
   documentType: EmployeeDocumentType;
   title?: string | null;
   fileName: string;
-  fileUrl: string;
+  fileUrl?: string | null;
   fileSize?: number | null;
   mimeType?: string | null;
   status: DocumentVerificationStatus;

@@ -3,6 +3,7 @@
 import React, { useRef, useState } from "react";
 import { Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import AuthenticatedImage from "@/components/ui/AuthenticatedImage";
 
 const ACCEPT = "image/jpeg,image/jpg,image/png,image/webp,image/gif,image/heic,image/heif";
 const MAX_BYTES = 6 * 1024 * 1024;
@@ -53,7 +54,7 @@ export default function ProfilePhotoPicker({
       >
         <span className="absolute inset-0 overflow-hidden rounded-[inherit]">
           {shown ? (
-            <img src={shown} alt="" className="absolute inset-0 w-full h-full object-cover" />
+            <AuthenticatedImage src={shown} alt="" className="absolute inset-0 w-full h-full object-cover" />
           ) : (
             <span className="keep-white absolute inset-0 bg-gradient-to-br from-indigo-500 to-indigo-700 font-serif font-semibold tracking-wide flex items-center justify-center">
               {initials}

@@ -14,6 +14,7 @@ import AdminMarkDialog, { type AdminMarkInitial } from "./AdminMarkDialog";
 import EmployeeCombobox, { type EmployeeOption } from "./EmployeeCombobox";
 import AttendanceDateFilter, { ATTENDANCE_RANGES, type AttendanceRangeValue } from "./AttendanceDateFilter";
 import { breakMinutesOf, formatClock, formatHm, localDateKey, lunchMinutesOf, recordDateKey, statusMeta, workedMinutes } from "./attendanceUtils";
+import AuthenticatedImage from "@/components/ui/AuthenticatedImage";
 
 const TEAM_ROLES = ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"];
 const csvCell = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
@@ -594,7 +595,7 @@ function Avatar({ row }: { row: Attendance }) {
   const e = row.employee;
   if (e?.avatarUrl) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={e.avatarUrl} alt="" className="h-8 w-8 shrink-0 rounded-lg object-cover" />;
+    return <AuthenticatedImage src={e.avatarUrl} alt="" className="h-8 w-8 shrink-0 rounded-lg object-cover" />;
   }
   return (
     <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-[11px] font-bold text-indigo-700">

@@ -10,14 +10,17 @@
  * waits for hydration.
  */
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   AnimatePresence,
   animate,
   motion,
   useInView,
+  useMotionTemplate,
+  useMotionValue,
   useReducedMotion,
   useScroll,
+  useSpring,
   useTransform,
   type Variants,
 } from "framer-motion";
@@ -298,5 +301,464 @@ export function LivePunchFeed({ items, visible = 4 }: { items: readonly PunchIte
         ))}
       </AnimatePresence>
     </ul>
+  );
+}
+
+
+/* ── Parallax section ─────────────────────────────────────────────────────── */
+
+/** Scroll-linked parallax wrapper. `speed` controls how fast children move: 0.5 = half speed, 1.5 = faster. */
+export function ParallaxSection({
+  children,
+  className,
+  speed = 0.5,
+}: {
+  children: ReactNode;
+  className?: string;
+  speed?: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
+  const y = useTransform(scrollYProgress, [0, 1], reduce ? [0, 0] : [-80 * speed, 80 * speed]);
+  return (
+    <div ref={ref} className={className} style={{ overflow: "hidden" }}>
+      <motion.div style={{ y }}>{children}</motion.div>
+    </div>
+  );
+}
+
+/* ── Magnetic button ──────────────────────────────────────────────────────── */
+
+/** Button wrapper that follows cursor position within its bounds, creating a magnetic pull effect. */
+export function MagneticButton({
+  children,
+  className,
+  strength = 0.35,
+}: {
+  children: ReactNode;
+  className?: string;
+  /** How strongly the element follows the cursor (0–1). */
+  strength?: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const springX = useSpring(x, { stiffness: 300, damping: 20, mass: 0.5 });
+  const springY = useSpring(y, { stiffness: 300, damping: 20, mass: 0.5 });
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (reduce) return;
+      const rect = e.currentTarget.getBoundingClientRect();
+      const dx = e.clientX - (rect.left + rect.width / 2);
+      const dy = e.clientY - (rect.top + rect.height / 2);
+      x.set(dx * strength);
+      y.set(dy * strength);
+    },
+    [reduce, strength, x, y],
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    x.set(0);
+    y.set(0);
+  }, [x, y]);
+
+  return (
+    <motion.div
+      ref={ref}
+      className={className}
+      style={{ x: springX, y: springY }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/* ── Text reveal by word ──────────────────────────────────────────────────── */
+
+function RevealWord({ word, range, progress }: { word: string; range: [number, number]; progress: import("framer-motion").MotionValue<number> }) {
+  const opacity = useTransform(progress, range, [0.15, 1]);
+  return (
+    <motion.span style={{ opacity }} className="inline-block mr-[0.25em]">
+      {word}
+    </motion.span>
+  );
+}
+
+/** Heading that reveals text word-by-word as user scrolls. */
+export function TextRevealByWord({
+  text,
+  className,
+}: {
+  text: string;
+  className?: string;
+}) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const reduce = useReducedMotion();
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start 85%", "end 35%"] });
+  const words = text.split(" ");
+
+  if (reduce) {
+    return <p ref={ref} className={className}>{text}</p>;
+  }
+
+  return (
+    <p ref={ref} className={className} style={{ display: "flex", flexWrap: "wrap" }}>
+      {words.map((word, i) => {
+        const start = i / words.length;
+        const end = (i + 1) / words.length;
+        return <RevealWord key={`${word}-${i}`} word={word} range={[start, end]} progress={scrollYProgress} />;
+      })}
+    </p>
+  );
+}
+
+/* ── Floating element ─────────────────────────────────────────────────────── */
+
+/** Wrapper that adds continuous floating animation. */
+export function FloatingElement({
+  children,
+  className,
+  amplitude = 10,
+  duration = 3,
+  delay = 0,
+}: {
+  children: ReactNode;
+  className?: string;
+  /** Vertical float distance in pixels. */
+  amplitude?: number;
+  /** Full cycle duration in seconds. */
+  duration?: number;
+  /** Start delay in seconds. */
+  delay?: number;
+}) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.div
+      className={className}
+      animate={
+        reduce
+          ? {}
+          : {
+              y: [-amplitude, amplitude, -amplitude],
+            }
+      }
+      transition={
+        reduce
+          ? undefined
+          : {
+              y: { duration, repeat: Infinity, repeatType: "loop", ease: "easeInOut", delay },
+            }
+      }
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/* ── Blur fade in ─────────────────────────────────────────────────────────── */
+
+/** Reveal component combining blur(10px)→blur(0) with y-translate and opacity. */
+export function BlurFadeIn({
+  children,
+  className,
+  delay = 0,
+  y = 20,
+}: {
+  children: ReactNode;
+  className?: string;
+  delay?: number;
+  y?: number;
+}) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.div
+      className={className}
+      initial={{ opacity: 0, y: reduce ? 0 : y, filter: reduce ? "blur(0px)" : "blur(10px)" }}
+      whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      viewport={VIEWPORT}
+      transition={{ duration: reduce ? 0 : 0.7, delay: reduce ? 0 : delay, ease: EASE }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/* ── Number ticker ────────────────────────────────────────────────────────── */
+
+/** Enhanced count-up with spring physics and a subtle scale pulse on completion. */
+export function NumberTicker({
+  to,
+  decimals = 0,
+  prefix = "",
+  suffix = "",
+  className,
+}: {
+  to: number;
+  decimals?: number;
+  prefix?: string;
+  suffix?: string;
+  className?: string;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-40px" });
+  const reduce = useReducedMotion();
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!inView || reduce || !node) return;
+    const format = (value: number) =>
+      `${prefix}${value.toLocaleString("en-IN", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}${suffix}`;
+    const controls = animate(0, to, {
+      type: "spring",
+      stiffness: 50,
+      damping: 15,
+      mass: 1,
+      onUpdate: (value) => {
+        node.textContent = format(value);
+      },
+      onComplete: () => setDone(true),
+    });
+    return () => controls.stop();
+  }, [inView, reduce, to, decimals, prefix, suffix]);
+
+  const initial = `${prefix}${to.toLocaleString("en-IN", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}${suffix}`;
+  return (
+    <motion.span
+      ref={ref}
+      className={className}
+      animate={done && !reduce ? { scale: [1, 1.12, 1] } : undefined}
+      transition={done ? { duration: 0.35, ease: EASE } : undefined}
+    >
+      {initial}
+    </motion.span>
+  );
+}
+
+/* ── Animated beam ────────────────────────────────────────────────────────── */
+
+/** SVG component that draws an animated beam between two points. */
+export function AnimatedBeam({
+  fromX,
+  fromY,
+  toX,
+  toY,
+  className,
+  width = 2,
+  color = "#4f46e5",
+  duration = 2,
+}: {
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+  className?: string;
+  width?: number;
+  color?: string;
+  /** Duration of the beam animation in seconds. */
+  duration?: number;
+}) {
+  const reduce = useReducedMotion();
+
+  const midX = (fromX + toX) / 2;
+  const midY = (fromY + toY) / 2;
+  /* Slight vertical curve for visual depth */
+  const controlY = midY - Math.abs(toX - fromX) * 0.15;
+  const d = `M ${fromX} ${fromY} Q ${midX} ${controlY} ${toX} ${toY}`;
+
+  return (
+    <svg className={className} style={{ overflow: "visible", position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
+      {/* Track */}
+      <path d={d} fill="none" stroke={color} strokeWidth={width} strokeOpacity={0.12} />
+      {/* Animated beam */}
+      <motion.path
+        d={d}
+        fill="none"
+        stroke={color}
+        strokeWidth={width}
+        strokeLinecap="round"
+        initial={{ pathLength: reduce ? 1 : 0, pathOffset: 0 }}
+        animate={reduce ? {} : { pathLength: [0, 0.4, 0], pathOffset: [0, 0.3, 1] }}
+        transition={reduce ? undefined : { duration, repeat: Infinity, ease: "easeInOut" }}
+      />
+    </svg>
+  );
+}
+
+/* ── Glow card ────────────────────────────────────────────────────────────── */
+
+/** Card wrapper with a gradient glow that follows the cursor. */
+export function GlowCard({
+  children,
+  className,
+  glowSize = 350,
+  glowColor = "rgba(79,70,229,0.15)",
+}: {
+  children: ReactNode;
+  className?: string;
+  /** Diameter of the glow in pixels. */
+  glowSize?: number;
+  /** CSS colour used for the glow centre. */
+  glowColor?: string;
+}) {
+  const reduce = useReducedMotion();
+  const mx = useMotionValue(-1000);
+  const my = useMotionValue(-1000);
+
+  const bg = useMotionTemplate`radial-gradient(${glowSize}px circle at ${mx}px ${my}px, ${glowColor}, transparent 80%)`;
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (reduce) return;
+      const rect = e.currentTarget.getBoundingClientRect();
+      mx.set(e.clientX - rect.left);
+      my.set(e.clientY - rect.top);
+    },
+    [reduce, mx, my],
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    mx.set(-1000);
+    my.set(-1000);
+  }, [mx, my]);
+
+  return (
+    <div
+      className={className}
+      style={{ position: "relative", overflow: "hidden" }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
+      {!reduce && (
+        <motion.div
+          aria-hidden="true"
+          style={{ background: bg, position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0 }}
+        />
+      )}
+      <div style={{ position: "relative", zIndex: 1 }}>{children}</div>
+    </div>
+  );
+}
+
+/* ── Hero video dialog ────────────────────────────────────────────────────── */
+
+/** Animated dialog/modal that zooms in from a thumbnail with spring physics. */
+export function HeroVideoDialog({
+  children,
+  thumbnail,
+  className,
+}: {
+  /** Content shown inside the dialog (e.g. an iframe or video element). */
+  children: ReactNode;
+  /** Thumbnail preview shown before the dialog is opened. */
+  thumbnail: ReactNode;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const reduce = useReducedMotion();
+
+  return (
+    <>
+      <motion.button
+        type="button"
+        className={className}
+        onClick={() => setOpen(true)}
+        whileHover={reduce ? {} : { scale: 1.02 }}
+        whileTap={reduce ? {} : { scale: 0.98 }}
+        transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      >
+        {thumbnail}
+      </motion.button>
+
+      <AnimatePresence>
+        {open && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              key="backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: reduce ? 0 : 0.25 }}
+              onClick={() => setOpen(false)}
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 50,
+                background: "rgba(0,0,0,0.6)",
+                backdropFilter: "blur(4px)",
+              }}
+            />
+            {/* Dialog */}
+            <motion.div
+              key="dialog"
+              role="dialog"
+              aria-modal="true"
+              initial={{ opacity: 0, scale: reduce ? 1 : 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: reduce ? 1 : 0.9 }}
+              transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 24 }}
+              onClick={() => setOpen(false)}
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 51,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "1rem",
+              }}
+            >
+              {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events,jsx-a11y/no-static-element-interactions */}
+              <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 960 }}>
+                {children}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+/* ── Scroll progress ──────────────────────────────────────────────────────── */
+
+/** Fixed bar at the top showing page scroll progress. */
+export function ScrollProgress({
+  className,
+  color = "#4f46e5",
+  height = 3,
+}: {
+  className?: string;
+  /** Bar colour. */
+  color?: string;
+  /** Bar height in pixels. */
+  height?: number;
+}) {
+  const reduce = useReducedMotion();
+  const { scrollYProgress } = useScroll();
+
+  if (reduce) return null;
+
+  return (
+    <motion.div
+      className={className}
+      style={{
+        scaleX: scrollYProgress,
+        transformOrigin: "0% 0%",
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        height,
+        background: color,
+        zIndex: 9999,
+      }}
+    />
   );
 }

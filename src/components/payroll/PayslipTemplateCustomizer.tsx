@@ -6,6 +6,7 @@ import { formatCurrency } from "@/lib/utils";
 import { Palette, Upload, Sparkles, Save, RotateCcw, Printer, Building2, FileCode, Eye, CheckCircle2, Sliders, Image as ImageIcon, Stamp, Code2, Layers, Loader2, QrCode } from "lucide-react";
 import { toast } from "sonner";
 import { confetti } from "@/lib/confetti";
+import AuthenticatedImage from "@/components/ui/AuthenticatedImage";
 
 interface PresetItem {
   key: string;
@@ -441,7 +442,7 @@ export default function PayslipTemplateCustomizer() {
                     <div className="w-16 h-16 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
                       {logoUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={logoUrl} alt="Company Logo" className="w-full h-full object-contain p-1" />
+                        <AuthenticatedImage src={logoUrl} alt="Company Logo" className="w-full h-full object-contain p-1" />
                       ) : (
                         <ImageIcon className="w-6 h-6 text-slate-400" />
                       )}
@@ -807,7 +808,7 @@ export default function PayslipTemplateCustomizer() {
                     <div className="flex items-center gap-3">
                       {logoUrl && (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={logoUrl} alt="Logo" className="w-12 h-12 object-contain bg-white rounded-xl p-1 shrink-0" />
+                        <AuthenticatedImage src={logoUrl} alt="Logo" className="w-12 h-12 object-contain bg-white rounded-xl p-1 shrink-0" />
                       )}
                       <div>
                         <h2 className="text-lg font-semibold tracking-tight">{companyName || "Acme Global Technologies"}</h2>
@@ -825,7 +826,7 @@ export default function PayslipTemplateCustomizer() {
                   <div className="text-center pb-6 border-b-2" style={{ borderColor: primaryColor }}>
                     {logoUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={logoUrl} alt="Logo" className="w-12 h-12 object-contain mx-auto mb-2" />
+                      <AuthenticatedImage src={logoUrl} alt="Logo" className="w-12 h-12 object-contain mx-auto mb-2" />
                     )}
                     <h2 className="text-xl font-semibold text-slate-900 tracking-tight">
                       {companyName || "Acme Global Technologies"}
@@ -844,7 +845,7 @@ export default function PayslipTemplateCustomizer() {
                       <div className="flex items-center gap-2.5">
                         {logoUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={logoUrl} alt="Logo" className="w-10 h-10 object-contain rounded-xl shrink-0" />
+                          <AuthenticatedImage src={logoUrl} alt="Logo" className="w-10 h-10 object-contain rounded-xl shrink-0" />
                         ) : (
                           <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white shrink-0 text-sm" style={{ backgroundColor: primaryColor }}>
                             {companyName ? companyName.charAt(0) : "W"}

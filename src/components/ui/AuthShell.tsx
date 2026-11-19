@@ -202,7 +202,9 @@ export default function AuthShell({
       <section className="wp-auth-form-bg relative flex min-h-dvh flex-col lg:h-dvh lg:overflow-y-auto">
         <div className="flex items-center justify-between px-5 pt-5 sm:px-8 lg:px-12 lg:pt-8">
           <div className="lg:hidden">
-            <Brand size="sm" />
+            {/* The form panel is light on phones, so use the dark-text lockup.
+                The desktop aside keeps its inverse/white branding below. */}
+            <Brand landing size="sm" />
           </div>
           <Link
             href="/"

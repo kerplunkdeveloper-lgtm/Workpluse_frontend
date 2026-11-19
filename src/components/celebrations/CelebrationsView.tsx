@@ -5,6 +5,7 @@ import { Cake, CalendarDays, Check, Download, ImagePlus, Loader2, RotateCcw, Sea
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { employeesApi } from "@/lib/api";
+import AuthenticatedImage from "@/components/ui/AuthenticatedImage";
 import {
   buildMoments,
   defaultMessage,
@@ -317,7 +318,7 @@ export default function CelebrationsView() {
                       <span className="grid place-items-center overflow-hidden bg-white/90" style={{ width: "6cqw", height: "6cqw", borderRadius: "1.5cqw" }}>
                         {logoUrl && !logoFailed ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={logoUrl} alt={`${companyName} logo`} className="h-full w-full object-contain p-[0.5cqw]" onError={() => setLogoFailed(true)} />
+                          <AuthenticatedImage src={logoUrl} alt={`${companyName} logo`} className="h-full w-full object-contain p-[0.5cqw]" onError={() => setLogoFailed(true)} />
                         ) : (
                           <span className="font-extrabold text-indigo-700" style={{ fontSize: "2.3cqw" }}>{companyName.slice(0, 2).toUpperCase()}</span>
                         )}
@@ -329,7 +330,7 @@ export default function CelebrationsView() {
                       <span className="grid shrink-0 place-items-center overflow-hidden rounded-full bg-white/20 font-extrabold ring-white/80" style={{ width: "14cqw", height: "14cqw", fontSize: "5cqw", boxShadow: "0 0 0 0.5cqw rgba(255,255,255,0.85)" }}>
                         {photoUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={photoUrl} alt={selected.name} className="h-full w-full object-cover" onError={() => setPhotoFailed((p) => ({ ...p, [selected.id]: true }))} />
+                          <AuthenticatedImage src={photoUrl} alt={selected.name} className="h-full w-full object-cover" onError={() => setPhotoFailed((p) => ({ ...p, [selected.id]: true }))} />
                         ) : (
                           personInitials(selected.name)
                         )}

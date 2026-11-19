@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Brand from "@/components/ui/Brand";
 import { ArrowRight, Menu, X } from "lucide-react";
@@ -9,9 +9,18 @@ import { NAV_LINKS } from "./content";
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const progressRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12);
+    const onScroll = () => {
+      setScrolled(window.scrollY > 12);
+      // Update scroll progress bar
+      if (progressRef.current) {
+        const docH = document.documentElement.scrollHeight - window.innerHeight;
+        const pct = docH > 0 ? Math.min(window.scrollY / docH, 1) : 0;
+        progressRef.current.style.transform = `scaleX(${pct})`;
+      }
+    };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -28,10 +37,17 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-50 px-3 pt-3 sm:px-4">
+      {/* Scroll progress bar */}
+      <div
+        ref={progressRef}
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-[2.5px] origin-left bg-gradient-to-r from-indigo-500 via-violet-500 to-indigo-400 will-change-transform"
+        style={{ transform: "scaleX(0)" }}
+      />
       <div
         className={`mx-auto max-w-[1200px] rounded-2xl transition-all duration-300 ${
           raised
-            ? "bg-white/85 shadow-[0_12px_32px_-12px_rgba(15,23,42,0.12),0_1px_2px_rgba(15,23,42,0.05)] ring-1 ring-slate-900/[0.08] backdrop-blur-xl"
+            ? "bg-white/85 shadow-[0_12px_32px_-12px_rgba(15,23,42,0.12),0_1px_2px_rgba(15,23,42,0.05)] ring-1 ring-slate-900/[0.08] backdrop-blur-2xl saturate-150"
             : "bg-white/60 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.05)] ring-1 ring-slate-900/[0.05] backdrop-blur-md"
         }`}
       >
@@ -43,7 +59,7 @@ export function SiteHeader() {
               <a
                 key={`${l.href}-${l.label}`}
                 href={l.href}
-                className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-900/[0.04] hover:text-slate-950"
+                className="lp-nav-underline relative rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-900/[0.04] hover:text-slate-950"
               >
                 {l.label}
               </a>
