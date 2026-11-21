@@ -27,6 +27,7 @@ import PhoneInput, { toE164, validatePhone, type CountryCode } from "@/component
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
 import CandidateDocumentsModal from "./CandidateDocumentsModal";
+import { useAuth } from "@/context/AuthContext";
 
 const STAGES = [
   { id: "INVITED", label: "Invited", hint: "Candidate has received the portal link", statuses: ["INVITED"], color: "border-slate-200 bg-slate-50/70", tone: "bg-slate-100 text-slate-700" },
@@ -56,6 +57,8 @@ const VERIFY_STATUSES = ["PROFILE_SUBMITTED", "UNDER_HR_REVIEW"];
 const ACTIVATE_STATUSES = ["OFFER_ACCEPTED", "ACCEPTED"];
 
 export default function OnboardingView() {
+  const { role } = useAuth();
+  const isAdmin = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN";
   const [candidates, setCandidates] = useState<OnboardingCandidate[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
@@ -76,6 +79,8 @@ export default function OnboardingView() {
   const [joiningDate, setJoiningDate] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [search, setSearch] = useState("");
+  const [quickOfferOpen, setQuickOfferOpen] = useState(false);
+  const [quickOfferCandidateId, setQuickOfferCandidateId] = useState("");
 
   const loadPipeline = async () => {
     setLoading(true);
@@ -146,21 +151,51 @@ export default function OnboardingView() {
     }
   };
 
-  const handleSendOffer = async (candidateId: string) => {
+  const handleSendOffer = async (candidateId: string, status?: string) => {
     toast.loading("Generating offer letter & dispatching alerts...", { id: "send-offer" });
     try {
-      await onboardingApi.adminApproveOffer(candidateId);
+      if (status === "HR_VERIFIED") await onboardingApi.adminApproveOffer(candidateId);
       const sendRes = await onboardingApi.hrSendOffer(candidateId);
       toast.dismiss("send-offer");
       if (sendRes?.success) {
         toast.success("Offer letter dispatched via Email & WhatsApp!");
         loadPipeline();
+        return true;
       } else {
         toast.error(sendRes?.message || "Failed to dispatch offer");
       }
     } catch (err: any) {
       toast.dismiss("send-offer");
       toast.error(err.response?.data?.message || err.message || "Failed to send offer");
+    }
+    return false;
+  };
+
+  const directOfferCandidates = candidates.filter((candidate) => SEND_OFFER_STATUSES.includes(candidate.status) && (candidate.status !== "HR_VERIFIED" || isAdmin));
+  const quickOfferCandidate = directOfferCandidates.find((candidate) => candidate.id === quickOfferCandidateId);
+
+  const handleQuickSendOffer = async () => {
+    if (!quickOfferCandidate) {
+      toast.error("Select a candidate who is ready for an offer.");
+      return;
+    }
+    const sent = await handleSendOffer(quickOfferCandidate.id, quickOfferCandidate.status);
+    if (sent) {
+      setQuickOfferOpen(false);
+      setQuickOfferCandidateId("");
+    }
+  };
+
+  const handleResendOfferEmail = async (candidateId: string) => {
+    toast.loading("Resending the saved offer by email...", { id: "resend-offer" });
+    try {
+      const response = await onboardingApi.hrSendOffer(candidateId, { resend: true, deliveryChannel: "EMAIL" });
+      toast.dismiss("resend-offer");
+      if (response?.success) toast.success("Offer email sent again");
+      else toast.error(response?.message || "Could not resend offer email");
+    } catch (err: any) {
+      toast.dismiss("resend-offer");
+      toast.error(err.response?.data?.message || err.message || "Could not resend offer email");
     }
   };
 
@@ -212,6 +247,7 @@ export default function OnboardingView() {
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">A single place for HR to invite, verify, send offers, and activate new employees without losing the next step.</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            {directOfferCandidates.length > 0 && <button type="button" onClick={() => { setQuickOfferCandidateId(directOfferCandidates[0].id); setQuickOfferOpen(true); }} className="flex items-center gap-2 rounded-xl border border-emerald-300/30 bg-emerald-400/15 px-4 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/25"><Mail className="h-4 w-4" />Send default offer</button>}
             <Link href="/onboarding/offer-template" className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/15"><FileText className="h-4 w-4 text-indigo-300" />Offer template</Link>
             <button type="button" onClick={() => setModalOpen(true)} className="flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-950/30 transition hover:bg-indigo-400"><Plus className="h-4 w-4" />Invite new joiner</button>
           </div>
@@ -293,7 +329,7 @@ export default function OnboardingView() {
 
                       <button type="button" onClick={() => setDocsFor({ id: cand.id, name: `${cand.firstName} ${cand.lastName || ""}`.trim() })} className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"><span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5 text-slate-400" />Documents</span><span className="rounded-full bg-white px-2 py-0.5 text-[11px] tabular-nums ring-1 ring-slate-200">{((cand as any).documents || []).length}</span></button>
 
-                      {(cand.token || cand.portalToken) && <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-2"><Link href={`/onboarding/portal/${cand.token || cand.portalToken}`} target="_blank" className="flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700"><span>Open portal</span><ExternalLink className="h-3 w-3" /></Link>{VERIFY_STATUSES.includes(cand.status) ? <button onClick={() => handleHrVerify(cand.id)} className="rounded-lg bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500">Verify</button> : SEND_OFFER_STATUSES.includes(cand.status) ? <button onClick={() => handleSendOffer(cand.id)} className="flex items-center gap-1 rounded-lg bg-sky-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-sky-500"><Send className="h-3 w-3" />Offer</button> : ACTIVATE_STATUSES.includes(cand.status) ? <button onClick={() => handleActivateAccount(cand.id)} className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500"><CheckCircle2 className="h-3 w-3" />Activate</button> : cand.status === "ACTIVATED" || cand.status === "ONBOARDED" ? <span className="flex items-center gap-1 text-xs font-bold text-teal-700"><ShieldCheck className="h-3 w-3" />Active</span> : null}</div>}
+                      {(cand.token || cand.portalToken) && <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-2"><Link href={`/onboarding/portal/${cand.token || cand.portalToken}`} target="_blank" className="flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700"><span>Open portal</span><ExternalLink className="h-3 w-3" /></Link>{VERIFY_STATUSES.includes(cand.status) ? <button onClick={() => handleHrVerify(cand.id)} className="rounded-lg bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500">Verify</button> : cand.status === "HR_VERIFIED" && isAdmin ? <button onClick={() => handleSendOffer(cand.id, cand.status)} className="flex items-center gap-1 rounded-lg bg-sky-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-sky-500"><Send className="h-3 w-3" />Approve & send</button> : ["ADMIN_APPROVED", "OFFER_GENERATED"].includes(cand.status) ? <button onClick={() => handleSendOffer(cand.id, cand.status)} className="flex items-center gap-1 rounded-lg bg-sky-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-sky-500"><Send className="h-3 w-3" />Send default offer</button> : cand.status === "OFFER_SENT" ? <button onClick={() => handleResendOfferEmail(cand.id)} className="flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100"><Mail className="h-3 w-3" />Resend email</button> : ACTIVATE_STATUSES.includes(cand.status) && isAdmin ? <button onClick={() => handleActivateAccount(cand.id)} className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500"><CheckCircle2 className="h-3 w-3" />Activate</button> : cand.status === "HR_VERIFIED" ? <span className="text-xs font-semibold text-slate-400">Awaiting admin approval</span> : cand.status === "ACTIVATED" || cand.status === "ONBOARDED" ? <span className="flex items-center gap-1 text-xs font-bold text-teal-700"><ShieldCheck className="h-3 w-3" />Active</span> : null}</div>}
                     </div>
                   ))
                 )}
@@ -441,6 +477,26 @@ export default function OnboardingView() {
                 </button>
               </div>
             </form>
+          </div>
+        </Modal>
+      )}
+
+      {quickOfferOpen && (
+        <Modal>
+          <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl sm:p-8">
+            <div className="flex items-start gap-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600"><Mail className="h-5 w-5" /></span>
+              <div>
+                <h3 className="text-lg font-bold text-slate-950">Send default offer</h3>
+                <p className="mt-1 text-sm leading-5 text-slate-500">Use the active company offer-letter template and dispatch it from this pipeline.</p>
+              </div>
+            </div>
+            <div className="mt-5 space-y-4">
+              <label className="block text-xs font-bold text-slate-600">Candidate<Select value={quickOfferCandidateId} onChange={(event) => setQuickOfferCandidateId(event.target.value)} className="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-800 shadow-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"><option value="">Select a ready candidate</option>{directOfferCandidates.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.firstName} {candidate.lastName || ""} · {candidate.email}</option>)}</Select></label>
+              {quickOfferCandidate && <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm"><div className="flex items-start justify-between gap-3"><div><p className="font-bold text-slate-900">{quickOfferCandidate.firstName} {quickOfferCandidate.lastName || ""}</p><p className="mt-1 text-xs text-slate-500">{quickOfferCandidate.designation || "Role to be confirmed"} · {quickOfferCandidate.email}</p></div><span className="rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-bold text-sky-700">{quickOfferCandidate.status.replaceAll("_", " ")}</span></div><div className="mt-3 grid grid-cols-2 gap-3 text-xs text-slate-600"><span><strong className="block text-[10px] uppercase tracking-wider text-slate-400">Annual CTC</strong>{formatCurrency(quickOfferCandidate.proposedSalary ?? quickOfferCandidate.offeredSalary)}</span><span><strong className="block text-[10px] uppercase tracking-wider text-slate-400">Delivery</strong>Email + WhatsApp</span></div></div>}
+              <p className="rounded-xl border border-indigo-100 bg-indigo-50/60 px-3 py-2 text-xs leading-5 text-indigo-800">The current active company template will be used. Review or change it from <Link href="/onboarding/offer-template" className="font-bold underline">Offer template</Link> before sending.</p>
+            </div>
+            <div className="mt-6 flex justify-end gap-2 border-t border-slate-100 pt-4"><button type="button" onClick={() => { setQuickOfferOpen(false); setQuickOfferCandidateId(""); }} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">Cancel</button><button type="button" onClick={() => void handleQuickSendOffer()} disabled={!quickOfferCandidate} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"><Send className="h-4 w-4" />Send default offer</button></div>
           </div>
         </Modal>
       )}

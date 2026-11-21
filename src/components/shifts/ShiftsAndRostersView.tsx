@@ -5,7 +5,7 @@ import { Employee, Shift } from "@/types";
 import { employeesApi, shiftsApi, shiftOverridesApi } from "@/lib/api";
 import { formatDate, unwrapList } from "@/lib/utils";
 import { formatHm, shiftLengthMinutes } from "@/components/attendance/attendanceUtils";
-import { CalendarRange, Clock, Plus, Loader2, Pencil, Search, Users, X, Trash2 } from "lucide-react";
+import { CalendarRange, Clock, Plus, Loader2, Pencil, Search, Users, X, Trash2, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
@@ -511,42 +511,60 @@ export default function ShiftsAndRostersView() {
       {/* Create Shift Modal */}
       {modalOpen && (
         <Modal>
-          <div className="w-full max-w-lg max-h-[92dvh] overflow-y-auto bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl">
-            <h3 className="text-base font-semibold text-slate-900 mb-1">{editingShift ? "Edit Shift Schedule" : "Create Shift Schedule"}</h3>
-            <p className="text-xs text-slate-500 mb-4">
+          <div className="flex max-h-[94dvh] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.22)]">
+            <div className="flex shrink-0 items-start justify-between gap-5 border-b border-slate-100 px-5 py-5 sm:px-7">
+              <div className="flex min-w-0 items-start gap-3.5">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100"><SlidersHorizontal className="h-5 w-5" /></div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">Workforce configuration</p>
+                  <h3 className="mt-1 text-lg font-bold tracking-tight text-slate-950">{editingShift ? "Edit shift schedule" : "Create shift schedule"}</h3>
+                  <p className="mt-1 max-w-lg text-sm leading-5 text-slate-500">
               {flexiblePunching ? "Create a flexible attendance shift and assign eligible employees after saving." : "Configure shift working hours, grace period, and working days bitmask"}
-            </p>
+                  </p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setModalOpen(false)} aria-label="Close shift editor" className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"><X className="h-5 w-5" /></button>
+            </div>
 
-            <form onSubmit={handleCreateShift} className="space-y-4">
+            <form onSubmit={handleCreateShift} className="min-h-0 overflow-y-auto px-5 py-5 sm:px-7">
+              <div className="mb-5 rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 to-slate-50 px-4 py-3.5">
+                <div className="flex items-center gap-2 text-sm font-bold text-slate-900"><CalendarRange className="h-4 w-4 text-indigo-600" />Define the schedule your team follows</div>
+                <p className="mt-1 pl-6 text-xs leading-5 text-slate-500">Attendance and payroll use these rules to calculate working time, grace, breaks, and overtime.</p>
+              </div>
+
+              <div className="space-y-5">
               <div>
-                <label className="block text-[13px] font-medium text-slate-700 mb-1">Shift Name *</label>
+                <div className="mb-2 flex items-center justify-between"><p className="text-sm font-bold text-slate-900">Basic details</p><span className="text-xs font-medium text-slate-400">Required fields marked *</span></div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Shift name *</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. General Morning Shift, Night Shift, Weekend Roster"
-                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
                   required
                 />
               </div>
+              </div>
 
-              <label className="flex items-start gap-3 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-xs text-violet-950">
-                <input type="checkbox" className="mt-0.5" checked={flexiblePunching} onChange={(e) => setFlexiblePunching(e.target.checked)} />
-                <span><span className="block font-semibold">Allow any-time punching</span><span className="mt-0.5 block text-violet-700">Employees assigned to this shift can punch in or out outside the shift timing. Payroll still uses the company working-hours rules.</span></span>
+              <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-violet-200 bg-violet-50/70 px-4 py-3.5 text-sm text-violet-950 transition hover:border-violet-300 hover:bg-violet-50">
+                <input type="checkbox" className="mt-0.5 h-4 w-4 accent-indigo-600" checked={flexiblePunching} onChange={(e) => setFlexiblePunching(e.target.checked)} />
+                <span><span className="block font-semibold">Allow any-time punching</span><span className="mt-1 block text-xs leading-5 text-violet-700">Employees can punch in or out outside shift timing. Payroll still follows the company working-hours rules.</span></span>
               </label>
 
               {flexiblePunching && (
-                <label className="block rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-950">
-                  <span className="block font-semibold">Total working hours (including break & lunch)</span>
-                  <input type="number" min={1} max={24} step={0.25} value={workingHours} onChange={(e) => setWorkingHours(Number(e.target.value))} className="mt-3 w-full rounded-xl border border-emerald-200 bg-white p-2.5 text-sm font-semibold text-slate-900" required />
+                <label className="block rounded-2xl border border-emerald-200 bg-emerald-50/70 px-4 py-3.5 text-sm text-emerald-950">
+                  <span className="block font-semibold">Flexible working hours</span><span className="mt-1 block text-xs leading-5 text-emerald-700">Set the total daily window, including planned pauses.</span>
+                  <input type="number" min={1} max={24} step={0.25} value={workingHours} onChange={(e) => setWorkingHours(Number(e.target.value))} className="mt-3 w-full rounded-xl border border-emerald-200 bg-white px-3.5 py-3 text-sm font-semibold text-slate-900 shadow-sm outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10" required />
                   <span className="mt-3 grid grid-cols-2 gap-3">
                     <span>
-                      <span className="block font-semibold">Break minutes</span>
-                      <input type="number" min={0} max={240} value={breakMinutes} onChange={(e) => setBreakMinutes(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-emerald-200 bg-white p-2.5 text-sm font-semibold text-slate-900" />
+                      <span className="block text-xs font-semibold">Break minutes</span>
+                      <input type="number" min={0} max={240} value={breakMinutes} onChange={(e) => setBreakMinutes(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900" />
                     </span>
                     <span>
-                      <span className="block font-semibold">Lunch minutes</span>
-                      <input type="number" min={0} max={240} value={lunchMinutes} onChange={(e) => setLunchMinutes(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-emerald-200 bg-white p-2.5 text-sm font-semibold text-slate-900" />
+                      <span className="block text-xs font-semibold">Lunch minutes</span>
+                      <input type="number" min={0} max={240} value={lunchMinutes} onChange={(e) => setLunchMinutes(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900" />
                     </span>
                   </span>
                 </label>
@@ -555,22 +573,22 @@ export default function ShiftsAndRostersView() {
               {!flexiblePunching && <>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[13px] font-medium text-slate-700 mb-1">Start Time *</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Start time *</label>
                   <input
                     type="time"
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-indigo-500"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm font-medium text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-[13px] font-medium text-slate-700 mb-1">End Time *</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">End time *</label>
                   <input
                     type="time"
                     value={endTime}
                     onChange={(e) => setEndTime(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-indigo-500"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm font-medium text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
                     required
                   />
                 </div>
@@ -578,24 +596,24 @@ export default function ShiftsAndRostersView() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[13px] font-medium text-slate-700 mb-1">
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
 <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4">
                 <p className="text-xs font-semibold text-indigo-900">Included pause allowances</p>
                 <p className="mt-1 text-[11px] text-indigo-700">For a 09:00–18:00 shift, included break and lunch time are part of the 9-hour window; productive target is calculated automatically.</p>
                 <div className="mt-3 grid grid-cols-2 gap-3">
-                  <label className="text-[11px] font-medium text-slate-700">Break minutes
-                    <input type="number" min={0} max={240} value={breakMinutes} onChange={(e) => setBreakMinutes(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-900" />
+                  <label className="text-xs font-semibold text-slate-700">Break minutes
+                    <input type="number" min={0} max={240} value={breakMinutes} onChange={(e) => setBreakMinutes(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900" />
                   </label>
-                  <label className="text-[11px] font-medium text-slate-700">Lunch minutes
-                    <input type="number" min={0} max={240} value={lunchMinutes} onChange={(e) => setLunchMinutes(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-900" />
+                  <label className="text-xs font-semibold text-slate-700">Lunch minutes
+                    <input type="number" min={0} max={240} value={lunchMinutes} onChange={(e) => setLunchMinutes(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900" />
                   </label>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-700">
-                  <label className="inline-flex items-center gap-2"><input type="checkbox" checked={breakIncluded} onChange={(e) => setBreakIncluded(e.target.checked)} /> Break included in shift window</label>
-                  <label className="inline-flex items-center gap-2"><input type="checkbox" checked={lunchIncluded} onChange={(e) => setLunchIncluded(e.target.checked)} /> Lunch included in shift window</label>
+                <div className="mt-3 grid gap-2 text-xs text-slate-700 sm:grid-cols-2">
+                  <label className="inline-flex items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-indigo-600" checked={breakIncluded} onChange={(e) => setBreakIncluded(e.target.checked)} /> Break included in shift window</label>
+                  <label className="inline-flex items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-indigo-600" checked={lunchIncluded} onChange={(e) => setLunchIncluded(e.target.checked)} /> Lunch included in shift window</label>
                 </div>
               </div>
-                    Grace Minutes *
+                    Grace minutes *
                   </label>
                   <input
                     type="number"
@@ -603,38 +621,40 @@ export default function ShiftsAndRostersView() {
                     onChange={(e) => setGraceMinutes(Number(e.target.value))}
                     min={0}
                     max={60}
-                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
                     required
                   />
                 </div>
                 <div>
                   <label className="block text-[13px] font-medium text-slate-700 mb-1">
-                    Working Days Bitmask
+                    Working days
                   </label>
                   <input
                     type="text"
                     value={workingDays}
                     onChange={(e) => setWorkingDays(e.target.value)}
                     placeholder="1,2,3,4,5,6 (Mon-Sat)"
-                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-indigo-500"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm font-mono text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
                     required
                   />
                 </div>
               </div>
               </>}
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
+              </div>
+
+              <div className="-mx-5 mt-6 flex flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50/80 px-5 py-4 sm:-mx-7 sm:flex-row sm:justify-end sm:px-7">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+                  className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-white hover:text-slate-900"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition flex items-center gap-2"
+                  className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-900/15 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   {editingShift ? "Update Shift" : "Save Shift"}

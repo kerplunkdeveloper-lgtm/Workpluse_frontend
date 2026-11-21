@@ -581,6 +581,14 @@ export const leavesApi = {
     const res = await api.get("/leaves/balances", { skipGlobalError: true });
     return res.data;
   },
+  getEmployeeBalances: async (employeeId: string, year?: number) => {
+    const res = await api.get(`/leaves/employees/${employeeId}/balances`, { params: { year }, skipGlobalError: true });
+    return res.data;
+  },
+  getDepartmentConflicts: async (startDate: string, endDate: string, employeeId?: string) => {
+    const res = await api.get("/leaves/conflicts", { params: { startDate, endDate, employeeId }, skipGlobalError: true });
+    return res.data;
+  },
   getEligibility: async () => {
     const res = await api.get("/leaves/eligibility", { skipGlobalError: true });
     return res.data;
@@ -590,6 +598,7 @@ export const leavesApi = {
     startDate: string;
     endDate: string;
     reason: string;
+    employeeId?: string;
     totalDays?: number;
     halfDayPeriod?: "MORNING" | "AFTERNOON";
   }) => {
@@ -608,6 +617,11 @@ export const leavesApi = {
     const res = await api.put(`/leaves/${id}/review`, payload);
     return res.data;
   },
+  requestDateChange: async (id: string, payload: { newStartDate: string; newEndDate: string; reason: string }) => (await api.post(`/leaves/requests/${id}/date-change`, payload)).data,
+  getMyDateChanges: async () => (await api.get("/leaves/date-changes/my")).data,
+  // Optional for older databases until the leave-change migration is applied.
+  getDateChanges: async (status = "PENDING") => (await api.get("/leaves/date-changes", { params: { status }, skipGlobalError: true })).data,
+  reviewDateChange: async (id: string, payload: { status: "APPROVED" | "REJECTED"; reviewNote?: string }) => (await api.put(`/leaves/date-changes/${id}/review`, payload)).data,
 };
 
 export const workFromHomeApi = {
@@ -1250,6 +1264,10 @@ export const employeesApi = {
     const res = await api.get(`/employees/${employeeId}/documents`);
     return res.data;
   },
+  getMissingSummary: async (params?: { branchId?: string; limit?: number }) => {
+    const res = await api.get("/employees/documents/missing", { params });
+    return res.data;
+  },
   getDocumentContent: async (employeeId: string, documentId: string) => {
     const res = await api.get(`/employees/${employeeId}/documents/${documentId}/content`, {
       responseType: "blob",
@@ -1412,8 +1430,12 @@ export const devicesApi = {
 };
 
 export const auditApi = {
-  list: async (params?: { action?: string; entity?: string; from?: string; to?: string; page?: number; limit?: number }) => {
+  list: async (params?: { action?: string; entity?: string; employeeId?: string; branchId?: string; deviceId?: string; eventType?: string; riskLevel?: string; reviewStatus?: string; search?: string; from?: string; to?: string; page?: number; limit?: number }) => {
     const res = await api.get("/audit-logs", { params });
+    return res.data;
+  },
+  review: async (id: string, payload: { status: "APPROVED" | "REJECTED" | "FALSE_POSITIVE"; note?: string }) => {
+    const res = await api.patch(`/audit-logs/${id}/review`, payload);
     return res.data;
   },
 };

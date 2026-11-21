@@ -16,6 +16,10 @@ type OfferTemplate = {
   signatoryTitle: string;
   primaryColor: string;
   footer: string;
+  sourceType?: "EDITOR" | "JSON" | "CSV" | "TXT" | "MD" | "HTML" | "DOCX";
+  sourceFileName?: string;
+  version?: number;
+  status?: "DRAFT" | "ACTIVE" | "ARCHIVED";
 };
 
 const FALLBACK: OfferTemplate = {
@@ -27,6 +31,10 @@ const FALLBACK: OfferTemplate = {
   signatoryTitle: "Authorized signatory",
   primaryColor: "#163b8f",
   footer: "This is a digitally generated offer letter. Please retain a copy for your records.",
+  sourceType: "EDITOR",
+  sourceFileName: "",
+  version: 1,
+  status: "ACTIVE",
 };
 
 const parseCsv = (source: string) => {
@@ -82,6 +90,65 @@ const csvTemplate = (source: string): Partial<OfferTemplate> => {
   } as Partial<OfferTemplate>;
 };
 
+const bulletLine = /^(?:[-*•]|\d+[.)])\s+/;
+
+const htmlToText = (source: string) => {
+  if (typeof DOMParser === "undefined") return source.replace(/<[^>]+>/g, " ");
+  const document = new DOMParser().parseFromString(source, "text/html");
+  const blocks = Array.from(document.body.querySelectorAll("h1,h2,h3,h4,p,li"))
+    .map((node) => node.textContent?.replace(/\s+/g, " ").trim() || "")
+    .filter(Boolean);
+  return blocks.length ? blocks.join("\n") : document.body.textContent || "";
+};
+
+const docxToText = async (file: File) => {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const decoder = new TextDecoder();
+  let offset = 0;
+  let xmlBytes: Uint8Array | null = null;
+  while (offset + 30 <= bytes.length) {
+    if (view.getUint32(offset, true) !== 0x04034b50) break;
+    const method = view.getUint16(offset + 8, true);
+    const compressedSize = view.getUint32(offset + 18, true);
+    const nameLength = view.getUint16(offset + 26, true);
+    const extraLength = view.getUint16(offset + 28, true);
+    const nameStart = offset + 30;
+    const name = decoder.decode(bytes.subarray(nameStart, nameStart + nameLength));
+    const dataStart = nameStart + nameLength + extraLength;
+    if (name === "word/document.xml") {
+      const compressed = bytes.subarray(dataStart, dataStart + compressedSize);
+      if (method === 0) xmlBytes = compressed;
+      else if (method === 8 && typeof DecompressionStream !== "undefined") {
+        const stream = new Blob([compressed]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+        xmlBytes = new Uint8Array(await new Response(stream).arrayBuffer());
+      } else throw new Error("This DOCX compression format is not supported by this browser.");
+      break;
+    }
+    offset = dataStart + compressedSize;
+  }
+  if (!xmlBytes) throw new Error("Could not read the DOCX body. Please export it as HTML or TXT and import again.");
+  const xml = decoder.decode(xmlBytes);
+  if (typeof DOMParser === "undefined") return xml.replace(/<[^>]+>/g, " ");
+  const document = new DOMParser().parseFromString(xml, "application/xml");
+  return Array.from(document.getElementsByTagName("w:p"))
+    .map((paragraph) => Array.from(paragraph.getElementsByTagName("w:t")).map((text) => text.textContent || "").join("").trim())
+    .filter(Boolean)
+    .join("\n");
+};
+
+const templateFromText = (source: string): Partial<OfferTemplate> => {
+  const lines = source.replace(/\u00a0/g, " ").replace(/\r/g, "").split("\n").map((line) => line.trim()).filter(Boolean);
+  if (!lines.length) throw new Error("The selected template file is empty.");
+  const greetingIndex = lines.findIndex((line) => /^dear\b/i.test(line));
+  const greeting = greetingIndex >= 0 ? lines[greetingIndex] : undefined;
+  const terms = lines.filter((line) => bulletLine.test(line)).map((line) => line.replace(bulletLine, "").trim()).filter(Boolean);
+  const bodyLines = lines.filter((line, index) => index !== greetingIndex && !bulletLine.test(line));
+  const title = bodyLines[0] && bodyLines[0].length <= 120 && (bodyLines[0] === bodyLines[0].toUpperCase() || /offer|joining|employment|appointment/i.test(bodyLines[0])) ? bodyLines.shift() : undefined;
+  const introduction = bodyLines.join("\n\n").trim();
+  return { title, greeting, introduction: introduction || undefined, terms: terms.length ? terms : undefined };
+};
+
 export default function OfferLetterTemplateModal({ open, onClose, inline = false }: { open: boolean; onClose: () => void; inline?: boolean }) {
   const [form, setForm] = useState<OfferTemplate>(FALLBACK);
   const [loading, setLoading] = useState(false);
@@ -116,11 +183,14 @@ export default function OfferLetterTemplateModal({ open, onClose, inline = false
     setImporting(true);
     try {
       if (file.size > 2 * 1024 * 1024) throw new Error("Please choose a file smaller than 2 MB.");
-      const text = await file.text();
       const extension = file.name.toLowerCase();
       const isJson = extension.endsWith(".json") || file.type === "application/json";
       const isCsv = extension.endsWith(".csv") || file.type === "text/csv";
+      const isHtml = extension.endsWith(".html") || extension.endsWith(".htm") || file.type === "text/html";
+      const isDocx = extension.endsWith(".docx") || file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+      const sourceType = isDocx ? "DOCX" : isHtml ? "HTML" : isJson ? "JSON" : isCsv ? "CSV" : extension.endsWith(".md") ? "MD" : "TXT";
       if (isJson) {
+        const text = await file.text();
         const parsed = JSON.parse(text) as Partial<OfferTemplate> & { template?: Partial<OfferTemplate> };
         const imported = parsed.template && typeof parsed.template === "object" ? parsed.template : parsed;
         const terms = Array.isArray(imported.terms) ? imported.terms.map(String).map((term) => term.trim()).filter(Boolean) : [];
@@ -129,16 +199,38 @@ export default function OfferLetterTemplateModal({ open, onClose, inline = false
           ...imported,
           terms: terms.length ? terms : FALLBACK.terms,
           primaryColor: typeof imported.primaryColor === "string" && /^#[0-9a-f]{6}$/i.test(imported.primaryColor) ? imported.primaryColor : FALLBACK.primaryColor,
+          sourceType,
+          sourceFileName: file.name,
+          status: "DRAFT",
         });
       } else if (isCsv) {
+        const text = await file.text();
         const imported = csvTemplate(text);
         setForm((current) => ({
           ...current,
           ...imported,
           terms: imported.terms?.length ? imported.terms : current.terms,
           primaryColor: imported.primaryColor && /^#[0-9a-f]{6}$/i.test(imported.primaryColor) ? imported.primaryColor : current.primaryColor,
+          sourceType,
+          sourceFileName: file.name,
+          status: "DRAFT",
+        }));
+      } else if (isDocx || isHtml) {
+        const raw = isDocx ? await docxToText(file) : await file.text();
+        const imported = templateFromText(isHtml ? htmlToText(raw) : raw);
+        setForm((current) => ({
+          ...current,
+          ...imported,
+          title: imported.title || current.title,
+          greeting: imported.greeting || current.greeting,
+          introduction: imported.introduction || current.introduction,
+          terms: imported.terms?.length ? imported.terms : current.terms,
+          sourceType,
+          sourceFileName: file.name,
+          status: "DRAFT",
         }));
       } else {
+        const text = await file.text();
         const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
         if (!lines.length) throw new Error("The selected file is empty.");
         const terms = lines.filter((line) => /^(?:[-*•]|\d+[.)])\s+/.test(line)).map((line) => line.replace(/^(?:[-*•]|\d+[.)])\s+/, "").trim()).filter(Boolean);
@@ -148,11 +240,14 @@ export default function OfferLetterTemplateModal({ open, onClose, inline = false
           title: body[0]?.slice(0, 120) || current.title,
           introduction: body.slice(1).join("\n\n") || text.trim(),
           terms: terms.length ? terms : current.terms,
+          sourceType,
+          sourceFileName: file.name,
+          status: "DRAFT",
         }));
       }
-      toast.success("Template content imported. Review it and save to use it in onboarding.");
-    } catch (error: any) {
-      toast.error(error?.message || "Could not import this template file.");
+      toast.success("Existing template imported. Review it and save to activate it for onboarding.");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Could not import this template file.");
     } finally {
       setImporting(false);
       if (importInputRef.current) importInputRef.current.value = "";
@@ -191,8 +286,9 @@ export default function OfferLetterTemplateModal({ open, onClose, inline = false
   </div>;
   const preview = <div className="rounded-xl border border-slate-200 bg-slate-100 p-3 shadow-inner"><div className="mb-2 flex items-center justify-between"><span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">A4 document preview</span><span className="rounded-full bg-white px-2 py-1 text-[10px] font-bold text-slate-500">{termPages.length} page{termPages.length === 1 ? "" : "s"}</span></div>{termPages.map((terms, index) => previewPage(terms, index))}</div>;
   const editor = <div className={`relative w-full ${inline ? "max-w-none" : "max-w-2xl"} rounded-3xl border border-slate-200 bg-white p-4 shadow-2xl sm:p-8`}>
-      <div className="flex flex-wrap items-start justify-between gap-4"><div><div className="flex items-center gap-2"><FilePenLine className="h-5 w-5 text-indigo-600" /><h2 className="text-lg font-bold text-slate-950">Offer & joining letter template</h2></div><p className="mt-1 text-xs text-slate-500">Company template used when HR creates and sends an offer letter.</p></div><div className="flex items-center gap-2"><input ref={importInputRef} type="file" accept=".json,.csv,.txt,.md,application/json,text/csv,text/plain,text/markdown" className="sr-only" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importTemplate(file); }} /><button type="button" onClick={() => importInputRef.current?.click()} disabled={loading || importing} className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100 disabled:opacity-60"><FileUp className="h-3.5 w-3.5" />{importing ? "Importing…" : "Import content"}</button><button type="button" onClick={onClose} className="rounded-xl px-2 py-2 text-sm font-semibold text-slate-400 hover:bg-slate-50 hover:text-slate-700">Close</button></div></div>
-      <p className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50/60 px-3 py-2 text-[11px] leading-5 text-indigo-800">Import JSON or CSV to fill every field, or TXT/MD to import the body and bullet terms. CSV supports one row with template columns or multiple <strong>field,value</strong> rows. Review the content, then select <strong>Save template</strong> to use it in onboarding.</p>
+      <div className="flex flex-wrap items-start justify-between gap-4"><div><div className="flex items-center gap-2"><FilePenLine className="h-5 w-5 text-indigo-600" /><h2 className="text-lg font-bold text-slate-950">Offer & joining letter template</h2></div><p className="mt-1 text-xs text-slate-500">Company template used when HR creates and sends an offer letter.</p></div><div className="flex items-center gap-2"><input ref={importInputRef} type="file" accept=".json,.csv,.txt,.md,.html,.htm,.docx,application/json,text/csv,text/plain,text/markdown,text/html,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="sr-only" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importTemplate(file); }} /><button type="button" onClick={() => importInputRef.current?.click()} disabled={loading || importing} className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100 disabled:opacity-60"><FileUp className="h-3.5 w-3.5" />{importing ? "Importing…" : "Import existing template"}</button><button type="button" onClick={onClose} className="rounded-xl px-2 py-2 text-sm font-semibold text-slate-400 hover:bg-slate-50 hover:text-slate-700">Close</button></div></div>
+      <p className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50/60 px-3 py-2 text-[11px] leading-5 text-indigo-800">Import DOCX, HTML, JSON, CSV, TXT or Markdown from the company. DOCX/HTML text and bullet terms are mapped into the editor; JSON/CSV can fill every field. Review the content, then select <strong>Save template</strong> to activate a new version for onboarding.</p>
+      {(form.sourceFileName || form.version) && <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-slate-500"><span className="rounded-full bg-slate-100 px-2.5 py-1">Source: {form.sourceFileName || "Built-in editor"}</span><span className="rounded-full bg-slate-100 px-2.5 py-1">Version {form.version || 1}</span><span className={`rounded-full px-2.5 py-1 ${form.status === "DRAFT" ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>{form.status === "DRAFT" ? "Draft · save to activate" : "Active"}</span></div>}
       <p className="mt-2 text-[11px] leading-5 text-slate-500">Available employee fields: <code>{"{{candidateName}}"}</code>, <code>{"{{employeeCode}}"}</code>, <code>{"{{designation}}"}</code>, <code>{"{{department}}"}</code>, <code>{"{{monthlyCtc}}"}</code>, <code>{"{{annualCtc}}"}</code>, <code>{"{{joiningDate}}"}</code>, <code>{"{{branch}}"}</code>, <code>{"{{email}}"}</code>, <code>{"{{phone}}"}</code>, <code>{"{{probationMonths}}"}</code>, <code>{"{{noticePeriodDays}}"}</code>, and <code>{"{{workingHours}}"}</code>.</p>
       {inline && <div className="mb-4 rounded-xl border border-indigo-100 bg-indigo-50/60 px-3 py-2 text-xs font-semibold text-indigo-800 lg:hidden">A4 preview is shown beside the editor on larger screens.</div>}
       {inline && <div className="absolute right-6 top-44 hidden w-[360px] lg:block"><div className="mb-2 flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-wider text-slate-500">Live A4 preview</p><span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">Auto-updating</span></div>{preview}</div>}

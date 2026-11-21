@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { policyApi } from "@/lib/api";
 import { unwrapItem } from "@/lib/utils";
-import { SlidersHorizontal, Loader2, CheckCircle2, Globe, Building2, Check, Pencil, Trash2 } from "lucide-react";
+import { SlidersHorizontal, Loader2, CheckCircle2, Globe, Building2, Check, Pencil, Trash2, CalendarDays, MapPin, Smartphone, WalletCards, Save } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
 import WeeklyOffCard from "./WeeklyOffCard";
@@ -38,9 +38,23 @@ const DEFAULTS = {
   halfDayThresholdMinutes: 240,
   maxLatesBeforeDeduction: 3,
   lateDeductionPercent: 0.25,
+  breakDeductionEnabled: false,
+  lunchDeductionEnabled: false,
+  breakGraceMinutes: 0,
+  lunchGraceMinutes: 0,
+  pauseDeductionSalaryBasis: "BASE_SALARY",
+  breakDeductionMethod: "HOURLY_RATE",
+  lunchDeductionMethod: "HOURLY_RATE",
+  breakFixedPerMinute: 0,
+  lunchFixedPerMinute: 0,
+  maxPauseDeductionPerDay: 0,
   allowWfh: true,
   requireOtApproval: false,
   geofenceStrict: false,
+  deviceVerificationEnabled: true,
+  deviceConflictAlertEnabled: true,
+  deviceConflictAutoBlock: false,
+  allowSharedKioskDevice: false,
   shootRecoveryEnabled: true,
   shootRecoveryThresholdMinutes: 720,
   shootTravelOtEnabled: true,
@@ -48,6 +62,20 @@ const DEFAULTS = {
   shootTravelOtMultiplier: 0.5,
   shootOtMultiplier: 1.5,
   shootOtSalaryBasis: "BASE_SALARY",
+};
+
+const PANEL = "rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_14px_32px_-24px_rgba(15,23,42,0.22)]";
+
+type LateRule = { id: string; lateDays: number; lopDays: number; graceMinutes: number; isActive: boolean; remarks?: string | null };
+type PolicyRecord = Partial<typeof DEFAULTS> & { isDefault?: boolean; weeklyOffDays?: string | number };
+
+const errorMessage = (error: unknown, fallback: string) => {
+  if (error && typeof error === "object") {
+    const value = error as { message?: unknown; response?: { data?: { message?: unknown } } };
+    if (typeof value.response?.data?.message === "string") return value.response.data.message;
+    if (typeof value.message === "string") return value.message;
+  }
+  return fallback;
 };
 
 export default function PolicyView() {
@@ -58,7 +86,7 @@ export default function PolicyView() {
   // The company weekly off saves on its own (it updates every shift), not with the main "Save policy" button.
   const [weeklyOff, setWeeklyOff] = useState("0");
   const [customCycle, setCustomCycle] = useState(false);
-  const [lateRules, setLateRules] = useState<any[]>([]);
+  const [lateRules, setLateRules] = useState<LateRule[]>([]);
   const [lateRuleForm, setLateRuleForm] = useState({ lateDays: "", lopDays: "1", graceMinutes: "15", isActive: true, remarks: "" });
   const [editingLateRuleId, setEditingLateRuleId] = useState<string | null>(null);
   const [lateRulesLoading, setLateRulesLoading] = useState(true);
@@ -68,13 +96,15 @@ export default function PolicyView() {
     try {
       const res = await policyApi.listLateComingLop();
       setLateRules(res?.rules || res?.data || []);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to load late-coming rules");
+    } catch (err: unknown) {
+      toast.error(errorMessage(err, "Failed to load late-coming rules"));
     } finally {
       setLateRulesLoading(false);
     }
   };
 
+  // This effect intentionally loads the company rules when the policy screen opens.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void loadLateRules(); }, []);
 
   const resetLateRuleForm = () => {
@@ -97,14 +127,14 @@ export default function PolicyView() {
       toast.success(editingLateRuleId ? "Late-coming rule updated" : "Late-coming rule added");
       resetLateRuleForm();
       await loadLateRules();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || err.message || "Could not save rule");
+    } catch (err: unknown) {
+      toast.error(errorMessage(err, "Could not save rule"));
     } finally {
       setLateRuleSaving(false);
     }
   };
 
-  const editLateRule = (rule: any) => {
+  const editLateRule = (rule: LateRule) => {
     setEditingLateRuleId(rule.id);
     setLateRuleForm({ lateDays: String(rule.lateDays), lopDays: String(rule.lopDays), graceMinutes: String(rule.graceMinutes ?? 0), isActive: Boolean(rule.isActive), remarks: rule.remarks || "" });
   };
@@ -112,7 +142,7 @@ export default function PolicyView() {
   const deleteLateRule = async (id: string) => {
     if (!window.confirm("Delete this late-coming LOP rule?")) return;
     try { await policyApi.deleteLateComingLop(id); toast.success("Late-coming rule deleted"); if (editingLateRuleId === id) resetLateRuleForm(); await loadLateRules(); }
-    catch (err: any) { toast.error(err.response?.data?.message || "Could not delete rule"); }
+    catch (err: unknown) { toast.error(errorMessage(err, "Could not delete rule")); }
   };
 
   const matchedPreset = CYCLE_PRESETS.findIndex(
@@ -146,7 +176,7 @@ export default function PolicyView() {
     (async () => {
       try {
         const res = await policyApi.get();
-        const policy = unwrapItem<any>(res, ["policy"]) || res?.policy;
+        const policy = unwrapItem<PolicyRecord>(res, ["policy"]) || res?.policy;
         if (policy) {
           setForm({
             workingDaysPerMonth: Number(policy.workingDaysPerMonth ?? DEFAULTS.workingDaysPerMonth),
@@ -159,9 +189,23 @@ export default function PolicyView() {
             halfDayThresholdMinutes: Number(policy.halfDayThresholdMinutes ?? DEFAULTS.halfDayThresholdMinutes),
             maxLatesBeforeDeduction: Number(policy.maxLatesBeforeDeduction ?? DEFAULTS.maxLatesBeforeDeduction),
             lateDeductionPercent: Number(policy.lateDeductionPercent ?? DEFAULTS.lateDeductionPercent),
+            breakDeductionEnabled: Boolean(policy.breakDeductionEnabled ?? DEFAULTS.breakDeductionEnabled),
+            lunchDeductionEnabled: Boolean(policy.lunchDeductionEnabled ?? DEFAULTS.lunchDeductionEnabled),
+            breakGraceMinutes: Number(policy.breakGraceMinutes ?? DEFAULTS.breakGraceMinutes),
+            lunchGraceMinutes: Number(policy.lunchGraceMinutes ?? DEFAULTS.lunchGraceMinutes),
+            pauseDeductionSalaryBasis: String(policy.pauseDeductionSalaryBasis ?? DEFAULTS.pauseDeductionSalaryBasis),
+            breakDeductionMethod: String(policy.breakDeductionMethod ?? DEFAULTS.breakDeductionMethod),
+            lunchDeductionMethod: String(policy.lunchDeductionMethod ?? DEFAULTS.lunchDeductionMethod),
+            breakFixedPerMinute: Number(policy.breakFixedPerMinute ?? DEFAULTS.breakFixedPerMinute),
+            lunchFixedPerMinute: Number(policy.lunchFixedPerMinute ?? DEFAULTS.lunchFixedPerMinute),
+            maxPauseDeductionPerDay: Number(policy.maxPauseDeductionPerDay ?? DEFAULTS.maxPauseDeductionPerDay),
             allowWfh: Boolean(policy.allowWfh),
             requireOtApproval: Boolean(policy.requireOtApproval),
             geofenceStrict: Boolean(policy.geofenceStrict),
+            deviceVerificationEnabled: Boolean(policy.deviceVerificationEnabled ?? DEFAULTS.deviceVerificationEnabled),
+            deviceConflictAlertEnabled: Boolean(policy.deviceConflictAlertEnabled ?? DEFAULTS.deviceConflictAlertEnabled),
+            deviceConflictAutoBlock: Boolean(policy.deviceConflictAutoBlock ?? DEFAULTS.deviceConflictAutoBlock),
+            allowSharedKioskDevice: Boolean(policy.allowSharedKioskDevice ?? DEFAULTS.allowSharedKioskDevice),
             shootRecoveryEnabled: Boolean(policy.shootRecoveryEnabled ?? DEFAULTS.shootRecoveryEnabled),
             shootRecoveryThresholdMinutes: Number(policy.shootRecoveryThresholdMinutes ?? DEFAULTS.shootRecoveryThresholdMinutes),
             shootTravelOtEnabled: Boolean(policy.shootTravelOtEnabled ?? DEFAULTS.shootTravelOtEnabled),
@@ -176,8 +220,8 @@ export default function PolicyView() {
           setWeeklyOff(String(policy.weeklyOffDays ?? "0"));
           setIsDefault(Boolean(policy.isDefault));
         }
-      } catch (err: any) {
-        toast.error(err.response?.data?.message || "Failed to load policy");
+      } catch (err: unknown) {
+        toast.error(errorMessage(err, "Failed to load policy"));
       } finally {
         setLoading(false);
       }
@@ -205,9 +249,9 @@ export default function PolicyView() {
           ? "Employees must be inside their branch radius to punch in. Work From Home, Client Visit and Travel still work from anywhere."
           : "All employees can now punch in from any location.",
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       setForm((prev) => ({ ...prev, geofenceStrict: previous }));
-      toast.error(err.response?.data?.message || err.message || "Couldn't update the punch-in rule. Please try again.");
+      toast.error(errorMessage(err, "Couldn't update the punch-in rule. Please try again."));
     } finally {
       setSavingLocation(false);
     }
@@ -224,8 +268,8 @@ export default function PolicyView() {
       } else {
         toast.error(res?.message || "Save failed");
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || err.message || "Save failed");
+    } catch (err: unknown) {
+      toast.error(errorMessage(err, "Save failed"));
     } finally {
       setSaving(false);
     }
@@ -241,22 +285,32 @@ export default function PolicyView() {
   }
 
   return (
-    <form onSubmit={handleSave} className="space-y-6 max-w-3xl">
+    <form onSubmit={handleSave} className="mx-auto w-full max-w-[1240px] space-y-5 pb-24">
       <div>
         <PageHeader
           icon={SlidersHorizontal}
           title="Attendance policy"
-          description="Rules used at punch time and during payroll: working days, half-day cut-off, late deduction, WFH, OT, geofence."
+          badge={isDefault ? "Platform defaults" : "Organization policy"}
+          description="Control attendance, payroll, leave, device security and break deductions from one policy workspace."
+          actions={
+            <button type="submit" disabled={saving} className="inline-flex h-10 items-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-bold text-white shadow-md shadow-indigo-600/20 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {saving ? "Saving..." : "Save policy"}
+            </button>
+          }
         />
         {isDefault && (
-          <p className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-            These are platform defaults. Save once to lock them for this organization.
-          </p>
+          <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900"><span className="mt-0.5 font-bold">!</span><p><strong>Platform defaults are active.</strong> Save this policy once to create the organization&apos;s own policy settings.</p></div>
         )}
       </div>
 
-      <section className="grid grid-cols-1 xl:grid-cols-[minmax(260px,0.34fr)_minmax(0,1fr)] gap-5 items-start">
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs">
+      <PolicyOverview form={form} weeklyOff={weeklyOff} />
+      <nav className={`${PANEL} flex gap-2 overflow-x-auto p-2`} aria-label="Policy sections">
+        {[['late-coming-policy', 'Late coming'], ['weekly-off-policy', 'Weekly off'], ['checkin-location-heading', 'Punch location'], ['device-security-heading', 'Device security'], ['payroll-cycle-policy', 'Payroll'], ['leave-policy', 'Leave & permissions'], ['pause-deduction-heading', 'Break & lunch'], ['shoot-policy-heading', 'Shoot & travel']].map(([id, title]) => <a key={id} href={`#${id}`} className="whitespace-nowrap rounded-xl px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-indigo-50 hover:text-indigo-700">{title}</a>)}
+      </nav>
+
+      <section id="late-coming-policy" className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(260px,0.34fr)_minmax(0,1fr)] items-start">
+        <div className={PANEL}>
           <h2 className="text-lg font-semibold text-slate-950">Company Late-coming LOP Policy</h2>
           <p className="mt-1 text-xs text-slate-500">Configure the grace window and the salary impact for each completed block of late arrivals in the payroll cycle.</p>
           <div className="mt-4 rounded-2xl border border-indigo-100 bg-indigo-50/70 p-3">
@@ -277,15 +331,15 @@ export default function PolicyView() {
             <div className="flex gap-3 pt-1"><button disabled={lateRuleSaving} type="button" onClick={() => void saveLateRule()} className="inline-flex items-center gap-2 rounded-xl bg-cyan-500 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-600 disabled:opacity-60"><CheckCircle2 className="h-4 w-4" />{lateRuleSaving ? "Saving..." : editingLateRuleId ? "Update Rule" : "Save Policy"}</button>{editingLateRuleId && <button type="button" onClick={resetLateRuleForm} className="rounded-xl bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-600">Cancel</button>}</div>
           </div>
         </div>
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs overflow-x-auto">
+        <div className={`${PANEL} overflow-x-auto`}>
           <h2 className="text-lg font-semibold text-slate-950">Late-coming LOP Rules</h2>
           {lateRulesLoading ? <div className="py-12 text-center text-sm text-slate-400">Loading rules...</div> : lateRules.length === 0 ? <div className="py-12 text-center text-sm text-slate-400">No rules yet. Add the first late-coming rule.</div> : <table className="mt-6 w-full min-w-[720px] text-left"><thead><tr className="text-xs font-semibold text-slate-400"><th className="pb-3">S.No</th><th className="pb-3">Late Days</th><th className="pb-3">LOP Days</th><th className="pb-3">Grace Time</th><th className="pb-3">Status</th><th className="pb-3">Remarks</th><th className="pb-3 text-right">Action</th></tr></thead><tbody>{lateRules.map((rule, index) => <tr key={rule.id} className="border-t border-dashed border-slate-200 text-sm text-slate-800"><td className="py-4">{index + 1}</td><td className="py-4 font-semibold">{rule.lateDays} late days</td><td className="py-4">{rule.lopDays} LOP day(s)</td><td className="py-4 text-cyan-600">◷ {rule.graceMinutes} mins</td><td className="py-4"><span className={`rounded-lg px-3 py-2 text-xs font-semibold ${rule.isActive ? "bg-sky-50 text-sky-600" : "bg-slate-100 text-slate-500"}`}>{rule.isActive ? "Active" : "Inactive"}</span></td><td className="py-4 max-w-[180px] truncate text-slate-500">{rule.remarks || "-"}</td><td className="py-4"><div className="flex justify-end gap-2"><button type="button" title="Edit rule" onClick={() => editLateRule(rule)} className="rounded-lg bg-cyan-50 p-2 text-cyan-600 hover:bg-cyan-100"><Pencil className="h-4 w-4" /></button><button type="button" title="Delete rule" onClick={() => void deleteLateRule(rule.id)} className="rounded-lg bg-rose-50 p-2 text-rose-500 hover:bg-rose-100"><Trash2 className="h-4 w-4" /></button></div></td></tr>)}</tbody></table>}
         </div>
       </section>
 
-      <WeeklyOffCard saved={weeklyOff} onSaved={(days) => { setWeeklyOff(days); setIsDefault(false); }} />
+      <section id="weekly-off-policy"><WeeklyOffCard saved={weeklyOff} onSaved={(days) => { setWeeklyOff(days); setIsDefault(false); }} /></section>
 
-      <section className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4 shadow-xs" aria-labelledby="checkin-location-heading">
+      <section id="punch-location-policy" className={PANEL + " space-y-4"} aria-labelledby="checkin-location-heading">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 id="checkin-location-heading" className="text-sm font-semibold text-slate-900">Where can employees punch in?</h2>
@@ -340,7 +394,24 @@ export default function PolicyView() {
         )}
       </section>
 
-      <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-5 shadow-xs">
+      <section id="device-security-policy" className={PANEL + " space-y-4"} aria-labelledby="device-security-heading">
+        <div>
+          <h2 id="device-security-heading" className="text-sm font-semibold text-slate-900">Device security & duplicate punch alerts</h2>
+          <p className="text-xs text-slate-500">Register the employee&apos;s device and show a review alert when the same personal device is used by another employee.</p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {[
+            ["deviceVerificationEnabled", "Enable device verification", "Record device name, type and unique ID with every punch."],
+            ["requireTrustedDevice", "Require HR-approved device", "Unapproved devices cannot punch in."],
+            ["deviceConflictAlertEnabled", "Alert HR on duplicate device", "Create a HIGH-risk audit event for another employee using the device."],
+            ["deviceConflictAutoBlock", "Block duplicate device automatically", "Reject the punch instead of waiting for HR review."],
+            ["allowSharedKioskDevice", "Allow shared office kiosk devices", "Use this only for an approved shared desktop/tablet."],
+          ].map(([key, title, body]) => <label key={key} className="flex gap-3 rounded-2xl border border-slate-200 p-4 hover:bg-slate-50"><input type="checkbox" checked={Boolean(form[key as keyof typeof form])} onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.checked }))} className="mt-1" /><span><span className="block text-sm font-semibold text-slate-900">{title}</span><span className="mt-1 block text-xs leading-5 text-slate-500">{body}</span></span></label>)}
+        </div>
+        <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">Recommended: keep automatic blocking off initially. HR can review the audit event and mark it approved, rejected, or false positive.</p>
+      </section>
+
+      <div id="payroll-cycle-policy" className={PANEL + " space-y-5"}>
         <div>
           <h2 className="text-sm font-semibold text-slate-900">Payroll cycle</h2>
           <p className="text-xs text-slate-500">
@@ -411,7 +482,7 @@ export default function PolicyView() {
         </p>
       </div>
 
-      <div className="bg-white rounded-3xl border border-slate-200 p-6 grid grid-cols-1 sm:grid-cols-2 gap-4 shadow-xs">
+      <div id="leave-policy" className={PANEL + " grid grid-cols-1 gap-4 sm:grid-cols-2"}>
         <label className="space-y-1.5">
           <span className="text-xs font-semibold text-slate-600 uppercase">Working days / month</span>
           <input
@@ -496,7 +567,7 @@ export default function PolicyView() {
         </div>
         <label className="flex items-start gap-2 text-sm text-slate-800 sm:col-span-2">
           <input type="checkbox" checked={form.paidLeaveCarryForward} onChange={(e) => setForm((p) => ({ ...p, paidLeaveCarryForward: e.target.checked }))} className="mt-0.5" />
-          <span><span className="font-semibold">Carry forward unused paid leave</span><span className="mt-1 block text-xs text-slate-400">When enabled, unused paid leave rolls into the next month. When disabled, only the current month's allowance can be used.</span></span>
+          <span><span className="font-semibold">Carry forward unused paid leave</span><span className="mt-1 block text-xs text-slate-400">When enabled, unused paid leave rolls into the next month. When disabled, only the current month&apos;s allowance can be used.</span></span>
         </label>
         <label className="flex items-center gap-2 text-sm text-slate-800 sm:col-span-2">
           <input
@@ -508,7 +579,34 @@ export default function PolicyView() {
         </label>
       </div>
 
-      <section className="rounded-3xl border border-violet-200 bg-gradient-to-br from-violet-50 to-white p-6 shadow-xs" aria-labelledby="shoot-policy-heading">
+      <section className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_14px_32px_-24px_rgba(15,23,42,0.22)]" aria-labelledby="pause-deduction-heading">
+        <div className="flex items-start gap-3">
+          <div className="rounded-2xl bg-amber-500 p-2.5 text-white"><CheckCircle2 className="h-5 w-5" /></div>
+          <div>
+            <h2 id="pause-deduction-heading" className="text-lg font-semibold text-slate-950">Extra break & lunch salary deduction</h2>
+            <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-600">The shift allowance remains free. Only completed attendance records exceeding the shift allowance plus the grace period are deducted during payroll.</p>
+          </div>
+        </div>
+        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-white p-4">
+            <input type="checkbox" checked={form.breakDeductionEnabled} onChange={(e) => setForm((p) => ({ ...p, breakDeductionEnabled: e.target.checked }))} className="mt-1" />
+            <span><span className="block text-sm font-semibold text-slate-900">Deduct extra short break</span><span className="mt-1 block text-xs leading-5 text-slate-500">Uses each employee&apos;s shift break allowance.</span></span>
+          </label>
+          <label className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-white p-4">
+            <input type="checkbox" checked={form.lunchDeductionEnabled} onChange={(e) => setForm((p) => ({ ...p, lunchDeductionEnabled: e.target.checked }))} className="mt-1" />
+            <span><span className="block text-sm font-semibold text-slate-900">Deduct extra lunch</span><span className="mt-1 block text-xs leading-5 text-slate-500">Uses each employee&apos;s shift lunch allowance.</span></span>
+          </label>
+          <label className="space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Salary basis</span><Select value={form.pauseDeductionSalaryBasis} onChange={(e) => setForm((p) => ({ ...p, pauseDeductionSalaryBasis: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"><option value="BASE_SALARY">Base salary</option><option value="GROSS_SALARY">Gross salary excluding overtime</option><option value="MONTHLY_CTC">Monthly CTC</option></Select><span className="text-xs text-slate-500">Hourly rate = selected monthly amount ÷ payroll day basis ÷ 8 hours.</span></label>
+          <label className="space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Maximum pause deduction / day</span><input type="number" min={0} step="0.01" value={form.maxPauseDeductionPerDay} onChange={(e) => setNum("maxPauseDeductionPerDay", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /><span className="text-xs text-slate-500">0 means no cap. A cap protects employees from an accidental long pause.</span></label>
+          <label className="space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Break grace (minutes)</span><input type="number" min={0} max={1440} value={form.breakGraceMinutes} onChange={(e) => setNum("breakGraceMinutes", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /></label>
+          <label className="space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Lunch grace (minutes)</span><input type="number" min={0} max={1440} value={form.lunchGraceMinutes} onChange={(e) => setNum("lunchGraceMinutes", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /></label>
+          <label className="space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Break calculation</span><Select value={form.breakDeductionMethod} onChange={(e) => setForm((p) => ({ ...p, breakDeductionMethod: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"><option value="HOURLY_RATE">Salary-based hourly rate</option><option value="FIXED_PER_MINUTE">Fixed amount per extra minute</option></Select>{form.breakDeductionMethod === "FIXED_PER_MINUTE" && <input type="number" min={0} step="0.01" value={form.breakFixedPerMinute} onChange={(e) => setNum("breakFixedPerMinute", e.target.value)} placeholder="Amount per minute" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />}</label>
+          <label className="space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Lunch calculation</span><Select value={form.lunchDeductionMethod} onChange={(e) => setForm((p) => ({ ...p, lunchDeductionMethod: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"><option value="HOURLY_RATE">Salary-based hourly rate</option><option value="FIXED_PER_MINUTE">Fixed amount per extra minute</option></Select>{form.lunchDeductionMethod === "FIXED_PER_MINUTE" && <input type="number" min={0} step="0.01" value={form.lunchFixedPerMinute} onChange={(e) => setNum("lunchFixedPerMinute", e.target.value)} placeholder="Amount per minute" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />}</label>
+        </div>
+        <div className="mt-4 rounded-2xl border border-amber-200 bg-white/80 p-4 text-xs leading-5 text-amber-950"><strong>Payroll rule:</strong> no deduction is created while an attendance session is still open. The final amount appears in payroll preview, payslip deductions and the employee&apos;s daily audit.</div>
+      </section>
+
+      <section className="rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 to-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_14px_32px_-24px_rgba(15,23,42,0.22)]" aria-labelledby="shoot-policy-heading">
         <div className="flex items-start gap-3">
           <div className="rounded-2xl bg-violet-600 p-2.5 text-white"><CheckCircle2 className="h-5 w-5" /></div>
           <div>
@@ -527,14 +625,22 @@ export default function PolicyView() {
         <div className="mt-5 rounded-2xl border border-violet-200 bg-white/80 p-4 text-xs leading-5 text-violet-950"><strong>Employee-friendly explanation:</strong> Total travel time at or above the configured threshold creates travel OT using the travel multiplier. Once the settlement is approved, that travel OT moves directly into payroll; approved food, room and transport claims move as reimbursement. Recovery Leave remains a separate eligibility option.</div>
       </section>
 
-      <button
-        type="submit"
-        disabled={saving}
-        className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-50"
-      >
-        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-        Save policy
-      </button>
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-8px_24px_-18px_rgba(15,23,42,0.35)] backdrop-blur sm:px-8"><div className="mx-auto flex w-full max-w-[1240px] items-center justify-between gap-3"><p className="hidden text-xs text-slate-500 sm:block">Changes apply to attendance and payroll after saving.</p><button type="submit" disabled={saving} className="ml-auto inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-indigo-600/20 transition hover:bg-indigo-700 disabled:opacity-50">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} {saving ? "Saving..." : "Save policy"}</button></div></div>
     </form>
   );
+}
+
+function PolicyOverview({ form, weeklyOff }: { form: typeof DEFAULTS; weeklyOff: string }) {
+  const location = form.geofenceStrict ? "Office only" : "Anywhere";
+  const device = form.deviceConflictAlertEnabled ? "Duplicate alerts on" : "Duplicate alerts off";
+  const pause = form.breakDeductionEnabled || form.lunchDeductionEnabled ? "Extra pause deductions on" : "Pause deductions off";
+  const cycle = `${form.payrollCycleStartDay} → ${form.payrollCycleEndDay === 31 ? "last day" : form.payrollCycleEndDay}`;
+  const weeklyOffLabel = weeklyOff === "0" ? "Sunday off" : `${weeklyOff.split(",").filter(Boolean).length} weekly off day(s)`;
+  const cards = [
+    { icon: CalendarDays, label: "Payroll cycle", value: cycle, hint: `${form.payrollDayBasis.replace(/_/g, " ")} · ${weeklyOffLabel}`, tone: "indigo" },
+    { icon: MapPin, label: "Punch location", value: location, hint: form.allowWfh ? "WFH is allowed" : "WFH is off", tone: "emerald" },
+    { icon: Smartphone, label: "Device security", value: device, hint: form.deviceConflictAutoBlock ? "Auto-block enabled" : "HR review workflow", tone: "violet" },
+    { icon: WalletCards, label: "Break & lunch", value: pause, hint: form.pauseDeductionSalaryBasis.replace(/_/g, " "), tone: "amber" },
+  ] as const;
+  return <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Policy summary">{cards.map(({ icon: Icon, label, value, hint, tone }) => <div key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_14px_32px_-24px_rgba(15,23,42,0.22)]"><div className="flex items-center gap-3"><span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${tone === "indigo" ? "bg-indigo-50 text-indigo-600" : tone === "emerald" ? "bg-emerald-50 text-emerald-600" : tone === "violet" ? "bg-violet-50 text-violet-600" : "bg-amber-50 text-amber-700"}`}><Icon className="h-5 w-5" /></span><div className="min-w-0"><p className="truncate text-[11px] font-bold uppercase tracking-wider text-slate-400">{label}</p><p className="truncate text-sm font-bold text-slate-900">{value}</p><p className="truncate text-[11px] text-slate-500">{hint}</p></div></div></div>)}</section>;
 }

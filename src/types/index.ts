@@ -129,6 +129,8 @@ export interface Employee {
   flexiblePunching?: boolean;
   ctc?: number;
   gender?: "MALE" | "FEMALE" | null;
+  bloodGroup?: "A_POSITIVE" | "A_NEGATIVE" | "B_POSITIVE" | "B_NEGATIVE" | "AB_POSITIVE" | "AB_NEGATIVE" | "O_POSITIVE" | "O_NEGATIVE" | null;
+  maritalStatus?: "MARRIED" | "UNMARRIED" | "DIVORCED" | "WIDOWED" | null;
   dateOfBirth?: string | null;
   dateOfJoining?: string | null;
   employmentType?: "FULL_TIME" | "PART_TIME" | "CONTRACT" | "INTERN" | null;
@@ -315,6 +317,7 @@ export interface LeaveBalance {
   leaveTypeId: string;
   totalDays: number;
   usedDays: number;
+  pendingDays?: number;
   remainingDays: number;
   monthlyPaidLeave?: {
     monthlyAllowance: number;
@@ -416,6 +419,9 @@ export interface Payslip {
   unpaidLeaveDeduction?: number;
   lopDeduction: number;
   lateDeduction?: number;
+  breakDeduction?: number;
+  lunchDeduction?: number;
+  pauseDeduction?: number;
   permissionDeduction?: number;
   pfDeduction?: number;
   esiDeduction?: number;

@@ -15,6 +15,8 @@ export interface EmployeeProfileValues {
   personalEmail: string;
   phone: string;
   gender: string;
+  bloodGroup: string;
+  maritalStatus: string;
   dateOfBirth: string;
   dateOfJoining: string;
   designation: string;
@@ -43,6 +45,8 @@ export const EMPTY_PROFILE: EmployeeProfileValues = {
   personalEmail: "",
   phone: "",
   gender: "",
+  bloodGroup: "",
+  maritalStatus: "",
   dateOfBirth: "",
   dateOfJoining: "",
   designation: "",
@@ -67,6 +71,24 @@ export const EMPLOYMENT_TYPES = [
   { value: "PART_TIME", label: "Part time" },
   { value: "CONTRACT", label: "Contract" },
   { value: "INTERN", label: "Intern" },
+];
+
+export const BLOOD_GROUPS = [
+  { value: "A_POSITIVE", label: "A+" },
+  { value: "A_NEGATIVE", label: "A-" },
+  { value: "B_POSITIVE", label: "B+" },
+  { value: "B_NEGATIVE", label: "B-" },
+  { value: "AB_POSITIVE", label: "AB+" },
+  { value: "AB_NEGATIVE", label: "AB-" },
+  { value: "O_POSITIVE", label: "O+" },
+  { value: "O_NEGATIVE", label: "O-" },
+];
+
+export const MARITAL_STATUSES = [
+  { value: "MARRIED", label: "Married" },
+  { value: "UNMARRIED", label: "Unmarried" },
+  { value: "DIVORCED", label: "Divorced" },
+  { value: "WIDOWED", label: "Widowed" },
 ];
 
 const REQUIRED: [keyof EmployeeProfileValues, string][] = [
@@ -163,6 +185,8 @@ export function toProfilePayload(values: EmployeeProfileValues) {
     personalEmail: values.personalEmail.trim().toLowerCase(),
     phone: toE164India(sanitizeIndianPhone(values.phone)),
     gender: values.gender,
+    bloodGroup: values.bloodGroup,
+    maritalStatus: values.maritalStatus,
     dateOfBirth: values.dateOfBirth,
     dateOfJoining: values.dateOfJoining,
     designation: values.designation.trim(),

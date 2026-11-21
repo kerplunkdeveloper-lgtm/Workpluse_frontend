@@ -40,8 +40,7 @@ for (const m of cfg.moves) {
     if (own.has(n) || f === m.to.replace(/\.tsx?$/, "")) continue;
     if (usesName(body, n)) extra.push([n, f]);
   }
-  // names that stay behind in the original file and are used here would need moving too
-  for (const [n, s] of top) {
+for (const [n, s] of top) {
     if (location.has(n) || isDefault(s)) continue;
     if (usesName(body, n)) console.warn(`WARNING: ${m.to} uses ${n}, which stays in ${path.basename(cfg.file)}`);
   }
@@ -54,7 +53,6 @@ for (const m of cfg.moves) {
   m.names.forEach((n) => removed.add(n));
 }
 
-// rebuild the original: drop moved statements, import what is still used
 let out = "";
 let cursor = 0;
 for (const s of sf.statements) {
@@ -75,3 +73,4 @@ out = out.slice(0, lastImport) + "\n" + importLines + out.slice(lastImport);
 out = out.replace(/\n{4,}/g, "\n\n\n");
 fs.writeFileSync(cfg.file, out.replace(/\n/g, crlf ? "\r\n" : "\n"));
 console.log("wrote", written.join(", "), "| original now", out.split("\n").length, "lines");
+

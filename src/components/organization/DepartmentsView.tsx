@@ -165,6 +165,9 @@ export default function DepartmentsView() {
     try {
       const res = await departmentsApi.remove(deleteTarget.id);
       if (res?.success !== false) {
+        // Remove it immediately so the card cannot remain visible while the
+        // fresh list request completes (or if another request is in flight).
+        setDepartments((current) => current.filter((department) => department.id !== deleteTarget.id));
         removeStoredDepartmentStyle(deleteTarget.id);
         removeStoredDepartmentStyle(deleteTarget.name.toLowerCase());
         toast.success(`${deleteTarget.name} deleted`);

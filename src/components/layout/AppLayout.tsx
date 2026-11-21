@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import Brand from "@/components/ui/Brand";
 import { useAttendance } from "@/context/AttendanceContext";
-import { Settings, Bell, LogOut, ChevronRight, ChevronDown, ShieldCheck, CheckCircle2, MapPin, Coffee, Utensils, Menu, X, FileCheck2, Search, MessageSquare, HelpCircle, ChevronsLeft, ChevronsRight, Command, Home, Megaphone, Loader2, Trash2 } from "lucide-react";
+import { Settings, Bell, LogOut, ChevronRight, ChevronDown, ShieldCheck, CheckCircle2, MapPin, Coffee, Utensils, Pause, Play, Menu, X, FileCheck2, Search, MessageSquare, HelpCircle, ChevronsLeft, ChevronsRight, Command, Home, Megaphone, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { employeesApi, notificationsApi, orgApi } from "@/lib/api";
@@ -27,6 +27,8 @@ import { playNotificationSound, unlockNotificationSound } from "@/lib/notificati
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const navLocation = `${pathname || ""}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
   const router = useRouter();
   const { user, role, logout } = useAuth();
   const isPlatformOwner = role === "SUPER_ADMIN";
@@ -175,7 +177,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Section open state synchronization
   useEffect(() => {
     const activeId = NAV_SECTIONS.find((section) =>
-      section.items.some((item) => isNavActive(pathname, item.href))
+      section.items.some((item) => isNavActive(navLocation, item.href))
     )?.id;
     let next = ["my-work"];
     try {
@@ -189,7 +191,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (activeId && !next.includes(activeId)) next = [...next, activeId];
     setOpenSections(next);
     setSidebarCollapsed(localStorage.getItem("wp-sidebar-collapsed") === "1");
-  }, [pathname]);
+  }, [navLocation]);
 
   // Register this browser for server push so notifications still arrive when
   // the dashboard tab is closed. Permission denial is intentionally silent.
@@ -325,7 +327,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => { if (role === "MANAGER" || role === "HR" || role === "EMPLOYEE") orgApi.get().then((res) => { setHrAccess(res?.data?.hrAccess || null); setRoleAccess(res?.data?.roleAccess || null); }).catch(() => { setHrAccess(null); setRoleAccess(null); }); else { setHrAccess(null); setRoleAccess(null); } }, [role]);
-  const hrAreaForHref = (href: string) => { if (href.startsWith("/dashboard") || href.startsWith("/profile")) return "DASHBOARD"; if (href.startsWith("/attendance") || href.startsWith("/leaves") || href.startsWith("/approvals")) return "ATTENDANCE"; if (href.startsWith("/employees")) return "EMPLOYEES"; if (href.startsWith("/onboarding") || href.startsWith("/offboarding")) return "ONBOARDING"; if (href.startsWith("/payroll") || href.startsWith("/statutory") || href.startsWith("/loans") || href.startsWith("/expenses") || href.startsWith("/overtime")) return "PAYROLL"; if (href.startsWith("/reports")) return "REPORTS"; if (href.startsWith("/branches") || href.startsWith("/departments")) return "BRANCHES"; if (href.startsWith("/policy") || href.startsWith("/holidays") || href.startsWith("/shifts")) return "POLICIES"; if (href.startsWith("/assets")) return "EMPLOYEES"; return null; };
+  const hrAreaForHref = (href: string) => { if (href.startsWith("/dashboard") || href.startsWith("/profile")) return "DASHBOARD"; if (href.startsWith("/attendance") || href.startsWith("/leaves") || href.startsWith("/approvals")) return "ATTENDANCE"; if (href.startsWith("/employees")) return "EMPLOYEES"; if (href.startsWith("/onboarding") || href.startsWith("/offboarding")) return "ONBOARDING"; if (href.startsWith("/audit")) return "AUDIT"; if (href.startsWith("/payroll") || href.startsWith("/statutory") || href.startsWith("/loans") || href.startsWith("/expenses") || href.startsWith("/overtime")) return "PAYROLL"; if (href.startsWith("/reports")) return "REPORTS"; if (href.startsWith("/branches") || href.startsWith("/departments")) return "BRANCHES"; if (href.startsWith("/policy") || href.startsWith("/holidays") || href.startsWith("/shifts")) return "POLICIES"; if (href.startsWith("/assets")) return "EMPLOYEES"; return null; };
   const canSeeHrArea = (href: string) => { const area = hrAreaForHref(href); if (!area) return true; if ((role === "MANAGER" || role === "HR") && hrAccess) return hrAccess[area] !== false; if (role === "EMPLOYEE" && roleAccess?.EMPLOYEE) return roleAccess.EMPLOYEE[area] !== false; return true; };
   const visibleSections = (isPlatformOwner ? PLATFORM_SECTIONS : NAV_SECTIONS).map((section) => ({
     ...section,
@@ -366,6 +368,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     todayStatus?.hasCheckedIn || todayStatus?.attendance?.checkIn
   ) && !Boolean(todayStatus?.hasCheckedOut || todayStatus?.attendance?.checkOut);
   const isOnBreak = todayStatus?.isOnBreak;
+  const isFlexibleShift = Boolean(todayStatus?.flexiblePunching || todayStatus?.shift?.flexiblePunching);
   const punchInBlockedByLeave = !isCheckedIn && todayStatus?.dayOff?.kind === "PERSONAL_LEAVE";
 
   const orgName = user?.organization?.name || "Clocked";
@@ -392,10 +395,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   // Breadcrumbs calculation
   const currentSection = NAV_SECTIONS.find((sec) =>
-    sec.items.some((item) => isNavActive(pathname, item.href))
+    sec.items.some((item) => isNavActive(navLocation, item.href))
   );
   const currentItem = currentSection?.items.find((item) =>
-    isNavActive(pathname, item.href)
+    isNavActive(navLocation, item.href)
   );
 
   const filteredNotifications = notifications.filter((n) => {
@@ -530,7 +533,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {visibleSections.map((section) => {
             const filtering = navQuery.trim().length > 0;
             const isOpen = filtering || sidebarCollapsed || openSections.includes(section.id);
-            const activeCount = section.items.filter((item) => isNavActive(pathname, item.href)).length;
+    const activeCount = section.items.filter((item) => isNavActive(navLocation, item.href)).length;
 
             return (
               <div key={section.id} className="space-y-1">
@@ -577,7 +580,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 {isOpen && (
                   <div className={`${sidebarCollapsed ? "space-y-1.5" : "space-y-0.5 pl-1"}`}>
                     {section.items.map((item) => {
-                      const isActive = isNavActive(pathname, item.href);
+                      const isActive = isNavActive(navLocation, item.href);
                       const Icon = item.icon;
 
                       return (
@@ -807,11 +810,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   disabled={isActionLoading}
                   className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-amber-600 hover:bg-amber-500 text-white shadow-2xs transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
                 >
-                  {todayStatus?.activePauseType === "LUNCH" ? <Utensils className="w-3.5 h-3.5" /> : <Coffee className="w-3.5 h-3.5" />}
-                  {todayStatus?.activePauseType === "LUNCH" ? "End Lunch" : "End Break"}
+                  {isFlexibleShift ? <Play className="w-3.5 h-3.5" /> : todayStatus?.activePauseType === "LUNCH" ? <Utensils className="w-3.5 h-3.5" /> : <Coffee className="w-3.5 h-3.5" />}
+                  {isFlexibleShift ? "Continue Shift" : todayStatus?.activePauseType === "LUNCH" ? "End Lunch" : "End Break"}
                 </button>
-              ) : (
-                <div className="flex items-center gap-1.5">
+              ) : isFlexibleShift ? (
+                  <button
+                    onClick={startBreak}
+                    disabled={isActionLoading}
+                    className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-2xs transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                    title="Pause flexible shift"
+                    aria-label="Pause shift"
+                  >
+                    <Pause className="w-3.5 h-3.5" /> Pause Shift
+                  </button>
+                ) : <div className="flex items-center gap-1.5">
                   <button
                     onClick={startBreak}
                     disabled={isActionLoading}
@@ -830,7 +842,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <Utensils className="w-3.5 h-3.5" />
                   </button>
                 </div>
-              )}
+              }
             </div>
 
             </>
@@ -1229,7 +1241,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       </button>
                       {isOpen &&
                         section.items.map((item) => {
-                          const isActive = isNavActive(pathname, item.href);
+                          const isActive = isNavActive(navLocation, item.href);
                           const Icon = item.icon;
                           return (
                             <Link
