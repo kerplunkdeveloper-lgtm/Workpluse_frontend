@@ -9,10 +9,10 @@ import PageHeader from "@/components/ui/PageHeader";
 type Role = "COMPANY_ADMIN" | "MANAGER" | "EMPLOYEE";
 /** true = full access, false = none, string = limited access described in words */
 type Access = boolean | string;
-const HR_ACCESS_AREAS = ["DASHBOARD", "ATTENDANCE", "EMPLOYEES", "ROLES", "APPROVALS", "ONBOARDING", "PAYROLL", "REPORTS", "ANNOUNCEMENTS", "BRANCHES", "POLICIES", "SHOOTS"] as const;
+const HR_ACCESS_AREAS = ["DASHBOARD", "ATTENDANCE", "EMPLOYEES", "ROLES", "APPROVALS", "ONBOARDING", "PAYROLL", "REPORTS", "AUDIT", "ANNOUNCEMENTS", "BRANCHES", "POLICIES", "SHOOTS"] as const;
 type HrAccess = Record<(typeof HR_ACCESS_AREAS)[number], boolean>;
 type RoleAccess = Record<"MANAGER" | "HR" | "EMPLOYEE", HrAccess>;
-const AREA_BY_MODULE: Record<string, keyof HrAccess> = { "Dashboard & my profile": "DASHBOARD", "Punch, leave & corrections": "ATTENDANCE", "Employee directory": "EMPLOYEES", "Roles & user access": "ROLES", "Attendance review": "ATTENDANCE", "Leave & approvals": "APPROVALS", "Onboarding & offboarding": "ONBOARDING", "Payroll & statutory": "PAYROLL", Reports: "REPORTS", Announcements: "ANNOUNCEMENTS", "Branches & departments": "BRANCHES", "Policies & organization settings": "POLICIES" };
+const AREA_BY_MODULE: Record<string, keyof HrAccess> = { "Dashboard & my profile": "DASHBOARD", "Punch, leave & corrections": "ATTENDANCE", "Employee directory": "EMPLOYEES", "Roles & user access": "ROLES", "Attendance review": "ATTENDANCE", "Leave & approvals": "APPROVALS", "Onboarding & offboarding": "ONBOARDING", "Payroll & statutory": "PAYROLL", Reports: "REPORTS", "Audit log": "AUDIT", Announcements: "ANNOUNCEMENTS", "Branches & departments": "BRANCHES", "Policies & organization settings": "POLICIES" };
 const defaultHrAccess = (): HrAccess => Object.fromEntries(HR_ACCESS_AREAS.map((area) => [area, true])) as HrAccess;
 const defaultEmployeeAccess = (): HrAccess => ({ ...defaultHrAccess(), EMPLOYEES: false, ROLES: false, APPROVALS: false, ONBOARDING: false, REPORTS: false, BRANCHES: false, POLICIES: false });
 const defaultRoleAccess = (): RoleAccess => ({ MANAGER: defaultHrAccess(), HR: defaultHrAccess(), EMPLOYEE: defaultEmployeeAccess() });
@@ -103,7 +103,7 @@ const permissions: { module: string; description: string; access: Record<Role, A
   },
   {
     module: "Audit log",
-    description: "Who changed what and when. It records salary and payroll figures, so it is admin only",
+    description: "Who changed what and when. Company admins can enable this for HR review",
     access: { COMPANY_ADMIN: true, MANAGER: false, EMPLOYEE: false },
   },
   {

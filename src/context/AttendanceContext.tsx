@@ -335,7 +335,8 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
           branch: raw.employee?.branch || null,
           department: raw.employee?.department || null,
           dayOff: raw.dayOff || null,
-          flexiblePunching: Boolean(raw.employee?.flexiblePunching),
+          // Flex mode may come from the employee or the assigned shift.
+          flexiblePunching: Boolean(raw.employee?.flexiblePunching || raw.employee?.shift?.flexiblePunching),
           locationPolicy: raw.locationPolicy,
         });
         if (raw.attendance?.checkInLocation && !/^ward\s+\d+/i.test(raw.attendance.checkInLocation)) {

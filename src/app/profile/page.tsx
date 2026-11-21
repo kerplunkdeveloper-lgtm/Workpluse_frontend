@@ -34,6 +34,7 @@ import { PhoneFormField, toE164, validatePhone } from "@/components/ui/PhoneInpu
 import { unwrapList } from "@/lib/utils";
 import { Asset, AssetAssignment } from "@/types";
 import BankSelector from "@/components/profile/BankSelector";
+import { BLOOD_GROUPS, MARITAL_STATUSES } from "@/lib/employeeProfile";
 
 export default function ProfilePage() {
   const { user, isLoading, refreshUser } = useAuth();
@@ -617,6 +618,8 @@ export default function ProfilePage() {
                         bankName: fd.get("bankName"),
                         bankAccountNumber: fd.get("bankAccountNumber"),
                         bankIfsc,
+                        bloodGroup: String(fd.get("bloodGroup") || "") || null,
+                        maritalStatus: String(fd.get("maritalStatus") || "") || null,
                       });
                       if (res?.success) {
                         toast.success("Profile saved");
@@ -632,6 +635,22 @@ export default function ProfilePage() {
                     dateOfBirth={(employee as any)?.dateOfBirth}
                     dateOfJoining={(employee as any)?.dateOfJoining}
                   />
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <label className="block text-xs font-medium text-slate-600">
+                      Blood group
+                      <select name="bloodGroup" defaultValue={(employee as any)?.bloodGroup || ""} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2">
+                        <option value="">Select blood group</option>
+                        {BLOOD_GROUPS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                      </select>
+                    </label>
+                    <label className="block text-xs font-medium text-slate-600">
+                      Marital status
+                      <select name="maritalStatus" defaultValue={(employee as any)?.maritalStatus || ""} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2">
+                        <option value="">Select marital status</option>
+                        {MARITAL_STATUSES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                      </select>
+                    </label>
+                  </div>
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <label className="block text-xs font-medium text-slate-600">
                       Office email

@@ -160,6 +160,8 @@ export default function EmployeeProfileModal({
       personalEmail: view.personalEmail || "",
       phone: sanitizeIndianPhone(view.phone || ""),
       gender: view.gender || "",
+      bloodGroup: view.bloodGroup || "",
+      maritalStatus: view.maritalStatus || "",
       dateOfBirth: ymd(view.dateOfBirth),
       dateOfJoining: ymd(view.dateOfJoining) || ymd(view.createdAt),
       designation: view.designation || "",
@@ -453,6 +455,8 @@ export default function EmployeeProfileModal({
                 <ProfileCard icon={<User className="w-4 h-4 text-indigo-600" />} title="Personal Details">
                   <Row label="Full name" value={`${view.firstName} ${view.lastName || ""}`.trim()} />
                   <Row label="Gender" value={GENDER_LABELS[view.gender || ""]} />
+                  <Row label="Blood group" value={view.bloodGroup?.replace("_POSITIVE", "+").replace("_NEGATIVE", "-")} />
+                  <Row label="Marital status" value={view.maritalStatus ? view.maritalStatus.charAt(0) + view.maritalStatus.slice(1).toLowerCase() : ""} />
                   <Row label="Date of birth" value={view.dateOfBirth ? formatDate(ymd(view.dateOfBirth)) : ""} />
                   <Row label="Phone" value={view.phone} />
                   <Row label="Office email" value={view.user?.email || view.workEmail} />

@@ -6,6 +6,8 @@ import DatePicker from "@/components/ui/DatePicker";
 import PhoneInput from "@/components/ui/PhoneInput";
 import {
   EMPLOYMENT_TYPES,
+  BLOOD_GROUPS,
+  MARITAL_STATUSES,
   todayYmd,
   type EmployeeProfileValues,
   type ProfileErrors,
@@ -183,6 +185,8 @@ export default function EmployeeProfileFields({
             { value: "MALE", label: "Male" },
             { value: "FEMALE", label: "Female" },
           ])}
+          {select("bloodGroup", "Blood group", "Select...", BLOOD_GROUPS)}
+          {select("maritalStatus", "Marital status", "Select...", MARITAL_STATUSES)}
           <Field id="emp-dateOfBirth" label="Date of birth" required error={errors.dateOfBirth}>
             <DatePicker
               id="emp-dateOfBirth"

@@ -436,6 +436,18 @@ html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) :is(input, sel
   color: #717b96;
   opacity: 1;
 }
+
+/* Leave Management has a dark insight panel in both themes. Keep its search
+   field readable in light mode and explicitly switch the field to dark mode. */
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-leave-balance-panel .wp-leave-balance-search {
+  background-color: #0f1526 !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-leave-balance-panel .wp-leave-balance-search::placeholder {
+  color: #94a3b8 !important;
+}
 html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) :is(input, select, textarea):-webkit-autofill,
 html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) :is(input, select, textarea):-webkit-autofill:hover,
 html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) :is(input, select, textarea):-webkit-autofill:focus {

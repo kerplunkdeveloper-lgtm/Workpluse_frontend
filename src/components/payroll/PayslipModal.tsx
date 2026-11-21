@@ -134,6 +134,8 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
   const lateDeduction = Number(details?.attendance?.lateDeduction ?? (payslip as any).lateDeduction ?? 0);
   const lateCount = Number(details?.attendance?.lateCount ?? (payslip as any).lateCount ?? 0);
   const permissionDeduction = Number(details?.attendance?.permissionDeduction ?? (payslip as any).permissionDeduction ?? 0);
+  const breakDeduction = Number(details?.attendance?.breakDeduction ?? (payslip as any).breakDeduction ?? 0);
+  const lunchDeduction = Number(details?.attendance?.lunchDeduction ?? (payslip as any).lunchDeduction ?? 0);
 
   const pfDeduction = Number((payslip as any).pfDeduction || 0);
   const esiDeduction = Number((payslip as any).esiDeduction || 0);
@@ -177,6 +179,20 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
           label: "Permission / Excess Hours Deduction",
           amount: permissionDeduction,
           note: `Excess hours @ ${formatCurrency(hourlyRate)}/hr`,
+        }]
+      : []),
+    ...(breakDeduction > 0
+      ? [{
+          label: "Extra Break Deduction",
+          amount: breakDeduction,
+          note: "Break time beyond the shift allowance and grace period",
+        }]
+      : []),
+    ...(lunchDeduction > 0
+      ? [{
+          label: "Extra Lunch Deduction",
+          amount: lunchDeduction,
+          note: "Lunch time beyond the shift allowance and grace period",
         }]
       : []),
   ];

@@ -41,10 +41,13 @@ import {
   Home,
   Download,
   FileDown,
+  MessageSquareText,
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { confetti } from "@/lib/confetti";
+import Modal from "@/components/ui/Modal";
 
 type ApprovalCategory =
   | "CORRECTIONS"
@@ -386,6 +389,9 @@ export default function ApprovalsInboxView() {
   >({});
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState<"CSV" | "PDF" | null>(null);
+  const [leaveToReject, setLeaveToReject] = useState<any | null>(null);
+  const [leaveRejectReason, setLeaveRejectReason] = useState("");
+  const [submittingLeaveRejection, setSubmittingLeaveRejection] = useState(false);
   const { role } = useAuth();
   const isReviewer =
     role === "SUPER_ADMIN" ||
@@ -619,12 +625,39 @@ export default function ApprovalsInboxView() {
       () =>
         leavesApi.review(id, {
           status,
-          reviewNote: `Decision by HR or admin (${status})`,
+          reviewNote: status === "APPROVED" ? "Approved by HR or admin." : undefined,
         }),
       status,
       loadAllPending,
       true,
     );
+
+  const openLeaveRejection = (leave: any) => {
+    setLeaveToReject(leave);
+    setLeaveRejectReason("");
+  };
+
+  const submitLeaveRejection = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const reason = leaveRejectReason.trim();
+    if (!leaveToReject || !reason) return;
+    setSubmittingLeaveRejection(true);
+    try {
+      const res = await leavesApi.review(leaveToReject.id, {
+        status: "REJECTED",
+        reviewNote: reason,
+      });
+      if (!res?.success) throw new Error(res?.message || "Could not reject leave request");
+      toast.success("Leave rejected and reason sent to the employee.");
+      setLeaveToReject(null);
+      setLeaveRejectReason("");
+      await loadAllPending();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || "Could not reject leave request");
+    } finally {
+      setSubmittingLeaveRejection(false);
+    }
+  };
 
   const handleReviewOvertime = (
     id: string,
@@ -1245,7 +1278,7 @@ export default function ApprovalsInboxView() {
                   {leave.status === "PENDING" ? (
                     <ActionCell
                       onApprove={() => handleReviewLeave(leave.id, "APPROVED")}
-                      onReject={() => handleReviewLeave(leave.id, "REJECTED")}
+                      onReject={() => openLeaveRejection(leave)}
                     />
                   ) : (
                     <td className="whitespace-nowrap px-4 py-4 text-right">
@@ -1636,6 +1669,58 @@ export default function ApprovalsInboxView() {
           </div>
         )}
       </div>
+      {leaveToReject && (
+        <Modal>
+          <div className="w-full max-w-lg overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-2xl">
+            <div className="border-b border-slate-100 bg-gradient-to-br from-rose-50 via-white to-white px-6 py-5 sm:px-7">
+              <div className="flex items-start gap-3">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 ring-1 ring-rose-200">
+                  <MessageSquareText className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-rose-600">Leave decision</p>
+                  <h2 className="mt-1 text-lg font-bold tracking-tight text-slate-950">Tell the employee why</h2>
+                  <p className="mt-1 text-sm leading-5 text-slate-500">A clear reason helps them understand the decision and submit a better request if needed.</p>
+                </div>
+              </div>
+            </div>
+            <form onSubmit={submitLeaveRejection} className="space-y-5 p-6 sm:p-7">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Request from</p>
+                <p className="mt-1 font-semibold text-slate-900">{personName(leaveToReject.employee)}</p>
+                <p className="mt-1 text-xs text-slate-500">{leaveTypeLabel(leaveToReject)} · {dayOf(leaveToReject.startDate)} · {leavePeriodLabel(leaveToReject)}</p>
+              </div>
+              <div>
+                <label htmlFor="leave-rejection-reason" className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-800">
+                  Rejection reason <span className="text-xs font-medium text-rose-600">Required</span>
+                </label>
+                <textarea
+                  id="leave-rejection-reason"
+                  autoFocus
+                  value={leaveRejectReason}
+                  onChange={(event) => setLeaveRejectReason(event.target.value.slice(0, 500))}
+                  rows={5}
+                  required
+                  placeholder="Example: This request overlaps with the month-end payroll review. Please choose another date or coordinate a handover."
+                  className="w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-rose-400 focus:ring-4 focus:ring-rose-500/10"
+                />
+                <div className="mt-2 flex items-start gap-2 text-xs text-slate-500">
+                  <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-500" />
+                  <span>This message will be visible in the employee’s leave history and sent through configured notifications.</span>
+                  <span className="ml-auto shrink-0 tabular-nums">{leaveRejectReason.length}/500</span>
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
+                <button type="button" onClick={() => setLeaveToReject(null)} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100">Keep pending</button>
+                <button type="submit" disabled={submittingLeaveRejection || !leaveRejectReason.trim()} className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-rose-600/20 transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50">
+                  {submittingLeaveRejection && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Confirm rejection
+                </button>
+              </div>
+            </form>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

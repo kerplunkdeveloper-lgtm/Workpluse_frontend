@@ -6,7 +6,7 @@ import AuditLogView from "@/components/audit/AuditLogView";
 
 export default function AuditPage() {
   return (
-    <ProtectedRoute allowedRoles={["SUPER_ADMIN", "COMPANY_ADMIN"]}>
+    <ProtectedRoute allowedRoles={["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"]}>
       <AppLayout>
         <AuditLogView />
       </AppLayout>

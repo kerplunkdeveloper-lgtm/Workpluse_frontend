@@ -112,8 +112,8 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Reports", href: "/reports", icon: BarChart3, hint: "Daily logs and monthly muster roll PDF exports", keywords: ["analytics", "export"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"], badge: "PDF", badgeColor: "bg-sky-500/20 text-sky-300 border border-sky-500/30" },
       { label: "Settings", href: "/settings", icon: Settings, hint: "Organization profile, subscription tier, and API keys", keywords: ["plan", "billing", "company"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN"] },
-      { label: "Audit log", href: "/audit", icon: History, hint: "Who changed what, and when, across your workspace", keywords: ["history", "activity", "security", "changes", "log"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN"] },
-      { label: "Permissions", href: "/permissions", icon: KeyRound, hint: "Granular role access controls and privileges", keywords: ["access", "roles", "security"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN"] },
+      { label: "Audit log", href: "/audit", icon: History, hint: "Who changed what, and when, across your workspace", keywords: ["history", "activity", "security", "changes", "log"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
+      { label: "Permissions", href: "/permissions", icon: KeyRound, hint: "Granular role access controls and privileges", keywords: ["access", "roles", "security"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "HR"] },
     ],
   },
 ];
@@ -141,8 +141,16 @@ export const MOBILE_NAV_SCROLL_KEY = "wp-mobile-nav-scroll";
 
 export function isNavActive(pathname: string | null, href: string) {
   if (!pathname) return false;
-  if (pathname === href) return true;
-  return href !== "/dashboard" && pathname.startsWith(href);
+  const [targetPath, targetQuery] = href.split("?");
+  const [currentPath, currentQuery = ""] = pathname.split("?");
+  if (targetQuery) {
+    const target = new URLSearchParams(targetQuery);
+    const current = new URLSearchParams(currentQuery);
+    return currentPath === targetPath && target.get("tab") === current.get("tab");
+  }
+  if (currentQuery) return false;
+  if (currentPath === targetPath) return true;
+  return targetPath !== "/dashboard" && currentPath.startsWith(targetPath);
 }
 
 export function itemVisible(

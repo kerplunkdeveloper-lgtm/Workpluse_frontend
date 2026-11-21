@@ -84,6 +84,9 @@ export default function PayrollView() {
               overtimeHours: preview.attendanceSummary?.overtimeHours || 0,
               lateCount: preview.attendanceSummary?.lateCount || 0,
               lateDeduction: preview.deductions?.lateDeduction || 0,
+              breakDeduction: preview.deductions?.breakDeduction || 0,
+              lunchDeduction: preview.deductions?.lunchDeduction || 0,
+              pauseDeduction: preview.deductions?.pauseDeduction || 0,
               overtimePay: preview.salaryBreakdown?.overtimePay || 0,
               netSalary: preview.netSalary || 0,
               dailyPayroll: preview.dailyPayroll || [],
@@ -444,6 +447,7 @@ export default function PayrollView() {
                 <th className="py-3.5 px-4">Present</th>
                 <th className="py-3.5 px-4">Overtime</th>
                 <th className="py-3.5 px-4">Late deduction</th>
+                <th className="py-3.5 px-4">Pause deduction</th>
                 <th className="py-3.5 px-4">LOP deduction</th>
                 <th className="py-3.5 px-4">Basic</th>
                 <th className="py-3.5 px-4">Gross</th>
@@ -456,13 +460,13 @@ export default function PayrollView() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={12} className="text-center py-10 text-slate-500">
+                  <td colSpan={13} className="text-center py-10 text-slate-500">
                     Loading payroll records...
                   </td>
                 </tr>
               ) : displayPayslips.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="text-center py-12 text-slate-500">
+                  <td colSpan={13} className="text-center py-12 text-slate-500">
                     No payslips for this cycle yet. Use "Generate payroll" to create them.
                   </td>
                 </tr>
@@ -489,6 +493,9 @@ export default function PayrollView() {
                     </td>
                     <td className="py-3.5 px-4 font-mono text-amber-700">
                       {formatCurrency(Number(slip.lateDeduction ?? 0))}
+                    </td>
+                    <td className="py-3.5 px-4 font-mono text-orange-600">
+                      {formatCurrency(Number(slip.pauseDeduction ?? Number(slip.breakDeduction ?? 0) + Number(slip.lunchDeduction ?? 0)))}
                     </td>
                     <td className="py-3.5 px-4 font-mono text-rose-600">
                       {formatCurrency(Number(slip.unpaidLeaveDeduction ?? slip.lopDeduction ?? 0))}
@@ -553,7 +560,7 @@ export default function PayrollView() {
                   </tr>
                   {expandedDailyId === slip.id && (
                     <tr>
-                      <td colSpan={12} className="bg-slate-50 px-4 py-4">
+                      <td colSpan={13} className="bg-slate-50 px-4 py-4">
                         <DailyPayrollAudit rows={(slip as any).dailyPayroll || []} />
                       </td>
                     </tr>
@@ -589,7 +596,7 @@ function DailyPayrollAudit({ rows }: { rows: any[] }) {
       <div className="max-h-80 overflow-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-full min-w-[820px] text-left text-xs">
           <thead className="sticky top-0 bg-slate-100 text-[10px] uppercase tracking-wider text-slate-500">
-            <tr><th className="px-3 py-2">Date</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Working</th><th className="px-3 py-2 text-right">Per-day salary</th><th className="px-3 py-2 text-right">LOP deduction</th><th className="px-3 py-2 text-right">Late deduction</th><th className="px-3 py-2 text-right">Earned salary</th></tr>
+              <tr><th className="px-3 py-2">Date</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Working</th><th className="px-3 py-2 text-right">Per-day salary</th><th className="px-3 py-2 text-right">LOP deduction</th><th className="px-3 py-2 text-right">Late deduction</th><th className="px-3 py-2 text-right">Pause deduction</th><th className="px-3 py-2 text-right">Earned salary</th></tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {rows.map((row: any) => {
@@ -601,6 +608,7 @@ function DailyPayrollAudit({ rows }: { rows: any[] }) {
                 <td className="px-3 py-2 text-right font-mono text-slate-700">{formatCurrency(Number(row.perDaySalary || 0))}</td>
                 <td className="px-3 py-2 text-right font-mono text-rose-600">{Number(row.lopDeduction || 0) ? `-${formatCurrency(Number(row.lopDeduction))}` : formatCurrency(0)}</td>
                 <td className="px-3 py-2 text-right font-mono text-amber-600">{Number(row.lateDeduction || 0) ? `-${formatCurrency(Number(row.lateDeduction))}` : formatCurrency(0)}</td>
+                <td className="px-3 py-2 text-right font-mono text-orange-600">{Number(row.pauseDeduction || 0) ? `-${formatCurrency(Number(row.pauseDeduction))}` : formatCurrency(0)}</td>
                 <td className="px-3 py-2 text-right font-mono font-semibold text-emerald-700">{formatCurrency(Number(row.earnedSalary || 0))}</td>
               </tr>;
             })}
