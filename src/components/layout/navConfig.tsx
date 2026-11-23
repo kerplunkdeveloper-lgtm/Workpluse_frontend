@@ -44,8 +44,8 @@ export interface NavSection {
   items: NavItem[];
 }
 
-// The workspace is now admin-led. Employee accounts remain managed records,
-// but employee self-service pages are not part of the company admin menu.
+// Keep team-management pages restricted while exposing the employee's own
+// attendance, leave, payroll, claims, loans and communication self-service.
 export const COMPANY_ADMIN_ROLES = ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"];
 
 export const NAV_SECTIONS: NavSection[] = [
@@ -57,9 +57,9 @@ export const NAV_SECTIONS: NavSection[] = [
     glow: "rgba(99, 102, 241, 0.4)",
     items: [
       { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, hint: "Today’s attendance, approvals, and payroll overview", keywords: ["home", "overview"] },
-      { label: "Attendance", href: "/attendance", icon: Clock, hint: "Review attendance, punches, and timesheets", keywords: ["punch", "clock", "timesheet"], roles: COMPANY_ADMIN_ROLES },
-      { label: "Leaves", href: "/leaves", icon: CalendarDays, hint: "Review leave, shoots, and time-off workflows", keywords: ["leave", "vacation", "time off", "shoot"], roles: COMPANY_ADMIN_ROLES },
-      { label: "Chat", href: "/chat", icon: MessageSquare, hint: "Company communication and announcements", keywords: ["message", "inbox"], roles: COMPANY_ADMIN_ROLES, badge: "Live", badgeColor: "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" },
+      { label: "Attendance", href: "/attendance", icon: Clock, hint: "Review attendance, punches, and timesheets", keywords: ["punch", "clock", "timesheet"], roles: [...COMPANY_ADMIN_ROLES, "EMPLOYEE"] },
+      { label: "Leaves", href: "/leaves", icon: CalendarDays, hint: "Apply for leave and view your time-off history", keywords: ["leave", "vacation", "time off", "shoot"], roles: [...COMPANY_ADMIN_ROLES, "EMPLOYEE"] },
+      { label: "Chat", href: "/chat", icon: MessageSquare, hint: "Company communication and announcements", keywords: ["message", "inbox"], roles: [...COMPANY_ADMIN_ROLES, "EMPLOYEE"], badge: "Live", badgeColor: "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" },
     ],
   },
   {
@@ -70,9 +70,9 @@ export const NAV_SECTIONS: NavSection[] = [
     glow: "rgba(16, 185, 129, 0.4)",
     items: [
       { label: "Payroll", href: "/payroll", icon: Receipt, hint: "Automated payroll runs and payslip distribution", keywords: ["salary", "payslip", "pay"], feature: "hasPayroll", badge: "Auto", badgeColor: "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30" },
-      { label: "Loans", href: "/loans", icon: HandCoins, hint: "Manage salary advances and EMI deductions", keywords: ["advance", "loan"], roles: COMPANY_ADMIN_ROLES },
+      { label: "Loans", href: "/loans", icon: HandCoins, hint: "Request salary advances and view EMI deductions", keywords: ["advance", "loan"], roles: [...COMPANY_ADMIN_ROLES, "EMPLOYEE"] },
       { label: "Statutory", href: "/statutory", icon: Landmark, hint: "PF, ESI, Professional Tax, and compliance registers", keywords: ["pf", "esi", "tax", "compliance"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"], feature: "hasPayroll" },
-      { label: "Expenses", href: "/expenses", icon: CreditCard, hint: "Review employee reimbursements and claims", keywords: ["claim", "reimburse"], roles: COMPANY_ADMIN_ROLES },
+      { label: "Expenses", href: "/expenses", icon: CreditCard, hint: "Submit claims and review reimbursements", keywords: ["claim", "reimburse"], roles: [...COMPANY_ADMIN_ROLES, "EMPLOYEE"] },
       { label: "Overtime", href: "/overtime", icon: Layers, hint: "Review overtime and comp-off balances", keywords: ["ot", "comp off"], roles: COMPANY_ADMIN_ROLES },
       { label: "Appraisals", href: "/appraisals", icon: Award, hint: "Manage reviews, ratings, and performance goals", keywords: ["review", "performance"], roles: COMPANY_ADMIN_ROLES },
     ],

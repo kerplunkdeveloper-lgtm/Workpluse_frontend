@@ -115,8 +115,12 @@ export default function ExpenseClaimsView() {
   };
 
   const handleDeleteClaim = async (claim: ExpenseClaim) => {
-    if (claim.status !== "PENDING") return;
-    if (!window.confirm("Delete this pending expense claim? This cannot be undone.")) return;
+    const canDelete = claim.status === "PENDING" || (claim.status === "APPROVED" && !claim.payslipId);
+    if (!canDelete) return;
+    const message = claim.status === "APPROVED"
+      ? "Delete this approved expense claim before it is added to payroll? This cannot be undone."
+      : "Delete this pending expense claim? This cannot be undone.";
+    if (!window.confirm(message)) return;
     if (claimActionId) return;
     setClaimActionId(claim.id);
     try {
@@ -254,30 +258,32 @@ export default function ExpenseClaimsView() {
                     </td>
                     {isAdminOrManager && (
                       <td className="py-3.5 px-4 text-right">
-                        {claim.status === "PENDING" || claim.status === "SUBMITTED" || claim.status === "UNDER_REVIEW" ? (
+                        {claim.status === "PENDING" || claim.status === "SUBMITTED" || claim.status === "UNDER_REVIEW" || (claim.status === "APPROVED" && !claim.payslipId) ? (
                           <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              disabled={claimActionId === claim.id}
-                              onClick={() => handleReviewClaim(claim.id, "APPROVED")}
-                              className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 transition disabled:cursor-not-allowed disabled:opacity-50"
-                              title="Approve claim"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              disabled={claimActionId === claim.id}
-                              onClick={() => handleReviewClaim(claim.id, "REJECTED")}
-                              className="p-1.5 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 transition disabled:cursor-not-allowed disabled:opacity-50"
-                              title="Reject claim"
-                            >
-                              <XCircle className="w-3.5 h-3.5" />
-                            </button>
-                            {claim.status === "PENDING" && (
+                            {(claim.status === "PENDING" || claim.status === "SUBMITTED" || claim.status === "UNDER_REVIEW") && <>
+                              <button
+                                disabled={claimActionId === claim.id}
+                                onClick={() => handleReviewClaim(claim.id, "APPROVED")}
+                                className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 transition disabled:cursor-not-allowed disabled:opacity-50"
+                                title="Approve claim"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                disabled={claimActionId === claim.id}
+                                onClick={() => handleReviewClaim(claim.id, "REJECTED")}
+                                className="p-1.5 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 transition disabled:cursor-not-allowed disabled:opacity-50"
+                                title="Reject claim"
+                              >
+                                <XCircle className="w-3.5 h-3.5" />
+                              </button>
+                            </>}
+                            {(claim.status === "PENDING" || (claim.status === "APPROVED" && !claim.payslipId)) && (
                               <button
                                 disabled={claimActionId === claim.id}
                                 onClick={() => handleDeleteClaim(claim)}
                                 className="p-1.5 rounded-lg bg-slate-50 text-slate-500 border border-slate-200 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition disabled:cursor-not-allowed disabled:opacity-50"
-                                title="Delete pending claim"
+                                title={claim.status === "APPROVED" ? "Delete approved claim" : "Delete pending claim"}
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
