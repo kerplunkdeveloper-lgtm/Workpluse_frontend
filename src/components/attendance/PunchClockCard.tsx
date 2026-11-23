@@ -433,7 +433,7 @@ export function TodayPanel({ firstName, attendance, shift, hasCheckedIn, hasChec
                   {busy ? (hasCheckedIn ? "Punching out..." : "Punching in...") : hasCheckedOut ? "Shift completed" : hasCheckedIn ? "Punch out" : punchingClosed && !hasApprovedShoot && !hasFlexiblePunching ? "Punching closed" : hasApprovedShoot ? "Shoot punch in" : hasFlexiblePunching ? "Any-time punch in" : "Punch in"}
                 </span>
               </button>
-              {working && !isOnBreak && !hasFlexiblePunching && (
+              {working && !isOnBreak && (
                 <button type="button" onClick={onStartLunch} disabled={busy} className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl sm:w-auto bg-indigo-400/15 px-5 text-sm font-medium text-indigo-100 ring-1 ring-indigo-300/30 hover:bg-indigo-400/25 disabled:opacity-50">
                   <Utensils className="h-4 w-4 text-indigo-200" /> <span aria-hidden="true">🍽️</span> Start lunch
                 </button>
@@ -450,7 +450,7 @@ export function TodayPanel({ firstName, attendance, shift, hasCheckedIn, hasChec
                   {hasFlexiblePunching ? (isOnBreak ? "Continue shift" : "Pause shift") : isOnBreak ? (activePauseType === "LUNCH" ? "End lunch" : "End break") : "Start break"}
                 </button>
               )}
-              {working && hasFlexiblePunching && !isOnBreak && (
+              {false && working && hasFlexiblePunching && !isOnBreak && (
                 <button type="button" onClick={onToggleBreak} disabled={busy} className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl sm:w-auto bg-white/[0.06] px-5 text-sm font-medium text-slate-100 ring-1 ring-white/15 backdrop-blur transition hover:bg-white/10 disabled:opacity-50" aria-label="Start break">
                   <Coffee className="h-4 w-4 text-amber-300" /> <span aria-hidden="true">☕</span> Start break
                 </button>

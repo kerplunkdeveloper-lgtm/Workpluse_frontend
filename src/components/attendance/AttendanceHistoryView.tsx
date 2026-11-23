@@ -502,6 +502,21 @@ useEffect(() => {
         now={clockNow}
       />
 
+      {!loading && total > 0 && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(1);
+          }}
+          noun="records"
+        />
+      )}
+
 {!isTeamView && (
         <section className="overflow-hidden rounded-2xl bg-white ring-1 ring-slate-900/[0.06] shadow-[0_12px_35px_-24px_rgba(15,23,42,0.35)]" aria-labelledby="correction-requests-title">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
@@ -546,21 +561,6 @@ useEffect(() => {
           )}
         </section>
       )}
-      {!loading && total > 0 && (
-        <Pagination
-          page={page}
-          totalPages={totalPages}
-          total={total}
-          pageSize={pageSize}
-          onPageChange={setPage}
-          onPageSizeChange={(size) => {
-            setPageSize(size);
-            setPage(1);
-          }}
-          noun="records"
-        />
-      )}
-
       <RegularizationModal isOpen={Boolean(regularize)} attendance={regularize} onClose={() => setRegularize(null)} onSuccess={reload} />
       <AdminMarkDialog open={markOpen} initial={markInitial} onClose={() => setMarkOpen(false)} onSaved={reload} />
     </section>

@@ -68,7 +68,7 @@ function AttendanceWorkspace() {
       {canPunchForSelf && <PunchClockCard />}
       {isTeam && <TeamToday />}
       {isTeam && <TeamPunchBoard />}
-      <MyAttendanceInsights />
+      {!isTeam && <MyAttendanceInsights />}
 
       <Suspense fallback={<div className="skeleton-shimmer h-96 rounded-2xl" />}>
         <AttendanceHistoryView />

@@ -1046,13 +1046,6 @@ export default function EmployeeDirectory() {
                 onFile={(file) => setPhotoFile(file)}
               />
 
-              <ProfilePhotoPicker
-                size="md"
-                initials={form.firstName?.[0] || "E"}
-                hint="Add profile photo"
-                onFile={(file) => setPhotoFile(file)}
-              />
-
               {inviteMode === "MANUAL" && (
                 <div data-field="emp-password">
                   <label htmlFor="emp-password" className="block text-[13px] font-medium text-slate-700 mb-1">Login password {role === "COMPANY_ADMIN" ? <span className="font-normal text-slate-400">(optional)</span> : "*"}</label>

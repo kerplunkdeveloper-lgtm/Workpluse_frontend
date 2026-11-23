@@ -8,7 +8,7 @@ import { INDIA_TIME_ZONE } from "@/lib/utils";
 
 
 
-import { LayoutDashboard, Clock, CalendarDays, Receipt, Users, Building2, CalendarRange, Calendar, SlidersHorizontal, UserPlus, BarChart3, Settings, History, ShieldCheck, KeyRound, MapPin, Layers, UserMinus, Laptop, FolderTree, MessageSquare, Landmark, HandCoins, CreditCard, Award, FileText, Sparkles } from "lucide-react";
+import { LayoutDashboard, Clock, CalendarDays, Receipt, Users, Building2, CalendarRange, Calendar, SlidersHorizontal, UserPlus, UserRound, BarChart3, Settings, History, ShieldCheck, KeyRound, MapPin, Layers, UserMinus, Laptop, FolderTree, MessageSquare, Landmark, HandCoins, CreditCard, Award, FileText, Sparkles } from "lucide-react";
 
 
 
@@ -57,6 +57,7 @@ export const NAV_SECTIONS: NavSection[] = [
     glow: "rgba(99, 102, 241, 0.4)",
     items: [
       { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, hint: "Today’s attendance, approvals, and payroll overview", keywords: ["home", "overview"] },
+      { label: "Profile", href: "/profile", icon: UserRound, hint: "Update your personal details, documents, assets, and resignation", keywords: ["profile", "documents", "personal", "account"] },
       { label: "Attendance", href: "/attendance", icon: Clock, hint: "Review attendance, punches, and timesheets", keywords: ["punch", "clock", "timesheet"], roles: [...COMPANY_ADMIN_ROLES, "EMPLOYEE"] },
       { label: "Leaves", href: "/leaves", icon: CalendarDays, hint: "Apply for leave and view your time-off history", keywords: ["leave", "vacation", "time off", "shoot"], roles: [...COMPANY_ADMIN_ROLES, "EMPLOYEE"] },
       { label: "Chat", href: "/chat", icon: MessageSquare, hint: "Company communication and announcements", keywords: ["message", "inbox"], roles: [...COMPANY_ADMIN_ROLES, "EMPLOYEE"], badge: "Live", badgeColor: "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" },
@@ -71,10 +72,10 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Payroll", href: "/payroll", icon: Receipt, hint: "Automated payroll runs and payslip distribution", keywords: ["salary", "payslip", "pay"], feature: "hasPayroll", badge: "Auto", badgeColor: "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30" },
       { label: "Loans", href: "/loans", icon: HandCoins, hint: "Request salary advances and view EMI deductions", keywords: ["advance", "loan"], roles: [...COMPANY_ADMIN_ROLES, "EMPLOYEE"] },
-      { label: "Statutory", href: "/statutory", icon: Landmark, hint: "PF, ESI, Professional Tax, and compliance registers", keywords: ["pf", "esi", "tax", "compliance"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"], feature: "hasPayroll" },
+      { label: "Statutory", href: "/statutory", icon: Landmark, hint: "PF, ESI, Professional Tax, and compliance registers", keywords: ["pf", "esi", "tax", "compliance"], roles: COMPANY_ADMIN_ROLES, feature: "hasPayroll" },
       { label: "Expenses", href: "/expenses", icon: CreditCard, hint: "Submit claims and review reimbursements", keywords: ["claim", "reimburse"], roles: [...COMPANY_ADMIN_ROLES, "EMPLOYEE"] },
-      { label: "Overtime", href: "/overtime", icon: Layers, hint: "Review overtime and comp-off balances", keywords: ["ot", "comp off"], roles: COMPANY_ADMIN_ROLES },
-      { label: "Appraisals", href: "/appraisals", icon: Award, hint: "Manage reviews, ratings, and performance goals", keywords: ["review", "performance"], roles: COMPANY_ADMIN_ROLES },
+      { label: "Overtime", href: "/overtime", icon: Layers, hint: "Request overtime and view comp-off balances", keywords: ["ot", "comp off"], roles: [...COMPANY_ADMIN_ROLES, "EMPLOYEE"] },
+      { label: "Appraisals", href: "/appraisals", icon: Award, hint: "Complete self-reviews and view performance feedback", keywords: ["review", "performance"], roles: [...COMPANY_ADMIN_ROLES, "EMPLOYEE"] },
     ],
   },
   {
@@ -86,7 +87,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Approvals", href: "/approvals", icon: ShieldCheck, hint: "HR clearance inbox for leaves and expenses", keywords: ["inbox", "requests"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"], badge: "Inbox", badgeColor: "bg-amber-500/20 text-amber-300 border border-amber-500/30" },
       { label: "Employees", href: "/employees", icon: Users, hint: "Full employee directory and staff directory", keywords: ["employee", "staff", "directory"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
-      { label: "Celebrations", href: "/celebrations", icon: Sparkles, hint: "Birthdays, work anniversaries, and branded wishes", keywords: ["birthday", "anniversary", "wishes", "cards", "recognition"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
+      { label: "Celebrations", href: "/celebrations", icon: Sparkles, hint: "Birthdays, work anniversaries, and branded wishes", keywords: ["birthday", "anniversary", "wishes", "cards", "recognition"], roles: COMPANY_ADMIN_ROLES },
       { label: "Departments", href: "/departments", icon: FolderTree, hint: "Organizational structure and teams", keywords: ["team", "org"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "HR"] },
       { label: "Onboarding", href: "/onboarding", icon: UserPlus, hint: "New hire workflows and document collection", keywords: ["hire", "joining"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
       { label: "Offboarding", href: "/offboarding", icon: UserMinus, hint: "Exit clearance, checklist, and resignation handover", keywords: ["exit", "resign"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
@@ -101,7 +102,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Shifts", href: "/shifts", icon: CalendarRange, hint: "Shift schedules, rotations, and rosters", keywords: ["roster", "schedule"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
       { label: "Branches", href: "/branches", icon: MapPin, hint: "Office locations with GPS geofencing radius", keywords: ["office", "location", "geo"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "HR"] },
-      { label: "Holidays", href: "/holidays", icon: Calendar, hint: "Public holiday and company off calendar", keywords: ["holiday"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
+      { label: "Holidays", href: "/holidays", icon: Calendar, hint: "View the public holiday and company off calendar", keywords: ["holiday"], roles: [...COMPANY_ADMIN_ROLES, "EMPLOYEE"] },
       { label: "Policy", href: "/policy", icon: SlidersHorizontal, hint: "Attendance rules, leave eligibility, and deduction policy", keywords: ["rules", "settings", "leave eligibility"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
       { label: "Assets", href: "/assets", icon: Laptop, hint: "Hardware inventory and laptop assignments", keywords: ["laptop", "device", "inventory"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
     ],
