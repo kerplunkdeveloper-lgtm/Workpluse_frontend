@@ -35,7 +35,7 @@ const DOCUMENT_ICONS: Record<string, string> = {
   OTHER: "📁",
 };
 
-const MAX_DOCUMENT_BYTES = 15 * 1024 * 1024;
+const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 const DOCUMENT_ACCEPT = ".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.csv";
 
 export default function EmployeeDocumentsView({
@@ -117,7 +117,7 @@ export default function EmployeeDocumentsView({
         e.target.value = "";
         setSelectedFile(null);
         setFilePreviewUrl(null);
-        toast.error("Document is too large. Maximum allowed size is 15 MB.");
+        toast.error("Document is too large. Maximum allowed size is 10 MB.");
         return;
       }
       setSelectedFile(file);
@@ -737,7 +737,7 @@ export default function EmployeeDocumentsView({
                     <p className="text-xs font-bold text-slate-800">
                       Click to browse or drag and drop document
                     </p>
-                    <p className="text-xs text-slate-400">Supports PDF, PNG, JPG, JPEG (Max 15MB)</p>
+                    <p className="text-xs text-slate-400">Supports PDF, PNG, JPG, JPEG (Max 10MB)</p>
                   </div>
                 )}
               </div>

@@ -24,6 +24,7 @@ export interface SubscriptionPlanOption {
   currency: string;
   maxEmployees: number;
   maxBranches: number;
+  storageGb?: number;
   description: string;
   features: string[];
   popular: boolean;

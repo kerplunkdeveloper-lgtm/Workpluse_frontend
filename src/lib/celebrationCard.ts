@@ -41,7 +41,7 @@ export function loadImage(src: string, crossOrigin = true): Promise<HTMLImageEle
  */
 export async function fileToBackground(file: File, orientation: CardOrientation = "landscape"): Promise<string> {
   if (!file.type.startsWith("image/")) throw new Error("Choose an image file.");
-  if (file.size > 8 * 1024 * 1024) throw new Error("Choose an image under 8 MB.");
+  if (file.size > 2 * 1024 * 1024) throw new Error("Choose an image under 2 MB.");
   const objectUrl = URL.createObjectURL(file);
   try {
     const image = await loadImage(objectUrl, false);

@@ -557,6 +557,17 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
   border-radius: 1rem;
 }
 
+/* Keep the workspace canvas scrollable without exposing a second page-level
+   scrollbar. Data tables retain their own horizontal scroll container. */
+.wp-main-canvas {
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.wp-main-canvas::-webkit-scrollbar {
+  display: none;
+}
+
 .wp-main-canvas table {
   border-collapse: separate;
   border-spacing: 0;

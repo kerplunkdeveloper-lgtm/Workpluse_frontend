@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import AuthenticatedImage from "@/components/ui/AuthenticatedImage";
 
 const ACCEPT = "image/jpeg,image/jpg,image/png,image/webp,image/gif,image/heic,image/heif";
-const MAX_BYTES = 6 * 1024 * 1024;
+const MAX_BYTES = 2 * 1024 * 1024;
 
 const SIZE_CLASS = {
   sm: "w-10 h-10 text-sm rounded-xl",
@@ -82,7 +82,7 @@ export default function ProfilePhotoPicker({
           event.target.value = "";
           if (!file) return;
           if (file.size > MAX_BYTES) {
-            toast.error("Choose a photo under 6 MB.");
+            toast.error("Choose a photo under 2 MB.");
             return;
           }
           const next = URL.createObjectURL(file);
@@ -91,7 +91,7 @@ export default function ProfilePhotoPicker({
         }}
       />
       <span className="text-xs text-slate-500 font-medium">{uploading ? "Uploading…" : hint}</span>
-      <span className="text-[10px] font-medium tracking-wide text-slate-400">JPG, PNG, WEBP, GIF or HEIC · Max 6 MB</span>
+      <span className="text-[10px] font-medium tracking-wide text-slate-400">JPG, PNG, WEBP or GIF · Max 2 MB</span>
     </div>
   );
 }

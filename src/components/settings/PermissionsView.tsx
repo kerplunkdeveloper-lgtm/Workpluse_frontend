@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { orgApi } from "@/lib/api";
 import PageHeader from "@/components/ui/PageHeader";
 
-type Role = "COMPANY_ADMIN" | "MANAGER" | "EMPLOYEE";
+type Role = "COMPANY_ADMIN" | "MANAGER" | "HR" | "EMPLOYEE";
 /** true = full access, false = none, string = limited access described in words */
 type Access = boolean | string;
 const HR_ACCESS_AREAS = ["DASHBOARD", "ATTENDANCE", "EMPLOYEES", "ROLES", "APPROVALS", "ONBOARDING", "PAYROLL", "REPORTS", "AUDIT", "ANNOUNCEMENTS", "BRANCHES", "POLICIES", "SHOOTS"] as const;
@@ -37,6 +37,15 @@ const roles: {
   },
   {
     id: "MANAGER",
+    label: "Manager",
+    who: "Team managers",
+    summary: "Manages team attendance, leave, assigned work and day-to-day employee operations.",
+    icon: UserCog,
+    tone: "from-sky-500 to-sky-600",
+    chip: "bg-sky-50 text-sky-800 border-sky-200",
+  },
+  {
+    id: "HR",
     label: "HR",
     who: "Your HR team",
     summary: "Runs the people side day to day: employee records, attendance review, leave approvals, onboarding and preparing payroll.",
@@ -59,77 +68,77 @@ const permissions: { module: string; description: string; access: Record<Role, A
   {
     module: "Dashboard & my profile",
     description: "Personal attendance, profile and assigned work",
-    access: { COMPANY_ADMIN: true, MANAGER: true, EMPLOYEE: true },
+    access: { COMPANY_ADMIN: true, MANAGER: true, HR: true, EMPLOYEE: true },
   },
   {
     module: "Punch, leave & corrections",
     description: "Mark attendance, apply for leave, request corrections",
-    access: { COMPANY_ADMIN: true, MANAGER: true, EMPLOYEE: true },
+    access: { COMPANY_ADMIN: true, MANAGER: true, HR: true, EMPLOYEE: true },
   },
   {
     module: "Employee directory",
     description: "View and manage employee records. Only admins can export the directory",
-    access: { COMPANY_ADMIN: true, MANAGER: "Cannot change roles or export", EMPLOYEE: false },
+    access: { COMPANY_ADMIN: true, MANAGER: "Cannot change roles or export", HR: true, EMPLOYEE: false },
   },
   {
     module: "Roles & user access",
     description: "Assign roles, switch logins on or off",
-    access: { COMPANY_ADMIN: true, MANAGER: false, EMPLOYEE: false },
+    access: { COMPANY_ADMIN: true, MANAGER: false, HR: false, EMPLOYEE: false },
   },
   {
     module: "Attendance review",
     description: "Review team attendance, locations and corrections",
-    access: { COMPANY_ADMIN: true, MANAGER: true, EMPLOYEE: false },
+    access: { COMPANY_ADMIN: true, MANAGER: true, HR: true, EMPLOYEE: false },
   },
   {
     module: "Leave & approvals",
     description: "Approve requests. HR requests are approved by an admin",
-    access: { COMPANY_ADMIN: true, MANAGER: "Employee requests", EMPLOYEE: false },
+    access: { COMPANY_ADMIN: true, MANAGER: "Employee requests", HR: "All requests", EMPLOYEE: false },
   },
   {
     module: "Onboarding & offboarding",
     description: "Hire, document and exit people",
-    access: { COMPANY_ADMIN: true, MANAGER: true, EMPLOYEE: false },
+    access: { COMPANY_ADMIN: true, MANAGER: true, HR: true, EMPLOYEE: false },
   },
   {
     module: "Payroll & statutory",
     description: "Prepare payroll, approve and lock the month, view payslips",
-    access: { COMPANY_ADMIN: "Approve & lock", MANAGER: "Prepare & view", EMPLOYEE: "Own payslips" },
+    access: { COMPANY_ADMIN: "Approve & lock", MANAGER: "Prepare & view", HR: "Prepare & view", EMPLOYEE: "Own payslips" },
   },
   {
     module: "Reports",
     description: "Daily attendance and the monthly muster roll",
-    access: { COMPANY_ADMIN: true, MANAGER: true, EMPLOYEE: false },
+    access: { COMPANY_ADMIN: true, MANAGER: true, HR: true, EMPLOYEE: false },
   },
   {
     module: "Audit log",
     description: "Who changed what and when. Company admins can enable this for HR review",
-    access: { COMPANY_ADMIN: true, MANAGER: false, EMPLOYEE: false },
+    access: { COMPANY_ADMIN: true, MANAGER: false, HR: false, EMPLOYEE: false },
   },
   {
     module: "Announcements",
     description: "Post to the company notice board",
-    access: { COMPANY_ADMIN: "Post & manage all", MANAGER: "Post & manage own", EMPLOYEE: "Read only" },
+    access: { COMPANY_ADMIN: "Post & manage all", MANAGER: "Post & manage own", HR: "Post & manage own", EMPLOYEE: "Read only" },
   },
   {
     module: "Branches & departments",
     description: "Create and edit locations, geofences and structure",
-    access: { COMPANY_ADMIN: true, MANAGER: "View only", EMPLOYEE: false },
+    access: { COMPANY_ADMIN: true, MANAGER: "View only", HR: "View only", EMPLOYEE: false },
   },
   {
     module: "Policies & organization settings",
     description: "Attendance rules, company profile and holidays",
-    access: { COMPANY_ADMIN: true, MANAGER: "Holidays only", EMPLOYEE: false },
+    access: { COMPANY_ADMIN: true, MANAGER: "Holidays only", HR: "Holidays only", EMPLOYEE: false },
   },
   {
     module: "Subscription & invoices",
     description: "Your Clocked plan, payments and receipts",
-    access: { COMPANY_ADMIN: true, MANAGER: false, EMPLOYEE: false },
+    access: { COMPANY_ADMIN: true, MANAGER: false, HR: false, EMPLOYEE: false },
   },
   {
     module: "API keys & integrations",
     description: "Connect other systems to your workspace",
-    access: { COMPANY_ADMIN: true, MANAGER: false, EMPLOYEE: false },
+    access: { COMPANY_ADMIN: true, MANAGER: false, HR: false, EMPLOYEE: false },
   },
 ];
 
@@ -182,7 +191,6 @@ export default function PermissionsView() {
       setAccessLoaded(true);
     }).catch(() => toast.error("Could not load access settings"));
   }, []);
-  const toggleHrAccess = (area: keyof HrAccess) => setHrAccess((current) => ({ ...current, [area]: !current[area] }));
   useEffect(() => {
     if (!accessLoaded) return;
     const timer = window.setTimeout(async () => {
@@ -197,7 +205,7 @@ export default function PermissionsView() {
     <div className="mx-auto max-w-[1100px] space-y-8">
       <PageHeader icon={ShieldCheck} title="Permissions" description="What each role can do in your workspace." />
 
-      <section aria-label="Roles" className="grid gap-4 md:grid-cols-3">
+      <section aria-label="Roles" className="grid gap-4 md:grid-cols-4">
         {roles.map((role) => (
           <article key={role.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_14px_40px_-30px_rgba(15,23,42,0.35)]">
             <div className="flex items-center gap-3">
@@ -218,14 +226,14 @@ export default function PermissionsView() {
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
           <div>
             <h2 className="text-sm font-bold text-slate-950">Access by area</h2>
-            <p className="text-xs text-slate-500">Configure workspace access for Company Admin and HR. Employee self-service is fixed by the system.</p>
+          <p className="text-xs text-slate-500">Configure workspace access for Manager and HR. Company Admin has full control; Employee self-service is fixed by the system.</p>
           </div>
          
          
         </div>
 
         <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-[13px]">
+            <table className="w-full min-w-[900px] text-left text-[13px]">
             <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-600">
               <tr>
                 <th scope="col" className="px-5 py-3.5">Workspace area</th>
@@ -245,7 +253,7 @@ export default function PermissionsView() {
                   </th>
                   {roles.map((role) => (
                     <td key={role.id} className="px-4 py-4 text-center">
-                      {role.id === "MANAGER" && AREA_BY_MODULE[permission.module] ? <AccessToggle enabled={hrAccess[AREA_BY_MODULE[permission.module]]} label="HR" onClick={() => toggleHrAccess(AREA_BY_MODULE[permission.module])} /> : <Cell value={permission.access[role.id]} />}
+                      {role.id === "MANAGER" && AREA_BY_MODULE[permission.module] ? <AccessToggle enabled={roleAccess.MANAGER[AREA_BY_MODULE[permission.module]]} label="Manager" onClick={() => setRoleAccess((current) => ({ ...current, MANAGER: { ...current.MANAGER, [AREA_BY_MODULE[permission.module]]: !current.MANAGER[AREA_BY_MODULE[permission.module]] } }))} /> : role.id === "HR" && AREA_BY_MODULE[permission.module] ? <AccessToggle enabled={roleAccess.HR[AREA_BY_MODULE[permission.module]]} label="HR" onClick={() => setRoleAccess((current) => ({ ...current, HR: { ...current.HR, [AREA_BY_MODULE[permission.module]]: !current.HR[AREA_BY_MODULE[permission.module]] } }))} /> : <Cell value={permission.access[role.id]} />}
                     </td>
                   ))}
                 </tr>

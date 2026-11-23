@@ -536,12 +536,28 @@ export default function SubscriptionSettingsView() {
               Enable company SSO for this workspace
             </label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input value={ssoForm.issuer} onChange={(e) => setSsoForm({ ...ssoForm, issuer: e.target.value })} placeholder="Issuer URL (https://idp.example.com)" className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 text-slate-900" />
-              <input value={ssoForm.clientId} onChange={(e) => setSsoForm({ ...ssoForm, clientId: e.target.value })} placeholder="OIDC client ID" className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 text-slate-900" />
-              <input type="password" value={ssoForm.clientSecret} onChange={(e) => setSsoForm({ ...ssoForm, clientSecret: e.target.value })} placeholder="OIDC client secret (leave blank to keep)" className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 text-slate-900" autoComplete="new-password" />
-              <input value={ssoForm.emailDomain} onChange={(e) => setSsoForm({ ...ssoForm, emailDomain: e.target.value })} placeholder="Allowed email domain (company.com)" className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 text-slate-900" />
+              <label className="space-y-1.5 text-[13px] font-medium text-slate-700">
+                Issuer URL
+                <input type="url" required={ssoForm.enabled} value={ssoForm.issuer} onChange={(e) => setSsoForm({ ...ssoForm, issuer: e.target.value })} placeholder="https://idp.example.com" className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 text-slate-900" />
+                <span className="block text-[11px] font-normal text-slate-500">Use your identity provider URL, not your company website.</span>
+              </label>
+              <label className="space-y-1.5 text-[13px] font-medium text-slate-700">
+                OIDC client ID
+                <input required={ssoForm.enabled} value={ssoForm.clientId} onChange={(e) => setSsoForm({ ...ssoForm, clientId: e.target.value })} placeholder="OIDC client ID" className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 text-slate-900" />
+              </label>
+              <label className="space-y-1.5 text-[13px] font-medium text-slate-700">
+                OIDC client secret
+                <input type="password" value={ssoForm.clientSecret} onChange={(e) => setSsoForm({ ...ssoForm, clientSecret: e.target.value })} placeholder="Leave blank to keep the saved secret" className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 text-slate-900" autoComplete="new-password" />
+              </label>
+              <label className="space-y-1.5 text-[13px] font-medium text-slate-700">
+                Allowed email domain
+                <input required={ssoForm.enabled} value={ssoForm.emailDomain} onChange={(e) => setSsoForm({ ...ssoForm, emailDomain: e.target.value })} placeholder="company.com" className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 text-slate-900" />
+                <span className="block text-[11px] font-normal text-slate-500">Example: company.com (without @).</span>
+              </label>
             </div>
-            {/* <p className="text-[11px] text-slate-500">Register this callback URL with your identity provider: <code className="rounded bg-slate-100 px-1.5 py-0.5">{ssoCallbackUrl || "Configure BACKEND_PUBLIC_URL on the API"}</code></p> */}
+            <p className="rounded-xl border border-violet-100 bg-violet-50 px-3.5 py-3 text-[11px] leading-5 text-violet-900">
+              Add this callback URL to the identity provider&apos;s allowed redirect URLs: <code className="break-all rounded bg-white px-1.5 py-0.5 font-mono">{ssoCallbackUrl || "Configure BACKEND_PUBLIC_URL on the API"}</code>
+            </p>
             <div className="flex justify-end"><button type="submit" disabled={isSavingSso} className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold flex items-center gap-2 disabled:opacity-60">{isSavingSso ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}Save SSO Settings</button></div>
           </form>
         </div>

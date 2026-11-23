@@ -263,7 +263,7 @@ export default function RegisterPage() {
               {plans.length === 0 && <option value="FREE_TRIAL">Free trial</option>}
               {plans.map((plan) => (
                 <option key={plan.id} value={plan.id}>
-                  {plan.name} — {plan.maxEmployees.toLocaleString("en-IN")} employees, {plan.maxBranches.toLocaleString("en-IN")} {plan.maxBranches === 1 ? "branch" : "branches"}
+                  {plan.name} — {plan.maxEmployees.toLocaleString("en-IN")} employees, {plan.maxBranches.toLocaleString("en-IN")} {plan.maxBranches === 1 ? "branch" : "branches"}{plan.storageGb ? `, ${plan.storageGb < 1 ? `${Math.round(plan.storageGb * 1024)} MB` : `${plan.storageGb} GB`} storage` : ""}
                 </option>
               ))}
             </select>

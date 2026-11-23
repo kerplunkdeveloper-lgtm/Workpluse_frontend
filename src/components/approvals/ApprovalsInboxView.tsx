@@ -174,6 +174,28 @@ const leavePeriodLabel = (row: any) =>
   row.halfDayPeriod
     ? `${row.halfDayPeriod === "MORNING" ? "Morning" : "Afternoon"} half day`
     : `${Number(row.totalDays || 1)} day${Number(row.totalDays || 1) === 1 ? "" : "s"}`;
+const leaveBalanceDays = (row: any, key: "paidRemainingDays" | "unpaidRemainingDays") => {
+  const directKey = key === "paidRemainingDays" ? "paidLeaveRemainingDays" : "unpaidLeaveRemainingDays";
+  const value = Number(row.leaveBalance?.[key] ?? row[directKey]);
+  return Number.isFinite(value) ? value : 0;
+};
+
+function LeaveBalanceCell({ leave }: { leave: any }) {
+  return (
+    <td className="px-4 py-4">
+      <div className="grid min-w-[132px] grid-cols-2 gap-2 text-[11px]">
+        <div className="rounded-lg bg-emerald-50 px-2 py-1.5 text-emerald-700">
+          <span className="block text-[9px] font-bold uppercase tracking-wide text-emerald-600/80">Paid</span>
+          <span className="font-bold tabular-nums">{leaveBalanceDays(leave, "paidRemainingDays")} d</span>
+        </div>
+        <div className="rounded-lg bg-slate-100 px-2 py-1.5 text-slate-700">
+          <span className="block text-[9px] font-bold uppercase tracking-wide text-slate-500">Unpaid</span>
+          <span className="font-bold tabular-nums">{leaveBalanceDays(leave, "unpaidRemainingDays")} d</span>
+        </div>
+      </div>
+    </td>
+  );
+}
 const approvalDetail = (row: any, category: ApprovalCategory) => {
   if (category === "LEAVES") return `${leaveTypeLabel(row)} · ${leavePeriodLabel(row)} · ${row.reason || "No reason"}`;
   if (category === "PERMISSIONS") return `${Number(row.hours || 0)}h · ${row.reason || "No reason"}`;
@@ -189,13 +211,15 @@ const approvalDetail = (row: any, category: ApprovalCategory) => {
 
 const downloadApprovalCsv = (rows: any[], category: ApprovalCategory) => {
   const lines = [
-    ["Employee", "Employee Code", "Workflow", "Date", "Status", "Details"].map(csvCell).join(","),
+    ["Employee", "Employee Code", "Workflow", "Date", "Status", "Paid leave remaining", "Unpaid leave remaining", "Details"].map(csvCell).join(","),
     ...rows.map((row) => [
       personName(workflowEmployee(row)),
       workflowEmployee(row)?.employeeCode || "—",
       APPROVAL_LABELS[category],
       workflowDate(row, category) || "—",
       row.status || "PENDING",
+      category === "LEAVES" ? leaveBalanceDays(row, "paidRemainingDays") : "",
+      category === "LEAVES" ? leaveBalanceDays(row, "unpaidRemainingDays") : "",
       approvalDetail(row, category),
     ].map(csvCell).join(",")),
   ];
@@ -1249,6 +1273,7 @@ export default function ApprovalsInboxView() {
                 "Employee",
                 "Leave type",
                 "Dates",
+                "Balance remaining",
                 "Reason",
                 requestFilter === "PENDING" ? "Action" : "Status",
               ]}
@@ -1274,6 +1299,7 @@ export default function ApprovalsInboxView() {
                       ({leavePeriodLabel(leave)})
                     </span>
                   </td>
+                  <LeaveBalanceCell leave={leave} />
                   <ReasonCell text={leave.reason} />
                   {leave.status === "PENDING" ? (
                     <ActionCell

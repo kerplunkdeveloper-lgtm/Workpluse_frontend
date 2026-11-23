@@ -201,6 +201,11 @@ export default function PayslipTemplateCustomizer() {
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 1024 * 1024) {
+      toast.error("Choose a logo under 1 MB.");
+      e.target.value = "";
+      return;
+    }
 
     setIsUploadingLogo(true);
     try {
@@ -224,6 +229,11 @@ export default function PayslipTemplateCustomizer() {
   const handleSignatureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 1024 * 1024) {
+      toast.error("Choose a signature image under 1 MB.");
+      e.target.value = "";
+      return;
+    }
 
     setIsUploadingSig(true);
     try {

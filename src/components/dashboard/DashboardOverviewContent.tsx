@@ -188,6 +188,7 @@ export default function DashboardOverview() {
   const [employeeLeaves, setEmployeeLeaves] = useState<any[]>([]);
   const [showIncompleteProfiles, setShowIncompleteProfiles] = useState(false);
   const [missingDocumentData, setMissingDocumentData] = useState<{ summary: any; employees: any[] } | null>(null);
+  const [showMissingDocuments, setShowMissingDocuments] = useState(false);
 
   const loadDashboardData = async (silent = false): Promise<void> => {
     if (silent && !canManage) return;
@@ -523,7 +524,7 @@ export default function DashboardOverview() {
   ).length;
   const employeesOnLeaveToday = useMemo(() => {
     const seen = new Set<string>();
-    return allLeaves
+    return (allLeaves
       .filter(
         (leave) =>
           leave.status === "APPROVED" && leaveCoversDay(leave, todayKey),
@@ -536,9 +537,15 @@ export default function DashboardOverview() {
           leave.employee;
         return { leave, employee };
       })
-      .filter(Boolean)
-      .slice(0, 3) as Array<{ leave: any; employee: any }>;
+      .filter(Boolean) as Array<{ leave: any; employee: any }>);
   }, [allLeaves, allEmployees, todayKey]);
+
+  const leavePortionLabel = (leave: any) => {
+    if (leave?.halfDayPeriod === "MORNING") return "First half";
+    if (leave?.halfDayPeriod === "AFTERNOON") return "Second half";
+    if (Number(leave?.totalDays) === 0.5) return "Half day";
+    return "Full day";
+  };
 
   const pct = (count: number) =>
     totalEmployees > 0 ? ((count / totalEmployees) * 100).toFixed(1) : "0.0";
@@ -1374,11 +1381,11 @@ export default function DashboardOverview() {
                   </Link>
                 </div>
                 {employeesOnLeaveToday.length ? (
-                  <div className="max-h-64 space-y-2 overflow-y-auto overscroll-contain pr-1 [scrollbar-color:rgba(165,180,252,.45)_transparent] [scrollbar-width:thin]">
+                  <div className="max-h-[13.5rem] space-y-2 overflow-y-auto overscroll-contain pr-1 [scrollbar-color:rgba(165,180,252,.45)_transparent] [scrollbar-width:thin]">
                     {employeesOnLeaveToday.map(({ leave, employee }) => (
                       <div
                         key={leave.id}
-                        className="flex items-center justify-between gap-2 rounded-xl bg-white/[0.07] px-3 py-2 ring-1 ring-white/10"
+                        className="flex min-h-[62px] items-center justify-between gap-3 rounded-xl bg-white/[0.07] px-3 py-2 ring-1 ring-white/10"
                       >
                         <div className="min-w-0">
                           <p className="truncate text-xs font-semibold text-white">
@@ -1391,9 +1398,14 @@ export default function DashboardOverview() {
                               "EMPLOYEE"}
                           </p>
                         </div>
-                        <span className="shrink-0 text-[10px] font-semibold text-sky-200">
-                          {leave.leaveType?.name || "Leave"}
-                        </span>
+                        <div className="shrink-0 text-right">
+                          <p className="max-w-[112px] truncate text-[10px] font-semibold text-sky-200">
+                            {leave.leaveType?.name || "Leave"}
+                          </p>
+                          <span className="mt-1 inline-flex rounded-full bg-sky-400/15 px-2 py-0.5 text-[9px] font-bold text-sky-100 ring-1 ring-sky-300/20">
+                            {leavePortionLabel(leave)}
+                          </span>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -2020,21 +2032,26 @@ export default function DashboardOverview() {
                 <h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">Employees missing documents</h2>
                 <p className="mt-1 text-xs text-slate-500">Mandatory documents that are missing or rejected.</p>
               </div>
-              <Link href="/employees" className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700">Open employee documents <ArrowUpRight className="h-3.5 w-3.5" /></Link>
             </div>
             <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className="rounded-2xl bg-amber-50 p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-amber-700">People needing action</p><p className="mt-1 text-2xl font-bold text-amber-950">{missingDocumentData.summary?.employeesWithMissingDocuments ?? 0}</p></div>
               <div className="rounded-2xl bg-slate-50 p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Mandatory slots</p><p className="mt-1 text-2xl font-bold text-slate-900">{missingDocumentData.summary?.totalMandatory ?? 0}</p></div>
             </div>
             {missingDocumentData.employees?.length ? (
+              <>
+                <button type="button" onClick={() => setShowMissingDocuments((open) => !open)} className="mt-4 inline-flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 transition hover:bg-amber-100">
+                  {showMissingDocuments ? "Hide incomplete profiles" : `View ${missingDocumentData.summary?.employeesWithMissingDocuments ?? missingDocumentData.employees.length} incomplete profiles`}
+                </button>
+                {showMissingDocuments && (
               <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200">
-                <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 bg-slate-50 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-500"><span>Employee</span><span>Missing / rejected</span><span>Progress</span></div>
-                <div className="divide-y divide-slate-100">
-                  {missingDocumentData.employees.slice(0, 6).map((row: any) => <Link key={row.employee.id} href="/employees" className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5 text-xs transition hover:bg-amber-50"><span className="min-w-0"><span className="block truncate font-bold text-slate-900">{row.employee.firstName} {row.employee.lastName || ""}</span><span className="block truncate text-[10px] text-slate-500">{row.employee.employeeCode} · {row.employee.branch?.name || "No branch"}</span></span><span className="min-w-0 truncate font-semibold text-amber-800" title={row.missing.map((item: any) => item.label).join(", ")}>{row.missing.map((item: any) => item.label).join(", ")}</span><span className="whitespace-nowrap font-bold text-slate-700">{row.uploadedMandatory}/{row.totalMandatory}</span></Link>)}
+                <div className="sticky top-0 z-10 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 bg-slate-50 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-500"><span>Employee</span><span>Missing / rejected</span><span>Progress</span></div>
+                <div className="max-h-96 divide-y divide-slate-100 overflow-y-auto overscroll-contain">
+                  {missingDocumentData.employees.map((row: any) => <div key={row.employee.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5 text-xs transition hover:bg-amber-50"><span className="min-w-0"><span className="block truncate font-bold text-slate-900">{row.employee.firstName} {row.employee.lastName || ""}</span><span className="block truncate text-[10px] text-slate-500">{row.employee.employeeCode} · {row.employee.branch?.name || "No branch"}</span></span><span className="min-w-0 truncate font-semibold text-amber-800" title={row.missing.map((item: any) => item.label).join(", ")}>{row.missing.map((item: any) => item.label).join(", ")}</span><span className="whitespace-nowrap font-bold text-slate-700">{row.uploadedMandatory}/{row.totalMandatory}</span></div>)}
                 </div>
-              </div>
+              </div>)}
+              </>
             ) : <div className="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-800">All working employees have their mandatory documents uploaded.</div>}
-            {(missingDocumentData.summary?.employeesWithMissingDocuments ?? 0) > 6 && <p className="mt-3 text-[11px] text-slate-500">Showing 6 employees. Open Employee Documents to view the complete list.</p>}
+            {(missingDocumentData.summary?.employeesWithMissingDocuments ?? 0) > 6 && <p className="mt-3 text-[11px] text-slate-500">Scroll the list to view all employees, or open Employee Documents for the full workflow.</p>}
           </article>
         )}
 

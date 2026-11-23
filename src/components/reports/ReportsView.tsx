@@ -7,7 +7,7 @@ import { BarChart3, Download, Calendar, CheckCircle2, Clock, Home, XCircle, Cale
 import { toast } from "sonner";
 import AttendanceReportPdfModal from "./AttendanceReportPdfModal";
 import DatePicker from "@/components/ui/DatePicker";
-import Select from "@/components/ui/Select";
+import MonthYearPicker, { MONTHS } from "@/components/ui/MonthYearPicker";
 
 export default function ReportsView() {
   const [activeTab, setActiveTab] = useState<"DAILY" | "MONTHLY">("DAILY");
@@ -153,10 +153,7 @@ export default function ReportsView() {
     return fullName.includes(searchQuery.toLowerCase()) || code.includes(searchQuery.toLowerCase());
   });
 
-  const monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-  ];
+  const monthNames = MONTHS;
 
   return (
     <div className="space-y-6">
@@ -215,32 +212,12 @@ export default function ReportsView() {
               </div>
             </div>
           ) : (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-slate-600">Select Period:</span>
-              <Select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                className="rounded-xl px-3 py-1.5 text-xs text-slate-800 bg-white border border-slate-200 focus:outline-none focus:border-indigo-500"
-              >
-                {monthNames.map((name, idx) => (
-                  <option key={name} value={idx + 1}>
-                    {name}
-                  </option>
-                ))}
-              </Select>
-
-              <Select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="rounded-xl px-3 py-1.5 text-xs text-slate-800 bg-white border border-slate-200 focus:outline-none focus:border-indigo-500"
-              >
-                {[2025, 2026, 2027].map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </Select>
-            </div>
+            <MonthYearPicker
+              month={selectedMonth}
+              year={selectedYear}
+              onMonthChange={setSelectedMonth}
+              onYearChange={setSelectedYear}
+            />
           )}
 
           {/* Search Box */}

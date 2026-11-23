@@ -9,7 +9,7 @@ import CompanyLogo from "@/components/ui/CompanyLogo";
 import { confirmDialog } from "@/components/ui/confirmDialog";
 
 const ACCEPT = "image/png,image/jpeg,image/webp";
-const MAX_BYTES = 2 * 1024 * 1024;
+const MAX_BYTES = 1 * 1024 * 1024;
 
 /** Company logo upload for the organization profile. Shown across the app once set. */
 export default function CompanyLogoSetting() {
@@ -21,7 +21,7 @@ export default function CompanyLogoSetting() {
 
   const upload = async (file: File) => {
     if (file.size > MAX_BYTES) {
-      toast.error("Choose an image under 2 MB.");
+      toast.error("Choose an image under 1 MB.");
       return;
     }
     setBusy("upload");
@@ -56,7 +56,7 @@ export default function CompanyLogoSetting() {
       <CompanyLogo name={name} logoUrl={logoUrl} size="lg" />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-slate-900">Company logo</p>
-        <p className="text-xs text-slate-500">Shown on the dashboard, sidebar and payslips. PNG, JPG or WEBP, up to 2 MB. A square image works best.</p>
+        <p className="text-xs text-slate-500">Shown on the dashboard, sidebar and payslips. PNG, JPG or WEBP, up to 1 MB. A square image works best.</p>
       </div>
       <div className="flex gap-2">
         <button
