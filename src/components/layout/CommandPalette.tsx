@@ -31,7 +31,6 @@ import {
   Building2,
   History,
   Award,
-  CircleUser,
   CornerDownLeft,
   X,
 } from "lucide-react";
@@ -149,7 +148,6 @@ export default function CommandPalette({
       { id: "nav-attendance", label: "Attendance & Punches", category: "Workspace", hint: "Punch clock, geolocation logs, timesheets", href: "/attendance", icon: Clock, keywords: ["clock", "punch", "timesheet", "history"] },
       { id: "nav-leaves", label: "Leaves & Time Off", category: "Workspace", hint: "Apply leave, request shoots, view balances, and upcoming holidays", href: "/leaves", icon: CalendarDays, keywords: ["vacation", "sick", "casual", "time off"] },
       { id: "nav-chat", label: "Team Messages & Chat", category: "Workspace", hint: "Internal workplace messaging and announcements", href: "/chat", icon: MessageSquare, keywords: ["inbox", "message", "conversation"] },
-      { id: "nav-profile", label: "My Profile & Documents", category: "Workspace", hint: "Personal data, bank accounts, identity proofs", href: "/profile", icon: CircleUser, keywords: ["account", "me", "kyc", "documents"] },
 
       // Team & Payroll
       { id: "nav-payroll", label: "Payroll Processing", category: "Team & Payroll", hint: "Monthly runs, salary structures, payslips generation", href: "/payroll", icon: Receipt, badge: "Auto", keywords: ["salary", "payslip", "wages", "pay"] },
@@ -189,6 +187,10 @@ export default function CommandPalette({
       ];
     }
 
+    // Employee self-service is intentionally outside the admin SaaS shell.
+    // Employee records and workflows remain available to company/admin roles
+    // through the management commands above.
+    if (role === "EMPLOYEE") return list.filter((command) => command.id === "nav-dashboard");
     return list;
   }, [isCheckedIn, isOnBreak, onPunchIn, onPunchOut, onBreak, role]);
 

@@ -8,7 +8,7 @@ import { INDIA_TIME_ZONE } from "@/lib/utils";
 
 
 
-import { LayoutDashboard, Clock, CalendarDays, Receipt, Users, Building2, CalendarRange, Calendar, SlidersHorizontal, UserPlus, BarChart3, Settings, History, ShieldCheck, KeyRound, MapPin, Layers, UserMinus, Laptop, FolderTree, MessageSquare, CircleUser, Landmark, HandCoins, CreditCard, Award, FileText, Sparkles } from "lucide-react";
+import { LayoutDashboard, Clock, CalendarDays, Receipt, Users, Building2, CalendarRange, Calendar, SlidersHorizontal, UserPlus, BarChart3, Settings, History, ShieldCheck, KeyRound, MapPin, Layers, UserMinus, Laptop, FolderTree, MessageSquare, Landmark, HandCoins, CreditCard, Award, FileText, Sparkles } from "lucide-react";
 
 
 
@@ -44,6 +44,10 @@ export interface NavSection {
   items: NavItem[];
 }
 
+// The workspace is now admin-led. Employee accounts remain managed records,
+// but employee self-service pages are not part of the company admin menu.
+export const COMPANY_ADMIN_ROLES = ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"];
+
 export const NAV_SECTIONS: NavSection[] = [
   {
     id: "my-work",
@@ -53,10 +57,9 @@ export const NAV_SECTIONS: NavSection[] = [
     glow: "rgba(99, 102, 241, 0.4)",
     items: [
       { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, hint: "Today’s attendance, approvals, and payroll overview", keywords: ["home", "overview"] },
-      { label: "Attendance", href: "/attendance", icon: Clock, hint: "Clock in, punch history, and timesheet records", keywords: ["punch", "clock", "timesheet"] },
-      { label: "Leaves", href: "/leaves", icon: CalendarDays, hint: "Apply leave, request shoots, and review time-off approvals", keywords: ["leave", "vacation", "time off", "shoot"] },
-      { label: "Chat", href: "/chat", icon: MessageSquare, hint: "Real-time communication with colleagues", keywords: ["message", "inbox"], badge: "Live", badgeColor: "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" },
-      { label: "Profile", href: "/profile", icon: CircleUser, hint: "Personal credentials, salary slips, and files", keywords: ["me", "account", "docs"] },
+      { label: "Attendance", href: "/attendance", icon: Clock, hint: "Review attendance, punches, and timesheets", keywords: ["punch", "clock", "timesheet"], roles: COMPANY_ADMIN_ROLES },
+      { label: "Leaves", href: "/leaves", icon: CalendarDays, hint: "Review leave, shoots, and time-off workflows", keywords: ["leave", "vacation", "time off", "shoot"], roles: COMPANY_ADMIN_ROLES },
+      { label: "Chat", href: "/chat", icon: MessageSquare, hint: "Company communication and announcements", keywords: ["message", "inbox"], roles: COMPANY_ADMIN_ROLES, badge: "Live", badgeColor: "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" },
     ],
   },
   {
@@ -67,11 +70,11 @@ export const NAV_SECTIONS: NavSection[] = [
     glow: "rgba(16, 185, 129, 0.4)",
     items: [
       { label: "Payroll", href: "/payroll", icon: Receipt, hint: "Automated payroll runs and payslip distribution", keywords: ["salary", "payslip", "pay"], feature: "hasPayroll", badge: "Auto", badgeColor: "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30" },
-      { label: "Loans", href: "/loans", icon: HandCoins, hint: "Salary advances and EMI deductions", keywords: ["advance", "loan"] },
+      { label: "Loans", href: "/loans", icon: HandCoins, hint: "Manage salary advances and EMI deductions", keywords: ["advance", "loan"], roles: COMPANY_ADMIN_ROLES },
       { label: "Statutory", href: "/statutory", icon: Landmark, hint: "PF, ESI, Professional Tax, and compliance registers", keywords: ["pf", "esi", "tax", "compliance"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"], feature: "hasPayroll" },
-      { label: "Expenses", href: "/expenses", icon: CreditCard, hint: "Employee reimbursements and receipt claims", keywords: ["claim", "reimburse"] },
-      { label: "Overtime", href: "/overtime", icon: Layers, hint: "Extra working hours and comp-off balances", keywords: ["ot", "comp off"] },
-      { label: "Appraisals", href: "/appraisals", icon: Award, hint: "Periodic reviews, ratings, and performance goals", keywords: ["review", "performance"] },
+      { label: "Expenses", href: "/expenses", icon: CreditCard, hint: "Review employee reimbursements and claims", keywords: ["claim", "reimburse"], roles: COMPANY_ADMIN_ROLES },
+      { label: "Overtime", href: "/overtime", icon: Layers, hint: "Review overtime and comp-off balances", keywords: ["ot", "comp off"], roles: COMPANY_ADMIN_ROLES },
+      { label: "Appraisals", href: "/appraisals", icon: Award, hint: "Manage reviews, ratings, and performance goals", keywords: ["review", "performance"], roles: COMPANY_ADMIN_ROLES },
     ],
   },
   {

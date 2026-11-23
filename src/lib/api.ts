@@ -7,6 +7,8 @@ declare module "axios" {
   interface AxiosRequestConfig {
     /** Optional/background call. Its caller already copes with a failure, so it must not raise the full-screen outage overlay. */
     skipGlobalError?: boolean;
+    /** Do not repeat intentionally long-running calculations after a timeout. */
+    skipTransientRetry?: boolean;
     /** Internal: how many times a transient failure of this request has been retried. */
     _transientRetries?: number;
   }
@@ -203,7 +205,7 @@ api.interceptors.response.use(
 
     // A request the page itself cancelled (navigation, unmount) is not an outage.
     const serverFailure = !axios.isCancel(error) && (!error.response || error.response.status >= 500);
-    const retryable = serverFailure && (!error.response || RETRYABLE_STATUSES.has(error.response.status));
+    const retryable = !originalRequest.skipTransientRetry && serverFailure && (!error.response || RETRYABLE_STATUSES.has(error.response.status));
     const method = String(originalRequest.method || "get").toLowerCase();
     const attempts = originalRequest._transientRetries ?? 0;
 
@@ -513,6 +515,7 @@ export const dayOffWorkApi = {
 
 export const shootRequestsApi = {
   create: async (payload: { date: string; shootName: string; location: string; startTime?: string; endTime?: string; employeeIds?: string[]; note?: string }) => (await api.post("/attendance/shoot-requests", payload)).data,
+  update: async (id: string, payload: { date: string; shootName: string; location: string; startTime?: string; endTime?: string; employeeIds?: string[]; note?: string }) => (await api.patch(`/attendance/shoot-requests/${id}`, payload)).data,
   getMine: async () => (await api.get("/attendance/shoot-requests/my")).data,
   getParticipants: async () => (await api.get("/attendance/shoot-requests/participants")).data,
   getAll: async (params: { status?: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | "CANCELLATION_PENDING" | "ALL" } = {}) => (await api.get("/attendance/shoot-requests", { params: { status: "PENDING", limit: 200, ...params } })).data,
@@ -581,6 +584,63 @@ export const leavesApi = {
     const res = await api.get("/leaves/balances", { skipGlobalError: true });
     return res.data;
   },
+  getTeamBalances: async (year?: number) => {
+    try {
+      const res = await api.get("/leaves/balances/team", { params: { year }, skipGlobalError: true });
+      return res.data;
+    } catch (error: any) {
+      // Alpha may still be serving an older release with the legacy route.
+      if (error?.response?.status !== 404) throw error;
+      try {
+        const res = await api.get("/leaves/team-balances", { params: { year }, skipGlobalError: true });
+        return res.data;
+      } catch (legacyError: any) {
+        if (legacyError?.response?.status !== 404) throw legacyError;
+
+        // Older deployments do not have either team-summary route yet, but
+        // they do expose the employee list and individual balance endpoint.
+        // Build the same response shape from those routes until the backend
+        // release containing /leaves/balances/team is deployed.
+        try {
+          const employeeResponse = await employeesApi.getAll({ status: "ALL", limit: 500 });
+          const employees = Array.isArray(employeeResponse)
+            ? employeeResponse
+            : employeeResponse?.data || employeeResponse?.employees || employeeResponse?.records || [];
+          const rows = await Promise.all(employees.map(async (employee: any) => {
+            try {
+              const balanceResponse = await leavesApi.getEmployeeBalances(employee.id, year);
+              const payload = balanceResponse?.data || balanceResponse;
+              const balances = payload?.balances || [];
+              const remainingByCode = Object.fromEntries(
+                balances
+                  .filter((balance: any) => balance?.leaveType?.code)
+                  .map((balance: any) => [String(balance.leaveType.code).toUpperCase(), Number(balance.remainingDays || 0)]),
+              );
+              const paidRemainingDays = balances
+                .filter((balance: any) => balance?.leaveType?.isPaid === true)
+                .reduce((sum: number, balance: any) => sum + Number(balance.remainingDays || 0), 0);
+              const unpaidRemainingDays = balances
+                .filter((balance: any) => balance?.leaveType?.isPaid === false)
+                .reduce((sum: number, balance: any) => sum + Number(balance.remainingDays || 0), 0);
+              return {
+                employee: payload?.employee || employee,
+                year: payload?.year || year,
+                paidRemainingDays,
+                unpaidRemainingDays,
+                remainingByLeaveType: remainingByCode,
+              };
+            } catch {
+              return null;
+            }
+          }));
+          return rows.filter(Boolean);
+        } catch (employeeError: any) {
+          if (employeeError?.response?.status === 404) return [];
+          throw employeeError;
+        }
+      }
+    }
+  },
   getEmployeeBalances: async (employeeId: string, year?: number) => {
     const res = await api.get(`/leaves/employees/${employeeId}/balances`, { params: { year }, skipGlobalError: true });
     return res.data;
@@ -618,7 +678,10 @@ export const leavesApi = {
     return res.data;
   },
   requestDateChange: async (id: string, payload: { newStartDate: string; newEndDate: string; reason: string }) => (await api.post(`/leaves/requests/${id}/date-change`, payload)).data,
-  getMyDateChanges: async () => (await api.get("/leaves/date-changes/my")).data,
+  // Date-change history is an optional extension of the leave page. Older
+  // deployments may not have its table yet, so do not turn that feed's
+  // failure into a page-wide outage screen.
+  getMyDateChanges: async () => (await api.get("/leaves/date-changes/my", { skipGlobalError: true })).data,
   // Optional for older databases until the leave-change migration is applied.
   getDateChanges: async (status = "PENDING") => (await api.get("/leaves/date-changes", { params: { status }, skipGlobalError: true })).data,
   reviewDateChange: async (id: string, payload: { status: "APPROVED" | "REJECTED"; reviewNote?: string }) => (await api.put(`/leaves/date-changes/${id}/review`, payload)).data,
@@ -711,6 +774,10 @@ export const payrollApi = {
     const res = await api.get(`/payroll/salary-structure/${employeeId}`);
     return res.data;
   },
+  recordSalaryRevision: async (payload: any) => {
+    const res = await api.post("/payroll/salary-revision", payload);
+    return res.data;
+  },
   upsertSalaryStructure: async (payload: any) => {
     const res = await api.post("/payroll/salary-structure", payload);
     return res.data;
@@ -724,7 +791,16 @@ export const payrollApi = {
     return res.data;
   },
   calculatePreview: async (params: { month: number; year: number; employeeId?: string }) => {
-    const res = await api.get("/payroll/calculate", { params });
+    // Organization-wide payroll preview calculates attendance, leave,
+    // overtime, expenses and deductions for every employee. It can
+    // legitimately outlive the normal 20-second request budget, so keep this
+    // request-specific and let PayrollView show its own error state.
+    const res = await api.get("/payroll/calculate", {
+      params,
+      timeout: 120000,
+      skipGlobalError: true,
+      skipTransientRetry: true,
+    });
     return res.data;
   },
   generateBatch: async (payload: { month: number; year: number }) => {
@@ -1071,6 +1147,10 @@ export const biometricApi = {
   },
   removeCard: async (id: string) => {
     const res = await api.delete(`/biometric/credentials/${id}`);
+    return res.data;
+  },
+  punch: async (payload: { cardUid?: string; credentialType?: string; punchType?: "IN" | "OUT" | "TOGGLE"; timestamp?: string; eventId?: string }, deviceKey: string) => {
+    const res = await api.post("/biometric/punch", payload, { headers: { "x-device-key": deviceKey } });
     return res.data;
   },
 };
@@ -1443,10 +1523,17 @@ export const auditApi = {
 export const expensesApi = {
   create: async (payload: any) => {
     const isFormData = typeof FormData !== "undefined" && payload instanceof FormData;
-    const res = await api.post("/expenses", payload, {
-      headers: isFormData ? { "Content-Type": "multipart/form-data" } : undefined,
-    });
-    return res.data;
+    try {
+      const res = await api.post("/expenses", payload, {
+        headers: isFormData ? { "Content-Type": "multipart/form-data" } : undefined,
+      });
+      return res.data;
+    } catch (error: any) {
+      if (error?.response?.status === 413) {
+        throw new Error("Receipt is too large. Please upload a file smaller than 10 MB.");
+      }
+      throw error;
+    }
   },
   getMyClaims: async () => {
     const res = await api.get("/expenses/my");

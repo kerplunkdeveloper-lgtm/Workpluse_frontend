@@ -29,10 +29,18 @@ const employeeInitials = (employee?: LeaveRequest["employee"]) =>
 
 function EmployeeAvatar({ employee, size = "sm" }: { employee?: LeaveRequest["employee"]; size?: "sm" | "lg" }) {
   const sizeClass = size === "lg" ? "h-12 w-12 rounded-2xl text-sm" : "h-5 w-5 rounded-md text-[8px]";
-  return employee?.avatarUrl ? (
-    <AuthenticatedImage src={employee.avatarUrl} alt={employeeDisplayName(employee)} className={`${sizeClass} shrink-0 object-cover ring-1 ring-white`} />
-  ) : (
-    <span className={`${sizeClass} inline-flex shrink-0 items-center justify-center bg-gradient-to-br from-indigo-500 to-violet-600 font-bold text-white ring-1 ring-indigo-200`} aria-hidden="true">{employeeInitials(employee)}</span>
+  const fallback = <span className={`${sizeClass} inline-flex shrink-0 items-center justify-center bg-gradient-to-br from-indigo-500 to-violet-600 font-bold text-white ring-1 ring-indigo-200`} aria-hidden="true">{employeeInitials(employee)}</span>;
+  if (!employee?.avatarUrl) return fallback;
+
+  return (
+    <span className={`relative inline-flex shrink-0 ${sizeClass}`}>
+      <span className="absolute inset-0">{fallback}</span>
+      <AuthenticatedImage
+        src={employee.avatarUrl}
+        alt={employeeDisplayName(employee)}
+        className={`${sizeClass} relative shrink-0 object-cover ring-1 ring-white`}
+      />
+    </span>
   );
 }
 
@@ -68,6 +76,13 @@ const statusTone = (status: LeaveRequest["status"]) => {
   return { dot: "bg-amber-400", badge: "bg-amber-50 text-amber-700 border-amber-200", label: "Pending", icon: Clock3 };
 };
 
+const isPaidLeaveRequest = (request: LeaveRequest) => request.leaveType?.isPaid !== false;
+
+const balanceRemainingForType = (row: any, type: LeaveType) => {
+  const code = String(type.code || "").toUpperCase();
+  return Number(row?.remainingByLeaveType?.[code] ?? row?.[`${code}RemainingDays`] ?? 0);
+};
+
 export default function LeavesView() {
   const { user, role } = useAuth();
   const searchParams = useSearchParams();
@@ -77,6 +92,7 @@ export default function LeavesView() {
   const [myRequests, setMyRequests] = useState<LeaveRequest[]>([]);
   const [teamRequests, setTeamRequests] = useState<LeaveRequest[]>([]);
   const [organizationEmployees, setOrganizationEmployees] = useState<any[]>([]);
+  const [teamLeaveBalances, setTeamLeaveBalances] = useState<any[]>([]);
   const [selectedBalanceEmployeeId, setSelectedBalanceEmployeeId] = useState("");
   const [balanceEmployeeSearch, setBalanceEmployeeSearch] = useState("");
   const [balanceBranchFilter, setBalanceBranchFilter] = useState("ALL");
@@ -191,10 +207,11 @@ export default function LeavesView() {
       }
 
       if (canApprove) {
-        const [teamResult, employeeResult, changeResult] = await Promise.allSettled([
+        const [teamResult, employeeResult, changeResult, balanceResult] = await Promise.allSettled([
           leavesApi.getAllLeaves(),
           employeesApi.getAll({ status: "ALL", limit: 500 }),
           leavesApi.getDateChanges("PENDING"),
+          leavesApi.getTeamBalances(),
         ]);
 
         if (teamResult.status === "fulfilled") {
@@ -219,9 +236,21 @@ export default function LeavesView() {
           logClientError("leaves.approvals_load_failed", { request: "leave-requests", error: teamResult.reason });
         }
         if (employeeResult.status === "fulfilled") {
-          setOrganizationEmployees(unwrapList(employeeResult.value));
+          const employees = unwrapList(employeeResult.value);
+          setOrganizationEmployees(employees);
         } else {
           logClientError("leaves.approvals_load_failed", { request: "employees", error: employeeResult.reason });
+        }
+        if (balanceResult.status === "fulfilled") {
+          const rows = unwrapList(balanceResult.value);
+          setTeamLeaveBalances(rows);
+          // The balance response is self-contained, so the panel still works
+          // when an older employee-list response is empty or unavailable.
+          if (employeeResult.status !== "fulfilled" || !unwrapList(employeeResult.value).length) {
+            setOrganizationEmployees(rows.map((row: any) => row.employee).filter(Boolean));
+          }
+        } else {
+          logClientError("leaves.approvals_load_failed", { request: "leave-balances", error: balanceResult.reason });
         }
         if (changeResult.status === "fulfilled") {
           setDateChanges(unwrapList(changeResult.value));
@@ -408,23 +437,38 @@ export default function LeavesView() {
 
   const balanceBranches = useMemo(() => {
     const branches = new Map<string, string>();
-    organizationEmployees.forEach((employee) => {
+    teamLeaveBalances.forEach((row) => {
+      const employee = row.employee || row;
       const id = employee.branchId || employee.branch?.id;
       const name = employee.branch?.name;
       if (id && name) branches.set(id, name);
     });
     return [...branches.entries()].sort((a, b) => a[1].localeCompare(b[1]));
-  }, [organizationEmployees]);
+  }, [teamLeaveBalances]);
 
   const filteredBalanceEmployees = useMemo(() => {
     const query = balanceEmployeeSearch.trim().toLowerCase();
     return organizationEmployees.filter((employee) => {
+      if (["SUPER_ADMIN", "COMPANY_ADMIN"].includes(String(employee.user?.role || "").toUpperCase())) return false;
       const name = `${employee.firstName || ""} ${employee.lastName || ""}`.trim().toLowerCase();
       const matchesSearch = !query || name.includes(query) || String(employee.employeeCode || "").toLowerCase().includes(query);
       const branchId = employee.branchId || employee.branch?.id;
       return matchesSearch && (balanceBranchFilter === "ALL" || branchId === balanceBranchFilter);
     });
   }, [organizationEmployees, balanceEmployeeSearch, balanceBranchFilter]);
+
+  const filteredTeamLeaveBalances = useMemo(() => {
+    const query = balanceEmployeeSearch.trim().toLowerCase();
+    return teamLeaveBalances.filter((row) => {
+      const employee = row.employee || row;
+      if (["SUPER_ADMIN", "COMPANY_ADMIN"].includes(String(employee.user?.role || row.user?.role || "").toUpperCase())) return false;
+      const name = `${employee.firstName || ""} ${employee.lastName || ""}`.trim().toLowerCase();
+      const code = String(employee.employeeCode || "").toLowerCase();
+      const branchId = employee.branchId || employee.branch?.id;
+      return (!query || name.includes(query) || code.includes(query)) &&
+        (balanceBranchFilter === "ALL" || branchId === balanceBranchFilter);
+    });
+  }, [teamLeaveBalances, balanceEmployeeSearch, balanceBranchFilter]);
 
   const selectedBalanceSummary = useMemo(() => (selectedEmployeeBalance?.balances || []).reduce((summary: { remaining: number; used: number; pending: number; total: number }, balance: any) => ({
     remaining: summary.remaining + Number(balance.remainingDays || 0),
@@ -685,8 +729,8 @@ export default function LeavesView() {
       )}
 
       {canApprove && activeTab === "APPROVALS" && (
-        <section className="wp-leave-balance-panel rounded-[28px] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-5 text-white shadow-xl shadow-indigo-950/10 sm:p-6" aria-labelledby="employee-balance-title">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+        <section className="hidden wp-leave-balance-panel rounded-[28px] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-4 text-white shadow-xl shadow-indigo-950/10 sm:p-6" aria-labelledby="employee-balance-title">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
             <div className="hidden">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15"><WalletCards className="h-5 w-5 text-indigo-200" /></span>
               <div className="min-w-0 flex-1">
@@ -705,9 +749,9 @@ export default function LeavesView() {
             <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-200">Workforce insight</p>
               <h2 id="employee-balance-title" className="mt-1 text-lg font-bold">Employee leave balance</h2>
-              <p className="mt-1 max-w-xl text-xs leading-5 text-slate-300">Select an employee to review paid leave remaining, used days, pending requests and total allocation before approving.</p>
+              <p className="mt-1 max-w-xl text-xs leading-5 text-slate-300">Select an employee to review paid leave balance, used days, pending requests and total allocation before approving.</p>
             </div>
-            <div className="w-full max-w-2xl min-w-0 space-y-2">
+            <div className="w-full min-w-0 space-y-2 xl:max-w-2xl">
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <input aria-label="Search employee for leave balance" value={balanceEmployeeSearch} onChange={(event) => setBalanceEmployeeSearch(event.target.value)} placeholder="Search name or employee code" className="wp-leave-balance-search w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-semibold text-slate-900 outline-none placeholder:text-slate-500 focus:border-indigo-300" />
                 <Select aria-label="Filter leave balance by branch" value={balanceBranchFilter} onChange={(event) => setBalanceBranchFilter(event.target.value)} className="w-full !border-white/20 !bg-slate-800 !text-white px-3 py-2.5 text-xs font-semibold outline-none [&>option]:bg-white [&>option]:text-slate-900">
@@ -718,10 +762,39 @@ export default function LeavesView() {
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 shrink-0 text-indigo-200" />
                 <Select aria-label="Select employee for leave balance" value={selectedBalanceEmployeeId} onChange={(event) => setSelectedBalanceEmployeeId(event.target.value)} className="w-full !border-white/20 !bg-slate-800 !text-white px-3 py-2.5 text-xs font-semibold outline-none [&>option]:bg-white [&>option]:text-slate-900">
-                  <option value="">Select an employee ({filteredBalanceEmployees.length})</option>
-                  {filteredBalanceEmployees.map((employee) => <option key={employee.id} value={employee.id}>{employee.firstName} {employee.lastName || ""} · {employee.employeeCode || "No code"}</option>)}
+                  <option value="">Select an employee ({filteredTeamLeaveBalances.length})</option>
+                  {filteredTeamLeaveBalances.map((row: any) => { const employee = row.employee || row; return <option key={employee.id} value={employee.id}>{employee.firstName} {employee.lastName || ""} · {employee.employeeCode || "No code"}</option>; })}
                 </Select>
                 {selectedBalanceEmployeeId && <button type="button" onClick={() => setBalanceRefresh((value) => value + 1)} className="rounded-xl p-2 text-indigo-200 hover:bg-white/10" aria-label="Refresh selected employee balance"><RefreshCw className={`h-4 w-4 ${loadingEmployeeBalance ? "animate-spin" : ""}`} /></button>}
+              </div>
+              <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06]">
+                <div className="grid gap-1 border-b border-white/10 px-2 py-2 text-[9px] font-bold uppercase tracking-wider text-indigo-200 sm:gap-2 sm:px-3" style={{ gridTemplateColumns: `minmax(0,1fr) repeat(${leaveTypes.length}, minmax(64px, 1fr))` }}>
+                  <span>Employee / code</span>{leaveTypes.map((type) => <span key={type.id} className="truncate text-center" title={type.name}>{type.code || type.name}</span>)}
+                </div>
+                <div className="max-h-[216px] divide-y divide-white/10 overflow-y-auto">
+                  {filteredTeamLeaveBalances.length === 0 ? (
+                    <p className="px-3 py-4 text-xs text-slate-300">No employees match this search or branch.</p>
+                  ) : filteredTeamLeaveBalances.map((row: any) => {
+                    const employee = row.employee || row;
+                    const employeeId = employee.id;
+                    const selected = selectedBalanceEmployeeId === employeeId;
+                    return (
+                      <button
+                        key={employeeId}
+                        type="button"
+                        onClick={() => setSelectedBalanceEmployeeId(employeeId)}
+                        className={`grid w-full items-center gap-1 px-2 py-2.5 text-left transition sm:gap-2 sm:px-3 ${selected ? "bg-indigo-400/20" : "hover:bg-white/10"}`}
+                        style={{ gridTemplateColumns: `minmax(0,1fr) repeat(${leaveTypes.length}, minmax(64px, 1fr))` }}
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-xs font-bold text-white">{employee.firstName} {employee.lastName || ""}</span>
+                          <span className="mt-0.5 block truncate text-[10px] text-slate-300">{employee.employeeCode || "No employee code"}</span>
+                        </span>
+                        {leaveTypes.map((type) => <span key={type.id} className="text-center text-sm font-bold tabular-nums text-emerald-200">{balanceRemainingForType(row, type)} d</span>)}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
@@ -731,14 +804,55 @@ export default function LeavesView() {
             <div className="mt-5 flex items-center gap-2 rounded-2xl bg-white/5 px-4 py-5 text-xs text-slate-300"><Loader2 className="h-4 w-4 animate-spin" /> Loading balance...</div>
           ) : (
             <div className="mt-5 space-y-3"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-emerald-200">Remaining</p><p className="mt-2 text-2xl font-bold">{selectedBalanceSummary.remaining}<span className="ml-1 text-xs font-medium text-slate-400">days</span></p><p className="mt-1 text-[11px] text-slate-400">Available across leave types</p></div>
+              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-emerald-200">Available</p><p className="mt-2 text-2xl font-bold">{selectedBalanceSummary.remaining}<span className="ml-1 text-xs font-medium text-slate-400">days</span></p><p className="mt-1 text-[11px] text-slate-400">Across leave types</p></div>
               <div className="rounded-2xl border border-indigo-400/20 bg-indigo-400/10 p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-indigo-200">Used</p><p className="mt-2 text-2xl font-bold">{selectedBalanceSummary.used}<span className="ml-1 text-xs font-medium text-slate-400">days</span></p><p className="mt-1 text-[11px] text-slate-400">Already consumed</p></div>
               <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-amber-200">Pending</p><p className="mt-2 text-2xl font-bold">{selectedBalanceSummary.pending}<span className="ml-1 text-xs font-medium text-slate-400">days</span></p><p className="mt-1 text-[11px] text-slate-400">Reserved for approval</p></div>
               <div className="rounded-2xl border border-white/10 bg-white/[0.08] p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-300">Total allocation</p><p className="mt-2 text-2xl font-bold">{selectedBalanceSummary.total}<span className="ml-1 text-xs font-medium text-slate-400">days</span></p><p className="mt-1 text-[11px] text-slate-400">Configured yearly quota</p></div>
             </div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {(selectedEmployeeBalance?.balances || []).map((balance: any) => <div key={balance.id} className="rounded-2xl border border-white/10 bg-white/[0.08] p-4"><div className="flex items-start justify-between gap-2"><p className="truncate text-sm font-bold">{balance.leaveType?.name || "Leave"}</p><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${balance.leaveType?.isPaid ? "bg-emerald-400/15 text-emerald-200" : "bg-amber-400/15 text-amber-200"}`}>{balance.leaveType?.isPaid ? "PAID" : "UNPAID"}</span></div><p className="mt-4 text-2xl font-bold">{balance.remainingDays}<span className="ml-1 text-xs font-medium text-slate-400">remaining</span></p><p className="mt-1 text-[11px] text-slate-400">{balance.usedDays} used · {balance.pendingDays || 0} pending · {balance.allocatedDays} total</p></div>)}
+              {(selectedEmployeeBalance?.balances || []).map((balance: any) => <div key={balance.id} className="rounded-2xl border border-white/10 bg-white/[0.08] p-4"><div className="flex items-start justify-between gap-2"><p className="truncate text-sm font-bold">{balance.leaveType?.name || "Leave"}</p><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${balance.leaveType?.isPaid ? "bg-emerald-400/15 text-emerald-200" : "bg-amber-400/15 text-amber-200"}`}>{balance.leaveType?.isPaid ? "PAID" : "UNPAID"}</span></div><p className="mt-4 text-2xl font-bold">{balance.remainingDays}<span className="ml-1 text-xs font-medium text-slate-400">days</span></p><p className="mt-1 text-[11px] text-slate-400">{balance.usedDays} used · {balance.pendingDays || 0} pending · {balance.allocatedDays} total</p></div>)}
             </div></div>
           )}
+        </section>
+      )}
+
+      {canApprove && activeTab === "APPROVALS" && (
+        <section className="rounded-[28px] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-4 text-white shadow-xl shadow-indigo-950/10 sm:p-6" aria-labelledby="employee-balance-title">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-200">Workforce insight</p>
+            <h2 id="employee-balance-title" className="mt-1 text-lg font-bold">Employee leave balance</h2>
+            <p className="mt-1 max-w-xl text-xs leading-5 text-slate-300">Click an employee to view their balance, usage and pending requests.</p>
+          </div>
+
+          <div className="mt-5 grid min-w-0 gap-5 xl:grid-cols-[minmax(260px,0.85fr)_minmax(0,1.6fr)] xl:items-start">
+            <div className="min-w-0 space-y-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-1">
+                <input aria-label="Search employee for leave balance" value={balanceEmployeeSearch} onChange={(event) => setBalanceEmployeeSearch(event.target.value)} placeholder="Search name or employee code" className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-semibold text-slate-900 outline-none placeholder:text-slate-500 focus:border-indigo-300" />
+                <Select aria-label="Filter leave balance by branch" value={balanceBranchFilter} onChange={(event) => setBalanceBranchFilter(event.target.value)} className="w-full !border-white/20 !bg-slate-800 !text-white px-3 py-2.5 text-xs font-semibold outline-none [&>option]:bg-white [&>option]:text-slate-900">
+                  <option value="ALL">All branches</option>
+                  {balanceBranches.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+                </Select>
+              </div>
+              <div className="flex items-center justify-between px-1 text-[10px] font-bold uppercase tracking-wider text-indigo-200"><span className="flex items-center gap-2"><Users className="h-4 w-4" />Employees</span><span>{filteredTeamLeaveBalances.length}</span></div>
+              <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06]">
+                <div className="grid gap-1 border-b border-white/10 px-2 py-2 text-[9px] font-bold uppercase tracking-wider text-indigo-200 sm:gap-2 sm:px-3" style={{ gridTemplateColumns: `minmax(0,1fr) repeat(${leaveTypes.length}, minmax(52px, 1fr))` }}><span>Employee / code</span>{leaveTypes.map((type) => <span key={type.id} className="truncate text-center" title={type.name}>{type.code || type.name}</span>)}</div>
+                <div className="max-h-[420px] divide-y divide-white/10 overflow-y-auto">
+                  {filteredTeamLeaveBalances.length === 0 ? <p className="px-3 py-4 text-xs text-slate-300">No employees match this search or branch.</p> : filteredTeamLeaveBalances.map((row: any) => {
+                    const employee = row.employee || row;
+                    const selected = selectedBalanceEmployeeId === employee.id;
+                    return <button key={employee.id} type="button" onClick={() => setSelectedBalanceEmployeeId(employee.id)} className={`grid w-full items-center gap-1 px-2 py-3 text-left transition sm:gap-2 sm:px-3 ${selected ? "bg-indigo-400/20" : "hover:bg-white/10"}`} style={{ gridTemplateColumns: `minmax(0,1fr) repeat(${leaveTypes.length}, minmax(52px, 1fr))` }}><span className="min-w-0"><span className="block truncate text-xs font-bold text-white">{employee.firstName} {employee.lastName || ""}</span><span className="mt-0.5 block truncate text-[10px] text-slate-300">{employee.employeeCode || "No employee code"}</span></span>{leaveTypes.map((type) => <span key={type.id} className="text-center text-sm font-bold tabular-nums text-emerald-200">{balanceRemainingForType(row, type)} d</span>)}</button>;
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="min-w-0">
+              {!selectedBalanceEmployeeId ? <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/5 px-4 text-center text-xs text-slate-300">Click an employee to view the result.</div> : loadingEmployeeBalance ? <div className="flex min-h-[320px] items-center justify-center gap-2 rounded-2xl bg-white/5 text-xs text-slate-300"><Loader2 className="h-4 w-4 animate-spin" /> Loading balance...</div> : <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-wider text-indigo-200">Selected employee</p><p className="truncate text-base font-bold">{selectedEmployeeBalance?.employee?.firstName} {selectedEmployeeBalance?.employee?.lastName || ""}</p></div><button type="button" onClick={() => setBalanceRefresh((value) => value + 1)} className="rounded-xl p-2 text-indigo-200 hover:bg-white/10" aria-label="Refresh selected employee balance"><RefreshCw className="h-4 w-4" /></button></div>
+                <div className="grid gap-3 sm:grid-cols-2"><div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-emerald-200">Available</p><p className="mt-2 text-2xl font-bold">{selectedBalanceSummary.remaining}<span className="ml-1 text-xs text-slate-400">days</span></p></div><div className="rounded-2xl border border-indigo-400/20 bg-indigo-400/10 p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-indigo-200">Used</p><p className="mt-2 text-2xl font-bold">{selectedBalanceSummary.used}<span className="ml-1 text-xs text-slate-400">days</span></p></div><div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-amber-200">Pending</p><p className="mt-2 text-2xl font-bold">{selectedBalanceSummary.pending}<span className="ml-1 text-xs text-slate-400">days</span></p></div><div className="rounded-2xl border border-white/10 bg-white/[0.08] p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-300">Total allocation</p><p className="mt-2 text-2xl font-bold">{selectedBalanceSummary.total}<span className="ml-1 text-xs text-slate-400">days</span></p></div></div>
+                <div className="grid gap-3 sm:grid-cols-2">{(selectedEmployeeBalance?.balances || []).map((balance: any) => <div key={balance.id} className="rounded-2xl border border-white/10 bg-white/[0.08] p-4"><div className="flex items-start justify-between gap-2"><p className="truncate text-sm font-bold">{balance.leaveType?.name || "Leave"}</p><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${balance.leaveType?.isPaid ? "bg-emerald-400/15 text-emerald-200" : "bg-amber-400/15 text-amber-200"}`}>{balance.leaveType?.isPaid ? "PAID" : "UNPAID"}</span></div><p className="mt-4 text-2xl font-bold">{balance.remainingDays}<span className="ml-1 text-xs text-slate-400">days</span></p><p className="mt-1 text-[11px] text-slate-400">{balance.usedDays} used · {balance.pendingDays || 0} pending · {balance.allocatedDays} total</p></div>)}</div>
+              </div>}
+            </div>
+          </div>
         </section>
       )}
 
@@ -1083,8 +1197,8 @@ export default function LeavesView() {
             </div>
 
             <div className="mt-5 space-y-2">
-              <h3 className="text-sm font-bold text-slate-900">{teamCalendarDate ? `Leave on ${formatDate(teamCalendarDate)}` : "Matching leave requests"}</h3>
-              {filteredTeamLeave.length === 0 ? <p className="rounded-xl bg-slate-50 px-3 py-4 text-xs text-slate-500">No leave requests match these filters.</p> : filteredTeamLeave.map((request) => <button type="button" key={`detail-${request.id}`} onClick={() => setSelectedTeamLeave(request)} className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 text-left transition hover:border-indigo-200 hover:bg-indigo-50/40"><span className="flex min-w-0 items-center gap-2.5"><EmployeeAvatar employee={request.employee} /><span className="min-w-0"><span className="block truncate text-xs font-bold text-slate-900">{employeeDisplayName(request.employee)} · {request.leaveType?.name || "Leave"}</span><span className="mt-0.5 block truncate text-[11px] text-slate-500">{formatDate(request.startDate)} – {formatDate(request.endDate)} · {request.employee?.department?.name || "No department"}</span></span></span><span className="shrink-0 text-[11px] font-semibold text-indigo-600">View profile</span></button>)}
+              <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-bold text-slate-900">{teamCalendarDate ? `Leave on ${formatDate(teamCalendarDate)}` : "Matching leave requests"}</h3>{filteredTeamLeave.length > 0 && <span className="text-[11px] font-semibold text-slate-500">Showing all {filteredTeamLeave.length} request{filteredTeamLeave.length === 1 ? "" : "s"} · scroll to view</span>}</div>
+              {filteredTeamLeave.length === 0 ? <p className="rounded-xl bg-slate-50 px-3 py-4 text-xs text-slate-500">No leave requests match these filters.</p> : <div className="max-h-[min(55vh,390px)] space-y-2 overflow-y-auto overscroll-contain pr-1" aria-label="Matching leave requests" role="list">{filteredTeamLeave.map((request) => <button type="button" key={`detail-${request.id}`} onClick={() => setSelectedTeamLeave(request)} className="flex min-h-[66px] w-full items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 text-left transition hover:border-indigo-200 hover:bg-indigo-50/40" role="listitem"><span className="flex min-w-0 items-center gap-2.5"><EmployeeAvatar employee={request.employee} /><span className="min-w-0"><span className="block truncate text-xs font-bold text-slate-900">{employeeDisplayName(request.employee)} · {request.leaveType?.name || "Leave"}</span><span className="mt-0.5 block truncate text-[11px] text-slate-500">{formatDate(request.startDate)} – {formatDate(request.endDate)} · {request.employee?.department?.name || "No department"}</span></span></span><span className="shrink-0 text-[11px] font-semibold text-indigo-600">View profile</span></button>)}</div>}
             </div>
           </section>
 
@@ -1104,17 +1218,17 @@ export default function LeavesView() {
           </section>}
           <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-[13px] text-slate-700">
+            <table className="w-full min-w-[1180px] table-auto text-left text-[13px] text-slate-700">
               <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider border-b border-slate-200 font-semibold">
                 <tr>
-                  <th className="py-3.5 px-4">Employee</th>
-                  <th className="py-3.5 px-4">Leave Type</th>
-                  <th className="py-3.5 px-4">Dates</th>
-                  <th className="py-3.5 px-4">Days</th>
-                  <th className="py-3.5 px-4">Paid remaining</th>
-                  <th className="py-3.5 px-4">Reason</th>
-                  <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4 text-right">Actions</th>
+                  <th className="whitespace-nowrap py-3.5 px-4">Employee</th>
+                  <th className="whitespace-nowrap py-3.5 px-4">Leave Type</th>
+                  <th className="whitespace-nowrap py-3.5 px-4">Dates</th>
+                  <th className="whitespace-nowrap py-3.5 px-4">Days</th>
+                  <th className="whitespace-nowrap py-3.5 px-4">Paid balance</th>
+                  <th className="whitespace-nowrap py-3.5 px-4">Reason</th>
+                  <th className="whitespace-nowrap py-3.5 px-4">Status</th>
+                  <th className="whitespace-nowrap py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -1127,32 +1241,37 @@ export default function LeavesView() {
                 ) : (
                   teamRequests.map((req) => (
                     <tr key={req.id} className="hover:bg-slate-50 transition">
-                      <td className="py-3.5 px-4">
-                        <div className="font-semibold text-slate-900">
+                      <td className="min-w-[170px] py-3.5 px-4">
+                        <div className="whitespace-nowrap font-semibold text-slate-900">
                           {req.employee?.firstName} {req.employee?.lastName}
                         </div>
                         <div className="text-xs text-slate-500">
                           {req.employee?.department?.name || req.employee?.employeeCode}
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 font-medium text-slate-700">
-                        {req.leaveType?.name || "Leave"}
+                      <td className="min-w-[145px] py-3.5 px-4 font-medium text-slate-700">
+                        <div className="flex items-center gap-2 whitespace-nowrap">
+                          <span>{req.leaveType?.name || "Leave"}</span>
+                          <span className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${isPaidLeaveRequest(req) ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>
+                            {isPaidLeaveRequest(req) ? "Paid" : "Unpaid"}
+                          </span>
+                        </div>
                       </td>
-                      <td className="py-3.5 px-4 text-slate-600">
+                      <td className="min-w-[190px] whitespace-nowrap py-3.5 px-4 text-slate-600">
                         {formatDate(req.startDate)} - {formatDate(req.endDate)}
                       </td>
-                      <td className="py-3.5 px-4 font-bold text-indigo-600">
+                      <td className="whitespace-nowrap py-3.5 px-4 font-bold text-indigo-600">
                         {req.totalDays}d
                       </td>
-                      <td className="py-3.5 px-4">
-                        {paidLeaveRemainingFor(req) === null ? <span className="text-xs text-slate-400">—</span> : <span className="inline-flex items-center rounded-lg bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700">{paidLeaveRemainingFor(req)}d</span>}
+                      <td className="whitespace-nowrap py-3.5 px-4">
+                        {!isPaidLeaveRequest(req) ? <span className="text-xs font-medium text-slate-400">Not applicable</span> : paidLeaveRemainingFor(req) === null ? <span className="text-xs text-slate-400">—</span> : <span className="inline-flex items-center rounded-lg bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700">{paidLeaveRemainingFor(req)}d</span>}
                       </td>
-                      <td className="py-3.5 px-4 text-slate-500 max-w-xs truncate">
+                      <td className="max-w-[260px] min-w-[180px] truncate py-3.5 px-4 text-slate-500">
                         {req.reason}
                       </td>
-                      <td className="py-3.5 px-4">
+                      <td className="whitespace-nowrap py-3.5 px-4">
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                          className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-bold ${
                             req.status === "APPROVED"
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                               : req.status === "REJECTED"
@@ -1163,7 +1282,7 @@ export default function LeavesView() {
                           {req.status}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-right">
+                      <td className="min-w-[176px] whitespace-nowrap py-3.5 px-4 text-right">
                         {req.status === "PENDING" ? (
                           <div className="flex items-center justify-end gap-2">
                             <button
@@ -1173,7 +1292,7 @@ export default function LeavesView() {
                                 setReviewNote("");
                                 setReviewModalOpen(true);
                               }}
-                              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition"
+                              className="inline-flex min-h-9 min-w-[74px] items-center justify-center whitespace-nowrap rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100"
                             >
                               Approve
                             </button>
@@ -1184,7 +1303,7 @@ export default function LeavesView() {
                                 setReviewNote("");
                                 setReviewModalOpen(true);
                               }}
-                              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition"
+                              className="inline-flex min-h-9 min-w-[68px] items-center justify-center whitespace-nowrap rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
                             >
                               Reject
                             </button>
@@ -1394,21 +1513,25 @@ export default function LeavesView() {
       {/* Review Modal */}
       {reviewModalOpen && selectedRequest && (
         <Modal>
-          <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl text-slate-900">
-            <h3 className="text-base font-semibold text-slate-900 mb-2">
-              {reviewAction === "APPROVED" ? "Approve Leave Request" : "Reject Leave Request"}
-            </h3>
-            <p className="text-xs text-slate-500 mb-4">
-              Applicant:{" "}
-              <span className="font-semibold text-slate-800">
-                {selectedRequest.employee?.firstName} {selectedRequest.employee?.lastName}
-              </span>{" "}
-              ({selectedRequest.totalDays} day(s))
-            </p>
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-3xl border border-slate-200 bg-white p-4 text-slate-900 shadow-2xl sm:p-6">
+            <div className="flex items-start gap-3">
+              <span className={`mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${reviewAction === "APPROVED" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"}`}>
+                {reviewAction === "APPROVED" ? <CheckCircle2 className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
+              </span>
+              <div className="min-w-0">
+                <h3 className="text-base font-semibold text-slate-900">
+                  {reviewAction === "APPROVED" ? "Approve leave request" : "Reject leave request"}
+                </h3>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  <span className="font-semibold text-slate-800">{selectedRequest.employee?.firstName} {selectedRequest.employee?.lastName}</span>
+                  <span className="mx-1.5 text-slate-300">·</span>{selectedRequest.totalDays} day(s)
+                </p>
+              </div>
+            </div>
 
-            <form onSubmit={handleReviewSubmit} className="space-y-4">
+            <form onSubmit={handleReviewSubmit} className="mt-5 space-y-4">
               <div>
-                <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
+                <label className="mb-1.5 block text-[13px] font-medium text-slate-700">
                   {reviewAction === "REJECTED" ? "Why is this request being rejected?" : "Reviewer Note / Feedback"}
                   {reviewAction === "REJECTED" && <span className="ml-1 text-rose-600">*</span>}
                 </label>
@@ -1421,22 +1544,22 @@ export default function LeavesView() {
                       ? "e.g. Approved. Please ensure handoff of active tasks."
                       : "e.g. Rejected due to critical project release deadline."
                   }
-                  className="w-full bg-white border border-slate-300 rounded-xl p-3 text-xs resize-none text-slate-900 placeholder:text-slate-400"
+                  className="min-h-28 w-full resize-none rounded-2xl border border-slate-200 bg-white p-3 text-sm leading-6 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-2">
+              <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
                 <button
                   type="button"
                   onClick={() => setReviewModalOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+                  className="inline-flex min-h-10 items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submittingReview || (reviewAction === "REJECTED" && !reviewNote.trim())}
-                  className={`px-5 py-2 rounded-xl text-white font-semibold text-sm transition shadow-sm ${
+                  className={`inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-xl px-5 py-2 text-sm font-semibold text-white shadow-sm transition ${
                     reviewAction === "APPROVED"
                       ? "bg-emerald-600 hover:bg-emerald-500"
                       : "bg-rose-600 hover:bg-rose-500"

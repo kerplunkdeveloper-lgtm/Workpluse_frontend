@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { ExpenseClaim } from "@/types";
 import { expensesApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { Wallet, Plus, CheckCircle2, XCircle, Clock, Loader2, DollarSign } from "lucide-react";
+import { Wallet, Plus, CheckCircle2, XCircle, Clock, Loader2, DollarSign, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { confetti } from "@/lib/confetti";
 import Select from "@/components/ui/Select";
@@ -15,6 +15,8 @@ export default function ExpenseClaimsView() {
   const { user, role } = useAuth();
   const [claims, setClaims] = useState<ExpenseClaim[]>([]);
   const [loading, setLoading] = useState(true);
+  const [claimActionId, setClaimActionId] = useState<string | null>(null);
+  const claimsRequestRef = useRef(0);
 
   // Submit Claim Modal State
   const [modalOpen, setModalOpen] = useState(false);
@@ -27,9 +29,11 @@ export default function ExpenseClaimsView() {
   const isAdminOrManager = role === "COMPANY_ADMIN" || role === "SUPER_ADMIN" || role === "MANAGER" || role === "HR";
 
   const loadClaims = async () => {
+    const requestId = ++claimsRequestRef.current;
     setLoading(true);
     try {
       const res = isAdminOrManager ? await expensesApi.getAllClaims() : await expensesApi.getMyClaims();
+      if (requestId !== claimsRequestRef.current) return;
       if (Array.isArray(res)) {
         setClaims(res);
       } else if (Array.isArray(res?.data)) {
@@ -40,7 +44,7 @@ export default function ExpenseClaimsView() {
         setClaims([]);
       }
     } catch (err: any) {
-      console.error("Failed to load claims:", err);
+      if (requestId === claimsRequestRef.current) console.error("Failed to load claims:", err);
     } finally {
       setLoading(false);
     }
@@ -88,19 +92,42 @@ export default function ExpenseClaimsView() {
   };
 
   const handleReviewClaim = async (id: string, status: "APPROVED" | "REJECTED") => {
+    if (claimActionId) return;
+    setClaimActionId(id);
     toast.loading("Updating claim status...", { id: "claim-act" });
     try {
       const res = await expensesApi.review(id, { status, reviewNote: `Finance review: ${status}` });
       toast.dismiss("claim-act");
       if (res?.success) {
+        // Reflect the decision immediately, then reconcile with the server.
+        setClaims((current) => current.map((claim) => claim.id === id ? { ...claim, status } : claim));
         toast.success(`Claim marked as ${status}!`);
-        loadClaims();
+        await loadClaims();
       } else {
         toast.error(res?.message || "Review action failed");
       }
     } catch (err: any) {
       toast.dismiss("claim-act");
       toast.error(err.response?.data?.message || err.message || "Action failed");
+    } finally {
+      setClaimActionId(null);
+    }
+  };
+
+  const handleDeleteClaim = async (claim: ExpenseClaim) => {
+    if (claim.status !== "PENDING") return;
+    if (!window.confirm("Delete this pending expense claim? This cannot be undone.")) return;
+    if (claimActionId) return;
+    setClaimActionId(claim.id);
+    try {
+      await expensesApi.deleteClaim(claim.id);
+      setClaims((current) => current.filter((item) => item.id !== claim.id));
+      toast.success("Expense claim deleted.");
+      await loadClaims();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || "Could not delete claim");
+    } finally {
+      setClaimActionId(null);
     }
   };
 
@@ -230,19 +257,31 @@ export default function ExpenseClaimsView() {
                         {claim.status === "PENDING" || claim.status === "SUBMITTED" || claim.status === "UNDER_REVIEW" ? (
                           <div className="flex items-center justify-end gap-1.5">
                             <button
+                              disabled={claimActionId === claim.id}
                               onClick={() => handleReviewClaim(claim.id, "APPROVED")}
-                              className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 transition"
+                              className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 transition disabled:cursor-not-allowed disabled:opacity-50"
                               title="Approve claim"
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" />
                             </button>
                             <button
+                              disabled={claimActionId === claim.id}
                               onClick={() => handleReviewClaim(claim.id, "REJECTED")}
-                              className="p-1.5 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 transition"
+                              className="p-1.5 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 transition disabled:cursor-not-allowed disabled:opacity-50"
                               title="Reject claim"
                             >
                               <XCircle className="w-3.5 h-3.5" />
                             </button>
+                            {claim.status === "PENDING" && (
+                              <button
+                                disabled={claimActionId === claim.id}
+                                onClick={() => handleDeleteClaim(claim)}
+                                className="p-1.5 rounded-lg bg-slate-50 text-slate-500 border border-slate-200 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition disabled:cursor-not-allowed disabled:opacity-50"
+                                title="Delete pending claim"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </div>
                         ) : (
                           <span className="text-xs text-slate-400">Processed</span>
@@ -311,7 +350,17 @@ export default function ExpenseClaimsView() {
                 <label className="block text-[13px] font-medium text-slate-700 mb-1">Attach Receipt Bill (PDF, JPG, PNG)</label>
                 <input
                   type="file"
-                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
+                  onChange={(e) => {
+                    const next = e.target.files?.[0];
+                    if (next && next.size > 10 * 1024 * 1024) {
+                      toast.error("Receipt must be 10 MB or smaller.");
+                      e.target.value = "";
+                      setFile(null);
+                      return;
+                    }
+                    setFile(next || null);
+                  }}
                   className="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer"
                 />
               </div>

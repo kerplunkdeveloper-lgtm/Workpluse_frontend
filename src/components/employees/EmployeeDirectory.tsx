@@ -175,6 +175,7 @@ export default function EmployeeDirectory() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
 
+
   const handleBroadcast = async () => {
     const title = broadcastTitle.trim();
     const message = broadcastMessage.trim();

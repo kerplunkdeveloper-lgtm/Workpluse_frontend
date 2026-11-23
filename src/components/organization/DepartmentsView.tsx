@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { departmentsApi } from "@/lib/api";
+import { departmentsApi, employeesApi } from "@/lib/api";
 import { unwrapList } from "@/lib/utils";
 import { FolderTree, Loader2, Pencil, Plus, Search, Trash2, Users, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
+import Modal from "@/components/ui/Modal";
 import DepartmentModal from "./DepartmentModal";
+import AuthenticatedImage from "@/components/ui/AuthenticatedImage";
 import {
   resolveDepartmentVisual,
   detectDefaultDepartmentStyle,
@@ -34,6 +36,9 @@ export default function DepartmentsView() {
   const [deleteTarget, setDeleteTarget] = useState<Department | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [customStyles, setCustomStyles] = useState<Record<string, DepartmentStyle>>({});
+  const [peopleDepartment, setPeopleDepartment] = useState<Department | null>(null);
+  const [departmentPeople, setDepartmentPeople] = useState<any[]>([]);
+  const [peopleLoading, setPeopleLoading] = useState(false);
 
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
@@ -180,6 +185,20 @@ export default function DepartmentsView() {
       );
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const viewPeople = async (department: Department) => {
+    setPeopleDepartment(department);
+    setDepartmentPeople([]);
+    setPeopleLoading(true);
+    try {
+      const res = await employeesApi.list({ departmentId: department.id, limit: 500 });
+      setDepartmentPeople(unwrapList(res));
+    } catch {
+      toast.error(`Could not load people in ${department.name}.`);
+    } finally {
+      setPeopleLoading(false);
     }
   };
 
@@ -429,6 +448,15 @@ export default function DepartmentsView() {
                     />
                   </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => void viewPeople(d)}
+                  className="mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/70 px-3 py-2 text-xs font-bold text-indigo-700 transition hover:border-indigo-300 hover:bg-indigo-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                >
+                  <Users className="h-3.5 w-3.5" />
+                  View people
+                </button>
               </li>
             );
           })}
@@ -446,6 +474,46 @@ export default function DepartmentsView() {
         initialData={modalInitialData}
         existingNames={departments.map((d) => d.name)}
       />
+
+      {peopleDepartment && <Modal
+        onClose={() => setPeopleDepartment(null)}
+        title={`People in ${peopleDepartment.name}`}
+        description={`${departmentPeople.length || headcount(peopleDepartment)} employees assigned to this department.`}
+        icon={<span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600"><Users className="h-4 w-4" /></span>}
+        size="lg"
+      >
+        {peopleLoading ? (
+          <div className="grid gap-3 sm:grid-cols-2" aria-busy="true">
+            {[0, 1, 2, 3].map((item) => <div key={item} className="h-20 animate-pulse rounded-2xl bg-slate-100" />)}
+          </div>
+        ) : departmentPeople.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center">
+            <Users className="mx-auto h-7 w-7 text-slate-300" />
+            <p className="mt-3 text-sm font-bold text-slate-700">No people assigned</p>
+            <p className="mt-1 text-xs text-slate-500">Employees assigned to this department will appear here.</p>
+          </div>
+        ) : (
+          <div className="grid max-h-[55vh] gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
+            {departmentPeople.map((employee) => {
+              const name = `${employee.firstName || "Employee"} ${employee.lastName || ""}`.trim();
+              const initials = name.split(/\s+/).map((part: string) => part[0]).join("").slice(0, 2).toUpperCase();
+              return (
+                <div key={employee.id} className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-indigo-200 hover:shadow-md">
+                  <span className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-xs font-bold text-white">
+                    <span aria-hidden="true">{initials}</span>
+                    {employee.avatarUrl && <AuthenticatedImage src={employee.avatarUrl} alt={name} className="absolute inset-0 h-full w-full object-cover" />}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-slate-900">{name}</p>
+                    <p className="mt-0.5 truncate text-xs text-slate-500">{employee.employeeCode || "No employee code"}{employee.designation ? ` · ${employee.designation}` : ""}</p>
+                    <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${employee.status === "ACTIVE" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>{String(employee.status || "ACTIVE").replace(/_/g, " ")}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Modal>}
 
       {/* Delete confirmation dialog */}
       {deleteTarget && (

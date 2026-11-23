@@ -8,6 +8,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import { FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import Select from "@/components/ui/Select";
+import MonthYearPicker from "@/components/ui/MonthYearPicker";
 
 function ExportHistory() {
   const [rows, setRows] = useState<any[]>([]);
@@ -232,9 +233,8 @@ export default function StatutoryView() {
       {isAdmin && (
         <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
           <h2 className="text-sm font-semibold">Monthly filing files</h2>
-          <div className="flex gap-2">
-            <input type="number" value={month} onChange={(e) => setMonth(Number(e.target.value))} className="w-20 px-2 py-2 rounded-xl border text-xs" />
-            <input type="number" value={year} onChange={(e) => setYear(Number(e.target.value))} className="w-24 px-2 py-2 rounded-xl border text-xs" />
+          <div className="flex flex-wrap items-center gap-2">
+            <MonthYearPicker month={month} year={year} onMonthChange={setMonth} onYearChange={setYear} />
             <button onClick={() => handleExport("pf-ecr")} className="px-3 py-2 rounded-xl border text-xs font-semibold">PF ECR</button>
             <button onClick={() => handleExport("esi")} className="px-3 py-2 rounded-xl border text-xs font-semibold">ESI</button>
             <button onClick={() => handleExport("neft")} className="px-3 py-2 rounded-xl border text-xs font-semibold">NEFT / NACH</button>

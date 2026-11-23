@@ -182,7 +182,7 @@ export default function OfferLetterTemplateModal({ open, onClose, inline = false
   const importTemplate = async (file: File) => {
     setImporting(true);
     try {
-      if (file.size > 2 * 1024 * 1024) throw new Error("Please choose a file smaller than 2 MB.");
+      if (file.size > 1 * 1024 * 1024) throw new Error("Please choose a file smaller than 1 MB.");
       const extension = file.name.toLowerCase();
       const isJson = extension.endsWith(".json") || file.type === "application/json";
       const isCsv = extension.endsWith(".csv") || file.type === "text/csv";

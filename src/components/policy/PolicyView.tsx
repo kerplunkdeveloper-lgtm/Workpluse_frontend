@@ -285,7 +285,7 @@ export default function PolicyView() {
   }
 
   return (
-    <form onSubmit={handleSave} className="mx-auto w-full max-w-[1240px] space-y-5 pb-24">
+    <form onSubmit={handleSave} className="mx-auto w-full max-w-[1240px] space-y-5">
       <div>
         <PageHeader
           icon={SlidersHorizontal}
@@ -419,7 +419,7 @@ export default function PolicyView() {
           </p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <label className="space-y-1.5">
+          <label className="block space-y-1.5">
             <span className="text-xs font-semibold text-slate-600 uppercase">Cycle</span>
             <Select
               value={selectedPreset}
@@ -434,7 +434,7 @@ export default function PolicyView() {
               <option value="custom">Custom days</option>
             </Select>
           </label>
-          <label className="space-y-1.5">
+          <label className="block space-y-1.5">
             <span className="text-xs font-semibold text-slate-600 uppercase">Day basis for deductions</span>
             <Select
               value={form.payrollDayBasis}
@@ -452,7 +452,7 @@ export default function PolicyView() {
         </div>
         {selectedPreset === "custom" && (
           <div className="grid grid-cols-2 gap-4">
-            <label className="space-y-1.5">
+            <label className="block space-y-1.5">
               <span className="text-xs font-semibold text-slate-600 uppercase">Starts on day</span>
               <input
                 type="number"
@@ -463,7 +463,7 @@ export default function PolicyView() {
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm"
               />
             </label>
-            <label className="space-y-1.5">
+            <label className="block space-y-1.5">
               <span className="text-xs font-semibold text-slate-600 uppercase">Ends on day</span>
               <input
                 type="number"
@@ -483,7 +483,7 @@ export default function PolicyView() {
       </div>
 
       <div id="leave-policy" className={PANEL + " grid grid-cols-1 gap-4 sm:grid-cols-2"}>
-        <label className="space-y-1.5">
+        <label className="block space-y-1.5">
           <span className="text-xs font-semibold text-slate-600 uppercase">Working days / month</span>
           <input
             type="number"
@@ -494,22 +494,22 @@ export default function PolicyView() {
             className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm"
           />
         </label>
-        <label className="space-y-1.5">
+        <label className="block space-y-1.5">
           <span className="text-xs font-semibold text-slate-600 uppercase">Leave eligibility wait (months)</span>
           <input type="number" min={0} max={24} value={form.probationMonths} onChange={(e) => setNum("probationMonths", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm" />
           <span className="text-xs text-slate-400">Paid leave and permission unlock after this period.</span>
         </label>
-        <label className="space-y-1.5">
+        <label className="block space-y-1.5">
           <span className="text-xs font-semibold text-slate-600 uppercase">Monthly permission allowance</span>
           <input type="number" step="0.5" min={0} max={24} value={form.monthlyPermissionHours} onChange={(e) => setNum("monthlyPermissionHours", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm" />
           <span className="text-xs text-slate-400">Hours per payroll cycle with no salary deduction. Example: 3 hours = 180 minutes.</span>
         </label>
-        <label className="space-y-1.5">
+        <label className="block space-y-1.5">
           <span className="text-xs font-semibold text-slate-600 uppercase">Paid leave earned / month</span>
           <input type="number" step="0.5" min={0} max={31} value={form.monthlyPaidLeaveDays} onChange={(e) => setNum("monthlyPaidLeaveDays", e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm" />
           <span className="text-xs text-slate-400">Shared across paid leave types. Unpaid leave is not affected.</span>
         </label>
-        <label className="space-y-1.5">
+        <label className="block space-y-1.5">
           <span className="text-xs font-semibold text-slate-600 uppercase">Half-day threshold (minutes)</span>
           <input
             type="number"
@@ -519,7 +519,7 @@ export default function PolicyView() {
             className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm"
           />
         </label>
-        <label className="space-y-1.5">
+        <label className="block space-y-1.5">
           <span className="text-xs font-semibold text-slate-600 uppercase">Lates before deduction</span>
           <input
             type="number"
@@ -529,7 +529,7 @@ export default function PolicyView() {
             className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm"
           />
         </label>
-        <label className="space-y-1.5">
+        <label className="block space-y-1.5">
           <span className="text-xs font-semibold text-slate-600 uppercase">Late deduction (fraction of daily rate)</span>
           <input
             type="number"
@@ -596,12 +596,12 @@ export default function PolicyView() {
             <input type="checkbox" checked={form.lunchDeductionEnabled} onChange={(e) => setForm((p) => ({ ...p, lunchDeductionEnabled: e.target.checked }))} className="mt-1" />
             <span><span className="block text-sm font-semibold text-slate-900">Deduct extra lunch</span><span className="mt-1 block text-xs leading-5 text-slate-500">Uses each employee&apos;s shift lunch allowance.</span></span>
           </label>
-          <label className="space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Salary basis</span><Select value={form.pauseDeductionSalaryBasis} onChange={(e) => setForm((p) => ({ ...p, pauseDeductionSalaryBasis: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"><option value="BASE_SALARY">Base salary</option><option value="GROSS_SALARY">Gross salary excluding overtime</option><option value="MONTHLY_CTC">Monthly CTC</option></Select><span className="text-xs text-slate-500">Hourly rate = selected monthly amount ÷ payroll day basis ÷ 8 hours.</span></label>
-          <label className="space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Maximum pause deduction / day</span><input type="number" min={0} step="0.01" value={form.maxPauseDeductionPerDay} onChange={(e) => setNum("maxPauseDeductionPerDay", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /><span className="text-xs text-slate-500">0 means no cap. A cap protects employees from an accidental long pause.</span></label>
-          <label className="space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Break grace (minutes)</span><input type="number" min={0} max={1440} value={form.breakGraceMinutes} onChange={(e) => setNum("breakGraceMinutes", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /></label>
-          <label className="space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Lunch grace (minutes)</span><input type="number" min={0} max={1440} value={form.lunchGraceMinutes} onChange={(e) => setNum("lunchGraceMinutes", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /></label>
-          <label className="space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Break calculation</span><Select value={form.breakDeductionMethod} onChange={(e) => setForm((p) => ({ ...p, breakDeductionMethod: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"><option value="HOURLY_RATE">Salary-based hourly rate</option><option value="FIXED_PER_MINUTE">Fixed amount per extra minute</option></Select>{form.breakDeductionMethod === "FIXED_PER_MINUTE" && <input type="number" min={0} step="0.01" value={form.breakFixedPerMinute} onChange={(e) => setNum("breakFixedPerMinute", e.target.value)} placeholder="Amount per minute" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />}</label>
-          <label className="space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Lunch calculation</span><Select value={form.lunchDeductionMethod} onChange={(e) => setForm((p) => ({ ...p, lunchDeductionMethod: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"><option value="HOURLY_RATE">Salary-based hourly rate</option><option value="FIXED_PER_MINUTE">Fixed amount per extra minute</option></Select>{form.lunchDeductionMethod === "FIXED_PER_MINUTE" && <input type="number" min={0} step="0.01" value={form.lunchFixedPerMinute} onChange={(e) => setNum("lunchFixedPerMinute", e.target.value)} placeholder="Amount per minute" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />}</label>
+          <label className="block space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Salary basis</span><Select value={form.pauseDeductionSalaryBasis} onChange={(e) => setForm((p) => ({ ...p, pauseDeductionSalaryBasis: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"><option value="BASE_SALARY">Base salary</option><option value="GROSS_SALARY">Gross salary excluding overtime</option><option value="MONTHLY_CTC">Monthly CTC</option></Select><span className="text-xs text-slate-500">Hourly rate = selected monthly amount ÷ payroll day basis ÷ 8 hours.</span></label>
+          <label className="block space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Maximum pause deduction / day</span><input type="number" min={0} step="0.01" value={form.maxPauseDeductionPerDay} onChange={(e) => setNum("maxPauseDeductionPerDay", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /><span className="text-xs text-slate-500">0 means no cap. A cap protects employees from an accidental long pause.</span></label>
+          <label className="block space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Break grace (minutes)</span><input type="number" min={0} max={1440} value={form.breakGraceMinutes} onChange={(e) => setNum("breakGraceMinutes", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /></label>
+          <label className="block space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Lunch grace (minutes)</span><input type="number" min={0} max={1440} value={form.lunchGraceMinutes} onChange={(e) => setNum("lunchGraceMinutes", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /></label>
+          <label className="block space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Break calculation</span><Select value={form.breakDeductionMethod} onChange={(e) => setForm((p) => ({ ...p, breakDeductionMethod: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"><option value="HOURLY_RATE">Salary-based hourly rate</option><option value="FIXED_PER_MINUTE">Fixed amount per extra minute</option></Select>{form.breakDeductionMethod === "FIXED_PER_MINUTE" && <input type="number" min={0} step="0.01" value={form.breakFixedPerMinute} onChange={(e) => setNum("breakFixedPerMinute", e.target.value)} placeholder="Amount per minute" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />}</label>
+          <label className="block space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Lunch calculation</span><Select value={form.lunchDeductionMethod} onChange={(e) => setForm((p) => ({ ...p, lunchDeductionMethod: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"><option value="HOURLY_RATE">Salary-based hourly rate</option><option value="FIXED_PER_MINUTE">Fixed amount per extra minute</option></Select>{form.lunchDeductionMethod === "FIXED_PER_MINUTE" && <input type="number" min={0} step="0.01" value={form.lunchFixedPerMinute} onChange={(e) => setNum("lunchFixedPerMinute", e.target.value)} placeholder="Amount per minute" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />}</label>
         </div>
         <div className="mt-4 rounded-2xl border border-amber-200 bg-white/80 p-4 text-xs leading-5 text-amber-950"><strong>Payroll rule:</strong> no deduction is created while an attendance session is still open. The final amount appears in payroll preview, payslip deductions and the employee&apos;s daily audit.</div>
       </section>
@@ -615,17 +615,16 @@ export default function PolicyView() {
           </div>
         </div>
         <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <label className="space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Recovery leave threshold (hours)</span><input type="number" min={1} max={48} step={0.5} value={Number(form.shootRecoveryThresholdMinutes) / 60} onChange={(e) => setNum("shootRecoveryThresholdMinutes", String(Number(e.target.value || 12) * 60))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /><span className="text-xs text-slate-500">Default: 12 hours. If the employee returns the next day and total travel + shoot time reaches this limit, the employee can claim a full-day recovery leave.</span></label>
-          <label className="space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Travel OT threshold (hours)</span><input type="number" min={1} max={48} step={0.5} value={Number(form.shootTravelOtThresholdMinutes) / 60} onChange={(e) => setNum("shootTravelOtThresholdMinutes", String(Number(e.target.value || 6) * 60))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /><span className="text-xs text-slate-500">Default: 6 hours. Total travel time must reach this threshold before travel OT is calculated.</span></label>
-          <label className="space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Travel OT multiplier</span><input type="number" min={0} max={5} step={0.25} value={form.shootTravelOtMultiplier} onChange={(e) => setNum("shootTravelOtMultiplier", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /><span className="text-xs text-slate-500">Default: 0.5. Example: 6 hours of qualifying travel is paid as 6 hours × 0.5 hourly rate.</span></label>
-          <label className="space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Shoot OT multiplier</span><input type="number" min={0} max={5} step={0.25} value={form.shootOtMultiplier} onChange={(e) => setNum("shootOtMultiplier", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /><span className="text-xs text-slate-500">Example: 1.5 means 150% of the employee hourly rate.</span></label>
-          <label className="space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">OT salary basis</span><Select value={form.shootOtSalaryBasis} onChange={(e) => setForm((p) => ({ ...p, shootOtSalaryBasis: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"><option value="BASE_SALARY">Base salary</option><option value="MONTHLY_CTC">Monthly CTC</option></Select><span className="text-xs text-slate-500">Hourly rate = selected monthly salary ÷ working days per month ÷ 8 hours.</span></label>
+          <label className="block space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Recovery leave threshold (hours)</span><input type="number" min={1} max={48} step={0.5} value={Number(form.shootRecoveryThresholdMinutes) / 60} onChange={(e) => setNum("shootRecoveryThresholdMinutes", String(Number(e.target.value || 12) * 60))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /><span className="text-xs text-slate-500">Default: 12 hours. If the employee returns the next day and total travel + shoot time reaches this limit, the employee can claim a full-day recovery leave.</span></label>
+          <label className="block space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Travel OT threshold (hours)</span><input type="number" min={1} max={48} step={0.5} value={Number(form.shootTravelOtThresholdMinutes) / 60} onChange={(e) => setNum("shootTravelOtThresholdMinutes", String(Number(e.target.value || 6) * 60))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /><span className="text-xs text-slate-500">Default: 6 hours. Total travel time must reach this threshold before travel OT is calculated.</span></label>
+          <label className="block space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Travel OT multiplier</span><input type="number" min={0} max={5} step={0.25} value={form.shootTravelOtMultiplier} onChange={(e) => setNum("shootTravelOtMultiplier", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /><span className="text-xs text-slate-500">Default: 0.5. Example: 6 hours of qualifying travel is paid as 6 hours × 0.5 hourly rate.</span></label>
+          <label className="block space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Shoot OT multiplier</span><input type="number" min={0} max={5} step={0.25} value={form.shootOtMultiplier} onChange={(e) => setNum("shootOtMultiplier", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /><span className="text-xs text-slate-500">Example: 1.5 means 150% of the employee hourly rate.</span></label>
+          <label className="block space-y-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-slate-600">OT salary basis</span><Select value={form.shootOtSalaryBasis} onChange={(e) => setForm((p) => ({ ...p, shootOtSalaryBasis: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"><option value="BASE_SALARY">Base salary</option><option value="MONTHLY_CTC">Monthly CTC</option></Select><span className="text-xs text-slate-500">Hourly rate = selected monthly salary ÷ working days per month ÷ 8 hours.</span></label>
           <div className="space-y-2 text-sm text-slate-700"><label className="flex items-center gap-2"><input type="checkbox" checked={form.shootTravelOtEnabled} onChange={(e) => setForm((p) => ({ ...p, shootTravelOtEnabled: e.target.checked }))} /> Enable total-travel-time OT</label><label className="flex items-center gap-2"><input type="checkbox" checked={form.shootRecoveryEnabled} onChange={(e) => setForm((p) => ({ ...p, shootRecoveryEnabled: e.target.checked }))} /> Enable recovery leave eligibility</label></div>
         </div>
         <div className="mt-5 rounded-2xl border border-violet-200 bg-white/80 p-4 text-xs leading-5 text-violet-950"><strong>Employee-friendly explanation:</strong> Total travel time at or above the configured threshold creates travel OT using the travel multiplier. Once the settlement is approved, that travel OT moves directly into payroll; approved food, room and transport claims move as reimbursement. Recovery Leave remains a separate eligibility option.</div>
       </section>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-8px_24px_-18px_rgba(15,23,42,0.35)] backdrop-blur sm:px-8"><div className="mx-auto flex w-full max-w-[1240px] items-center justify-between gap-3"><p className="hidden text-xs text-slate-500 sm:block">Changes apply to attendance and payroll after saving.</p><button type="submit" disabled={saving} className="ml-auto inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-indigo-600/20 transition hover:bg-indigo-700 disabled:opacity-50">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} {saving ? "Saving..." : "Save policy"}</button></div></div>
     </form>
   );
 }

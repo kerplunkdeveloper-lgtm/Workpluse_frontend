@@ -15,6 +15,7 @@ const PayslipTemplateCustomizer = dynamic(() => import("./PayslipTemplateCustomi
 import SalaryStructuresView from "./SalaryStructuresView";
 import { toast } from "sonner";
 import { confetti } from "@/lib/confetti";
+import MonthYearPicker from "@/components/ui/MonthYearPicker";
 
 export default function PayrollView() {
   const { role } = useAuth();
@@ -110,6 +111,11 @@ export default function PayrollView() {
     } catch (err: any) {
       console.error("Failed to load payslips:", err);
       setPreviewRows([]);
+      toast.error(
+        err?.code === "ECONNABORTED"
+          ? "Payroll preview is taking longer than expected. Please try again."
+          : err?.response?.data?.message || "Could not load payroll preview",
+      );
     } finally {
       setLoading(false);
     }
@@ -261,31 +267,12 @@ export default function PayrollView() {
 
         {isAdminOrManager && activeSection === "RECORDS" && (
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 bg-white border border-slate-200 shadow-xs px-3 py-1.5 rounded-xl text-xs">
-              <span className="text-slate-500">Month:</span>
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                className="bg-transparent text-slate-800 font-semibold focus:outline-none"
-              >
-                {[
-                  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-                ].map((m, i) => (
-                  <option key={i + 1} value={i + 1} className="bg-white text-slate-800">
-                    {m}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="bg-transparent text-slate-800 font-semibold focus:outline-none"
-              >
-                <option value={2026} className="bg-white text-slate-800">2026</option>
-                <option value={2025} className="bg-white text-slate-800">2025</option>
-              </select>
-            </div>
+            <MonthYearPicker
+              month={selectedMonth}
+              year={selectedYear}
+              onMonthChange={setSelectedMonth}
+              onYearChange={setSelectedYear}
+            />
 
             {cycle?.start && cycle?.end && (
               <span className={`text-xs ${generateLocked ? "text-amber-700" : "text-slate-500"}`}>

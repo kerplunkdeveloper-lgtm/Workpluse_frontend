@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { CalendarRange, CheckCircle2, ChevronDown, Loader2, Plus, Star } from "lucide-react";
 import { toast } from "sonner";
-import { appraisalsApi } from "@/lib/api";
+import { appraisalsApi, branchesApi, departmentsApi, employeesApi, payrollApi } from "@/lib/api";
 import { formatDate, unwrapList } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import PageHeader from "@/components/ui/PageHeader";
@@ -16,7 +16,7 @@ interface Review {
   selfComments?: string | null;
   managerComments?: string | null;
   cycle?: { name?: string; startDate?: string; endDate?: string } | null;
-  employee?: { firstName?: string; lastName?: string; employeeCode?: string } | null;
+  employee?: { id?: string; firstName?: string; lastName?: string; employeeCode?: string } | null;
 }
 
 interface Cycle {
@@ -274,9 +274,24 @@ function ManagerReviewRow({ review, onSaved }: { review: Review; onSaved: () => 
   const [score, setScore] = useState(review.managerScore || 0);
   const [comments, setComments] = useState(review.managerComments || "");
   const [saving, setSaving] = useState(false);
+  const [salary, setSalary] = useState<any>(null);
+  const [hikePercent, setHikePercent] = useState("");
+  const [salarySaving, setSalarySaving] = useState(false);
   const done = review.status === "COMPLETED";
   const ready = review.status === "SELF_SUBMITTED" || done;
   const status = STATUS[review.status] ?? STATUS.DRAFT;
+
+  useEffect(() => {
+    if (!review.employee?.id) return;
+    payrollApi.getSalaryStructure(review.employee.id)
+      .then((res) => setSalary(res?.data || res))
+      .catch(() => setSalary(null));
+  }, [review.employee?.id]);
+
+  const oldAnnualCtc = Number(salary?.annualCtc || salary?.salaryStructure?.annualCtc || 0);
+  const revisedAnnualCtc = oldAnnualCtc > 0 && hikePercent !== ""
+    ? Math.round(oldAnnualCtc * (1 + Number(hikePercent) / 100))
+    : oldAnnualCtc;
 
   const save = async () => {
     if (!score) return toast.error("Choose a score from 1 to 5 first.");
@@ -284,11 +299,31 @@ function ManagerReviewRow({ review, onSaved }: { review: Review; onSaved: () => 
     try {
       const res = await appraisalsApi.submitManager(review.id, { managerScore: score, managerComments: comments });
       if (!res?.success) throw new Error(res?.message);
+      if (!done && hikePercent !== "" && revisedAnnualCtc > 0 && review.employee?.id) {
+        setSalarySaving(true);
+        const current = salary?.salaryStructure || salary || {};
+        await payrollApi.recordSalaryRevision({
+          employeeId: review.employee.id,
+          annualCtc: revisedAnnualCtc,
+          monthlyCtc: Math.round(revisedAnnualCtc / 12),
+          baseSalary: Number(current.baseSalary || Math.round(revisedAnnualCtc / 12 * 0.5)),
+          hra: Number(current.hra || 0),
+          transport: Number(current.transport || current.transportAllowance || 0),
+          special: Number(current.special || current.specialAllowance || 0),
+          otherAllowance: Number(current.otherAllowance || 0),
+          pf: Number(current.pf || 0),
+          esi: Number(current.esi || 0),
+          professionalTax: Number(current.professionalTax || 0),
+          effectiveDate: new Date().toISOString().slice(0, 10),
+          revisionReason: "ANNUAL_APPRAISAL",
+        });
+      }
       toast.success(`Review saved for ${nameOf(review.employee)}.`);
       onSaved();
     } catch (err) {
       toast.error(errorOf(err, "Could not save this review."));
     } finally {
+      setSalarySaving(false);
       setSaving(false);
     }
   };
@@ -306,11 +341,20 @@ function ManagerReviewRow({ review, onSaved }: { review: Review; onSaved: () => 
       </div>
       {ready ? (
         <div className="space-y-2">
+          <div className="rounded-xl bg-indigo-50 p-3 ring-1 ring-indigo-100">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-indigo-700">Salary revision</p>
+            <div className="mt-2 grid gap-2 sm:grid-cols-3">
+              <label className="text-xs font-semibold text-slate-600">Old annual CTC<input readOnly value={oldAnnualCtc ? `₹${oldAnnualCtc.toLocaleString("en-IN")}` : "Not configured"} className="mt-1 h-9 w-full rounded-lg bg-white px-2 text-sm text-slate-900 ring-1 ring-slate-200" /></label>
+              <label className="text-xs font-semibold text-slate-600">Hike (%)<input type="number" min="-100" step="0.01" value={hikePercent} onChange={(e) => setHikePercent(e.target.value)} placeholder="e.g. 3" className="mt-1 h-9 w-full rounded-lg bg-white px-2 text-sm text-slate-900 ring-1 ring-slate-200" /></label>
+              <label className="text-xs font-semibold text-slate-600">Revised annual CTC<input readOnly value={revisedAnnualCtc ? `₹${revisedAnnualCtc.toLocaleString("en-IN")}` : "—"} className="mt-1 h-9 w-full rounded-lg bg-white px-2 text-sm font-bold text-emerald-700 ring-1 ring-slate-200" /></label>
+            </div>
+            {hikePercent !== "" && <p className="mt-2 text-[11px] text-indigo-700">New monthly CTC: ₹{Math.round(revisedAnnualCtc / 12).toLocaleString("en-IN")}. Saving the review will also record this salary revision.</p>}
+          </div>
           <Stars value={score} onChange={setScore} label={`Score for ${nameOf(review.employee)}`} />
           <textarea value={comments} onChange={(e) => setComments(e.target.value)} rows={2} maxLength={2000} placeholder="Feedback for this person" aria-label="Manager feedback" className="w-full rounded-xl bg-white p-3 text-sm ring-1 ring-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
           <div className="flex justify-end">
-            <button type="button" onClick={save} disabled={saving} className="inline-flex h-9 items-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60">
-              {saving && <Loader2 className="h-4 w-4 animate-spin" />} {done ? "Update review" : "Complete review"}
+            <button type="button" onClick={save} disabled={saving || salarySaving} className="inline-flex h-9 items-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60">
+              {(saving || salarySaving) && <Loader2 className="h-4 w-4 animate-spin" />} {done ? "Update review" : "Complete review"}
             </button>
           </div>
         </div>
@@ -322,9 +366,40 @@ function ManagerReviewRow({ review, onSaved }: { review: Review; onSaved: () => 
 }
 
 function CycleForm({ onDone }: { onDone: () => void }) {
-  const [form, setForm] = useState({ name: "", startDate: "", endDate: "" });
+  const [form, setForm] = useState({ name: "", startDate: "", endDate: "", employeeId: "" });
+  const [employees, setEmployees] = useState<Array<{ id: string; firstName?: string; lastName?: string; employeeCode?: string }>>([]);
+  const [branches, setBranches] = useState<Array<{ id: string; name: string }>>([]);
+  const [departments, setDepartments] = useState<Array<{ id: string; name: string }>>([]);
+  const [branchId, setBranchId] = useState("ALL");
+  const [departmentId, setDepartmentId] = useState("ALL");
+  const [employeePage, setEmployeePage] = useState(1);
+  const [employeeTotalPages, setEmployeeTotalPages] = useState(1);
+  const [employeesLoading, setEmployeesLoading] = useState(false);
+  const employeePageSize = 25;
   const [saving, setSaving] = useState(false);
   const invalidRange = Boolean(form.startDate && form.endDate && form.endDate < form.startDate);
+
+  useEffect(() => {
+    Promise.all([branchesApi.list(), departmentsApi.list()])
+      .then(([branchResponse, departmentResponse]) => { setBranches(unwrapList(branchResponse)); setDepartments(unwrapList(departmentResponse)); })
+      .catch(() => { setBranches([]); setDepartments([]); });
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setEmployeesLoading(true);
+    employeesApi.getAll({ status: "WORKING", page: employeePage, limit: employeePageSize, ...(branchId !== "ALL" ? { branchId } : {}), ...(departmentId !== "ALL" ? { departmentId } : {}) })
+      .then((res) => { if (!cancelled) { setEmployees(unwrapList(res)); setEmployeeTotalPages(Math.max(1, Number(res?.totalPages || res?.pagination?.totalPages || 1))); } })
+      .catch(() => { if (!cancelled) setEmployees([]); })
+      .finally(() => { if (!cancelled) setEmployeesLoading(false); });
+    return () => { cancelled = true; };
+  }, [branchId, departmentId, employeePage]);
+
+  const changeFilter = (setter: (value: string) => void, value: string) => {
+    setter(value);
+    setEmployeePage(1);
+    setForm((current) => ({ ...current, employeeId: "" }));
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -333,7 +408,7 @@ function CycleForm({ onDone }: { onDone: () => void }) {
     try {
       const res = await appraisalsApi.create(form);
       if (!res?.success) throw new Error(res?.message);
-      toast.success("Cycle created. Everyone now has a review to complete.");
+      toast.success(form.employeeId ? "Appraisal created for the selected employee." : "Cycle created. Everyone now has a review to complete.");
       onDone();
     } catch (err) {
       toast.error(errorOf(err, "Could not create the cycle."));
@@ -348,6 +423,15 @@ function CycleForm({ onDone }: { onDone: () => void }) {
         <span className="text-xs font-semibold text-slate-600">Cycle name</span>
         <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Annual review 2026" className={INPUT} />
       </label>
+      <label className="block space-y-1.5 sm:col-span-2 lg:col-span-1">
+        <span className="text-xs font-semibold text-slate-600">Employee</span>
+        <select value={form.employeeId} onChange={(e) => setForm({ ...form, employeeId: e.target.value })} className={INPUT}>
+          <option value="">All working employees</option>
+          {employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.firstName} {employee.lastName || ""} · {employee.employeeCode || "No code"}</option>)}
+        </select>
+      </label>
+      <label className="block space-y-1.5"><span className="text-xs font-semibold text-slate-600">Branch</span><select value={branchId} onChange={(e) => changeFilter(setBranchId, e.target.value)} className={INPUT}><option value="ALL">All branches</option>{branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</select></label>
+      <label className="block space-y-1.5"><span className="text-xs font-semibold text-slate-600">Department</span><select value={departmentId} onChange={(e) => changeFilter(setDepartmentId, e.target.value)} className={INPUT}><option value="ALL">All departments</option>{departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</select></label>
       <label className="block space-y-1.5">
         <span className="text-xs font-semibold text-slate-600">Starts</span>
         <input required type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} className={INPUT} />
@@ -357,6 +441,7 @@ function CycleForm({ onDone }: { onDone: () => void }) {
         <input required type="date" min={form.startDate || undefined} value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} className={INPUT} />
         {invalidRange && <span className="block text-[11px] font-medium text-rose-600">Must be after the start date</span>}
       </label>
+      <div className="flex items-center justify-between gap-2 text-[11px] text-slate-500 sm:col-span-2 lg:col-span-3"><span>Employee page {employeePage} of {employeeTotalPages}</span><span className="flex gap-1"><button type="button" disabled={employeePage <= 1 || employeesLoading} onClick={() => setEmployeePage((page) => page - 1)} className="rounded-lg px-2 py-1 font-semibold ring-1 ring-slate-200 disabled:opacity-40">Previous</button><button type="button" disabled={employeePage >= employeeTotalPages || employeesLoading} onClick={() => setEmployeePage((page) => page + 1)} className="rounded-lg px-2 py-1 font-semibold ring-1 ring-slate-200 disabled:opacity-40">Next</button></span></div>
       <button disabled={saving || invalidRange} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-60">
         {saving && <Loader2 className="h-4 w-4 animate-spin" />} Create cycle
       </button>

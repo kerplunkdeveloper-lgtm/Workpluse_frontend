@@ -328,7 +328,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { if (role === "MANAGER" || role === "HR" || role === "EMPLOYEE") orgApi.get().then((res) => { setHrAccess(res?.data?.hrAccess || null); setRoleAccess(res?.data?.roleAccess || null); }).catch(() => { setHrAccess(null); setRoleAccess(null); }); else { setHrAccess(null); setRoleAccess(null); } }, [role]);
   const hrAreaForHref = (href: string) => { if (href.startsWith("/dashboard") || href.startsWith("/profile")) return "DASHBOARD"; if (href.startsWith("/attendance") || href.startsWith("/leaves") || href.startsWith("/approvals")) return "ATTENDANCE"; if (href.startsWith("/employees")) return "EMPLOYEES"; if (href.startsWith("/onboarding") || href.startsWith("/offboarding")) return "ONBOARDING"; if (href.startsWith("/audit")) return "AUDIT"; if (href.startsWith("/payroll") || href.startsWith("/statutory") || href.startsWith("/loans") || href.startsWith("/expenses") || href.startsWith("/overtime")) return "PAYROLL"; if (href.startsWith("/reports")) return "REPORTS"; if (href.startsWith("/branches") || href.startsWith("/departments")) return "BRANCHES"; if (href.startsWith("/policy") || href.startsWith("/holidays") || href.startsWith("/shifts")) return "POLICIES"; if (href.startsWith("/assets")) return "EMPLOYEES"; return null; };
-  const canSeeHrArea = (href: string) => { const area = hrAreaForHref(href); if (!area) return true; if ((role === "MANAGER" || role === "HR") && hrAccess) return hrAccess[area] !== false; if (role === "EMPLOYEE" && roleAccess?.EMPLOYEE) return roleAccess.EMPLOYEE[area] !== false; return true; };
+  const canSeeHrArea = (href: string) => { const area = hrAreaForHref(href); if (!area) return true; if ((role === "MANAGER" || role === "HR") && roleAccess?.[role]) return roleAccess[role][area] !== false; if (role === "MANAGER" || role === "HR") return hrAccess ? hrAccess[area] !== false : true; if (role === "EMPLOYEE" && roleAccess?.EMPLOYEE) return roleAccess.EMPLOYEE[area] !== false; return true; };
   const visibleSections = (isPlatformOwner ? PLATFORM_SECTIONS : NAV_SECTIONS).map((section) => ({
     ...section,
     items: section.items.filter((item) => itemVisible(item, role, user?.features) && canSeeHrArea(item.href) && itemMatches(item, navQuery)),
@@ -387,6 +387,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const displayName = user?.employee?.firstName
     ? `${user.employee.firstName} ${user.employee.lastName || ""}`.trim()
     : user?.email?.split("@")[0] || "User";
+  const profilePhotoUrl = user?.avatarUrl || user?.employee?.avatarUrl;
 
   const userRoleDisplay = roleLabel(role);
 
@@ -1023,9 +1024,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 className="flex items-center gap-2 p-1 rounded-xl hover:bg-slate-100 transition text-left cursor-pointer"
               >
                 <div className="relative">
-                  {user?.avatarUrl || user?.employee?.avatarUrl ? (
+                  {profilePhotoUrl ? (
                     <AuthenticatedImage
-                      src={user.avatarUrl || user.employee?.avatarUrl}
+                      src={profilePhotoUrl}
                       alt={displayName}
                       className="w-8 h-8 rounded-full object-cover shadow-xs ring-2 ring-indigo-100"
                     />
@@ -1053,16 +1054,32 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     transition={{ duration: 0.15 }}
                     className="absolute right-0 mt-3 w-[min(20rem,calc(100vw-1.5rem))] max-h-[calc(100dvh-5.5rem)] overflow-y-auto rounded-[1.35rem] border border-slate-200/90 bg-white p-2 text-slate-800 shadow-[0_24px_70px_-24px_rgba(15,23,42,0.45)] ring-1 ring-white/80 z-[70] origin-top-right"
                   >
-                    <div className="px-3 py-2.5 border-b border-slate-100 mb-1">
-                      <p className="text-xs font-bold text-slate-900">{displayName}</p>
-                      <p className="text-xs text-slate-500 truncate">{user?.email}</p>
-                      <div className="flex items-center gap-1.5 mt-2">
+                    <div className="mb-1 flex items-center gap-3 border-b border-slate-100 px-3 py-3">
+                      <div className="relative shrink-0">
+                        {profilePhotoUrl ? (
+                          <AuthenticatedImage
+                            src={profilePhotoUrl}
+                            alt={`${displayName} profile`}
+                            className="h-11 w-11 rounded-2xl object-cover ring-2 ring-indigo-100"
+                          />
+                        ) : (
+                          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 to-indigo-500 text-sm font-bold uppercase text-white ring-2 ring-indigo-100">
+                            {displayName[0] || "U"}
+                          </div>
+                        )}
+                        <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-slate-900">{displayName}</p>
+                        <p className="truncate text-xs text-slate-500">{user?.email}</p>
+                        <div className="mt-1.5 flex items-center gap-1.5">
                         <span className="px-2 py-0.5 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200">
                           {userRoleDisplay}
                         </span>
                         <span className="text-xs text-slate-400 truncate">
                           {orgName}
                         </span>
+                        </div>
                       </div>
                     </div>
 
@@ -1073,7 +1090,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-100 transition"
                       >
                         <FileCheck2 className="w-4 h-4 text-slate-400" />
-                        <span>My profile & documents</span>
+                        <span>{role === "COMPANY_ADMIN" ? "Profile details" : "My profile & documents"}</span>
                       </Link>
                       <Link
                         href={user?.role === "SUPER_ADMIN" ? "/platform/security" : "/security"}

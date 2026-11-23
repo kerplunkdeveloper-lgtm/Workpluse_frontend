@@ -116,8 +116,8 @@ export default function DepartmentModal({
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      setError("Image size should be under 2MB for fast loading.");
+    if (file.size > 1 * 1024 * 1024) {
+      setError("Image size should be under 1MB for fast loading.");
       return;
     }
 
@@ -447,7 +447,7 @@ export default function DepartmentModal({
                       Click to upload image or drag & drop
                     </p>
                     <p className="text-[11px] text-slate-500 mt-1">
-                      Supports PNG, JPG, WebP, SVG up to 2MB
+                      Supports PNG, JPG, WebP, SVG up to 1MB
                     </p>
                   </div>
                 )}
