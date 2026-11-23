@@ -92,8 +92,8 @@ const permissions: { module: string; description: string; access: Record<Role, A
   },
   {
     module: "Leave & approvals",
-    description: "Approve requests. HR requests are approved by an admin",
-    access: { COMPANY_ADMIN: true, MANAGER: "Employee requests", HR: "All requests", EMPLOYEE: false },
+    description: "Approve requests; employees can view their own request history",
+    access: { COMPANY_ADMIN: true, MANAGER: "Employee requests", HR: "All requests", EMPLOYEE: "Own requests" },
   },
   {
     module: "Onboarding & offboarding",

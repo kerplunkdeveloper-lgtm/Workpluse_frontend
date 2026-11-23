@@ -1124,6 +1124,14 @@ export const chatApi = {
   },
 };
 
+export const aiApi = {
+  chat: async (message: string, conversationId?: string, selectedEmployeeId?: string) => (await api.post("/ai/chat", { message, conversationId, selectedEmployeeId }, { skipGlobalError: true })).data,
+  people: async () => (await api.get("/ai/people", { skipGlobalError: true })).data,
+  conversations: async () => (await api.get("/ai/conversations", { skipGlobalError: true })).data,
+  messages: async (id: string) => (await api.get(`/ai/conversations/${id}`, { skipGlobalError: true })).data,
+  removeConversation: async (id: string) => (await api.delete(`/ai/conversations/${id}`, { skipGlobalError: true })).data,
+};
+
 export const biometricApi = {
   list: async () => {
     const res = await api.get("/biometric");

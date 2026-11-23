@@ -463,6 +463,8 @@ export interface ExpenseClaim {
   status: "PENDING" | "SUBMITTED" | "UNDER_REVIEW" | "APPROVED" | "REJECTED" | "PAID";
   reviewedBy?: string;
   reviewNote?: string;
+  payslipId?: string | null;
+  payslip?: { id: string; month?: number; year?: number; status?: string } | null;
   createdAt: string;
   employee?: Employee;
 }

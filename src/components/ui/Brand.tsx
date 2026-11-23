@@ -32,7 +32,7 @@ export default function Brand({
   const s = SIZES[size];
   const lightLogoSrc = landing ? "/clocked-hrms-lockup-dark.png" : "/clocked-hrms-lockup.png";
   const content = compact ? (
-    <span className={`${s.mark} flex shrink-0 items-center justify-center rounded-2xl ${inverse ? "bg-white/10 ring-1 ring-white/15" : "bg-indigo-600 shadow-lg shadow-indigo-600/25"}`}>
+    <span className={`${s.mark} flex shrink-0 items-center justify-center rounded-2xl ${inverse ? "bg-[#202653] ring-1 ring-white/15" : "bg-indigo-600 shadow-lg shadow-indigo-600/25"}`}>
       <Image src="/clocked-clock-icon.png" alt="" width={128} height={128} sizes="48px" className="h-[72%] w-[72%] object-contain" priority />
     </span>
   ) : inverse ? (
