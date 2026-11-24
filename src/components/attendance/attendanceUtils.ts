@@ -93,10 +93,9 @@ export const attendanceStatusForPunches = (
   const scheduledWorkMinutes = Math.max(0, scheduledMinutes
     - (shift?.breakIncluded === false ? 0 : Number(shift?.breakMinutes || 0))
     - (shift?.lunchIncluded === false ? 0 : Number(shift?.lunchMinutes || 0)));
-  // Keep this aligned with the backend's default AttendancePolicy threshold.
-  const halfDayThreshold = 240;
-  if (elapsed < halfDayThreshold) return "HALF_DAY" as const;
-  if (elapsed < scheduledWorkMinutes) return "SHORT_HOURS" as const;
+  // Completed partial punches are paid proportionally as short hours. HALF_DAY
+  // is reserved for an explicit half-day attendance/leave decision.
+  if (elapsed > 0 && elapsed < scheduledWorkMinutes) return "SHORT_HOURS" as const;
   if (!shift?.flexiblePunching && start > (parse(shift?.startTime || "") ?? start)) return "LATE" as const;
   return "PRESENT" as const;
 };

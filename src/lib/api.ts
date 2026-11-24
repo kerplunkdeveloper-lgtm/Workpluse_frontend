@@ -215,7 +215,16 @@ api.interceptors.response.use(
       return api(originalRequest);
     }
 
-    if (typeof window !== "undefined" && serverFailure && !originalRequest.skipGlobalError) {
+    // Authentication failures belong to the sign-in/2FA UI. Showing the full
+    // outage screen here hides the server response (for example AUTH_FAILED)
+    // and makes a bad login look like the entire app is unavailable.
+    const requestUrl = String(originalRequest.url || "");
+    const isAuthRequest = requestUrl.includes("/auth/login")
+      || requestUrl.includes("/auth/2fa/")
+      || requestUrl.includes("/auth/refresh")
+      || requestUrl.includes("/auth/me");
+
+    if (typeof window !== "undefined" && serverFailure && !originalRequest.skipGlobalError && !isAuthRequest) {
       outageSignalled = true;
       const requestId = error.response?.headers?.["x-request-id"] || error.response?.headers?.["X-Request-Id"];
       window.dispatchEvent(new CustomEvent("workpulse:server-error", {
@@ -885,19 +894,19 @@ export const billingApi = {
 
 export const platformApi = {
   overview: async () => {
-    const res = await api.get("/admin/platform/overview");
+    const res = await api.get("/admin/platform/overview", { skipGlobalError: true });
     return res.data;
   },
   revenue: async (days = 30) => {
-    const res = await api.get("/admin/platform/revenue", { params: { days } });
+    const res = await api.get("/admin/platform/revenue", { params: { days }, skipGlobalError: true });
     return res.data;
   },
   attention: async () => {
-    const res = await api.get("/admin/platform/attention");
+    const res = await api.get("/admin/platform/attention", { skipGlobalError: true });
     return res.data;
   },
   activity: async (params?: { action?: string; clientId?: string; page?: number; limit?: number }) => {
-    const res = await api.get("/admin/platform/activity", { params });
+    const res = await api.get("/admin/platform/activity", { params, skipGlobalError: true });
     return res.data;
   },
   clients: async (params?: {
@@ -909,11 +918,11 @@ export const platformApi = {
     page?: number;
     limit?: number;
   }) => {
-    const res = await api.get("/admin/platform/clients", { params });
+    const res = await api.get("/admin/platform/clients", { params, skipGlobalError: true });
     return res.data;
   },
   client: async (id: string) => {
-    const res = await api.get(`/admin/platform/clients/${id}`);
+    const res = await api.get(`/admin/platform/clients/${id}`, { skipGlobalError: true });
     return res.data;
   },
   act: async (
