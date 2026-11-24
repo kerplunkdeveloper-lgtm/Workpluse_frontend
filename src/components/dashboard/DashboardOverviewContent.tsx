@@ -637,6 +637,12 @@ export default function DashboardOverview() {
     todayStatus?.hasCheckedOut || todayStatus?.attendance?.checkOut,
   );
   const isFlexibleShift = Boolean(todayStatus?.flexiblePunching || todayStatus?.shift?.flexiblePunching);
+  const activePauseType = todayStatus?.activePauseType || null;
+  const isOnBreak = Boolean(todayStatus?.isOnBreak);
+  // Older/status responses may omit activePauseType for a regular break;
+  // treat an untyped active pause as a break so the user can still end it.
+  const isBreakActive = isOnBreak && activePauseType !== "LUNCH";
+  const isLunchActive = isOnBreak && activePauseType === "LUNCH";
   const isCheckedIn = hasCheckedInToday && !hasCheckedOutToday;
   const todayCheckInTime = todayStatus?.attendance?.checkIn
     ? formatTime(todayStatus.attendance.checkIn)
@@ -1268,22 +1274,22 @@ export default function DashboardOverview() {
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => void (todayStatus?.isOnBreak ? endBreak() : startBreak())}
+                    onClick={() => void (isBreakActive ? endBreak() : startBreak())}
                     disabled={isActionLoading}
                     className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white/10 py-3 text-sm font-semibold text-slate-100 ring-1 ring-white/15 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50"
-                    aria-label={todayStatus?.isOnBreak ? "Continue shift" : "Pause shift"}
+                    aria-label={isBreakActive ? "End break" : "Start break"}
                   >
-                    {todayStatus?.isOnBreak ? <Play className="h-4 w-4 text-emerald-300" /> : <Pause className="h-4 w-4 text-amber-300" />}
-                    {todayStatus?.isOnBreak ? "Continue shift" : "Pause shift"}
+                    {isBreakActive ? <Play className="h-4 w-4 text-emerald-300" /> : <Pause className="h-4 w-4 text-amber-300" />}
+                    {isBreakActive ? "End break" : "Start break"}
                   </button>
                   <button
                     type="button"
-                    onClick={() => void startBreak()}
-                    disabled={isActionLoading || Boolean(todayStatus?.isOnBreak)}
+                    onClick={() => void (isLunchActive ? endLunch() : startLunch())}
+                    disabled={isActionLoading || (isOnBreak && !isLunchActive)}
                     className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white/10 py-3 text-sm font-semibold text-slate-100 ring-1 ring-white/15 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50"
-                    aria-label="Start break"
+                    aria-label={isLunchActive ? "End lunch" : "Start lunch"}
                   >
-                    <span aria-hidden="true">☕</span> Start break
+                    <span aria-hidden="true">🍽️</span> {isLunchActive ? "End lunch" : "Start lunch"}
                   </button>
                 </div>
               )}
@@ -1292,21 +1298,21 @@ export default function DashboardOverview() {
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => void (todayStatus?.isOnBreak && todayStatus?.activePauseType === "BREAK" ? endBreak() : startBreak())}
-                    disabled={isActionLoading || Boolean(todayStatus?.isOnBreak)}
+                    onClick={() => void (isBreakActive ? endBreak() : startBreak())}
+                    disabled={isActionLoading || (isOnBreak && !isBreakActive)}
                     className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white/10 py-3 text-sm font-semibold text-slate-100 ring-1 ring-white/15 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50"
-                    aria-label="Start break"
+                    aria-label={isBreakActive ? "End break" : "Start break"}
                   >
-                    <span aria-hidden="true">☕</span> Start break
+                    <span aria-hidden="true">☕</span> {isBreakActive ? "End break" : "Start break"}
                   </button>
                   <button
                     type="button"
-                    onClick={() => void (todayStatus?.isOnBreak && todayStatus?.activePauseType === "LUNCH" ? endLunch() : startLunch())}
-                    disabled={isActionLoading || Boolean(todayStatus?.isOnBreak)}
+                    onClick={() => void (isLunchActive ? endLunch() : startLunch())}
+                    disabled={isActionLoading || (isOnBreak && !isLunchActive)}
                     className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white/10 py-3 text-sm font-semibold text-slate-100 ring-1 ring-white/15 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50"
-                    aria-label="Start lunch"
+                    aria-label={isLunchActive ? "End lunch" : "Start lunch"}
                   >
-                    <span aria-hidden="true">🍽️</span> Start lunch
+                    <span aria-hidden="true">🍽️</span> {isLunchActive ? "End lunch" : "Start lunch"}
                   </button>
                 </div>
               )}
