@@ -813,17 +813,11 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
                       {isTeamView && <Avatar row={row} />}
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-slate-900">{isTeamView ? employeeName(row) : `${day.weekday}, ${day.date}`}</p>
-                        <p className="truncate text-xs text-slate-500">{isTeamView ? row.employee?.employeeCode || row.employee?.designation || "Team member" : row.branch?.name || "—"}</p>
+                        {isTeamView ? <><p className="truncate text-xs text-slate-500">{row.employee?.employeeCode || row.employee?.designation || "Team member"}</p><p className="mt-0.5 text-[11px] font-medium text-slate-400">{day.weekday}, {day.date}</p></> : <p className="truncate text-xs text-slate-500">{row.branch?.name || "—"}</p>}
                         {isTeamView && <p className="mt-1 whitespace-normal break-words text-[11px] font-semibold leading-4 text-indigo-600">{workMode.label}{workMode.note ? ` · ${workMode.note}` : ""}</p>}
                       </div>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1">
-                      {isTeamView && (
-                        <div className="text-right">
-                          <p className="text-sm font-semibold text-slate-900">{day.date}</p>
-                          <p className="text-xs text-slate-500">{day.weekday}</p>
-                        </div>
-                      )}
                       <StatusBadge status={displayStatus(row)} />
                     </div>
                   </div>

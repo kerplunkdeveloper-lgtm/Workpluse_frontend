@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import AuthenticatedImage from "./AuthenticatedImage";
 
@@ -36,6 +36,11 @@ export default function CompanyLogo({
 }) {
   const [failed, setFailed] = useState(false);
   const box = `${SIZES[size]} shrink-0 overflow-hidden ${className}`;
+
+  useEffect(() => {
+    // A failed old image must not hide a newly uploaded/replaced logo.
+    setFailed(false);
+  }, [logoUrl]);
 
   if (logoUrl && !failed) {
     return (

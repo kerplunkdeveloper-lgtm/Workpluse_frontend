@@ -490,6 +490,9 @@ export interface OnboardingCandidate {
     | "OFFER_GENERATED"
     | "OFFER_SENT"
     | "OFFER_ACCEPTED"
+    | "PRE_JOINING"
+    | "JOINING_RESCHEDULED"
+    | "NO_SHOW"
     | "OFFER_REJECTED"
     | "ACTIVATED"
     | "REJECTED"
@@ -502,6 +505,12 @@ export interface OnboardingCandidate {
   portalToken?: string;
   proposedSalary?: number;
   expectedJoinDate?: string;
+  actualJoiningDate?: string;
+  joiningConfirmedAt?: string;
+  joiningRescheduledFrom?: string;
+  joiningRescheduleReason?: string;
+  noShowAt?: string;
+  noShowReason?: string;
   offerLetterUrl?: string;
   offerExpiresAt?: string;
   documents?: CandidateDocument[];
