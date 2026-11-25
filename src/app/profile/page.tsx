@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
 import { useAuth } from "@/context/AuthContext";
@@ -38,6 +39,7 @@ import { BLOOD_GROUPS, MARITAL_STATUSES } from "@/lib/employeeProfile";
 
 export default function ProfilePage() {
   const { user, isLoading, refreshUser } = useAuth();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"DOCUMENTS" | "PROFILE" | "EXIT" | "ASSETS">("DOCUMENTS");
   const [myAssets, setMyAssets] = useState<{ assignedAssets: Asset[]; history: AssetAssignment[] } | null>(null);
   const [assetsLoading, setAssetsLoading] = useState(false);
@@ -52,6 +54,12 @@ export default function ProfilePage() {
   const [preferredLwd, setPreferredLwd] = useState("");
   const [employeeComments, setEmployeeComments] = useState("");
   const [isSubmittingResignation, setIsSubmittingResignation] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading && user?.role === "SUPER_ADMIN") {
+      router.replace("/platform/clients");
+    }
+  }, [isLoading, user?.role, router]);
 
   const loadMyExit = async () => {
     setExitLoading(true);
@@ -84,7 +92,7 @@ export default function ProfilePage() {
   };
 
   useEffect(() => {
-    if (user?.employee) {
+    if (user?.role !== "SUPER_ADMIN" && user?.employee) {
       loadMyExit();
       loadMyAssets();
     }
@@ -154,7 +162,7 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={["COMPANY_ADMIN", "MANAGER", "HR", "EMPLOYEE"]}>
         <AppLayout>
           <div className="py-20 flex flex-col items-center justify-center text-slate-500">
             <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mb-2" />
@@ -170,7 +178,7 @@ export default function ProfilePage() {
   const canEditBranch = ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"].includes(user?.role || "");
 
   return (
-    <ProtectedRoute>
+    <ProtectedRoute allowedRoles={["COMPANY_ADMIN", "MANAGER", "HR", "EMPLOYEE"]}>
     <AppLayout>
       <div className="space-y-6 max-w-7xl mx-auto pb-12">
         {/* Header Profile Hero Card */}
