@@ -6,7 +6,7 @@ import SubscriptionSettingsView from "@/components/settings/SubscriptionSettings
 
 export default function SettingsPage() {
   return (
-    <ProtectedRoute allowedRoles={["SUPER_ADMIN", "COMPANY_ADMIN"]}>
+    <ProtectedRoute allowedRoles={["COMPANY_ADMIN"]}>
       <AppLayout>
         <SubscriptionSettingsView />
       </AppLayout>

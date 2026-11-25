@@ -57,7 +57,7 @@ export const NAV_SECTIONS: NavSection[] = [
     glow: "rgba(99, 102, 241, 0.4)",
     items: [
       { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, hint: "Today’s attendance, approvals, and payroll overview", keywords: ["home", "overview"] },
-      { label: "Profile", href: "/profile", icon: UserRound, hint: "Update your personal details, documents, assets, and resignation", keywords: ["profile", "documents", "personal", "account"] },
+      { label: "Profile", href: "/profile", icon: UserRound, hint: "Update your personal details, documents, assets, and resignation", keywords: ["profile", "documents", "personal", "account"], roles: ["COMPANY_ADMIN", "MANAGER", "HR", "EMPLOYEE"] },
       { label: "Attendance", href: "/attendance", icon: Clock, hint: "Review attendance, punches, and timesheets", keywords: ["punch", "clock", "timesheet"], roles: [...COMPANY_ADMIN_ROLES, "EMPLOYEE"] },
       { label: "Leaves", href: "/leaves", icon: CalendarDays, hint: "Apply for leave and view your time-off history", keywords: ["leave", "vacation", "time off", "shoot"], roles: [...COMPANY_ADMIN_ROLES, "EMPLOYEE"] },
       { label: "Chat", href: "/chat", icon: MessageSquare, hint: "Company communication and announcements", keywords: ["message", "inbox"], roles: [...COMPANY_ADMIN_ROLES, "EMPLOYEE"], badge: "Live", badgeColor: "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" },
