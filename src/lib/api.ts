@@ -996,14 +996,6 @@ export const orgApi = {
     const res = await api.delete("/organization/logo");
     return res.data;
   },
-  getOfferLetterTemplate: async () => {
-    const res = await api.get("/organization/offer-letter-template");
-    return res.data;
-  },
-  updateOfferLetterTemplate: async (payload: any) => {
-    const res = await api.put("/organization/offer-letter-template", payload);
-    return res.data;
-  },
   getExitDocumentTemplates: async () => {
     const res = await api.get("/organization/exit-document-templates");
     return res.data;
@@ -1235,6 +1227,18 @@ export const onboardingApi = {
   },
   adminActivate: async (id: string, payload?: any) => {
     const res = await api.post(`/onboarding/${id}/admin-approve`, payload || {});
+    return res.data;
+  },
+  markJoined: async (id: string, payload?: any) => {
+    const res = await api.post(`/onboarding/${id}/mark-joined`, payload || {});
+    return res.data;
+  },
+  rescheduleJoining: async (id: string, payload: { joiningDate: string; reason: string }) => {
+    const res = await api.post(`/onboarding/${id}/reschedule-joining`, payload);
+    return res.data;
+  },
+  markNoShow: async (id: string, reason?: string) => {
+    const res = await api.post(`/onboarding/${id}/no-show`, { reason });
     return res.data;
   },
   getPortalCandidate: async (token: string) => {
