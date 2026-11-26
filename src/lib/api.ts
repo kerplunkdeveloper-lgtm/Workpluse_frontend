@@ -1004,6 +1004,20 @@ export const orgApi = {
     const res = await api.put("/organization/exit-document-templates", payload);
     return res.data;
   },
+  getOfferLetterTemplate: async () => {
+    const res = await api.get("/organization/offer-letter-template");
+    return res.data;
+  },
+  updateOfferLetterTemplate: async (payload: any) => {
+    const res = await api.put("/organization/offer-letter-template", payload);
+    return res.data;
+  },
+  uploadOfferLetterTemplate: async (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await api.post("/organization/offer-letter-template/upload", form, { headers: { "Content-Type": "multipart/form-data" } });
+    return res.data;
+  },
 };
 
 export const loansApi = {
@@ -1038,6 +1052,26 @@ export const announcementsApi = {
     const res = await api.delete(`/announcements/${id}`);
     return res.data;
   },
+};
+
+export const supportApi = {
+  list: async (params?: { scope?: "mine" | "queue"; status?: string }) =>
+    (await api.get("/support", { params })).data,
+  get: async (id: string) => (await api.get(`/support/${id}`)).data,
+  create: async (payload: {
+    subject: string;
+    description: string;
+    category?: string;
+    priority?: string;
+    sourcePage?: string;
+    userAgent?: string;
+    metadata?: Record<string, unknown>;
+  }) => (await api.post("/support", payload)).data,
+  reply: async (id: string, body: string, isInternal = false) =>
+    (await api.post(`/support/${id}/messages`, { body, isInternal })).data,
+  update: async (id: string, payload: { status?: string; priority?: string; assignedToId?: string | null }) =>
+    (await api.patch(`/support/${id}`, payload)).data,
+  close: async (id: string) => (await api.post(`/support/${id}/close`)).data,
 };
 
 export const appraisalsApi = {

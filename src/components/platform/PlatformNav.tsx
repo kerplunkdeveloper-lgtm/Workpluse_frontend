@@ -14,7 +14,7 @@ const TABS = [
 /** Segmented navigation shared by the platform-owner screens. */
 export default function PlatformNav({ active }: { active: "clients" | "billing" | "activity" | "security" }) {
   return (
-    <nav aria-label="Platform sections" className="flex max-w-full overflow-x-auto rounded-2xl border border-slate-200 bg-slate-100/80 p-1 shadow-inner [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <nav aria-label="Platform sections" className="flex max-w-full overflow-x-auto rounded-2xl border border-slate-200 bg-slate-100/80 p-1 shadow-inner [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:hidden">
       {TABS.map((tab) => {
         const isActive = tab.href.endsWith(active);
         return (

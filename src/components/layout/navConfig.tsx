@@ -8,7 +8,7 @@ import { INDIA_TIME_ZONE } from "@/lib/utils";
 
 
 
-import { LayoutDashboard, Clock, CalendarDays, Receipt, Users, Building2, CalendarRange, Calendar, SlidersHorizontal, UserPlus, UserRound, BarChart3, Settings, History, ShieldCheck, KeyRound, MapPin, Layers, UserMinus, Laptop, FolderTree, MessageSquare, Landmark, HandCoins, CreditCard, Award, FileText, Sparkles } from "lucide-react";
+import { LayoutDashboard, Clock, CalendarDays, Receipt, Users, Building2, CalendarRange, Calendar, SlidersHorizontal, UserPlus, UserRound, BarChart3, Settings, History, ShieldCheck, KeyRound, MapPin, Layers, UserMinus, Laptop, FolderTree, MessageSquare, Landmark, HandCoins, CreditCard, Award, FileText, Sparkles, LifeBuoy } from "lucide-react";
 
 
 
@@ -118,6 +118,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: "Settings", href: "/settings", icon: Settings, hint: "Organization profile, subscription tier, and API keys", keywords: ["plan", "billing", "company"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN"] },
       { label: "Audit log", href: "/audit", icon: History, hint: "Who changed what, and when, across your workspace", keywords: ["history", "activity", "security", "changes", "log"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
       { label: "Permissions", href: "/permissions", icon: KeyRound, hint: "Granular role access controls and privileges", keywords: ["access", "roles", "security"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "HR"] },
+      { label: "Support", href: "/support", icon: LifeBuoy, hint: "Report an issue, follow tickets, and get help", keywords: ["help", "ticket", "issue", "bug", "support"], roles: ["COMPANY_ADMIN", "MANAGER", "HR"] },
     ],
   },
 ];

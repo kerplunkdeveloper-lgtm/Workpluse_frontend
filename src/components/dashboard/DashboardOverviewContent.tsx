@@ -63,6 +63,7 @@ import {
 } from "@/lib/api";
 import UnlockPlanModal from "@/components/auth/UnlockPlanModal";
 import CompanyLogo from "@/components/ui/CompanyLogo";
+import AuthenticatedImage from "@/components/ui/AuthenticatedImage";
 import AnnouncementsCard from "./AnnouncementsCard";
 import PunchConfirmDialog, {
   PunchConfirmAction,
@@ -446,6 +447,7 @@ export default function DashboardOverview() {
         return {
           id: emp.id,
           name: personName(emp),
+          avatarUrl: emp.avatarUrl || emp.user?.avatarUrl || null,
           employeeCode: emp.employeeCode || emp.code,
           designation: emp.designation || "Staff",
           department:
@@ -1743,9 +1745,7 @@ export default function DashboardOverview() {
                     className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3"
                   >
                     <div className="flex min-w-0 items-center gap-2.5">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-xs font-bold text-indigo-700">
-                        {person.name.slice(0, 2).toUpperCase()}
-                      </span>
+                      <AuthenticatedImage src={person.avatarUrl} alt={person.name} className="h-8 w-8 shrink-0 rounded-xl object-cover" fallback={<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-xs font-bold text-indigo-700">{person.name.slice(0, 2).toUpperCase()}</span>} />
                       <div className="min-w-0">
                         <p className="truncate text-xs font-bold text-slate-800">
                           {person.name}
@@ -2214,9 +2214,7 @@ export default function DashboardOverview() {
                     className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50 hover:bg-slate-100/70 border border-slate-200/70 transition"
                   >
                     <div className="min-w-0 flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center shrink-0">
-                        {person.name.slice(0, 2).toUpperCase()}
-                      </div>
+                      <AuthenticatedImage src={person.avatarUrl} alt={person.name} className="h-8 w-8 shrink-0 rounded-xl object-cover" fallback={<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-xs font-bold text-indigo-700">{person.name.slice(0, 2).toUpperCase()}</div>} />
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-slate-800 truncate">
                           {person.name}

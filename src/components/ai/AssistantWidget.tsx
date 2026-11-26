@@ -9,7 +9,7 @@ import { aiApi } from "@/lib/api";
 
 type Insight = { tool: string; data: Record<string, any> };
 type Message = { role: "user" | "assistant"; content: string; insights?: Insight[] };
-const suggestions = ["What is my attendance status?", "How many leaves are remaining?", "Explain my latest payslip.", "Why is my punch-in not working?"];
+const suggestions = ["Give me today's exception briefing", "What is my attendance status?", "How many leaves are remaining?", "Why is my punch-in not working?"];
 const promptLibrary = [...suggestions, "Where do I apply for a shoot request?", "How do I submit a shoot settlement?", "Where can I review leave approvals?", "Show all pending approvals.", "Show pending leave approvals.", "How do I approve one request?", "Apply casual leave from 2026-12-01 to 2026-12-02 for personal work.", "Apply permission on 2026-12-01 for 2 hours for bank work.", "What are my total working hours this month?", "Is my leave approved?", "How do I download my payslip?", "Explain my salary deductions.", "What documents are required for onboarding?", "What is the company leave policy?", "How do I request work from home today?", "How do I review employee documents?", "What are the payroll processing steps?"];
 
 function InsightCard({ insight }: { insight: Insight }) {
@@ -18,6 +18,10 @@ function InsightCard({ insight }: { insight: Insight }) {
   const payroll = data.payslip;
   const summary = data.summary;
   const title = insight.tool.replace(/^get|^search/, "").replace(/([A-Z])/g, " $1").trim();
+  if (insight.tool === "getDailyExceptionBriefing") {
+    const counts = data.counts || {};
+    return <div className="mt-2 rounded-xl border border-amber-100 bg-amber-50/70 p-2.5 text-xs"><p className="mb-1 font-semibold text-amber-900">Human review queue</p><p className="text-slate-700">{counts.total || 0} item(s): {counts.missingPunches || 0} missing punch-out(s), {counts.lateArrivals || 0} late arrival(s), {counts.pendingCorrections || 0} correction(s), {counts.securityReviews || 0} security review(s).</p>{data.items?.slice(0, 3).map((item: any) => <p key={item.sourceId} className="mt-1 text-slate-600">• {item.title}: {item.employee} — {item.nextAction}</p>)}</div>;
+  }
   const fields = payroll ? [["Gross", payroll.grossSalary], ["Deductions", payroll.deductionsTotal], ["Net", payroll.netSalary], ["Status", payroll.status]]
     : summary ? [["Present", summary.presentDays], ["Absent", summary.absentDays], ["Late", summary.lateDays], ["Overtime", `${Math.round((summary.overtimeMinutes || 0) / 60 * 10) / 10} h`]]
       : employee ? [["Code", employee.employeeCode], ["Department", employee.department], ["Branch", employee.branch], ["Status", employee.status]] : [];
