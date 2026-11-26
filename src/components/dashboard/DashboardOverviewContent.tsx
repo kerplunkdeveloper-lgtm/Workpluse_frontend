@@ -95,6 +95,17 @@ import {
 } from "./dashboardUtils";
 import { LiveClock } from "./LiveClock";
 
+const ABSENT_META = {
+  label: "Not Punched",
+  hint: "Needs attendance action",
+  color: "text-slate-700",
+  ring: "ring-slate-400 border-slate-300 bg-slate-50",
+  bar: "bg-slate-400",
+  iconBg: "bg-slate-100 text-slate-600",
+  gradient: "from-slate-500/10 via-slate-500/5 to-transparent",
+  icon: Users,
+} as const;
+
 /** Load a complete paginated collection for dashboard breakdowns. */
 async function fetchAllPages<T>(
   fetchPage: (page: number, limit: number) => Promise<any>,
@@ -141,7 +152,7 @@ export default function DashboardOverview() {
   const [employeeTotal, setEmployeeTotal] = useState(0);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [activeBreakdownTab, setActiveBreakdownTab] =
-    useState<KpiStatus | null>(null);
+    useState<KpiStatus | "ABSENT" | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   // Branch filter for the staff list. A chosen branch loads its own complete
   // list from the server instead of filtering a partial organization roster.
@@ -596,6 +607,7 @@ export default function DashboardOverview() {
     return names.size || 1;
   }, [allEmployees]);
 
+
   const genderAnalytics = useMemo(() => {
     const counts = { male: 0, female: 0, unspecified: 0 };
     allEmployees.forEach((employee: any) => {
@@ -736,6 +748,7 @@ export default function DashboardOverview() {
     0,
   );
 
+  const absentCount = counts.notStarted;
   const kpis = canManage
     ? [
         {
@@ -750,10 +763,10 @@ export default function DashboardOverview() {
           percent: leavePercentage,
         },
         { key: "LATE" as const, count: lateCount, percent: latePercentage },
+        { key: "ABSENT" as const, count: absentCount, percent: pct(absentCount) },
       ]
     : [];
 
-  const absentCount = counts.notStarted;
   const chartTotal = Math.max(
     1,
     presentCount + wfhCount + leaveCount + lateCount + absentCount,
@@ -1573,10 +1586,10 @@ export default function DashboardOverview() {
       {/* 2. EXECUTIVE METRIC KPI CARDS (4 Interactive Tiles)     */}
       {/* ======================================================== */}
       <section
-        className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 ${canManage ? "" : "hidden"}`}
+        className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 ${canManage ? "" : "hidden"}`}
       >
         {kpis.map((kpi) => {
-          const meta = KPI_META[kpi.key];
+          const meta = kpi.key === "ABSENT" ? ABSENT_META : KPI_META[kpi.key];
           const Icon = meta.icon;
           const active = activeBreakdownTab === kpi.key;
 
@@ -1673,7 +1686,7 @@ export default function DashboardOverview() {
                   Selected workforce view
                 </p>
                 <h2 className="mt-1 text-lg font-semibold text-slate-950">
-                  {KPI_META[activeBreakdownTab].label} staff
+                  {(activeBreakdownTab === "ABSENT" ? ABSENT_META : KPI_META[activeBreakdownTab]).label} staff
                 </h2>
                 <p className="mt-1 text-xs text-slate-500">
                   {branchRosterLoading
@@ -1840,12 +1853,11 @@ export default function DashboardOverview() {
                 When your team clocks in
               </h2>
             </div>
-            <Link
-              href="/reports"
-              className="inline-flex items-center gap-1.5 rounded-xl px-2 py-1 text-xs font-bold text-indigo-600 transition hover:bg-indigo-50 hover:text-indigo-700"
-            >
-              Full reports <ArrowUpRight className="h-3.5 w-3.5" />
-            </Link>
+            <div>
+              <Link href="/reports" className="inline-flex items-center gap-1.5 rounded-xl px-2 py-1 text-xs font-bold text-indigo-600 transition hover:bg-indigo-50 hover:text-indigo-700">
+                Full reports <ArrowUpRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
           </div>
 
           <div className="mt-5 rounded-2xl bg-slate-50/80 p-3 sm:p-4">
@@ -1887,6 +1899,16 @@ export default function DashboardOverview() {
               {clockInsToday === 0 && <text x="320" y="100" textAnchor="middle" fontSize="12" fontWeight="700" style={{ fill: "var(--color-slate-400)" }}>No clock-ins yet today</text>}
             </svg>
             <p className="mt-1 text-center text-[11px] text-slate-500">The line shows the team&apos;s clock-in rhythm across the day. Hover a point for the exact count.</p>
+          </div>
+
+          <div className="hidden">
+            <div className="grid gap-2 sm:grid-cols-2">
+              {([] as any[]).map((row) => (
+                <button key={row.section} type="button">
+                  <p className="mt-2 text-[10px] font-semibold text-slate-500">{row.present} on-site · {row.remote} remote · {row.total} total</p>
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="mt-4 grid grid-cols-3 gap-2">
@@ -2160,7 +2182,7 @@ export default function DashboardOverview() {
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
                   <h2 className="text-base font-semibold text-slate-900">
-                    {KPI_META[activeBreakdownTab].label} Staff Roster
+                    {(activeBreakdownTab === "ABSENT" ? ABSENT_META : KPI_META[activeBreakdownTab]).label} Staff Roster
                   </h2>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">

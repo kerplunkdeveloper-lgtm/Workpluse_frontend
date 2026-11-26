@@ -19,6 +19,7 @@ export default function CookieConsent() {
   const choose = (analytics: boolean) => {
     try {
       window.localStorage.setItem(CONSENT_KEY, JSON.stringify({ necessary: true, analytics, savedAt: new Date().toISOString() }));
+      window.dispatchEvent(new Event("clocked:consent-changed"));
     } catch {
       // Necessary session cookies still work when storage is unavailable.
     }

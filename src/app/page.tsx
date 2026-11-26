@@ -4,15 +4,17 @@ import { PricingClient } from "@/components/landing/PricingClient";
 import { SiteHeader } from "@/components/landing/SiteHeader";
 import { FAQ as FAQ_ITEMS } from "@/components/landing/content";
 import type { SubscriptionPlanOption } from "@/types";
+import { absoluteUrl, SEO_INDEXING_ENABLED, SEO_SITE_URL } from "@/lib/seo";
 
 export const revalidate = 300;
 
 const jsonLd = (data: object) => JSON.stringify(data).replace(/</g, "\\u003c");
 
 export const metadata: Metadata = {
-  title: "Clocked | One calm command center for your workplace",
-  description: "Make attendance, leave, payroll, and everyday HR effortless with Clocked.",
-  alternates: { canonical: "/" },
+  title: "Clocked | HRMS, Attendance & Payroll Software",
+  description: "Manage employee attendance, payroll, leave, onboarding and HR operations with Clocked. All-in-one HRMS software for modern businesses.",
+  alternates: { canonical: SEO_SITE_URL },
+  robots: SEO_INDEXING_ENABLED ? { index: true, follow: true } : { index: false, follow: false },
 };
 
 async function getPlans(): Promise<{ plans: SubscriptionPlanOption[]; unavailable: boolean }> {
@@ -32,13 +34,13 @@ async function getPlans(): Promise<{ plans: SubscriptionPlanOption[]; unavailabl
 
 export default async function LandingPage() {
   const { plans, unavailable } = await getPlans();
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/+$/, "");
+  const siteUrl = SEO_SITE_URL;
   const offers = plans.map((plan) => ({
     "@type": "Offer",
     name: plan.name,
     price: plan.priceMonthly,
     priceCurrency: plan.currency || "INR",
-    url: "/register?plan=" + plan.id,
+    url: absoluteUrl("/register?plan=" + plan.id),
   }));
 
   return (
@@ -73,11 +75,19 @@ export default async function LandingPage() {
             },
             {
               "@type": "SoftwareApplication",
+              "@id": `${siteUrl}/#software`,
               name: "Clocked",
               applicationCategory: "BusinessApplication",
               operatingSystem: "Web, Android",
               publisher: { "@id": `${siteUrl}/#organization` },
               offers,
+            },
+            {
+              "@type": "WebSite",
+              "@id": `${siteUrl}/#website`,
+              name: "Clocked",
+              url: siteUrl,
+              publisher: { "@id": `${siteUrl}/#organization` },
             },
             {
               "@type": "FAQPage",
