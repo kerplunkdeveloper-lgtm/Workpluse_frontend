@@ -26,8 +26,6 @@ import { enableFirebaseNotifications, listenForFirebaseNotifications } from "@/l
 import { playNotificationSound, unlockNotificationSound } from "@/lib/notificationSound";
 import AssistantWidget from "@/components/ai/AssistantWidget";
 
-const SUPPORT_EMAIL = "support@goclocked.com";
-
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -37,6 +35,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const isPlatformOwner = role === "SUPER_ADMIN";
   const canUseAiAssistant = user?.organization?.subscriptionPlan === "ENTERPRISE";
   const canManageOrganization = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN";
+  const canAccessSupport = role === "COMPANY_ADMIN" || role === "MANAGER" || role === "HR";
   const { todayStatus, checkIn, checkOut, startBreak, endBreak, startLunch, endLunch, isActionLoading, isWithinGeofence, locationLabel } = useAttendance();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -683,13 +682,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <Command className="w-3 h-3 text-indigo-400" />
                   <span>Shortcuts</span>
                 </button>
-                <a
-                  href={`mailto:${SUPPORT_EMAIL}?subject=Clocked%20support%20request`}
-                  className="flex items-center gap-1.5 hover:text-white transition"
-                >
-                  <HelpCircle className="w-3 h-3 text-indigo-400" />
-                  <span>Help & Docs</span>
-                </a>
+                {canAccessSupport && (
+                  <Link
+                    href="/support"
+                    className="flex items-center gap-1.5 hover:text-white transition"
+                  >
+                    <HelpCircle className="w-3 h-3 text-indigo-400" />
+                    <span>Help & Support</span>
+                  </Link>
+                )}
               </div>
             </div>
           ) : (
@@ -1091,14 +1092,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     </div>
 
                     <div className="space-y-0.5">
-                      <Link
-                        href={role === "SUPER_ADMIN" ? "/platform/clients" : "/profile"}
+                      {role !== "SUPER_ADMIN" && <Link
+                        href="/profile"
                         onClick={() => setProfileDropdownOpen(false)}
                         className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-100 transition"
                       >
                         <FileCheck2 className="w-4 h-4 text-slate-400" />
-                        <span>{role === "SUPER_ADMIN" ? "Platform console" : role === "COMPANY_ADMIN" ? "Profile details" : "My profile & documents"}</span>
-                      </Link>
+                        <span>{role === "COMPANY_ADMIN" ? "Profile details" : "My profile & documents"}</span>
+                      </Link>}
                       <Link
                         href={user?.role === "SUPER_ADMIN" ? "/platform/security" : "/security"}
                         onClick={() => setProfileDropdownOpen(false)}
@@ -1330,7 +1331,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
-            className="min-h-full"
+            className="min-h-full w-full min-w-0 max-w-full overflow-x-hidden"
           >
             <SubscriptionBanner />
             <ErrorBoundary resetKey={pathname || ""}>{children}</ErrorBoundary>

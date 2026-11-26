@@ -7,6 +7,7 @@ import { Palette, Upload, Sparkles, Save, RotateCcw, Printer, Building2, FileCod
 import { toast } from "sonner";
 import { confetti } from "@/lib/confetti";
 import AuthenticatedImage from "@/components/ui/AuthenticatedImage";
+import { useAuth } from "@/context/AuthContext";
 
 interface PresetItem {
   key: string;
@@ -37,6 +38,8 @@ const PRESET_COLORS = [
 ];
 
 export default function PayslipTemplateCustomizer() {
+  const { user } = useAuth();
+  const organizationEmail = user?.organization?.email || "";
   const [activeTab, setActiveTab] = useState<"VISUAL" | "CODE">("VISUAL");
   const [presets, setPresets] = useState<PresetItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -148,7 +151,7 @@ export default function PayslipTemplateCustomizer() {
             setAddressLine2(t.addressLine2 || "");
             setTaxIdentifierLabel(t.taxIdentifierLabel || "CIN / GSTIN");
             setTaxIdentifierValue(t.taxIdentifierValue || "");
-            setContactEmail(t.contactEmail || "");
+            setContactEmail(t.contactEmail || organizationEmail);
             setContactPhone(t.contactPhone || "");
             setPrimaryColor(t.primaryColor || "#4f46e5");
             setAccentColor(t.accentColor || "#0f172a");
@@ -178,7 +181,7 @@ export default function PayslipTemplateCustomizer() {
       }
     }
     loadTemplateData();
-  }, []);
+  }, [organizationEmail]);
 
   const handleApplyPreset = (preset: PresetItem) => {
     setTemplateKey(preset.key);
@@ -530,6 +533,18 @@ export default function PayslipTemplateCustomizer() {
                         className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:border-indigo-600"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[13px] font-medium text-slate-700 mb-1">Payslip Support Email</label>
+                    <input
+                      type="email"
+                      value={contactEmail}
+                      onChange={(e) => setContactEmail(e.target.value)}
+                      placeholder={organizationEmail || "payroll@company.com"}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:border-indigo-600"
+                    />
+                    <p className="mt-1 text-[11px] text-slate-400">Defaults to the saved Billing Email Address when left empty.</p>
                   </div>
                 </div>
               </div>

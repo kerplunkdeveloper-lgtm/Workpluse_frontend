@@ -593,14 +593,18 @@ const employeeName = (row: Attendance) => (row.employee ? `${row.employee.firstN
 
 function Avatar({ row }: { row: Attendance }) {
   const e = row.employee;
-  if (e?.avatarUrl) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <AuthenticatedImage src={e.avatarUrl} alt="" className="h-8 w-8 shrink-0 rounded-lg object-cover" />;
-  }
+  const initials = `${e?.firstName?.[0] || "?"}${e?.lastName?.[0] || ""}`.toUpperCase();
   return (
-    <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-[11px] font-bold text-indigo-700">
-      {`${e?.firstName?.[0] || "?"}${e?.lastName?.[0] || ""}`.toUpperCase()}
-    </span>
+    <AuthenticatedImage
+      src={e?.avatarUrl}
+      alt=""
+      className="h-8 w-8 shrink-0 rounded-lg object-cover"
+      fallback={(
+        <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-[11px] font-bold text-indigo-700">
+          {initials}
+        </span>
+      )}
+    />
   );
 }
 

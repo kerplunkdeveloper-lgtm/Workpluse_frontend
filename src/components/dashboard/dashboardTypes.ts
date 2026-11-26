@@ -19,6 +19,7 @@ import { type RosterStatus } from "./dashboardMetrics";
 export interface RosterPerson {
   id: string;
   name: string;
+  avatarUrl?: string | null;
   employeeCode?: string;
   designation: string;
   department: string;

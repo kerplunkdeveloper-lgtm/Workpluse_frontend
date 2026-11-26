@@ -746,17 +746,16 @@ export default function EmployeeDirectory() {
                         }}
                         className="flex min-w-0 cursor-pointer items-center gap-3"
                       >
-                        {emp.avatarUrl ? (
-                          <AuthenticatedImage
-                            src={emp.avatarUrl}
-                            alt={`${emp.firstName} ${emp.lastName || ""}`}
-                            className="w-8 h-8 rounded-full object-cover shadow-xs group-hover:ring-2 group-hover:ring-indigo-400/40 transition"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs group-hover:ring-2 group-hover:ring-indigo-400/40 transition">
-                            {emp.firstName?.[0] || "E"}
-                          </div>
-                        )}
+                        <AuthenticatedImage
+                          src={emp.avatarUrl}
+                          alt={`${emp.firstName} ${emp.lastName || ""}`}
+                          className="w-8 h-8 rounded-full object-cover shadow-xs group-hover:ring-2 group-hover:ring-indigo-400/40 transition"
+                          fallback={(
+                            <div className="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs group-hover:ring-2 group-hover:ring-indigo-400/40 transition">
+                              {emp.firstName?.[0] || "E"}
+                            </div>
+                          )}
+                        />
                          <div className="min-w-0">
                            <p className="whitespace-nowrap font-semibold text-slate-900 group-hover:text-indigo-600 transition">
                             {emp.firstName} {emp.lastName || ""}

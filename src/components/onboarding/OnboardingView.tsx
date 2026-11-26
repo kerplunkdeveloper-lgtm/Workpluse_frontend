@@ -27,6 +27,7 @@ import PhoneInput, { toE164, validatePhone, type CountryCode } from "@/component
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
 import CandidateDocumentsModal from "./CandidateDocumentsModal";
+import OfferLetterTemplateModal from "./OfferLetterTemplateModal";
 import { useAuth } from "@/context/AuthContext";
 
 const STAGES = [
@@ -60,6 +61,7 @@ const ACTIVATE_STATUSES = ["PRE_JOINING", "JOINING_RESCHEDULED", "OFFER_ACCEPTED
 export default function OnboardingView() {
   const { role } = useAuth();
   const isAdmin = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN";
+  const canApproveOffer = isAdmin || role === "HR";
   const [candidates, setCandidates] = useState<OnboardingCandidate[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
@@ -80,6 +82,7 @@ export default function OnboardingView() {
   const [joiningDate, setJoiningDate] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [search, setSearch] = useState("");
+  const [templateOpen, setTemplateOpen] = useState(false);
 
   const loadPipeline = async () => {
     setLoading(true);
@@ -253,6 +256,7 @@ export default function OnboardingView() {
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">A single place for HR to invite, verify, send offers, and activate new employees without losing the next step.</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            {canApproveOffer && <button type="button" onClick={() => setTemplateOpen(true)} className="flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/15"><FileText className="h-4 w-4" />Offer template</button>}
             <button type="button" onClick={() => setModalOpen(true)} className="flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-950/30 transition hover:bg-indigo-400"><Plus className="h-4 w-4" />Invite new joiner</button>
           </div>
         </div>
@@ -333,7 +337,7 @@ export default function OnboardingView() {
 
                       <button type="button" onClick={() => setDocsFor({ id: cand.id, name: `${cand.firstName} ${cand.lastName || ""}`.trim() })} className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"><span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5 text-slate-400" />Documents</span><span className="rounded-full bg-white px-2 py-0.5 text-[11px] tabular-nums ring-1 ring-slate-200">{((cand as any).documents || []).length}</span></button>
 
-{(cand.token || cand.portalToken) && <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-2"><Link href={`/onboarding/portal/${cand.token || cand.portalToken}`} target="_blank" className="flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700"><span>Open portal</span><ExternalLink className="h-3 w-3" /></Link>{VERIFY_STATUSES.includes(cand.status) ? <button onClick={() => handleHrVerify(cand.id)} className="rounded-lg bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500">Verify</button> : cand.status === "HR_VERIFIED" && isAdmin ? <button onClick={() => handleSendOffer(cand.id, cand.status)} className="flex items-center gap-1 rounded-lg bg-sky-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-sky-500"><Send className="h-3 w-3" />Approve & send</button> : ["ADMIN_APPROVED", "OFFER_GENERATED"].includes(cand.status) ? <button onClick={() => handleSendOffer(cand.id, cand.status)} className="flex items-center gap-1 rounded-lg bg-sky-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-sky-500"><Send className="h-3 w-3" />Send offer by email</button> : cand.status === "OFFER_SENT" ? <button onClick={() => handleResendOfferEmail(cand.id)} className="flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100"><Mail className="h-3 w-3" />Resend email</button> : ACTIVATE_STATUSES.includes(cand.status) && isAdmin ? <div className="flex flex-wrap items-center justify-end gap-1"><button onClick={() => isAdmin && handleActivateAccount(cand.id)} disabled={!isAdmin} className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"><CheckCircle2 className="h-3 w-3" />Mark as joined</button><button onClick={() => handleRescheduleJoining(cand.id)} className="rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1.5 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-100">Reschedule</button><button onClick={() => handleNoShow(cand.id)} className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1.5 text-[11px] font-semibold text-rose-700 hover:bg-rose-100">No-show</button></div> : cand.status === "HR_VERIFIED" ? <span className="text-xs font-semibold text-slate-400">Awaiting admin approval</span> : cand.status === "ACTIVATED" || cand.status === "ONBOARDED" ? <span className="flex items-center gap-1 text-xs font-bold text-teal-700"><ShieldCheck className="h-3 w-3" />Active</span> : null}</div>}
+{(cand.token || cand.portalToken) && <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-2"><Link href={`/onboarding/portal/${cand.token || cand.portalToken}`} target="_blank" className="flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700"><span>Open portal</span><ExternalLink className="h-3 w-3" /></Link>{VERIFY_STATUSES.includes(cand.status) ? <button onClick={() => handleHrVerify(cand.id)} className="rounded-lg bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500">Verify</button> : cand.status === "HR_VERIFIED" && canApproveOffer ? <button onClick={() => handleSendOffer(cand.id, cand.status)} className="flex items-center gap-1 rounded-lg bg-sky-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-sky-500"><Send className="h-3 w-3" />Approve & send</button> : ["ADMIN_APPROVED", "OFFER_GENERATED"].includes(cand.status) ? <button onClick={() => handleSendOffer(cand.id, cand.status)} className="flex items-center gap-1 rounded-lg bg-sky-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-sky-500"><Send className="h-3 w-3" />Send offer by email</button> : cand.status === "OFFER_SENT" ? <button onClick={() => handleResendOfferEmail(cand.id)} className="flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100"><Mail className="h-3 w-3" />Resend email</button> : ACTIVATE_STATUSES.includes(cand.status) && isAdmin ? <div className="flex flex-wrap items-center justify-end gap-1"><button onClick={() => isAdmin && handleActivateAccount(cand.id)} disabled={!isAdmin} className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"><CheckCircle2 className="h-3 w-3" />Mark as joined</button><button onClick={() => handleRescheduleJoining(cand.id)} className="rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1.5 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-100">Reschedule</button><button onClick={() => handleNoShow(cand.id)} className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1.5 text-[11px] font-semibold text-rose-700 hover:bg-rose-100">No-show</button></div> : cand.status === "HR_VERIFIED" ? <span className="text-xs font-semibold text-slate-400">Awaiting HR approval</span> : cand.status === "ACTIVATED" || cand.status === "ONBOARDED" ? <span className="flex items-center gap-1 text-xs font-bold text-teal-700"><ShieldCheck className="h-3 w-3" />Active</span> : null}</div>}
                     </div>
                   ))
                 )}
@@ -485,6 +489,7 @@ export default function OnboardingView() {
       )}
 
       {docsFor && <CandidateDocumentsModal candidateId={docsFor.id} candidateName={docsFor.name} onClose={() => setDocsFor(null)} />}
+      {templateOpen && <OfferLetterTemplateModal onClose={() => setTemplateOpen(false)} />}
     </div>
   );
 }

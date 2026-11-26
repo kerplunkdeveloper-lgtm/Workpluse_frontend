@@ -7,10 +7,12 @@ import { formatTime } from "@/lib/utils";
 import { mapsSearchUrl } from "@/lib/reverseGeocode";
 import { useAuth } from "@/context/AuthContext";
 import Select from "@/components/ui/Select";
+import AuthenticatedImage from "@/components/ui/AuthenticatedImage";
 
 export interface TeamPunchPerson {
   employeeId: string;
   name: string;
+  avatarUrl?: string | null;
   employeeCode?: string | null;
   designation?: string | null;
   department?: string | null;
@@ -334,7 +336,14 @@ export default function TeamPunchBoard() {
                   person.clockedIn ? "bg-emerald-50/70 border-emerald-100" : "bg-slate-50 border-slate-100"
                 }`}
               >
-                <div className="min-w-0">
+                <div className="flex min-w-0 items-start gap-2.5">
+                  <AuthenticatedImage
+                    src={person.avatarUrl}
+                    alt={person.name}
+                    className="h-9 w-9 shrink-0 rounded-xl object-cover"
+                    fallback={<span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-xs font-bold text-indigo-700">{person.name.slice(0, 2).toUpperCase()}</span>}
+                  />
+                  <div className="min-w-0">
                   <p className="text-sm font-semibold text-slate-800 truncate">
                     {person.name}
                     {isMe ? <span className="ml-1 text-xs font-bold text-indigo-600">YOU</span> : null}
@@ -363,6 +372,7 @@ export default function TeamPunchBoard() {
                   ) : (
                     <p className="mt-1 text-xs text-slate-400">Not punched in</p>
                   )}
+                  </div>
                 </div>
                 <span className="shrink-0 text-right text-[10px] font-mono font-semibold text-slate-600">
                   {person.checkIn ? formatTime(person.checkIn) : "—"}

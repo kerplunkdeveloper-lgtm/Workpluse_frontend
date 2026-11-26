@@ -99,6 +99,7 @@ export default function LeavesView() {
   const [selectedEmployeeBalance, setSelectedEmployeeBalance] = useState<any>(null);
   const [teamPaidLeaveRemaining, setTeamPaidLeaveRemaining] = useState<Record<string, number | null>>({});
   const [loadingEmployeeBalance, setLoadingEmployeeBalance] = useState(false);
+  const [loadingTeamBalances, setLoadingTeamBalances] = useState(false);
   const [balanceRefresh, setBalanceRefresh] = useState(0);
   const [departmentConflict, setDepartmentConflict] = useState<any>(null);
   const [myDateChanges, setMyDateChanges] = useState<any[]>([]);
@@ -175,6 +176,7 @@ export default function LeavesView() {
 
   const loadData = async () => {
     setLoading(true);
+    if (canApprove) setLoadingTeamBalances(true);
     setLoadError(null);
     try {
       const [typesRes, balRes, myRes, eligibilityRes] = await Promise.allSettled([
@@ -218,7 +220,9 @@ export default function LeavesView() {
           const nextTeamRequests = unwrapList(teamResult.value);
           setTeamRequests(nextTeamRequests);
           const employeeIds = [...new Set(nextTeamRequests.map((request: any) => request.employeeId || request.employee?.id).filter(Boolean))] as string[];
-          const paidLeaveEntries = await Promise.all(employeeIds.map(async (employeeId) => {
+          // This enrichment is not needed to render the employee balance list.
+          // Keep it off the critical path so the list can appear immediately.
+          void Promise.all(employeeIds.map(async (employeeId) => {
             try {
               const response = await leavesApi.getEmployeeBalances(employeeId);
               const payload = response?.data || response;
@@ -229,8 +233,7 @@ export default function LeavesView() {
             } catch {
               return [employeeId, null] as const;
             }
-          }));
-          setTeamPaidLeaveRemaining(Object.fromEntries(paidLeaveEntries));
+          })).then((paidLeaveEntries) => setTeamPaidLeaveRemaining(Object.fromEntries(paidLeaveEntries)));
         } else {
           setLoadError("Team leave approvals are temporarily unavailable. Your personal leave data is still safe.");
           logClientError("leaves.approvals_load_failed", { request: "leave-requests", error: teamResult.reason });
@@ -244,12 +247,14 @@ export default function LeavesView() {
         if (balanceResult.status === "fulfilled") {
           const rows = unwrapList(balanceResult.value);
           setTeamLeaveBalances(rows);
+          setLoadingTeamBalances(false);
           // The balance response is self-contained, so the panel still works
           // when an older employee-list response is empty or unavailable.
           if (employeeResult.status !== "fulfilled" || !unwrapList(employeeResult.value).length) {
             setOrganizationEmployees(rows.map((row: any) => row.employee).filter(Boolean));
           }
         } else {
+          setLoadingTeamBalances(false);
           logClientError("leaves.approvals_load_failed", { request: "leave-balances", error: balanceResult.reason });
         }
         if (changeResult.status === "fulfilled") {
@@ -265,6 +270,7 @@ export default function LeavesView() {
       logClientError("leaves.load_failed", { error: err });
     } finally {
       setLoading(false);
+      if (canApprove) setLoadingTeamBalances(false);
     }
   };
 
@@ -762,7 +768,7 @@ export default function LeavesView() {
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 shrink-0 text-indigo-200" />
                 <Select aria-label="Select employee for leave balance" value={selectedBalanceEmployeeId} onChange={(event) => setSelectedBalanceEmployeeId(event.target.value)} className="w-full !border-white/20 !bg-slate-800 !text-white px-3 py-2.5 text-xs font-semibold outline-none [&>option]:bg-white [&>option]:text-slate-900">
-                  <option value="">Select an employee ({filteredTeamLeaveBalances.length})</option>
+                  <option value="">{loadingTeamBalances ? "Loading employees..." : `Select an employee (${filteredTeamLeaveBalances.length})`}</option>
                   {filteredTeamLeaveBalances.map((row: any) => { const employee = row.employee || row; return <option key={employee.id} value={employee.id}>{employee.firstName} {employee.lastName || ""} · {employee.employeeCode || "No code"}</option>; })}
                 </Select>
                 {selectedBalanceEmployeeId && <button type="button" onClick={() => setBalanceRefresh((value) => value + 1)} className="rounded-xl p-2 text-indigo-200 hover:bg-white/10" aria-label="Refresh selected employee balance"><RefreshCw className={`h-4 w-4 ${loadingEmployeeBalance ? "animate-spin" : ""}`} /></button>}
@@ -772,7 +778,9 @@ export default function LeavesView() {
                   <span>Employee / code</span>{leaveTypes.map((type) => <span key={type.id} className="truncate text-center" title={type.name}>{type.code || type.name}</span>)}
                 </div>
                 <div className="max-h-[216px] divide-y divide-white/10 overflow-y-auto">
-                  {filteredTeamLeaveBalances.length === 0 ? (
+                  {loadingTeamBalances ? (
+                    <div className="flex items-center justify-center gap-2 px-3 py-8 text-xs text-slate-300"><Loader2 className="h-4 w-4 animate-spin" /> Loading employees...</div>
+                  ) : filteredTeamLeaveBalances.length === 0 ? (
                     <p className="px-3 py-4 text-xs text-slate-300">No employees match this search or branch.</p>
                   ) : filteredTeamLeaveBalances.map((row: any) => {
                     const employee = row.employee || row;
@@ -832,11 +840,11 @@ export default function LeavesView() {
                   {balanceBranches.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
                 </Select>
               </div>
-              <div className="flex items-center justify-between px-1 text-[10px] font-bold uppercase tracking-wider text-indigo-200"><span className="flex items-center gap-2"><Users className="h-4 w-4" />Employees</span><span>{filteredTeamLeaveBalances.length}</span></div>
+               <div className="flex items-center justify-between px-1 text-[10px] font-bold uppercase tracking-wider text-indigo-200"><span className="flex items-center gap-2"><Users className="h-4 w-4" />Employees</span><span>{loadingTeamBalances ? <Loader2 className="h-3 w-3 animate-spin" aria-label="Loading employees" /> : filteredTeamLeaveBalances.length}</span></div>
               <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06]">
                 <div className="grid gap-1 border-b border-white/10 px-2 py-2 text-[9px] font-bold uppercase tracking-wider text-indigo-200 sm:gap-2 sm:px-3" style={{ gridTemplateColumns: `minmax(0,1fr) repeat(${leaveTypes.length}, minmax(52px, 1fr))` }}><span>Employee / code</span>{leaveTypes.map((type) => <span key={type.id} className="truncate text-center" title={type.name}>{type.code || type.name}</span>)}</div>
                 <div className="max-h-[420px] divide-y divide-white/10 overflow-y-auto">
-                  {filteredTeamLeaveBalances.length === 0 ? <p className="px-3 py-4 text-xs text-slate-300">No employees match this search or branch.</p> : filteredTeamLeaveBalances.map((row: any) => {
+                  {loadingTeamBalances ? <div className="flex items-center justify-center gap-2 px-3 py-8 text-xs text-slate-300"><Loader2 className="h-4 w-4 animate-spin" /> Loading employees...</div> : filteredTeamLeaveBalances.length === 0 ? <p className="px-3 py-4 text-xs text-slate-300">No employees match this search or branch.</p> : filteredTeamLeaveBalances.map((row: any) => {
                     const employee = row.employee || row;
                     const selected = selectedBalanceEmployeeId === employee.id;
                     return <button key={employee.id} type="button" onClick={() => setSelectedBalanceEmployeeId(employee.id)} className={`grid w-full items-center gap-1 px-2 py-3 text-left transition sm:gap-2 sm:px-3 ${selected ? "bg-indigo-400/20" : "hover:bg-white/10"}`} style={{ gridTemplateColumns: `minmax(0,1fr) repeat(${leaveTypes.length}, minmax(52px, 1fr))` }}><span className="min-w-0"><span className="block truncate text-xs font-bold text-white">{employee.firstName} {employee.lastName || ""}</span><span className="mt-0.5 block truncate text-[10px] text-slate-300">{employee.employeeCode || "No employee code"}</span></span>{leaveTypes.map((type) => <span key={type.id} className="text-center text-sm font-bold tabular-nums text-emerald-200">{balanceRemainingForType(row, type)} d</span>)}</button>;
@@ -1115,7 +1123,7 @@ export default function LeavesView() {
                       <td className="py-3.5 px-4 font-semibold text-indigo-600">
                         {req.totalDays} {req.halfDayPeriod ? `(${req.halfDayPeriod === "MORNING" ? "Morning" : "Afternoon"} Half Day)` : "day(s)"}
                       </td>
-                      <td className="py-3.5 px-4 text-slate-500 max-w-xs truncate">
+                      <td className="py-3.5 px-4 text-slate-500 max-w-xs truncate" title={req.reason || "No reason provided."}>
                         {req.reason}
                       </td>
                       <td className="py-3.5 px-4">
@@ -1266,7 +1274,7 @@ export default function LeavesView() {
                       <td className="whitespace-nowrap py-3.5 px-4">
                         {!isPaidLeaveRequest(req) ? <span className="text-xs font-medium text-slate-400">Not applicable</span> : paidLeaveRemainingFor(req) === null ? <span className="text-xs text-slate-400">—</span> : <span className="inline-flex items-center rounded-lg bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700">{paidLeaveRemainingFor(req)}d</span>}
                       </td>
-                      <td className="max-w-[260px] min-w-[180px] truncate py-3.5 px-4 text-slate-500">
+                      <td className="max-w-[260px] min-w-[180px] truncate py-3.5 px-4 text-slate-500" title={req.reason || "No reason provided."}>
                         {req.reason}
                       </td>
                       <td className="whitespace-nowrap py-3.5 px-4">

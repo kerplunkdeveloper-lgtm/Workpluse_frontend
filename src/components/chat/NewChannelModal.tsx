@@ -19,7 +19,10 @@ export function NewChannelModal({ onClose, onCreated }: { onClose: () => void; o
   const [selected, setSelected] = useState<Map<string, Person>>(new Map());
   const [creating, setCreating] = useState(false);
   const debounced = useDebounced(query.trim(), 300);
-  const people = usePeopleSearch(debounced, 0);
+  // Do not fetch the whole directory just because the modal opened. Large
+  // workspaces made the New channel dialog look like it was stuck loading.
+  // Search starts once the user has entered enough to identify a teammate.
+  const people = usePeopleSearch(debounced, 2);
   const titleRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -137,7 +140,9 @@ export function NewChannelModal({ onClose, onCreated }: { onClose: () => void; o
         </div>
 
         <div className="mt-3 min-h-[160px] flex-1 overflow-y-auto overscroll-contain px-4">
-          {people.loading && people.people.length === 0 ? (
+          {debounced.length < 2 ? (
+            <p className="py-10 text-center text-sm text-slate-600">Type at least 2 characters to find teammates.</p>
+          ) : people.loading && people.people.length === 0 ? (
             <p className="flex items-center justify-center gap-2 py-10 text-xs text-slate-500">
               <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading people
             </p>
