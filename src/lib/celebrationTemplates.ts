@@ -1,11 +1,8 @@
 import { CARD_STYLES, defaultBackground, renderCardPng, type CardOrientation, type CardStyleId } from "./celebrationCard";
 import { defaultMessage, personInitials, type Moment, type MomentKind } from "./celebrations";
 
-/**
- * The default card template for each occasion. Set once on the Celebrations page, then
- * used wherever a person's birthday/anniversary is listed (dashboard and Celebrations).
- * Stored per workspace in this browser.
- */
+ 
+ 
 export type Template = { styleId: CardStyleId; background: string | null; orientation: CardOrientation };
 export type SavedTemplates = Record<MomentKind, Template>;
 

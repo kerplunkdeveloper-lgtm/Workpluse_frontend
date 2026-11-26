@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildMoments, defaultMessage, momentWhen, personInitials, type CelebrationPerson } from "./celebrations";
 
-// Wednesday 5 Nov 2026, afternoon: the time of day must not move any date.
-const NOW = new Date(2026, 10, 5, 15, 30);
+ const NOW = new Date(2026, 10, 5, 15, 30);
 
 const person = (over: Partial<CelebrationPerson>): CelebrationPerson => ({ id: "p1", firstName: "Asha", lastName: "Rao", ...over });
 
@@ -37,7 +36,6 @@ describe("buildMoments", () => {
       ],
       NOW,
     );
-    // "almost" completes its first year tomorrow, so it stays hidden until it has; "exact" is today.
     expect(moments.map((m) => [m.id, m.years])).toEqual([
       ["exact-anniversary", 1],
       ["old-anniversary", 8],

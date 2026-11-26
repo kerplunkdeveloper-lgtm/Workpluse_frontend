@@ -7,28 +7,31 @@ import ThemedToaster from "@/components/ui/ThemedToaster";
 import SystemStatusOverlay from "@/components/ui/SystemStatusOverlay";
 import HoverHints from "@/components/ui/HoverHints";
 import CookieConsent from "@/components/legal/CookieConsent";
+import MarketingAnalytics from "@/components/analytics/MarketingAnalytics";
+import { SEO_SITE_URL } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: {
-    default: "Clocked | Workforce that stays in rhythm",
+    default: "Clocked | HRMS, Attendance & Payroll Software",
     template: "%s | Clocked",
   },
   description:
-    "Attendance, people operations, leave, payroll, and onboarding in one focused workspace.",
+    "Manage employee attendance, payroll, leave, onboarding and HR operations with Clocked. All-in-one HRMS software for modern businesses.",
   applicationName: "Clocked",
   keywords: ["workforce management", "attendance", "payroll", "HR software", "geofencing"],
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
+  metadataBase: new URL(SEO_SITE_URL),
   openGraph: {
     type: "website",
     siteName: "Clocked",
-    title: "Clocked | Workforce that stays in rhythm",
-    description: "Attendance, people operations, leave, payroll, and onboarding in one focused workspace.",
+    title: "Clocked | HRMS, Attendance & Payroll Software",
+    description: "Manage employee attendance, payroll, leave, onboarding and HR operations with Clocked. All-in-one HRMS software for modern businesses.",
+    url: SEO_SITE_URL,
     images: [{ url: "/og.png", width: 1200, height: 630, alt: "Clocked workforce management" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Clocked | Workforce that stays in rhythm",
-    description: "Attendance, people operations, leave, payroll, and onboarding in one focused workspace.",
+    title: "Clocked | HRMS, Attendance & Payroll Software",
+    description: "Manage employee attendance, payroll, leave, onboarding and HR operations with Clocked. All-in-one HRMS software for modern businesses.",
     images: ["/og.png"],
   },
   icons: {
@@ -66,6 +69,7 @@ export default function RootLayout({
             <SystemStatusOverlay />
             <HoverHints />
             <CookieConsent />
+            <MarketingAnalytics />
           </AttendanceProvider>
         </AuthProvider>
       </body>

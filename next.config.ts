@@ -28,6 +28,7 @@ const scriptSrc = [
   "https://accounts.google.com",
   "https://maps.googleapis.com",
   "https://maps.gstatic.com",
+  "https://www.googletagmanager.com",
   "https://www.gstatic.com", // Firebase SDK — required
 ].join(" ");
 
@@ -41,7 +42,7 @@ const contentSecurityPolicy = [
   "style-src 'self' 'unsafe-inline' https://accounts.google.com",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data: https:",
-  "connect-src 'self' https: wss:",
+  "connect-src 'self' https: wss: https://www.google-analytics.com https://region1.google-analytics.com",
   "frame-src https://res.cloudinary.com https://checkout.razorpay.com https://api.razorpay.com https://accounts.google.com https://www.google.com https://maps.google.com",
   "worker-src 'self' blob:",
 ].join("; ");
