@@ -614,7 +614,7 @@ export default function ProfilePage() {
                     }
                     try {
                       const res = await employeesApi.updateMe({
-                        // Date of birth is disabled once recorded; joining date remains editable.
+                        // Employees can correct both profile dates; the API validates the date order.
                         ...(dob ? { dateOfBirth: dob } : {}),
                         ...(doj ? { dateOfJoining: doj } : {}),
                         phone: toE164(String(fd.get("phoneCountryCode") || "+91"), String(fd.get("phone") || "")),
@@ -626,6 +626,7 @@ export default function ProfilePage() {
                         bankName: fd.get("bankName"),
                         bankAccountNumber: fd.get("bankAccountNumber"),
                         bankIfsc,
+                        gender: String(fd.get("gender") || "") || null,
                         bloodGroup: String(fd.get("bloodGroup") || "") || null,
                         maritalStatus: String(fd.get("maritalStatus") || "") || null,
                       });
@@ -644,6 +645,14 @@ export default function ProfilePage() {
                     dateOfJoining={(employee as any)?.dateOfJoining}
                   />
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <label className="block text-xs font-medium text-slate-600">
+                      Gender
+                      <select name="gender" defaultValue={(employee as any)?.gender || ""} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2">
+                        <option value="">Select gender</option>
+                        <option value="MALE">Male</option>
+                        <option value="FEMALE">Female</option>
+                      </select>
+                    </label>
                     <label className="block text-xs font-medium text-slate-600">
                       Blood group
                       <select name="bloodGroup" defaultValue={(employee as any)?.bloodGroup || ""} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2">

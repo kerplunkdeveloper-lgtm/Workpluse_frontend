@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Employee } from "@/types";
 import { employeesApi, branchesApi, departmentsApi, shiftsApi, notificationsApi, orgApi } from "@/lib/api";
 import { formatCurrency, roleLabel, unwrapList } from "@/lib/utils";
-import { Users, Search, Eye, Trash2, Plus, Mail, Loader2, UserX, UserCheck, Send, FileCheck2, FileSpreadsheet, Megaphone, KeyRound, Download } from "lucide-react";
+import { Users, Search, Eye, Trash2, Plus, Mail, Loader2, UserX, UserCheck, Send, FileSpreadsheet, Megaphone, KeyRound, Download, Settings2, Check } from "lucide-react";
 import { toast } from "sonner";
 
 import { confetti } from "@/lib/confetti";
@@ -29,6 +29,14 @@ import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
 import PhoneInput, { toE164, validatePhone, type CountryCode } from "@/components/ui/PhoneInput";
 import AuthenticatedImage from "@/components/ui/AuthenticatedImage";
+
+const PROFILE_FIELD_OPTIONS = [
+  ["gender", "Gender", "Personal details"], ["bloodGroup", "Blood group", "Personal details"], ["maritalStatus", "Marital status", "Personal details"],
+  ["dateOfBirth", "Date of birth", "Personal details"], ["dateOfJoining", "Date of joining", "Employment"], ["designation", "Designation", "Employment"],
+  ["employmentType", "Employment type", "Employment"], ["branchId", "Branch", "Employment"], ["departmentId", "Department", "Employment"], ["shiftId", "Shift", "Employment"],
+  ["address", "Address", "Personal details"], ["emergencyContactName", "Emergency contact name", "Emergency contact"], ["emergencyContactPhone", "Emergency contact phone", "Emergency contact"],
+  ["personalEmail", "Personal email", "Contact"], ["bankName", "Bank name", "Payroll"], ["bankAccountNumber", "Bank account number", "Payroll"], ["bankIfsc", "IFSC code", "Payroll"], ["ctc", "Annual CTC", "Payroll"],
+] as const;
 
 export default function EmployeeDirectory() {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -66,6 +74,28 @@ export default function EmployeeDirectory() {
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const canExport = viewerRole === "SUPER_ADMIN" || viewerRole === "COMPANY_ADMIN";
+  const canManageProfileRequirements = viewerRole === "SUPER_ADMIN" || viewerRole === "COMPANY_ADMIN" || viewerRole === "MANAGER" || viewerRole === "HR";
+  const [mandatoryProfileFields, setMandatoryProfileFields] = useState<string[]>([]);
+  const [profileRequirementsOpen, setProfileRequirementsOpen] = useState(false);
+  const [savingProfileRequirements, setSavingProfileRequirements] = useState(false);
+
+  useEffect(() => {
+    if (!canManageProfileRequirements) return;
+    orgApi.get().then((res) => setMandatoryProfileFields(res?.data?.mandatoryProfileFields || [])).catch(() => setMandatoryProfileFields([]));
+  }, [canManageProfileRequirements]);
+
+  const saveProfileRequirements = async () => {
+    setSavingProfileRequirements(true);
+    try {
+      await orgApi.update({ mandatoryProfileFields });
+      toast.success("Mandatory profile fields saved");
+      setProfileRequirementsOpen(false);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Could not save mandatory profile fields");
+    } finally {
+      setSavingProfileRequirements(false);
+    }
+  };
 
   // Exports exactly what the filters above show (all pages), as a CSV that opens in Excel.
   const handleExport = async () => {
@@ -486,6 +516,16 @@ export default function EmployeeDirectory() {
           </button>
         </div>
       </div>
+
+      {canManageProfileRequirements && (
+        <section className="overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-br from-white to-indigo-50/50 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-5 sm:p-6">
+            <div className="flex items-start gap-3"><span className="rounded-2xl bg-indigo-100 p-3 text-indigo-700"><Settings2 className="h-5 w-5" /></span><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-indigo-600">Profile policy</p><h2 className="mt-1 text-lg font-bold text-slate-950">Mandatory employee fields</h2><p className="mt-1 text-xs text-slate-500">Choose which profile fields HR must complete when adding or updating workforce employees.</p></div></div>
+            <button type="button" onClick={() => setProfileRequirementsOpen((open) => !open)} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-indigo-500">{profileRequirementsOpen ? "Hide options" : "Configure fields"}</button>
+          </div>
+          {profileRequirementsOpen && <div className="border-t border-indigo-100 bg-white/80 p-5 sm:p-6"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{PROFILE_FIELD_OPTIONS.map(([key, label, group]) => { const checked = mandatoryProfileFields.includes(key); return <label key={key} className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-3 transition ${checked ? "border-indigo-200 bg-indigo-50/70" : "border-slate-200 bg-white hover:border-indigo-200"}`}><input type="checkbox" checked={checked} onChange={() => setMandatoryProfileFields((current) => checked ? current.filter((field) => field !== key) : [...current, key])} className="mt-0.5 h-4 w-4 accent-indigo-600" /><span className="min-w-0"><span className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">{label}{checked && <Check className="h-3.5 w-3.5 text-indigo-600" />}</span><span className="text-[11px] text-slate-500">{group}</span></span></label>; })}</div><div className="mt-4 flex flex-wrap items-center justify-between gap-3"><p className="text-[11px] text-slate-500">Configured by HR, Managers, Company Admin, or Super Admin. Gender is available under Personal details.</p><button type="button" onClick={() => void saveProfileRequirements()} disabled={savingProfileRequirements} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-800 disabled:opacity-50">{savingProfileRequirements && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Save mandatory fields</button></div></div>}
+        </section>
+      )}
 
       {/* Search & Filters */}
       <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-xs" role="search" aria-label="Search and filter employees">
