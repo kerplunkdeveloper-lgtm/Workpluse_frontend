@@ -18,6 +18,7 @@ export interface Person {
     lastName?: string;
     employeeCode?: string;
     department?: { id?: string; name?: string } | null;
+    branch?: { id?: string; name?: string } | null;
   } | null;
 }
 

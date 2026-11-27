@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { chatApi } from "@/lib/api";
+import { branchesApi, chatApi } from "@/lib/api";
 
 
-import { Check, Hash, Loader2, Search, X } from "lucide-react";
+import { Check, ChevronDown, Filter, Hash, Loader2, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { Person } from "./chatTypes";
 import { personName, roleLabel } from "./chatUtils";
@@ -18,16 +18,22 @@ export function NewChannelModal({ onClose, onCreated }: { onClose: () => void; o
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Map<string, Person>>(new Map());
   const [creating, setCreating] = useState(false);
+  const [branchId, setBranchId] = useState("ALL");
+  const [viewMode, setViewMode] = useState<"ALL" | "SELECTED_FIRST">("ALL");
+  const [branches, setBranches] = useState<Array<{ id: string; name: string }>>([]);
   const debounced = useDebounced(query.trim(), 300);
-  // Do not fetch the whole directory just because the modal opened. Large
-  // workspaces made the New channel dialog look like it was stuck loading.
-  // Search starts once the user has entered enough to identify a teammate.
-  const people = usePeopleSearch(debounced, 2);
+  // Keep the directory search server-side. An explicit branch filter is also
+  // a valid search, so it must load people even when the text box is empty.
+  // The API remains paged (30 at a time) for large workspaces.
+  const people = usePeopleSearch(debounced, 2, true, branchId, branchId !== "ALL");
   const titleRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     titleRef.current?.focus();
+    branchesApi.list().then((res) => setBranches(Array.isArray(res) ? res : res?.data || [])).catch(() => setBranches([]));
   }, []);
+
+  const visiblePeople = [...people.people].sort((a, b) => viewMode === "SELECTED_FIRST" ? Number(selected.has(b.id)) - Number(selected.has(a.id)) : 0);
 
   const toggle = (p: Person) =>
     setSelected((current) => {
@@ -71,11 +77,12 @@ export function NewChannelModal({ onClose, onCreated }: { onClose: () => void; o
         aria-modal="true"
         aria-labelledby="new-channel-title"
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl"
+        className="flex max-h-[min(760px,92vh)] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-white/70 bg-white shadow-[0_30px_100px_-35px_rgba(15,23,42,0.65)]"
       >
-        <div className="flex shrink-0 items-start justify-between gap-3 px-6 pb-3 pt-6">
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 bg-gradient-to-br from-white via-white to-indigo-50/60 px-5 pb-4 pt-5 sm:px-7 sm:pt-6">
           <div>
-            <h2 id="new-channel-title" className="font-serif text-xl font-semibold text-slate-950">
+            <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-indigo-700"><span className="h-1.5 w-1.5 rounded-full bg-indigo-600" /> Workspace</div>
+            <h2 id="new-channel-title" className="text-xl font-bold tracking-[-0.02em] text-slate-950">
               New channel
             </h2>
             <p className="mt-0.5 text-sm text-slate-600">A shared space for a team or project.</p>
@@ -85,12 +92,12 @@ export function NewChannelModal({ onClose, onCreated }: { onClose: () => void; o
           </button>
         </div>
 
-        <div className="shrink-0 space-y-3 px-6">
+        <div className="shrink-0 space-y-3 px-5 pt-4 sm:px-7">
           <div>
             <label htmlFor="channel-name" className="mb-1 block text-xs font-bold text-slate-700">
               Channel name
             </label>
-            <div className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 focus-within:border-indigo-300 focus-within:ring-4 focus-within:ring-indigo-50">
+            <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/60 px-3 transition focus-within:border-indigo-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-indigo-50">
               <Hash aria-hidden="true" className="h-4 w-4 text-slate-400" />
               <input
                 id="channel-name"
@@ -133,24 +140,28 @@ export function NewChannelModal({ onClose, onCreated }: { onClose: () => void; o
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search by name, email or code"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm text-slate-900 placeholder-slate-500 focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-50"
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50/60 py-2.5 pl-9 pr-3 text-sm text-slate-900 placeholder-slate-500 transition focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-50"
               />
             </div>
           </div>
+
+          <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+            <label className="relative block"><span className="sr-only">Filter by branch</span><Filter className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-indigo-500" /><select value={branchId} onChange={(e) => setBranchId(e.target.value)} className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-8 text-xs font-semibold text-slate-700 outline-none transition hover:border-indigo-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50"><option value="ALL">All branches</option>{branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</select><ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" /></label>
+            <label className="relative block"><span className="sr-only">Choose people view</span><select value={viewMode} onChange={(e) => setViewMode(e.target.value as "ALL" | "SELECTED_FIRST")} className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-3 py-2.5 pr-8 text-xs font-semibold text-slate-700 outline-none transition hover:border-indigo-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50"><option value="ALL">View: All people</option><option value="SELECTED_FIRST">View: Selected first</option></select><ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" /></label>
+            <div className="flex items-center justify-center rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700">{selected.size} selected</div>
+          </div>
         </div>
 
-        <div className="mt-3 min-h-[160px] flex-1 overflow-y-auto overscroll-contain px-4">
-          {debounced.length < 2 ? (
-            <p className="py-10 text-center text-sm text-slate-600">Type at least 2 characters to find teammates.</p>
-          ) : people.loading && people.people.length === 0 ? (
+        <div className="mt-3 min-h-[160px] flex-1 overflow-y-auto overscroll-contain px-3 sm:px-5">
+          {people.loading && people.people.length === 0 ? (
             <p className="flex items-center justify-center gap-2 py-10 text-xs text-slate-500">
               <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading people
             </p>
           ) : people.people.length === 0 ? (
-            <p className="py-10 text-center text-sm text-slate-600">No one matches that search.</p>
+            <p className="py-10 text-center text-sm text-slate-600">No teammates match the selected filters.</p>
           ) : (
             <ul className="space-y-0.5 pb-2">
-              {people.people.map((p) => {
+              {visiblePeople.map((p) => {
                 const on = selected.has(p.id);
                 return (
                   <li key={p.id}>
@@ -159,13 +170,13 @@ export function NewChannelModal({ onClose, onCreated }: { onClose: () => void; o
                       role="checkbox"
                       aria-checked={on}
                       onClick={() => toggle(p)}
-                      className={`flex w-full items-center gap-3 rounded-2xl px-2.5 py-2 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 ${on ? "bg-indigo-50" : "hover:bg-slate-50"}`}
+                      className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 ${on ? "border-indigo-100 bg-indigo-50/80" : "border-transparent hover:border-slate-100 hover:bg-slate-50"}`}
                     >
                       <Avatar label={personName(p)} size="sm" />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-semibold text-slate-900">{personName(p)}</span>
                         {p.employee?.department?.name && <span className="block truncate text-xs font-medium text-indigo-600">{p.employee.department.name}</span>}
-                        <span className="block truncate text-xs text-slate-600">{[roleLabel(p.role), p.employee?.employeeCode].filter(Boolean).join(" · ")}</span>
+                        <span className="block truncate text-xs text-slate-600">{[roleLabel(p.role), p.employee?.employeeCode, p.employee?.branch?.name].filter(Boolean).join(" · ")}</span>
                       </span>
                       <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${on ? "keep-white border-indigo-600 bg-indigo-600" : "border-slate-300 bg-white"}`}>
                         {on && <Check className="h-3.5 w-3.5" />}

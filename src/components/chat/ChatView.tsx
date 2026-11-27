@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { chatApi, getSessionAccessToken } from "@/lib/api";
 
 import { useAuth } from "@/context/AuthContext";
-import { ArrowLeft, Info, Loader2, MessageSquare, Plus, Search, Send, Users } from "lucide-react";
+import { ArrowLeft, Info, Loader2, MessageSquare, Plus, Search, Send, Smile, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Person, ChatMessage, Thread } from "./chatTypes";
 import { MESSAGE_PAGE_SIZE, MAX_MESSAGE_LENGTH, toList, metaOf, personName, roleLabel, timeOf, dayLabel } from "./chatUtils";
@@ -288,6 +288,11 @@ export default function ChatView() {
     }
   };
 
+  const addEmoji = () => {
+    setDraft((current) => `${current}${current ? " " : ""}😊`.slice(0, MAX_MESSAGE_LENGTH));
+    composerRef.current?.focus();
+  };
+
   // Grow the composer with its content, up to five lines.
   useLayoutEffect(() => {
     const el = composerRef.current;
@@ -366,26 +371,31 @@ export default function ChatView() {
     <div className="mx-auto max-w-[1400px] space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2.5 font-serif text-2xl font-bold tracking-tight text-slate-900">
-            <MessageSquare aria-hidden="true" className="h-6 w-6 text-indigo-600" />
-            Chat
+          <h1 className="flex items-center gap-2.5 text-2xl font-bold tracking-[-0.03em] text-slate-950">
+            <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/20"><MessageSquare aria-hidden="true" className="h-5 w-5" /></span>
+            Team chat
           </h1>
-          <p className="mt-1 text-sm text-slate-600">Direct messages and channels for your workforce</p>
+          <p className="mt-1 text-sm text-slate-600">One calm place for quick decisions and team context.</p>
         </div>
-        {canCreateChannel && <button
+        <div className="flex items-center gap-2">
+          <div className="hidden items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm sm:flex">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" /> {onlineUsers.size || 0} online now
+          </div>
+          {canCreateChannel && <button
           type="button"
           onClick={() => setChannelOpen(true)}
-          className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-600/25 transition hover:bg-indigo-500 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+          className="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-indigo-600/25 transition hover:bg-indigo-500 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
         >
           <Plus className="h-4 w-4" />
           New channel
-        </button>}
+          </button>}
+        </div>
       </div>
 
-      <div className="grid h-[calc(100dvh-210px)] min-h-[560px] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_24px_60px_-34px_rgba(15,23,42,0.4)] md:grid-cols-[340px_minmax(0,1fr)]">
+      <div className="grid h-[calc(100dvh-210px)] min-h-[560px] overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_28px_80px_-38px_rgba(15,23,42,0.45)] md:grid-cols-[340px_minmax(0,1fr)]">
         {/* Sidebar */}
         <aside className={`min-h-0 flex-col border-r border-slate-100 bg-white ${activeId ? "hidden md:flex" : "flex"}`} aria-label="Conversations">
-          <div className="shrink-0 space-y-3 border-b border-slate-100 p-4">
+          <div className="shrink-0 space-y-3 border-b border-slate-100 bg-gradient-to-b from-white to-slate-50/70 p-4">
             <div className="relative">
               <Search aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
@@ -576,7 +586,7 @@ export default function ChatView() {
                     )}
                   </p>
                 </div>
-                {activeInfo?.channel && activeThread && <button type="button" onClick={() => setProfileOpen(true)} className="ml-auto inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-xs transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700" title="View channel profile"><Info className="h-4 w-4" /> <span className="hidden sm:inline">Channel profile</span></button>}
+                {activeThread && <button type="button" onClick={() => setProfileOpen(true)} className="ml-auto inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700" title="View conversation profile"><Info className="h-4 w-4" /> <span className="hidden sm:inline">Profile</span></button>}
               </header>
 
               <div ref={scrollRef} onScroll={onScroll} role="log" aria-live="polite" aria-label="Messages" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6">
@@ -659,6 +669,14 @@ export default function ChatView() {
                     className="max-h-32 min-h-[40px] flex-1 resize-none bg-transparent px-2 py-2 text-sm text-slate-900 placeholder-slate-500 focus:outline-none"
                   />
                   <button
+                    type="button"
+                    onClick={addEmoji}
+                    aria-label="Add emoji"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-indigo-50 hover:text-indigo-600"
+                  >
+                    <Smile className="h-4 w-4" />
+                  </button>
+                  <button
                     type="submit"
                     disabled={!draft.trim() || sending}
                     aria-label="Send message"
@@ -687,13 +705,14 @@ export default function ChatView() {
           }}
         />
       )}
-      {profileOpen && activeThread?.isDirect === false && (
+      {profileOpen && activeThread && (
         <ChannelProfilePanel
           thread={activeThread}
           canManage={canManageChannel}
           onClose={() => setProfileOpen(false)}
           onUpdated={renameActiveChannel}
           onDeleted={removeActiveChannel}
+          profilePerson={activeThread.isDirect ? otherMember(activeThread) : null}
         />
       )}
     </div>

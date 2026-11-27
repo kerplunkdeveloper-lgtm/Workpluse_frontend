@@ -140,7 +140,12 @@ export default function PayrollView() {
         toast.error(res?.message || "Failed to generate payroll batch");
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || err.message || "Failed to generate batch");
+      const isTimeout = err?.code === "ECONNABORTED" || /timeout/i.test(err?.message || "");
+      toast.error(
+        isTimeout
+          ? "Payroll generation is still processing. Please wait, then refresh payroll before trying again."
+          : err?.response?.data?.message || err?.message || "Failed to generate batch",
+      );
     } finally {
       setIsGenerating(false);
     }

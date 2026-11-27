@@ -813,7 +813,15 @@ export const payrollApi = {
     return res.data;
   },
   generateBatch: async (payload: { month: number; year: number }) => {
-    const res = await api.post("/payroll/generate", payload);
+    // Organization payroll is intentionally long-running: each configured
+    // employee is calculated, statutory TDS is applied, and the payslip plus
+    // related claims are committed. Do not let the global 20s UI timeout or
+    // transient retry turn a slow success into a duplicate generation attempt.
+    const res = await api.post("/payroll/generate", payload, {
+      timeout: 120000,
+      skipGlobalError: true,
+      skipTransientRetry: true,
+    });
     return res.data;
   },
   approveBatch: async (payload: { batchId?: string; month?: number; year?: number }) => {
@@ -936,6 +944,8 @@ export const platformApi = {
     const res = await api.post(`/admin/platform/clients/${id}/admin-password-reset`);
     return res.data;
   },
+  developers: async () => (await api.get("/admin/platform/developers", { skipGlobalError: true })).data,
+  createDeveloper: async (email: string) => (await api.post("/admin/platform/developers", { email })).data,
 };
 
 export const billingAdminApi = {
@@ -1125,7 +1135,7 @@ export const webhooksApi = {
 };
 
 export const chatApi = {
-  teammates: async (params?: { search?: string; page?: number; limit?: number }) => {
+  teammates: async (params?: { search?: string; branchId?: string; page?: number; limit?: number }) => {
     const res = await api.get("/chat/teammates", { params });
     return res.data;
   },
@@ -1401,6 +1411,10 @@ export const employeesApi = {
   },
   getMissingSummary: async (params?: { branchId?: string; limit?: number }) => {
     const res = await api.get("/employees/documents/missing", { params });
+    return res.data;
+  },
+  getPendingDocuments: async (params?: { branchId?: string; search?: string; page?: number; limit?: number }) => {
+    const res = await api.get("/employees/documents/pending", { params });
     return res.data;
   },
   getDocumentContent: async (employeeId: string, documentId: string) => {

@@ -9,6 +9,7 @@ export const STATUS_META: Record<string, { label: string; dot: string; badge: st
   WORK_FROM_HOME: { label: "Remote", dot: "bg-sky-500", badge: "bg-sky-50 text-sky-700 ring-sky-600/15" },
   ON_LEAVE: { label: "On leave", dot: "bg-violet-500", badge: "bg-violet-50 text-violet-700 ring-violet-600/15" },
   ABSENT: { label: "Absent", dot: "bg-rose-500", badge: "bg-rose-50 text-rose-700 ring-rose-600/15" },
+  PUNCH_OUT: { label: "Not punched out", dot: "bg-cyan-500", badge: "bg-cyan-50 text-cyan-700 ring-cyan-600/15" },
   HOLIDAY: { label: "Holiday", dot: "bg-slate-400", badge: "bg-slate-100 text-slate-600 ring-slate-500/15" },
   WEEK_OFF: { label: "Week off", dot: "bg-slate-300", badge: "bg-slate-100 text-slate-600 ring-slate-500/15" },
 };

@@ -1,8 +1,9 @@
-export type UserRole = "SUPER_ADMIN" | "COMPANY_ADMIN" | "MANAGER" | "HR" | "EMPLOYEE";
+export type UserRole = "SUPER_ADMIN" | "DEVELOPER" | "COMPANY_ADMIN" | "MANAGER" | "HR" | "EMPLOYEE";
 
 export type AttendanceStatus =
   | "PRESENT"
   | "ABSENT"
+  | "PUNCH_OUT"
   | "LATE"
   | "HALF_DAY"
   | "SHORT_HOURS"
@@ -234,6 +235,8 @@ export interface Attendance {
   correctionReason?: string | null;
   correctionStatus?: string | null;
   correctionReviewNote?: string | null;
+  holidayName?: string | null;
+  holidayType?: "HOLIDAY" | "COMPANY_LEAVE" | null;
 }
 /** Today is closed for self-service punching because of approved leave or a non-working day. */
 export interface DayOffInfo {
@@ -633,6 +636,25 @@ export interface EmployeeDocumentsData {
   };
   checklist: EmployeeDocumentChecklistItem[];
   documents: EmployeeDocument[];
+}
+
+export interface PendingEmployeeDocument {
+  id: string;
+  employeeId: string;
+  documentType: EmployeeDocumentType;
+  title?: string | null;
+  fileName: string;
+  mimeType?: string | null;
+  createdAt: string;
+  employee: {
+    id: string;
+    employeeCode: string;
+    firstName: string;
+    lastName?: string | null;
+    name: string;
+    department?: { name: string } | null;
+    branch?: { id: string; name: string } | null;
+  };
 }
 
 // ─── Offboarding & Full & Final (F&F) Types ──────────────────────────────────

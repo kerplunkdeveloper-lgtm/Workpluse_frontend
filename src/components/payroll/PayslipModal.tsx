@@ -21,6 +21,15 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   useEffect(() => {
+    if (!isOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
     async function loadFullDetails() {
       if (!isOpen || !payslip) return;
       setLoadingDetails(true);
@@ -206,8 +215,8 @@ export default function PayslipModal({ payslip, isOpen, onClose }: PayslipModalP
   ];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div className="w-full max-w-5xl overflow-hidden bg-white text-slate-900 rounded-3xl p-4 sm:p-8 lg:p-10 shadow-2xl relative my-8 print:p-0 print:m-0 print:shadow-none print:w-full print:max-w-none">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto overscroll-contain bg-black/80 p-2 backdrop-blur-sm sm:items-center sm:p-4 print:static print:block print:overflow-visible print:bg-transparent print:p-0">
+      <div className="relative my-2 flex max-h-[calc(100dvh-1rem)] w-full max-w-6xl flex-col overflow-y-auto overscroll-contain rounded-2xl bg-white p-3 text-slate-900 shadow-2xl sm:my-8 sm:max-h-[calc(100dvh-4rem)] sm:rounded-3xl sm:p-6 lg:p-10 print:my-0 print:block print:max-h-none print:overflow-visible print:rounded-none print:p-0 print:shadow-none print:w-full print:max-w-none">
         
         {/* Top Control Bar (Hidden on print) */}
         <div className="flex flex-wrap items-center justify-between gap-3 pb-6 border-b border-slate-200 mb-6 print:hidden">

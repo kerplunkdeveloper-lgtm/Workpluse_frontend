@@ -60,7 +60,7 @@ export default function ChangePasswordPage() {
         toast.success("Password set successfully! Redirecting to dashboard...");
         await refreshUser();
         setTimeout(() => {
-          router.push(user?.role === "SUPER_ADMIN" ? "/platform/clients" : "/dashboard");
+          router.push(user?.role === "SUPER_ADMIN" ? "/platform/clients" : user?.role === "DEVELOPER" ? "/developer/dashboard" : "/dashboard");
         }, 1500);
       } else {
         toast.error(res?.message || "Failed to update password");

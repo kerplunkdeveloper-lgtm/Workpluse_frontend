@@ -119,6 +119,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: "Audit log", href: "/audit", icon: History, hint: "Who changed what, and when, across your workspace", keywords: ["history", "activity", "security", "changes", "log"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"] },
       { label: "Permissions", href: "/permissions", icon: KeyRound, hint: "Granular role access controls and privileges", keywords: ["access", "roles", "security"], roles: ["SUPER_ADMIN", "COMPANY_ADMIN", "HR"] },
       { label: "Support", href: "/support", icon: LifeBuoy, hint: "Report an issue, follow tickets, and get help", keywords: ["help", "ticket", "issue", "bug", "support"], roles: ["COMPANY_ADMIN", "MANAGER", "HR"] },
+      { label: "Developer support", href: "/developer/dashboard", icon: LifeBuoy, hint: "Resolve support tickets across customer workspaces", keywords: ["developer", "support", "tickets", "queue"], roles: ["DEVELOPER"] },
     ],
   },
 ];
@@ -136,7 +137,19 @@ export const PLATFORM_SECTIONS: NavSection[] = [
       { label: "Pricing & offers", href: "/platform/billing", icon: CreditCard, hint: "Plan prices and discount codes", keywords: ["pricing", "coupon", "offer", "plans"] },
       { label: "Activity", href: "/platform/activity", icon: History, hint: "Every owner action on a client, with who and why", keywords: ["audit", "log", "history", "suspend"] },
       { label: "Security", href: "/platform/security", icon: KeyRound, hint: "Two-step verification and platform security", keywords: ["2fa", "totp", "authenticator", "security"] },
+      { label: "Developers", href: "/platform/developers", icon: Users, hint: "Create and manage support developer accounts", keywords: ["developer", "support", "accounts"] },
     ],
+  },
+];
+
+export const DEVELOPER_SECTIONS: NavSection[] = [
+  {
+    id: "developer-support",
+    title: "Support operations",
+    blurb: "Customer issue resolution",
+    dot: "bg-indigo-400",
+    glow: "rgba(99, 102, 241, 0.4)",
+    items: [{ label: "Support queue", href: "/developer/dashboard", icon: LifeBuoy, hint: "Resolve support tickets across customer workspaces", keywords: ["developer", "support", "tickets", "queue"] }],
   },
 ];
 

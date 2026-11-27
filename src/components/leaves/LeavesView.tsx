@@ -3,10 +3,10 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { LeaveRequest, LeaveBalance, LeaveType } from "@/types";
-import { leavesApi, employeesApi } from "@/lib/api";
+import { leavesApi, employeesApi, branchesApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { formatDate, unwrapList } from "@/lib/utils";
-import { CalendarDays, Plus, AlertCircle, Loader2, Calendar, ChevronLeft, ChevronRight, CheckCircle2, Clock3, XCircle, Users, WalletCards, RefreshCw, Filter, Building2 } from "lucide-react";
+import { CalendarDays, Plus, AlertCircle, Loader2, Calendar, ChevronLeft, ChevronRight, CheckCircle2, Clock3, XCircle, Users, WalletCards, RefreshCw, Filter, Building2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { logClientError } from "@/lib/clientLogger";
 import { motion } from "framer-motion";
@@ -92,6 +92,7 @@ export default function LeavesView() {
   const [myRequests, setMyRequests] = useState<LeaveRequest[]>([]);
   const [teamRequests, setTeamRequests] = useState<LeaveRequest[]>([]);
   const [organizationEmployees, setOrganizationEmployees] = useState<any[]>([]);
+  const [organizationBranches, setOrganizationBranches] = useState<any[]>([]);
   const [teamLeaveBalances, setTeamLeaveBalances] = useState<any[]>([]);
   const [selectedBalanceEmployeeId, setSelectedBalanceEmployeeId] = useState("");
   const [balanceEmployeeSearch, setBalanceEmployeeSearch] = useState("");
@@ -148,6 +149,7 @@ export default function LeavesView() {
   const [teamCalendarDate, setTeamCalendarDate] = useState("");
   const [teamCalendarStatus, setTeamCalendarStatus] = useState("ALL");
   const [teamCalendarDepartment, setTeamCalendarDepartment] = useState("ALL");
+  const [teamCalendarBranch, setTeamCalendarBranch] = useState("ALL");
   const [selectedTeamLeave, setSelectedTeamLeave] = useState<LeaveRequest | null>(null);
 
   // Review Modal state
@@ -209,11 +211,12 @@ export default function LeavesView() {
       }
 
       if (canApprove) {
-        const [teamResult, employeeResult, changeResult, balanceResult] = await Promise.allSettled([
+        const [teamResult, employeeResult, changeResult, balanceResult, branchResult] = await Promise.allSettled([
           leavesApi.getAllLeaves(),
           employeesApi.getAll({ status: "ALL", limit: 500 }),
           leavesApi.getDateChanges("PENDING"),
           leavesApi.getTeamBalances(),
+          branchesApi.list(),
         ]);
 
         if (teamResult.status === "fulfilled") {
@@ -243,6 +246,11 @@ export default function LeavesView() {
           setOrganizationEmployees(employees);
         } else {
           logClientError("leaves.approvals_load_failed", { request: "employees", error: employeeResult.reason });
+        }
+        if (branchResult.status === "fulfilled") {
+          setOrganizationBranches(unwrapList(branchResult.value));
+        } else {
+          logClientError("leaves.approvals_load_failed", { request: "branches", error: branchResult.reason });
         }
         if (balanceResult.status === "fulfilled") {
           const rows = unwrapList(balanceResult.value);
@@ -425,21 +433,49 @@ export default function LeavesView() {
 
   const pendingApprovals = teamRequests.filter((r) => r.status === "PENDING");
 
+  const teamCalendarEmployees = useMemo(() => {
+    const employees = new Map<string, any>();
+    organizationEmployees.forEach((employee) => {
+      if (employee?.id) employees.set(String(employee.id), employee);
+    });
+    teamRequests.forEach((request) => {
+      const employee = request.employee;
+      if (employee?.id && !employees.has(String(employee.id))) employees.set(String(employee.id), employee);
+    });
+    return employees;
+  }, [organizationEmployees, teamRequests]);
+
   const teamDepartments = useMemo(() => {
     const departments = new Map<string, string>();
-    teamRequests.forEach((request) => {
-      const department = request.employee?.department;
+    teamCalendarEmployees.forEach((employee) => {
+      const department = employee?.department;
       if (department?.id && department.name) departments.set(department.id, department.name);
     });
     return [...departments.entries()].sort((a, b) => a[1].localeCompare(b[1]));
-  }, [teamRequests]);
+  }, [teamCalendarEmployees]);
+
+  const teamBranches = useMemo(() => {
+    const branches = new Map<string, string>();
+    organizationBranches.forEach((branch) => {
+      if (branch?.id && branch?.name) branches.set(String(branch.id), String(branch.name));
+    });
+    teamCalendarEmployees.forEach((employee) => {
+      const id = employee?.branchId || employee?.branch?.id;
+      const name = employee?.branch?.name;
+      if (id && name) branches.set(String(id), name);
+    });
+    return [...branches.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [organizationBranches, teamCalendarEmployees]);
 
   const filteredTeamLeave = useMemo(() => teamRequests.filter((request) => {
+    const employee = request.employee || teamCalendarEmployees.get(String(request.employeeId));
     const statusMatches = teamCalendarStatus === "ALL" || request.status === teamCalendarStatus;
-    const departmentMatches = teamCalendarDepartment === "ALL" || request.employee?.departmentId === teamCalendarDepartment || request.employee?.department?.id === teamCalendarDepartment;
+    const departmentMatches = teamCalendarDepartment === "ALL" || employee?.departmentId === teamCalendarDepartment || employee?.department?.id === teamCalendarDepartment;
+    const branchId = employee?.branchId || employee?.branch?.id;
+    const branchMatches = teamCalendarBranch === "ALL" || String(branchId || "") === teamCalendarBranch;
     const dateMatches = !teamCalendarDate || requestCoversDate(request, parseDateOnly(teamCalendarDate) || new Date(0));
-    return statusMatches && departmentMatches && dateMatches;
-  }), [teamRequests, teamCalendarStatus, teamCalendarDepartment, teamCalendarDate]);
+    return statusMatches && departmentMatches && branchMatches && dateMatches;
+  }), [teamRequests, teamCalendarStatus, teamCalendarDepartment, teamCalendarBranch, teamCalendarDate, teamCalendarEmployees]);
 
   const balanceBranches = useMemo(() => {
     const branches = new Map<string, string>();
@@ -1178,11 +1214,12 @@ export default function LeavesView() {
               </div>
             </div>
 
-            <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
               <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500"><Filter className="h-3.5 w-3.5" /><span className="sr-only">Leave status</span><Select value={teamCalendarStatus} onChange={(event) => setTeamCalendarStatus(event.target.value)} className="w-full border-0 bg-transparent p-0 text-xs font-semibold shadow-none"><option value="ALL">All statuses</option><option value="PENDING">Pending</option><option value="APPROVED">Approved</option><option value="REJECTED">Rejected</option></Select></label>
               <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500"><Building2 className="h-3.5 w-3.5" /><span className="sr-only">Department</span><Select value={teamCalendarDepartment} onChange={(event) => setTeamCalendarDepartment(event.target.value)} className="w-full border-0 bg-transparent p-0 text-xs font-semibold shadow-none"><option value="ALL">All departments</option>{teamDepartments.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</Select></label>
+              <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500"><MapPin className="h-3.5 w-3.5" /><span className="sr-only">Branch</span><Select value={teamCalendarBranch} onChange={(event) => setTeamCalendarBranch(event.target.value)} className="w-full border-0 bg-transparent p-0 text-xs font-semibold shadow-none"><option value="ALL">All branches</option>{teamBranches.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</Select></label>
               <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500"><Calendar className="h-3.5 w-3.5" /><span className="sr-only">Same-day filter</span><input type="date" value={teamCalendarDate} onChange={(event) => setTeamCalendarDate(event.target.value)} className="min-w-0 w-full bg-transparent text-xs font-semibold text-slate-700 outline-none" /></label>
-              <button type="button" onClick={() => { setTeamCalendarDate(""); setTeamCalendarStatus("ALL"); setTeamCalendarDepartment("ALL"); }} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">Clear filters</button>
+              <button type="button" onClick={() => { setTeamCalendarDate(""); setTeamCalendarStatus("ALL"); setTeamCalendarDepartment("ALL"); setTeamCalendarBranch("ALL"); }} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">Clear filters</button>
             </div>
 
             <div className="mt-5 flex items-center justify-between gap-3">
