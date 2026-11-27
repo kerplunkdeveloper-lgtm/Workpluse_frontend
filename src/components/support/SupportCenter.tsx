@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { toast } from "sonner";
 import {
   AlertCircle,
-  ArrowUpRight,
   BookOpen,
   CheckCircle2,
   ChevronDown,
@@ -130,14 +129,14 @@ function TicketRow({ ticket, selected, onClick }: { ticket: SupportTicket; selec
   );
 }
 
-export default function SupportCenter() {
+export default function SupportCenter({ agentOnly = false }: { agentOnly?: boolean }) {
   const pathname = usePathname();
   const { user, role } = useAuth();
-  const canManage = ["SUPER_ADMIN", "COMPANY_ADMIN", "MANAGER", "HR"].includes(role || "");
+  const canManage = ["SUPER_ADMIN", "DEVELOPER", "COMPANY_ADMIN", "MANAGER", "HR"].includes(role || "");
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [queue, setQueue] = useState<SupportTicket[]>([]);
   const [selected, setSelected] = useState<SupportTicket | null>(null);
-  const [view, setView] = useState<"mine" | "queue">("mine");
+  const [view, setView] = useState<"mine" | "queue">(agentOnly ? "queue" : "mine");
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -170,10 +169,10 @@ export default function SupportCenter() {
     setLoading(true);
     try {
       const [mineResponse, queueResponse] = await Promise.all([
-        supportApi.list({ scope: "mine" }),
+        agentOnly ? Promise.resolve(null) : supportApi.list({ scope: "mine" }),
         canManage ? supportApi.list({ scope: "queue" }) : Promise.resolve(null),
       ]);
-      setTickets(extractList(mineResponse));
+      if (mineResponse) setTickets(extractList(mineResponse));
       if (queueResponse) setQueue(extractList(queueResponse));
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Support tickets could not be loaded.");
@@ -182,7 +181,7 @@ export default function SupportCenter() {
     }
   };
 
-  useEffect(() => { void loadTickets(); }, [canManage]);
+  useEffect(() => { void loadTickets(); }, [canManage, agentOnly]);
 
   const openTicket = async (ticket: SupportTicket) => {
     setDetailLoading(true);
@@ -288,8 +287,8 @@ export default function SupportCenter() {
       </section>
 
       <section>
-        <div className="mb-3 flex items-end justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[0.16em] text-indigo-600">Start with a shortcut</p><h2 className="mt-1 text-xl font-black text-slate-900">What do you need help with?</h2></div><a href="/assistant" className="hidden items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 sm:flex">Search help with AI <ArrowUpRight className="h-3.5 w-3.5" /></a></div>
-         <div className="grid gap-3 md:grid-cols-3">{QUICK_ISSUES.map((item) => { const Icon = item.icon; return <Card key={item.title} component="button" type="button" onClick={() => startTicket(item)} elevation={0} sx={{ display: "flex", height: "100%", minHeight: 166, textAlign: "left", border: "1px solid #e2e8f0", borderRadius: 4, cursor: "pointer", transition: "transform .2s, box-shadow .2s, border-color .2s", "&:hover": { transform: "translateY(-3px)", boxShadow: "0 12px 30px rgba(15,23,42,.08)", borderColor: "#a5b4fc" } }}><CardContent sx={{ display: "flex", width: "100%", flexDirection: "column", p: { xs: 2.5, sm: 3 }, "&:last-child": { pb: { xs: 2.5, sm: 3 } } }}><Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "flex-start" }}><span className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-50 text-indigo-600"><Icon className="h-5 w-5" /></span><ArrowUpRight className="h-4 w-4 text-slate-400" /></Stack><Typography sx={{ mt: 1.5, fontSize: 14, lineHeight: 1.35, fontWeight: 800, color: "#0f172a" }}>{item.title}</Typography><Typography sx={{ mt: .75, fontSize: 12, lineHeight: 1.55, color: "#64748b" }}>{item.description}</Typography></CardContent></Card>; })}</div>
+        <div className="mb-3 flex items-end justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[0.16em] text-indigo-600">Start with a shortcut</p><h2 className="mt-1 text-xl font-black text-slate-900">What do you need help with?</h2></div><a href="/assistant" className="hidden text-xs font-bold text-indigo-600 hover:text-indigo-800 sm:block">Search help with AI</a></div>
+         <div className="grid gap-3 md:grid-cols-3">{QUICK_ISSUES.map((item) => { const Icon = item.icon; return <Card key={item.title} component="button" type="button" onClick={() => startTicket(item)} elevation={0} sx={{ display: "flex", height: "100%", minHeight: 166, textAlign: "left", border: "1px solid #e2e8f0", borderRadius: 4, cursor: "pointer", transition: "transform .2s, box-shadow .2s, border-color .2s", "&:hover": { transform: "translateY(-3px)", boxShadow: "0 12px 30px rgba(15,23,42,.08)", borderColor: "#a5b4fc" } }}><CardContent sx={{ display: "flex", width: "100%", flexDirection: "column", p: { xs: 2.5, sm: 3 }, "&:last-child": { pb: { xs: 2.5, sm: 3 } } }}><Stack direction="row" sx={{ alignItems: "flex-start" }}><span className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-50 text-indigo-600"><Icon className="h-5 w-5" /></span></Stack><Typography sx={{ mt: 1.5, fontSize: 14, lineHeight: 1.35, fontWeight: 800, color: "#0f172a" }}>{item.title}</Typography><Typography sx={{ mt: .75, fontSize: 12, lineHeight: 1.55, color: "#64748b" }}>{item.description}</Typography></CardContent></Card>; })}</div>
       </section>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -320,7 +319,18 @@ export default function SupportCenter() {
 
        <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]"><div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><div className="flex items-center gap-2"><BookOpen className="h-5 w-5 text-indigo-600" /><h2 className="text-lg font-black text-slate-900">Quick answers</h2></div><div className="mt-4 divide-y divide-slate-100">{FAQS.map(([question, answer], index) => <div key={question}><button type="button" onClick={() => setOpenFaq(openFaq === index ? null : index)} className="flex w-full items-center justify-between gap-4 py-4 text-left text-sm font-bold text-slate-800"><span>{question}</span><ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition ${openFaq === index ? "rotate-180" : ""}`} /></button>{openFaq === index && <p className="-mt-1 pb-4 pr-6 text-xs leading-5 text-slate-500">{answer}</p>}</div>)}</div></div><div className="rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-violet-50 p-5 shadow-sm sm:p-6"><div className="flex items-center gap-2"><AlertCircle className="h-5 w-5 text-indigo-600" /><h2 className="text-lg font-black text-indigo-950">Before you submit</h2></div><ul className="mt-4 space-y-3 text-xs leading-5 text-indigo-950/75"><li className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />Mention the employee code or ticket reference, never a password.</li><li className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />Tell us the exact page and approximate time of the problem.</li><li className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />Add the expected result and the actual result.</li><li className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />For payroll issues, include the pay period but never bank credentials.</li></ul><a href="/assistant" className="mt-5 inline-flex items-center gap-2 rounded-xl bg-white px-3.5 py-2.5 text-xs font-bold text-indigo-700 shadow-sm ring-1 ring-indigo-100 hover:bg-indigo-50"><Sparkles className="h-4 w-4" /> Try AI guidance first</a><p className="mt-4 border-t border-indigo-200/60 pt-3 text-xs font-bold text-indigo-700">Support contact: <a href={`mailto:${supportEmail}`} className="underline decoration-indigo-300 underline-offset-2 hover:text-indigo-900">{supportEmail}</a></p></div></section>
 
-      <Dialog open={showCreate} onClose={() => !submitting && setShowCreate(false)} fullWidth maxWidth="md"><DialogTitle sx={{ fontWeight: 900, pb: 1 }}>Tell us what happened</DialogTitle><DialogContent dividers><Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>A clear subject and reproduction detail helps your HR or support team resolve it faster.</Typography><form id="support-ticket-form" onSubmit={submitTicket} className="space-y-4"><TextField label="Subject" value={subject} onChange={(event) => setSubject(event.target.value)} slotProps={{ htmlInput: { maxLength: 160 } }} autoFocus fullWidth placeholder="Example: Avatar is missing in Attendance" /><div className="grid gap-4 sm:grid-cols-2"><TextField select label="Category" value={category} onChange={(event) => setCategory(event.target.value)} fullWidth>{CATEGORIES.map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}</TextField><TextField select label="Priority" value={priority} onChange={(event) => setPriority(event.target.value as TicketPriority)} fullWidth><MenuItem value="LOW">Low · General question</MenuItem><MenuItem value="NORMAL">Normal · Needs help</MenuItem><MenuItem value="HIGH">High · Work is blocked</MenuItem><MenuItem value="URGENT">Urgent · Major outage</MenuItem></TextField></div><TextField label="What happened?" value={description} onChange={(event) => setDescription(event.target.value)} slotProps={{ htmlInput: { maxLength: 5000 } }} multiline minRows={6} fullWidth placeholder="Tell us what you expected, what happened, and how we can reproduce it…" helperText={`${description.length}/5000 characters`} /></form></DialogContent><DialogActions sx={{ p: 2.5 }}><Button onClick={() => setShowCreate(false)} color="inherit" disabled={submitting}>Cancel</Button><Button form="support-ticket-form" type="submit" variant="contained" disabled={submitting} startIcon={submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}>{submitting ? "Creating…" : "Create ticket"}</Button></DialogActions></Dialog>
+      <Dialog open={showCreate} onClose={() => !submitting && setShowCreate(false)} fullWidth maxWidth="md" slotProps={{ paper: { sx: { display: "flex", maxHeight: "calc(100% - 32px)", borderRadius: 3 } } }}>
+        <DialogTitle sx={{ flexShrink: 0, fontWeight: 900, pb: 1 }}>Tell us what happened</DialogTitle>
+        <DialogContent dividers sx={{ minHeight: 0, overflowY: "auto", px: { xs: 2, sm: 3 } }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>A clear subject and reproduction detail helps your HR or support team resolve it faster.</Typography>
+          <form id="support-ticket-form" onSubmit={submitTicket} className="space-y-4">
+            <TextField label="Subject" value={subject} onChange={(event) => setSubject(event.target.value)} slotProps={{ htmlInput: { maxLength: 160 } }} autoFocus fullWidth placeholder="Example: Avatar is missing in Attendance" />
+            <div className="grid gap-4 sm:grid-cols-2"><TextField select label="Category" value={category} onChange={(event) => setCategory(event.target.value)} fullWidth>{CATEGORIES.map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}</TextField><TextField select label="Priority" value={priority} onChange={(event) => setPriority(event.target.value as TicketPriority)} fullWidth><MenuItem value="LOW">Low · General question</MenuItem><MenuItem value="NORMAL">Normal · Needs help</MenuItem><MenuItem value="HIGH">High · Work is blocked</MenuItem><MenuItem value="URGENT">Urgent · Major outage</MenuItem></TextField></div>
+            <TextField label="What happened?" value={description} onChange={(event) => setDescription(event.target.value)} slotProps={{ htmlInput: { maxLength: 5000 } }} multiline minRows={6} fullWidth placeholder="Tell us what you expected, what happened, and how we can reproduce it…" helperText={`${description.length}/5000 characters`} />
+          </form>
+        </DialogContent>
+        <DialogActions sx={{ flexShrink: 0, p: 2.5 }}><Button onClick={() => setShowCreate(false)} color="inherit" disabled={submitting}>Cancel</Button><Button form="support-ticket-form" type="submit" variant="contained" disabled={submitting} startIcon={submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}>{submitting ? "Creating…" : "Create ticket"}</Button></DialogActions>
+      </Dialog>
     </div>
     </ThemeProvider>
   );

@@ -21,7 +21,7 @@ import CommandPalette from "./CommandPalette";
 import CompanyLogo from "@/components/ui/CompanyLogo";
 import AuthenticatedImage from "@/components/ui/AuthenticatedImage";
 import ShortcutsHelpModal from "./ShortcutsHelpModal";
-import { NAV_SECTIONS, PLATFORM_SECTIONS, DESKTOP_NAV_SCROLL_KEY, MOBILE_NAV_SCROLL_KEY, isNavActive, itemVisible, itemMatches, timeAgo } from "./navConfig";
+import { NAV_SECTIONS, PLATFORM_SECTIONS, DEVELOPER_SECTIONS, DESKTOP_NAV_SCROLL_KEY, MOBILE_NAV_SCROLL_KEY, isNavActive, itemVisible, itemMatches, timeAgo } from "./navConfig";
 import { enableFirebaseNotifications, listenForFirebaseNotifications } from "@/lib/firebaseMessaging";
 import { playNotificationSound, unlockNotificationSound } from "@/lib/notificationSound";
 import AssistantWidget from "@/components/ai/AssistantWidget";
@@ -333,7 +333,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => { if (role === "MANAGER" || role === "HR" || role === "EMPLOYEE") orgApi.get().then((res) => { setHrAccess(res?.data?.hrAccess || null); setRoleAccess(res?.data?.roleAccess || null); }).catch(() => { setHrAccess(null); setRoleAccess(null); }); else { setHrAccess(null); setRoleAccess(null); } }, [role]);
   const hrAreaForHref = (href: string) => { if (href.startsWith("/dashboard") || href.startsWith("/profile")) return "DASHBOARD"; if (href.startsWith("/attendance") || href.startsWith("/leaves") || href.startsWith("/approvals")) return "ATTENDANCE"; if (href.startsWith("/employees")) return "EMPLOYEES"; if (href.startsWith("/onboarding") || href.startsWith("/offboarding")) return "ONBOARDING"; if (href.startsWith("/audit")) return "AUDIT"; if (href.startsWith("/payroll") || href.startsWith("/statutory") || href.startsWith("/loans") || href.startsWith("/expenses") || href.startsWith("/overtime")) return "PAYROLL"; if (href.startsWith("/reports")) return "REPORTS"; if (href.startsWith("/branches") || href.startsWith("/departments")) return "BRANCHES"; if (href.startsWith("/policy") || href.startsWith("/holidays") || href.startsWith("/shifts")) return "POLICIES"; if (href.startsWith("/assets")) return "EMPLOYEES"; return null; };
   const canSeeHrArea = (href: string) => { const area = hrAreaForHref(href); if (!area) return true; if (role === "EMPLOYEE" && (href.startsWith("/holidays") || ["DASHBOARD", "ATTENDANCE", "PAYROLL"].includes(area))) return true; if ((role === "MANAGER" || role === "HR") && roleAccess?.[role]) return roleAccess[role][area] !== false; if (role === "MANAGER" || role === "HR") return hrAccess ? hrAccess[area] !== false : true; if (role === "EMPLOYEE" && roleAccess?.EMPLOYEE) return roleAccess.EMPLOYEE[area] !== false; return true; };
-  const visibleSections = (isPlatformOwner ? PLATFORM_SECTIONS : NAV_SECTIONS).map((section) => ({
+  const visibleSections = (isPlatformOwner ? PLATFORM_SECTIONS : role === "DEVELOPER" ? DEVELOPER_SECTIONS : NAV_SECTIONS).map((section) => ({
     ...section,
     items: section.items.filter((item) => itemVisible(item, role, user?.features) && canSeeHrArea(item.href) && itemMatches(item, navQuery)),
   })).filter((section) => section.items.length > 0);

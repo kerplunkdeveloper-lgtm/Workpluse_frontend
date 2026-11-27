@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Download, ExternalLink, FileSearch, MapPin, Pencil, Plus, RefreshCw } from "lucide-react";
+import { Download, ExternalLink, FileSearch, MapPin, Pencil, Plus, Printer, RefreshCw } from "lucide-react";
 import { attendanceApi, branchesApi, correctionsApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { formatTime, unwrapList } from "@/lib/utils";
@@ -22,7 +22,8 @@ const csvCell = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}
 const downloadAttendanceCsv = (rows: Attendance[], selectedStatus: string, from?: string, to?: string) => {
   const headers = ["Employee Code", "Employee", "Department", "Designation", "Date", "Status", "Punch In", "Punch Out", "Worked", "Break", "Lunch", "Late", "Overtime", "Work Mode", "Punch In Location", "Punch Out Location"];
   const records = rows
-    .filter((row) => selectedStatus === "ALL" || String(row.status || "").toUpperCase() === selectedStatus)
+    .filter((row) => selectedStatus === "ALL"
+      || displayStatus(row) === selectedStatus)
     .map((row) => {
       const employee = row.employee;
       const name = `${employee?.firstName || ""} ${employee?.lastName || ""}`.trim() || "—";
@@ -59,6 +60,73 @@ const downloadAttendanceCsv = (rows: Attendance[], selectedStatus: string, from?
   return records.length;
 };
 
+const downloadAttendanceCsvFixed = (rows: Attendance[], selectedStatus: string, from?: string, to?: string) => {
+  const headers = ["Date", "Employee Code", "Employee", "Department", "Designation", "Status", "Holiday / Company Leave", "Punch In", "Punch Out", "Worked", "Break", "Lunch", "Late", "Overtime", "Work Mode", "Punch In Location", "Punch Out Location"];
+  const records = rows
+    .filter((row) => selectedStatus === "ALL" || displayStatus(row) === selectedStatus)
+    .map((row) => {
+      const employee = row.employee;
+      const name = `${employee?.firstName || ""} ${employee?.lastName || ""}`.trim() || "-";
+      const dash = "-";
+      const overtime = overtimeDisplay(row);
+      return [
+        recordDateKey(row),
+        employee?.employeeCode || dash,
+        name,
+        employee?.department?.name || "General",
+        employee?.designation || dash,
+        statusMeta(displayStatus(row)).label,
+        row.holidayName || dash,
+        row.checkIn ? new Date(row.checkIn).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : dash,
+        row.checkOut ? new Date(row.checkOut).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : dash,
+        formatHm(workedMinutes(row)),
+        formatHm(breakMinutesOf(row)),
+        formatHm(lunchMinutesOf(row)),
+        Number(row.lateMinutes || 0) > 0 ? formatHm(Number(row.lateMinutes)) : dash,
+        overtime.text,
+        workModeDisplay(row).label,
+        row.checkInLocation || dash,
+        row.checkOutLocation || dash,
+      ].map(csvCell).join(",");
+    });
+  const csv = [headers.map(csvCell).join(","), ...records].join("\r\n");
+  const suffix = from && to && from !== to ? `${from}-to-${to}` : from || localDateKey(new Date());
+  const url = URL.createObjectURL(new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `Clocked_Attendance_${selectedStatus.toLowerCase()}_${suffix}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return records.length;
+};
+
+const printAttendanceHistoryPdf = (rows: Attendance[], selectedStatus: string, from?: string, to?: string) => {
+  const esc = (value: unknown) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;");
+  const filtered = rows.filter((row) => selectedStatus === "ALL" || displayStatus(row) === selectedStatus);
+  const rangeLabel = from && to && from !== to ? `${from} to ${to}` : from || "All dates";
+  const body = filtered.map((row, index) => {
+    const employee = row.employee;
+    const name = `${employee?.firstName || ""} ${employee?.lastName || ""}`.trim() || "-";
+    const time = (value?: string) => value ? new Date(value).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "-";
+    return `<tr><td>${index + 1}</td><td><strong>${esc(name)}</strong><br><span class="muted">${esc(employee?.employeeCode || "-")}</span></td><td>${esc(recordDateKey(row))}</td><td>${esc(statusMeta(displayStatus(row)).label)}</td><td>${esc(time(row.checkIn))}</td><td>${esc(time(row.checkOut))}</td><td>${esc(formatHm(workedMinutes(row)))}</td><td>${esc(workModeDisplay(row).label)}</td></tr>`;
+  }).join("");
+  const frame = document.createElement("iframe");
+  frame.setAttribute("aria-hidden", "true");
+  frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
+  document.body.appendChild(frame);
+  const doc = frame.contentDocument;
+  if (!doc || !frame.contentWindow) { frame.remove(); throw new Error("Could not prepare the PDF report."); }
+  doc.open();
+  doc.write(`<!doctype html><html><head><meta charset="utf-8"><title>Attendance ${esc(rangeLabel)}</title><style>@page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{font-family:Segoe UI,Arial,sans-serif;color:#0f172a;font-size:11px}header{display:flex;justify-content:space-between;border-bottom:2px solid #4f46e5;padding-bottom:10px;margin-bottom:14px}h1{font-size:20px;margin:0 0 3px}.muted{color:#64748b}table{width:100%;border-collapse:collapse}th{background:#eef2ff;color:#3730a3;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.06em}th,td{padding:7px;border-bottom:1px solid #e2e8f0}tr{page-break-inside:avoid}</style></head><body><header><div><h1>Attendance history</h1><div class="muted">${esc(rangeLabel)} · ${esc(statusMeta(selectedStatus).label || "All statuses")}</div></div><div class="muted">${filtered.length} record${filtered.length === 1 ? "" : "s"}<br>Generated ${esc(new Date().toLocaleString("en-IN"))}</div></header><table><thead><tr><th>#</th><th>Employee</th><th>Date</th><th>Status</th><th>Punch in</th><th>Punch out</th><th>Worked</th><th>Work mode</th></tr></thead><tbody>${body || '<tr><td colspan="8" style="text-align:center;padding:24px;color:#64748b">No records match the selected filters.</td></tr>'}</tbody></table></body></html>`);
+  doc.close();
+  const win = frame.contentWindow;
+  win.addEventListener("afterprint", () => window.setTimeout(() => frame.remove(), 1000));
+  window.setTimeout(() => { win.focus(); win.print(); }, 250);
+  return filtered.length;
+};
+
 const workModeDisplay = (row: Attendance) => {
   const rawNote = String(row.wfhNote || "").trim();
   const match = rawNote.match(/^(WORK_FROM_HOME|CLIENT_VISIT|TRAVEL|SHOOT)\s*:\s*(.*)$/i);
@@ -72,15 +140,14 @@ const workModeDisplay = (row: Attendance) => {
   };
 };
 
-const isMissedPunchOut = (row: Attendance) =>
-  Boolean(row.checkIn && !row.checkOut && (row.status === "ABSENT" || recordDateKey(row) < localDateKey(new Date())));
+const isMissedPunchOut = (row: Attendance) => Boolean(row.checkIn && !row.checkOut);
 
 const displayStatus = (row: Attendance) =>
-  isMissedPunchOut(row) ? "ABSENT" : row.status;
+  isMissedPunchOut(row) ? "PUNCH_OUT" : row.status;
 
 const absentReason = (row: Attendance) =>
   isMissedPunchOut(row)
-    ? "You forgot to punch out, so this date was marked Absent. Submit an attendance correction if this was a mistake."
+    ? "This shift is still open because no punch out was recorded. Submit an attendance correction if this was a mistake."
     : null;
 
 const pauseSummary = (row: Attendance, kind: "BREAK" | "LUNCH", minutes: number, now = Date.now()) => {
@@ -171,12 +238,14 @@ function PunchLocations({ row }: { row: Attendance }) {
 
 const STATUS_FILTERS = [
   { value: "ALL", label: "All" },
+  { value: "PUNCH_OUT", label: "Not punched out" },
+  { value: "ON_LEAVE", label: "On leave" },
+  { value: "HOLIDAY", label: "Holiday" },
   { value: "PRESENT", label: "Present" },
   { value: "LATE", label: "Late" },
   { value: "WORK_FROM_HOME", label: "WFH" },
   { value: "HALF_DAY", label: "Half day" },
   { value: "SHORT_HOURS", label: "Short hours" },
-  { value: "ON_LEAVE", label: "On leave" },
   { value: "ABSENT", label: "Absent" },
 ];
 
@@ -273,6 +342,7 @@ export default function AttendanceHistoryView() {
   const [correctionsLoading, setCorrectionsLoading] = useState(false);
   const [clockNow, setClockNow] = useState(() => Date.now());
   const [exporting, setExporting] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [branches, setBranches] = useState<Branch[]>([]);
 
   useEffect(() => {
@@ -348,35 +418,52 @@ useEffect(() => {
   // polling was resetting pagination and filters while HR/admins reviewed rows.
   const reload = () => setReloadKey((k) => k + 1);
 
+  const fetchAllAttendanceRows = async () => {
+    const allRows: Attendance[] = [];
+    let currentPage = 1;
+    let totalRecords = 0;
+    do {
+      const res = await attendanceApi.getHistory({
+        from,
+        to,
+        status: status !== "ALL" ? status : undefined,
+        employeeId: employee?.id,
+        branchId: branchId !== "ALL" ? branchId : undefined,
+        page: currentPage,
+        limit: 500,
+      });
+      const pageRows = unwrapList<Attendance>(res);
+      allRows.push(...pageRows);
+      totalRecords = Number(res?.total ?? res?.pagination?.total ?? allRows.length);
+      currentPage += 1;
+      if (!pageRows.length) break;
+    } while (allRows.length < totalRecords);
+    return allRows;
+  };
+
   const exportAttendance = async () => {
     setExporting(true);
     try {
-      const allRows: Attendance[] = [];
-      let currentPage = 1;
-      let totalRecords = 0;
-      do {
-        const res = await attendanceApi.getHistory({
-          from,
-          to,
-          status: status !== "ALL" ? status : undefined,
-          employeeId: employee?.id,
-          branchId: branchId !== "ALL" ? branchId : undefined,
-          page: currentPage,
-          limit: 500,
-        });
-        const pageRows = unwrapList<Attendance>(res);
-        allRows.push(...pageRows);
-        totalRecords = Number(res?.total ?? res?.pagination?.total ?? allRows.length);
-        currentPage += 1;
-        if (!pageRows.length) break;
-      } while (allRows.length < totalRecords);
-
-      const count = downloadAttendanceCsv(allRows, status, from, to);
+      const allRows = await fetchAllAttendanceRows();
+      const count = downloadAttendanceCsvFixed(allRows, status, from, to);
       toast.success(`${count} filtered attendance record${count === 1 ? "" : "s"} downloaded.`);
     } catch (error: any) {
       toast.error(error?.message || "Could not download filtered attendance.");
     } finally {
       setExporting(false);
+    }
+  };
+
+  const exportAttendancePdf = async () => {
+    setExportingPdf(true);
+    try {
+      const allRows = await fetchAllAttendanceRows();
+      const count = printAttendanceHistoryPdf(allRows, status, from, to);
+      toast.success(`PDF report ready for ${count} attendance record${count === 1 ? "" : "s"}. Choose “Save as PDF” in the print dialog.`);
+    } catch (error: any) {
+      toast.error(error?.message || "Could not prepare the PDF report.");
+    } finally {
+      setExportingPdf(false);
     }
   };
 
@@ -406,6 +493,9 @@ useEffect(() => {
           <div className="flex flex-wrap items-center justify-end gap-2">
             <button type="button" onClick={() => void exportAttendance()} disabled={exporting} className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200 transition hover:bg-indigo-50 disabled:opacity-50">
               <Download className="h-3.5 w-3.5" /> {exporting ? "Preparing…" : `Download ${status === "ALL" ? "all" : STATUS_FILTERS.find((filter) => filter.value === status)?.label || "filtered"}`}
+            </button>
+            <button type="button" onClick={() => void exportAttendancePdf()} disabled={exportingPdf} title="Open a print-ready PDF report" className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-slate-900 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-50">
+              <Printer className="h-3.5 w-3.5" /> {exportingPdf ? "Preparing…" : "Download PDF"}
             </button>
             <button
               type="button"
@@ -776,13 +866,16 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
                       )}
                       {isTeamView && (
                         <td className="hidden max-w-[18rem] px-4 py-3 lg:table-cell">
-                          {(row.correctionReason || correction?.reason || absentReason(row)) ? (
-                            <ReasonCell text={String(row.correctionReason || correction?.reason || absentReason(row))} maxW="max-w-[16rem]" />
+                          {(row.holidayName || row.correctionReason || correction?.reason || absentReason(row)) ? (
+                            <ReasonCell text={String(row.holidayName || row.correctionReason || correction?.reason || absentReason(row))} maxW="max-w-[16rem]" />
                           ) : <span className="text-xs text-slate-400">—</span>}
                         </td>
                       )}
 
-                      <td className="whitespace-nowrap px-4 py-3"><StatusBadge status={displayStatus(row)} /></td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <StatusBadge status={displayStatus(row)} />
+                        {row.holidayName && <p className="mt-1 max-w-[12rem] truncate text-[11px] font-medium text-slate-500" title={row.holidayName}>{row.holidayName}</p>}
+                      </td>
                       <td className="py-3 pl-4 pr-5 text-right">
                         <button
                           type="button"
@@ -840,10 +933,10 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
                       <PunchLocations row={row} />
                     </div>
                   )}
-                  {(row.correctionReason || correction?.reason || absentReason(row)) && (
+                  {(row.holidayName || row.correctionReason || correction?.reason || absentReason(row)) && (
                     <div className="mt-2 rounded-xl bg-indigo-50/70 px-3 py-2 ring-1 ring-indigo-100">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-indigo-600">Attendance note</p>
-                      <p className="mt-1 text-xs leading-5 text-slate-700">{row.correctionReason || correction?.reason || absentReason(row)}</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-indigo-600">{row.holidayName ? "Holiday" : "Attendance note"}</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-700">{row.holidayName || row.correctionReason || correction?.reason || absentReason(row)}</p>
                     </div>
                   )}
                   <div className="mt-2.5 flex items-center justify-between">

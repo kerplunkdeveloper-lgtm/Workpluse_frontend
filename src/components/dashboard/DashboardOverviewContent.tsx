@@ -95,6 +95,7 @@ import {
   leaveCoversDay,
 } from "./dashboardUtils";
 import { LiveClock } from "./LiveClock";
+import PendingDocumentVerificationCard from "./PendingDocumentVerificationCard";
 
 const ABSENT_META = {
   label: "Not Punched",
@@ -194,6 +195,7 @@ export default function DashboardOverview() {
   );
   const isAdmin = role === "COMPANY_ADMIN" || role === "SUPER_ADMIN";
   const canManage = isAdmin || role === "MANAGER" || role === "HR";
+  const canReviewDocuments = role === "COMPANY_ADMIN" || role === "MANAGER" || role === "HR";
   const canPunchForSelf = role !== "COMPANY_ADMIN" && role !== "SUPER_ADMIN";
   const [noticeSummary, setNoticeSummary] = useState<any>(null);
   const [employeeHolidays, setEmployeeHolidays] = useState<any[]>([]);
@@ -2053,35 +2055,41 @@ export default function DashboardOverview() {
         </article>
 
         {canManage && missingDocumentData && (
-          <article className="min-w-0 rounded-3xl border border-amber-200/90 bg-white p-5 shadow-[0_18px_50px_-36px_rgba(15,23,42,0.35)] sm:col-span-2 sm:p-6">
+          <div className="min-w-0 sm:col-span-2 xl:col-span-2">
+            <div className="grid min-w-0 gap-4 xl:grid-cols-[1.42fr_0.78fr]">
+          <article className="min-w-0 overflow-hidden rounded-3xl border border-indigo-200/90 bg-white p-5 shadow-[0_18px_50px_-36px_rgba(15,23,42,0.35)] sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-amber-700">Compliance</p>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">Compliance</p>
                 <h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">Employees missing documents</h2>
                 <p className="mt-1 text-xs text-slate-500">Mandatory documents that are missing or rejected.</p>
               </div>
             </div>
-            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="mt-5 grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="rounded-2xl bg-amber-50 p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-amber-700">People needing action</p><p className="mt-1 text-2xl font-bold text-amber-950">{missingDocumentData.summary?.employeesWithMissingDocuments ?? 0}</p></div>
               <div className="rounded-2xl bg-slate-50 p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Mandatory slots</p><p className="mt-1 text-2xl font-bold text-slate-900">{missingDocumentData.summary?.totalMandatory ?? 0}</p></div>
             </div>
-            {missingDocumentData.employees?.length ? (
+            {(missingDocumentData.summary?.employeesWithMissingDocuments ?? 0) > 0 ? (
               <>
-                <button type="button" onClick={() => setShowMissingDocuments((open) => !open)} className="mt-4 inline-flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 transition hover:bg-amber-100">
-                  {showMissingDocuments ? "Hide incomplete profiles" : `View ${missingDocumentData.summary?.employeesWithMissingDocuments ?? missingDocumentData.employees.length} incomplete profiles`}
+                <button type="button" onClick={() => setShowMissingDocuments((open) => !open)} className="mt-5 inline-flex items-center gap-2 rounded-xl border border-amber-300 bg-white px-4 py-2.5 text-sm font-semibold text-amber-800 transition hover:bg-amber-50">
+                  {showMissingDocuments ? "Hide incomplete profiles" : `View ${missingDocumentData.summary?.employeesWithMissingDocuments ?? 0} incomplete profiles`}
                 </button>
                 {showMissingDocuments && (
               <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200">
                 <div className="sticky top-0 z-10 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 bg-slate-50 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-500"><span>Employee</span><span>Missing / rejected</span><span>Progress</span></div>
                 <div className="max-h-96 divide-y divide-slate-100 overflow-y-auto overscroll-contain">
-                  {missingDocumentData.employees.map((row: any) => <div key={row.employee.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5 text-xs transition hover:bg-amber-50"><span className="min-w-0"><span className="block truncate font-bold text-slate-900">{row.employee.firstName} {row.employee.lastName || ""}</span><span className="block truncate text-[10px] text-slate-500">{row.employee.employeeCode} · {row.employee.branch?.name || "No branch"}</span></span><span className="min-w-0 truncate font-semibold text-amber-800" title={row.missing.map((item: any) => item.label).join(", ")}>{row.missing.map((item: any) => item.label).join(", ")}</span><span className="whitespace-nowrap font-bold text-slate-700">{row.uploadedMandatory}/{row.totalMandatory}</span></div>)}
+                  {missingDocumentData.employees.map((row: any) => <div key={row.employee.id} className="grid grid-cols-1 items-center gap-1 px-3 py-2.5 text-xs transition hover:bg-amber-50 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:gap-3"><span className="min-w-0"><span className="block truncate font-bold text-slate-900">{row.employee.firstName} {row.employee.lastName || ""}</span><span className="block truncate text-[10px] text-slate-500">{row.employee.employeeCode} · {row.employee.branch?.name || "No branch"}</span></span><span className="min-w-0 truncate font-semibold text-amber-800" title={row.missing.map((item: any) => item.label).join(", ")}>{row.missing.map((item: any) => item.label).join(", ")}</span><span className="whitespace-nowrap font-bold text-slate-700">{row.uploadedMandatory}/{row.totalMandatory}</span></div>)}
                 </div>
               </div>)}
               </>
-            ) : <div className="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-800">All working employees have their mandatory documents uploaded.</div>}
+            ) : <div className="mt-5 rounded-2xl bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-800">All working employees have their mandatory documents uploaded.</div>}
             {(missingDocumentData.summary?.employeesWithMissingDocuments ?? 0) > 6 && <p className="mt-3 text-[11px] text-slate-500">Scroll the list to view all employees, or open Employee Documents for the full workflow.</p>}
           </article>
+              {canReviewDocuments && <div className="min-w-0"><PendingDocumentVerificationCard /></div>}
+            </div>
+          </div>
         )}
+        {canReviewDocuments && !missingDocumentData && <div className="min-w-0 sm:col-span-2"><PendingDocumentVerificationCard /></div>}
 
         {canManage && noticeSummary && (
           <article className="min-w-0 rounded-3xl border border-slate-200/90 bg-white p-5 shadow-[0_18px_50px_-36px_rgba(15,23,42,0.35)] sm:col-span-2 sm:p-6">

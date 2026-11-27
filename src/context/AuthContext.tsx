@@ -39,7 +39,7 @@ interface AuthContextType {
   token: string | null;
   role: UserRole | null;
   isLoading: boolean;
-  login: (email: string, pass: string) => Promise<boolean>;
+  login: (email: string, pass: string, expectedRole?: UserRole) => Promise<boolean>;
   completeTwoFactorLogin: (code: string) => Promise<boolean>;
   loginWithGoogle: (idToken: string) => Promise<boolean>;
   register: (payload: RegistrationPayload) => Promise<boolean>;
@@ -242,11 +242,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       toast.info("Please set a new secure password to activate your account.");
       go("/change-password");
     } else {
-      go(loggedUser.role === "SUPER_ADMIN" ? "/platform/clients" : "/dashboard");
+      go(loggedUser.role === "SUPER_ADMIN" ? "/platform/clients" : loggedUser.role === "DEVELOPER" ? "/developer/dashboard" : "/dashboard");
     }
   };
 
-  const login = async (email: string, pass: string): Promise<boolean> => {
+  const login = async (email: string, pass: string, expectedRole?: UserRole): Promise<boolean> => {
     authOperationRef.current += 1;
     setIsLoading(true);
     try {
@@ -259,6 +259,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (res?.success && (res?.data?.accessToken || res?.data?.token)) {
         const at = res.data.accessToken || res.data.token;
         const rt = res.data.refreshToken || res.data?.data?.refreshToken;
+        if (expectedRole && res.data.user?.role !== expectedRole) {
+          toast.error(`This login is for ${expectedRole === "DEVELOPER" ? "developer" : "workspace"} accounts only.`);
+          return false;
+        }
         finishLogin(res.data.user, at, rt);
         return true;
       } else {
@@ -357,7 +361,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           void registerWebDevice();
         }
         toast.success(`Welcome back, ${loggedUser.employee?.firstName || loggedUser.email}!`);
-        go(loggedUser.role === "SUPER_ADMIN" ? "/platform/clients" : "/dashboard");
+        go(loggedUser.role === "SUPER_ADMIN" ? "/platform/clients" : loggedUser.role === "DEVELOPER" ? "/developer/dashboard" : "/dashboard");
         return true;
       }
       toast.error(res?.message || "Google sign-in failed");
