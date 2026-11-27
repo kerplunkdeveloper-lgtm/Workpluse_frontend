@@ -5,12 +5,20 @@ import { Bot, Copy, Maximize2, MessageCircle, Plus, Send, Sparkles, X } from "lu
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { toast } from "sonner";
-import { aiApi } from "@/lib/api";
+import { aiApi, attendanceApi } from "@/lib/api";
+import { unwrapList } from "@/lib/utils";
 
 type Insight = { tool: string; data: Record<string, any> };
-type Message = { role: "user" | "assistant"; content: string; insights?: Insight[] };
+type Message = { role: "user" | "assistant"; content: string; insights?: Insight[]; choices?: string[] };
 const suggestions = ["Give me today's exception briefing", "What is my attendance status?", "How many leaves are remaining?", "Why is my punch-in not working?"];
 const promptLibrary = [...suggestions, "Where do I apply for a shoot request?", "How do I submit a shoot settlement?", "Where can I review leave approvals?", "Show all pending approvals.", "Show pending leave approvals.", "How do I approve one request?", "Apply casual leave from 2026-12-01 to 2026-12-02 for personal work.", "Apply permission on 2026-12-01 for 2 hours for bank work.", "What are my total working hours this month?", "Is my leave approved?", "How do I download my payslip?", "Explain my salary deductions.", "What documents are required for onboarding?", "What is the company leave policy?", "How do I request work from home today?", "How do I review employee documents?", "What are the payroll processing steps?"];
+const isTodayAbsentQuestion = (value: string) => /\b(absent|not present|did not come|didn't come)\b/i.test(value) && /\b(today|now|currently)\b/i.test(value) && /\b(who|which|all|list|show|people|employees|everyone|how many)\b/i.test(value);
+const localToday = () => {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+};
+const CONTINUE_OPTIONS = ["Show all employees with code, branch, and status", "Show today's absent list", "Show today's attendance summary", "Show pending approvals"];
+const needsContinuation = (content: string) => /couldn't find enough verified information|temporarily unavailable/i.test(content);
 
 function InsightCard({ insight }: { insight: Insight }) {
   const data = insight.data || {};
@@ -27,6 +35,13 @@ function InsightCard({ insight }: { insight: Insight }) {
       : employee ? [["Code", employee.employeeCode], ["Department", employee.department], ["Branch", employee.branch], ["Status", employee.status]] : [];
   if (!fields.length) return null;
   return <div className="mt-2 rounded-xl border border-indigo-100 bg-indigo-50/60 p-2.5 text-xs"><p className="mb-1 font-semibold text-indigo-800">{title}</p>{employee?.name && <p className="mb-1 text-slate-600">{employee.name}{data.payrollPeriod ? ` · ${data.payrollPeriod.month}/${data.payrollPeriod.year}` : ""}</p>}<div className="grid grid-cols-2 gap-1.5">{fields.filter(([, value]) => value !== null && value !== undefined).map(([label, value]) => <div key={label} className="rounded-lg bg-white px-2 py-1"><span className="text-slate-400">{label}</span><span className="ml-1 font-semibold text-slate-700">{String(value)}</span></div>)}</div></div>;
+}
+
+function ContinueDropdown({ choices, onChoose }: { choices: string[]; onChoose: (value: string) => void }) {
+  return <select defaultValue="" onChange={(event) => { if (event.target.value) onChoose(event.target.value); }} className="mt-3 w-full rounded-xl border border-indigo-200 bg-white px-2.5 py-2 text-xs font-semibold text-indigo-700 outline-none focus:border-indigo-400">
+    <option value="">Continue with…</option>
+    {choices.map((choice) => <option key={choice} value={choice}>{choice}</option>)}
+  </select>;
 }
 
 export default function AssistantWidget() {
@@ -50,9 +65,28 @@ export default function AssistantWidget() {
     try {
       const res = await aiApi.chat(text, conversationId);
       setConversationId(res.data?.conversationId);
-      setMessages((m) => [...m, res.data?.message || { role: "assistant", content: "I could not answer that." }]);
+      const message = res.data?.message || { role: "assistant", content: "I could not answer that." };
+      setMessages((m) => [...m, needsContinuation(message.content) ? { ...message, choices: CONTINUE_OPTIONS } : message]);
     } catch (e: any) {
-      setMessages((m) => [...m, { role: "assistant", content: e?.response?.data?.message || "The assistant is temporarily unavailable." }]);
+      if (isTodayAbsentQuestion(text)) {
+        try {
+          const date = localToday();
+          const response = await attendanceApi.getHistory({ from: date, to: date, status: "ABSENT", page: 1, limit: 500 });
+          const rows = unwrapList<any>(response);
+          const names = rows.map((row) => {
+            const employee = row.employee || {};
+            const name = `${employee.firstName || "Employee"} ${employee.lastName || ""}`.trim();
+            return `${name}${employee.employeeCode ? ` (${employee.employeeCode})` : ""}`;
+          });
+          const content = names.length ? `Today (${date}): ${names.length} employee(s) are absent. ${names.join(", ")}.` : `Today (${date}): no absent employees were found.`;
+          setMessages((m) => [...m, { role: "assistant", content }]);
+          return;
+        } catch {
+          // Fall through to the normal error message below.
+        }
+      }
+      const content = e?.response?.data?.message || "The assistant is temporarily unavailable. Please try again.";
+      setMessages((m) => [...m, { role: "assistant", content, choices: CONTINUE_OPTIONS }]);
     } finally { setBusy(false); }
   };
 
@@ -64,7 +98,7 @@ export default function AssistantWidget() {
       <header className="bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-3 text-white">
         <div className="flex items-center justify-between"><div className="flex items-center gap-2"><span className="rounded-xl bg-white/15 p-2"><Sparkles className="h-4 w-4" /></span><div><p className="text-sm font-bold">Clocked AI Assistant</p><p className="text-[11px] text-indigo-100">Secure, role-aware HRMS help</p></div></div><div className="flex items-center gap-1"><button onClick={clear} title="New conversation" className="rounded-lg p-2 hover:bg-white/15"><Plus className="h-4 w-4" /></button>{!fullScreen && <Link href="/assistant" title="Open full assistant" className="rounded-lg p-2 hover:bg-white/15"><Maximize2 className="h-4 w-4" /></Link>}{fullScreen ? <Link href="/dashboard" title="Exit full screen" className="rounded-lg p-2 hover:bg-white/15"><X className="h-4 w-4" /></Link> : <button onClick={() => setOpen(false)} title="Close" className="rounded-lg p-2 hover:bg-white/15"><X className="h-4 w-4" /></button>}</div></div>
       </header>
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-slate-50 p-4">{messages.map((m, i) => <div key={i} className={`group flex ${m.role === "user" ? "justify-end" : "justify-start"}`}><div className={`max-w-[88%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-sm leading-6 ${m.role === "user" ? "rounded-br-md bg-indigo-600 text-white" : "rounded-bl-md border border-slate-200 bg-white text-slate-700"}`}><div>{m.content}</div>{m.role === "assistant" && m.insights?.map((insight, insightIndex) => <InsightCard key={`${insight.tool}-${insightIndex}`} insight={insight} />)}{m.role === "assistant" && <button onClick={() => navigator.clipboard?.writeText(m.content).then(() => toast.success("Copied"))} className="mt-1 hidden items-center gap-1 text-[10px] text-slate-400 group-hover:flex"><Copy className="h-3 w-3" /> Copy</button>}</div></div>)}{busy && <div className="flex items-center gap-2 text-xs text-slate-500"><Bot className="h-4 w-4 text-indigo-500" /> Thinking...</div>}<div ref={endRef} /></div>
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-slate-50 p-4">{messages.map((m, i) => <div key={i} className={`group flex ${m.role === "user" ? "justify-end" : "justify-start"}`}><div className={`max-w-[88%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-sm leading-6 ${m.role === "user" ? "rounded-br-md bg-indigo-600 text-white" : "rounded-bl-md border border-slate-200 bg-white text-slate-700"}`}><div>{m.content}</div>{m.role === "assistant" && m.insights?.map((insight, insightIndex) => <InsightCard key={`${insight.tool}-${insightIndex}`} insight={insight} />)}{m.role === "assistant" && m.choices && <ContinueDropdown choices={m.choices} onChoose={(value) => void send(value)} />}{m.role === "assistant" && <button onClick={() => navigator.clipboard?.writeText(m.content).then(() => toast.success("Copied"))} className="mt-1 hidden items-center gap-1 text-[10px] text-slate-400 group-hover:flex"><Copy className="h-3 w-3" /> Copy</button>}</div></div>)}{busy && <div className="flex items-center gap-2 text-xs text-slate-500"><Bot className="h-4 w-4 text-indigo-500" /> Thinking...</div>}<div ref={endRef} /></div>
       {messages.length === 1 && <div className="flex flex-wrap gap-2 border-t border-slate-100 bg-white px-3 py-3">{suggestions.map((s) => <button key={s} onClick={() => void send(s)} className="rounded-full border border-indigo-100 px-2.5 py-1.5 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-50">{s}</button>)}</div>}
       <div className="relative border-t border-slate-200 bg-white">
         {autocomplete.length > 0 && <div className="absolute bottom-full left-3 right-3 z-10 overflow-hidden rounded-2xl border border-indigo-100 bg-white p-1 shadow-xl shadow-slate-900/10">{autocomplete.map((item) => <button key={item} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => setDraft(item)} className="block w-full rounded-xl px-3 py-2 text-left text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-700">{item}</button>)}</div>}

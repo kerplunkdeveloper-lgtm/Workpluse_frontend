@@ -3,11 +3,11 @@ import { defaultMessage, personInitials, type Moment, type MomentKind } from "./
 
  
  
-export type Template = { styleId: CardStyleId; background: string | null; orientation: CardOrientation };
+export type Template = { styleId: CardStyleId; background: string | null; orientation: CardOrientation; variant: "announcement" | "celebration" };
 export type SavedTemplates = Record<MomentKind, Template>;
 
 const storageKey = (orgId: string) => `wp-celebration-template:${orgId}`;
-export const emptyTemplate = (): Template => ({ styleId: "default", background: null, orientation: "landscape" });
+export const emptyTemplate = (): Template => ({ styleId: "default", background: null, orientation: "landscape", variant: "announcement" });
 export const emptySaved = (): SavedTemplates => ({ Birthday: emptyTemplate(), "Work anniversary": emptyTemplate() });
 
 function cleanTemplate(value: unknown): Template {
@@ -16,6 +16,7 @@ function cleanTemplate(value: unknown): Template {
     styleId: CARD_STYLES.some((s) => s.id === raw.styleId) ? (raw.styleId as CardStyleId) : "default",
     background: typeof raw.background === "string" ? raw.background : null,
     orientation: raw.orientation === "portrait" ? "portrait" : "landscape",
+    variant: raw.variant === "celebration" ? "celebration" : "announcement",
   };
 }
 
@@ -67,10 +68,11 @@ export async function downloadMomentCard(
     background: template.background || defaultBackground(moment.kind),
     styleId: template.styleId,
     orientation: template.orientation,
+    variant: template.variant,
     kindLabel: momentKindLabel(moment),
     name: moment.name,
     subtitle: momentSubtitle(moment),
-    message: message ?? defaultMessage(moment, companyName),
+    message: template.variant === "announcement" ? "" : message ?? defaultMessage(moment, companyName),
     companyName,
     logoUrl,
     photoUrl,

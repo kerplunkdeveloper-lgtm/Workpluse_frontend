@@ -108,6 +108,12 @@ const ABSENT_META = {
   icon: Users,
 } as const;
 
+// Company and platform administrators own the workspace; they are not
+// attendance workforce records. The attendance API applies the same rule,
+// so the dashboard roster must apply it before building KPI breakdown lists.
+const isAttendanceWorkforceEmployee = (employee: any) =>
+  !["COMPANY_ADMIN", "SUPER_ADMIN"].includes(String(employee?.user?.role || "").toUpperCase());
+
 /** Load a complete paginated collection for dashboard breakdowns. */
 async function fetchAllPages<T>(
   fetchPage: (page: number, limit: number) => Promise<any>,
@@ -195,7 +201,7 @@ export default function DashboardOverview() {
   );
   const isAdmin = role === "COMPANY_ADMIN" || role === "SUPER_ADMIN";
   const canManage = isAdmin || role === "MANAGER" || role === "HR";
-  const canReviewDocuments = role === "COMPANY_ADMIN" || role === "MANAGER" || role === "HR";
+  const canReviewDocuments = role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "MANAGER" || role === "HR";
   const canPunchForSelf = role !== "COMPANY_ADMIN" && role !== "SUPER_ADMIN";
   const [noticeSummary, setNoticeSummary] = useState<any>(null);
   const [employeeHolidays, setEmployeeHolidays] = useState<any[]>([]);
@@ -432,7 +438,7 @@ export default function DashboardOverview() {
         }
       });
 
-      return employees.map((emp) => {
+      return employees.filter(isAttendanceWorkforceEmployee).map((emp) => {
         const att = attendanceByEmpId.get(emp.id);
         const leave = leaveByEmpId.get(emp.id);
 
@@ -450,7 +456,7 @@ export default function DashboardOverview() {
           id: emp.id,
           name: personName(emp),
           avatarUrl: emp.avatarUrl || emp.user?.avatarUrl || null,
-          employeeCode: emp.employeeCode || emp.code,
+          employeeCode: emp.employeeCode || emp.code || "Code pending",
           designation: emp.designation || "Staff",
           department:
             emp.department?.name ||

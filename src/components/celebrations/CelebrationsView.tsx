@@ -115,6 +115,7 @@ export default function CelebrationsView() {
   const editingKind: Kind = selected?.kind ?? "Birthday";
   const template = saved[editingKind];
   const isPortraitTemplate = template.orientation === "portrait";
+  const isAnnouncementTemplate = template.variant === "announcement";
   const background = template.background || defaultBackground(editingKind);
   const isRoyalPortrait = isPortraitTemplate && template.styleId === "royalPortrait";
   const firstOfKind = (kind: Kind) => moments.find((m) => m.kind === kind);
@@ -327,7 +328,7 @@ export default function CelebrationsView() {
                     </div>
 
                     <div className="flex items-center" style={{ marginTop: "3.2cqw", gap: isPortraitTemplate ? "1.8cqw" : "3.6cqw", flexDirection: isPortraitTemplate ? "column" : "row" }}>
-                      <span className="grid shrink-0 place-items-center overflow-hidden rounded-full bg-white/20 font-extrabold ring-white/80" style={{ width: "14cqw", height: "14cqw", fontSize: "5cqw", boxShadow: "0 0 0 0.5cqw rgba(255,255,255,0.85)" }}>
+                      <span className="grid shrink-0 place-items-center overflow-hidden rounded-full bg-white/20 font-extrabold ring-white/80" style={{ width: isAnnouncementTemplate ? "10cqw" : "14cqw", height: isAnnouncementTemplate ? "10cqw" : "14cqw", fontSize: isAnnouncementTemplate ? "3.5cqw" : "5cqw", boxShadow: "0 0 0 0.5cqw rgba(255,255,255,0.85)" }}>
                         {photoUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <AuthenticatedImage src={photoUrl} alt={selected.name} className="h-full w-full object-cover" onError={() => setPhotoFailed((p) => ({ ...p, [selected.id]: true }))} />
@@ -342,7 +343,7 @@ export default function CelebrationsView() {
                       </div>
                     </div>
 
-                    <p className="line-clamp-4 break-words text-white/95" style={{ marginTop: isPortraitTemplate ? "5cqw" : "3.4cqw", fontSize: "2.6cqw", lineHeight: 1.45, paddingBottom: "4cqw" }}>{message}</p>
+                    {!isAnnouncementTemplate && <p className="line-clamp-4 break-words text-white/95" style={{ marginTop: isPortraitTemplate ? "5cqw" : "3.4cqw", fontSize: "2.6cqw", lineHeight: 1.45, paddingBottom: "4cqw" }}>{message}</p>}
                     <p className="absolute bottom-0 left-0 right-0 font-semibold text-white/70" style={{ fontSize: "1.85cqw", textAlign: isPortraitTemplate ? "center" : "left" }}>With appreciation, {companyName} People Team</p>
                   </div>
                 </div>
@@ -373,6 +374,15 @@ export default function CelebrationsView() {
                     ))}
                   </div>
 
+                  <p className="mb-2 mt-4 text-xs font-bold text-slate-700">Card format</p>
+                  <div className="flex flex-wrap gap-2">
+                    {([['announcement', 'Announcement'], ['celebration', 'Full celebration']] as const).map(([variant, label]) => (
+                      <button key={variant} onClick={() => updateTemplate(editingKind, { variant })} className={`rounded-xl border px-3 py-2 text-xs font-semibold transition ${template.variant === variant ? "border-indigo-500 bg-indigo-50 text-indigo-800" : "border-slate-200 text-slate-600 hover:border-indigo-200"}`}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
                   <p className="mb-2 mt-4 text-xs font-bold text-slate-700">Background</p>
                   <div className="flex flex-wrap gap-2">
                     <button onClick={() => fileInput.current?.click()} className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-2 text-xs font-bold text-slate-600 hover:border-indigo-400 hover:text-indigo-700"><ImagePlus className="h-3.5 w-3.5" /> Upload background</button>
@@ -390,12 +400,21 @@ export default function CelebrationsView() {
                 </div>
 
                 <div>
-                  <label htmlFor="celebration-message" className="mb-2 block text-xs font-bold text-slate-700">Personal message</label>
-                  <textarea id="celebration-message" value={message} onChange={(e) => setMessages((prev) => ({ ...prev, [selected.id]: e.target.value }))} rows={5} maxLength={280} className="w-full resize-none rounded-xl border border-slate-200 p-3 text-sm leading-5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
-                  <div className="mt-1 flex justify-between text-[11px] text-slate-400">
-                    <button onClick={() => setMessages((prev) => { const next = { ...prev }; delete next[selected.id]; return next; })} className="font-semibold text-indigo-600 hover:underline">Reset message</button>
-                    <span>{message.length}/280</span>
-                  </div>
+                  {isAnnouncementTemplate ? (
+                    <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-900">
+                      <p className="font-bold">Compact announcement format</p>
+                      <p className="mt-1 text-xs leading-5 text-emerald-800">Uses a smaller employee photo and keeps the card clean for phone announcements. The personal-message section is hidden.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <label htmlFor="celebration-message" className="mb-2 block text-xs font-bold text-slate-700">Personal message</label>
+                      <textarea id="celebration-message" value={message} onChange={(e) => setMessages((prev) => ({ ...prev, [selected.id]: e.target.value }))} rows={5} maxLength={280} className="w-full resize-none rounded-xl border border-slate-200 p-3 text-sm leading-5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+                      <div className="mt-1 flex justify-between text-[11px] text-slate-400">
+                        <button onClick={() => setMessages((prev) => { const next = { ...prev }; delete next[selected.id]; return next; })} className="font-semibold text-indigo-600 hover:underline">Reset message</button>
+                        <span>{message.length}/280</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 

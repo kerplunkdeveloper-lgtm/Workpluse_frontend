@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Payslip } from "@/types";
-import { payrollApi } from "@/lib/api";
+import { Branch, Payslip } from "@/types";
+import { branchesApi, employeesApi, payrollApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { formatCurrency, unwrapList } from "@/lib/utils";
 import { formatCycleDate } from "@/lib/payrollCycle";
-import { Receipt, Calculator, Send, Download, Eye, CheckCircle2, AlertCircle, Loader2, DollarSign, TrendingUp, Palette, Layers } from "lucide-react";
+import { Receipt, Calculator, Send, Download, Eye, CheckCircle2, AlertCircle, Loader2, DollarSign, TrendingUp, Palette, Layers, FileSpreadsheet, FileText, MapPin, Users, X } from "lucide-react";
+import ExcelJS from "exceljs";
 import PayslipModal from "./PayslipModal";
 import dynamic from "next/dynamic";
 
@@ -34,6 +35,10 @@ export default function PayrollView() {
   const [disbursingPayslipId, setDisbursingPayslipId] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<"RECORDS" | "SALARY" | "TEMPLATES">("RECORDS");
   const [expandedDailyId, setExpandedDailyId] = useState<string | null>(null);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [payrollEmployees, setPayrollEmployees] = useState<any[]>([]);
+  const [selectedBranchId, setSelectedBranchId] = useState("ALL");
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState("ALL");
 
   const isAdminOrManager = role === "COMPANY_ADMIN" || role === "SUPER_ADMIN" || role === "MANAGER" || role === "HR";
   // HR prepares payroll; only company admins finalize approval and disbursement.
@@ -49,6 +54,14 @@ export default function PayrollView() {
       .then((res) => setCycle(res?.data || null))
       .catch(() => setCycle(null));
   }, [selectedMonth, selectedYear, isAdminOrManager]);
+
+  useEffect(() => {
+    if (!isAdminOrManager) return;
+    branchesApi.list().then((res) => setBranches(unwrapList<Branch>(res))).catch(() => setBranches([]));
+    employeesApi.list({ page: 1, limit: 500, status: "WORKING" })
+      .then((res) => setPayrollEmployees(unwrapList<any>(res)))
+      .catch(() => setPayrollEmployees([]));
+  }, [isAdminOrManager]);
 
   const generateLocked = Boolean(cycle && !cycle.canGenerate);
 
@@ -171,33 +184,91 @@ export default function PayrollView() {
     }
   };
 
-  const handleExportCsv = () => {
-    if (payslips.length === 0) {
-      toast.error("No payslips to export");
+  const payrollExportRows = (rows: Payslip[]) => rows.map((s) => [
+    `${s.employee?.firstName || ""} ${s.employee?.lastName || ""}`.trim(),
+    s.employee?.employeeCode || "",
+    s.employee?.branch?.name || "Unassigned",
+    s.month,
+    s.year,
+    s.baseSalary ?? s.basicSalary ?? 0,
+    s.grossSalary ?? 0,
+    s.lateDeduction ?? 0,
+    s.pauseDeduction ?? s.breakDeduction ?? 0,
+    s.unpaidLeaveDeduction ?? s.lopDeduction ?? 0,
+    s.deductionsTotal ?? s.totalDeductions ?? 0,
+    s.netSalary ?? 0,
+    s.status,
+  ]);
+
+  const getExportRows = () => (displayPayslips || []).filter((s) => {
+    const branchId = (s.employee as any)?.branchId;
+    const branchName = (s.employee as any)?.branch?.name;
+    const matchesBranch = selectedBranchId === "ALL" || branchId === selectedBranchId || branches.find((b) => b.id === selectedBranchId)?.name === branchName;
+    return matchesBranch && (selectedEmployeeId === "ALL" || s.employeeId === selectedEmployeeId);
+  });
+
+  const filePart = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "all";
+
+  const handleExportExcel = async () => {
+    const exportRows = getExportRows();
+    if (exportRows.length === 0) {
+      toast.error("No payroll records match the selected filters");
       return;
     }
-    const header = ["Employee", "Code", "Month", "Year", "Basic", "Gross", "Deductions", "Net", "Status"];
-    const rows = payslips.map((s) => [
-      `${s.employee?.firstName || ""} ${s.employee?.lastName || ""}`.trim(),
-      s.employee?.employeeCode || "",
-      s.month,
-      s.year,
-      s.baseSalary ?? s.basicSalary ?? "",
-      s.grossSalary ?? "",
-      s.deductionsTotal ?? s.totalDeductions ?? "",
-      s.netSalary ?? "",
-      s.status,
-    ]);
-    const csv = [header, ...rows]
-      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
-      .join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = "WorkPulse";
+    const sheet = workbook.addWorksheet("Payroll");
+    sheet.columns = ["Employee", "Code", "Branch", "Month", "Year", "Basic", "Gross", "Late deduction", "Pause deduction", "LOP deduction", "Deductions", "Net take-home", "Status"].map((header) => ({ header, key: header, width: Math.max(16, header.length + 3) }));
+    sheet.addRows(payrollExportRows(exportRows));
+    sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+    sheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF4F46E5" } };
+    sheet.views = [{ state: "frozen", ySplit: 1 }];
+    const output = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([output], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `payroll-${selectedYear}-${String(selectedMonth).padStart(2, "0")}.csv`;
+    a.download = `payroll-${selectedYear}-${String(selectedMonth).padStart(2, "0")}-${filePart(selectedBranchId === "ALL" ? "all-branches" : branches.find((b) => b.id === selectedBranchId)?.name || "branch")}-${filePart(selectedEmployeeId === "ALL" ? "all-employees" : exportRows[0]?.employee?.employeeCode || "employee")}.xlsx`;
+    document.body.appendChild(a);
     a.click();
+    a.remove();
     URL.revokeObjectURL(url);
+    toast.success(`Excel report downloaded for ${exportRows.length} employee${exportRows.length === 1 ? "" : "s"}`);
+  };
+
+  const handleExportPdf = () => {
+    const exportRows = getExportRows();
+    if (exportRows.length === 0) {
+      toast.error("No payroll records match the selected filters");
+      return;
+    }
+    const popup = window.open("", "_blank", "noopener,noreferrer");
+    if (!popup) {
+      toast.error("Please allow pop-ups to download the PDF report");
+      return;
+    }
+    const escapeHtml = (value: unknown) => String(value ?? "").replace(/[&<>\"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '\"': "&quot;" }[char] || char));
+    const rows = payrollExportRows(exportRows).map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("");
+    const title = `Payroll report · ${selectedMonth}/${selectedYear}`;
+    popup.document.write(`<!doctype html><html><head><title>${title}</title><style>body{font:12px Arial,sans-serif;color:#0f172a;padding:24px}h1{font-size:20px;margin:0 0 4px}p{color:#64748b;margin:0 0 18px}table{border-collapse:collapse;width:100%;font-size:10px}th{background:#eef2ff;color:#3730a3;text-align:left}th,td{border:1px solid #cbd5e1;padding:7px;white-space:nowrap}tr:nth-child(even){background:#f8fafc}@media print{body{padding:0}@page{size:A4 landscape;margin:12mm}}</style></head><body><h1>${title}</h1><p>WorkPulse payroll export · ${escapeHtml(selectedBranchId === "ALL" ? "All branches" : branches.find((b) => b.id === selectedBranchId)?.name || "Selected branch")} · ${exportRows.length} employees</p><table><thead><tr>${["Employee", "Code", "Branch", "Month", "Year", "Basic", "Gross", "Late deduction", "Pause deduction", "LOP deduction", "Deductions", "Net take-home", "Status"].map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table><script>window.onload=function(){window.print()}</script></body></html>`);
+    popup.document.close();
+  };
+
+  const handleIndividualPdf = async (slip: Payslip) => {
+    try {
+      const blob = await payrollApi.downloadPayslipPdf(slip.id);
+      const url = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `payslip-${filePart(`${slip.employee?.firstName || "employee"}-${slip.employee?.lastName || ""}`)}-${slip.month}-${slip.year}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Employee payslip PDF downloaded");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || "Could not download employee PDF");
+    }
   };
 
   const handleDisburseBatch = async () => {
@@ -246,7 +317,36 @@ export default function PayrollView() {
   const nextStep: "GENERATE" | "APPROVE" | "DISBURSE" | null = payslips.length === 0 ? "GENERATE" : !allApproved ? "APPROVE" : !allPaid ? "DISBURSE" : null;
   const stepTone = (step: "GENERATE" | "APPROVE" | "DISBURSE") => (nextStep === step ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm shadow-indigo-600/25" : "bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-xs");
 
-  const displayPayslips = payslips.length > 0 ? payslips : previewRows;
+  const allDisplayPayslips = payslips.length > 0 ? payslips : previewRows;
+  const displayPayslips = allDisplayPayslips.filter((s) => {
+    const branchId = (s.employee as any)?.branchId;
+    const branchName = (s.employee as any)?.branch?.name;
+    const matchesBranch = selectedBranchId === "ALL" || branchId === selectedBranchId || branches.find((b) => b.id === selectedBranchId)?.name === branchName;
+    return matchesBranch && (selectedEmployeeId === "ALL" || s.employeeId === selectedEmployeeId);
+  });
+  const employeeOptions = Array.from(new Map(
+    [
+      ...payrollEmployees.map((employee) => ({
+        id: employee.id,
+        firstName: employee.firstName,
+        lastName: employee.lastName,
+        employeeCode: employee.employeeCode,
+        branchId: employee.branchId,
+        branch: employee.branch,
+      })),
+      ...allDisplayPayslips.map((slip) => ({
+        id: slip.employeeId || (slip.employee as any)?.id,
+        firstName: (slip.employee as any)?.firstName || (slip.employee as any)?.name || "Employee",
+        lastName: (slip.employee as any)?.lastName || "",
+        employeeCode: (slip.employee as any)?.employeeCode,
+        branchId: (slip.employee as any)?.branchId,
+        branch: (slip.employee as any)?.branch,
+      })),
+    ]
+      .filter((employee) => employee.id)
+      .filter((employee) => selectedBranchId === "ALL" || employee.branchId === selectedBranchId || employee.branch?.name === branches.find((branch) => branch.id === selectedBranchId)?.name)
+      .map((employee) => [employee.id, employee]),
+  ).values()).sort((a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`));
   const showingPreview = payslips.length === 0 && previewRows.length > 0;
   const totalDisbursement = displayPayslips.reduce((acc, p) => acc + (Number(p.netSalary) || 0), 0);
   // Generated payslips store this as unpaidLeaveDeduction; preview rows use
@@ -333,12 +433,20 @@ export default function PayrollView() {
             )}
 
             <button
-              onClick={handleExportCsv}
-              disabled={payslips.length === 0}
-              className="px-3 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold text-sm flex items-center gap-1.5 transition disabled:opacity-50"
+              onClick={() => void handleExportExcel()}
+              disabled={displayPayslips.length === 0}
+              className="px-3 py-2 rounded-xl text-emerald-700 hover:bg-emerald-50 font-semibold text-sm flex items-center gap-1.5 transition disabled:opacity-50"
             >
-              <Download className="w-3.5 h-3.5" />
-              Export CSV
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              Excel
+            </button>
+            <button
+              onClick={handleExportPdf}
+              disabled={displayPayslips.length === 0}
+              className="px-3 py-2 rounded-xl text-rose-700 hover:bg-rose-50 font-semibold text-sm flex items-center gap-1.5 transition disabled:opacity-50"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              PDF
             </button>
           </div>
         )}
@@ -389,6 +497,40 @@ export default function PayrollView() {
         <SalaryStructuresView />
       ) : (
         <>
+          {isAdminOrManager && (
+            <div className="rounded-3xl border border-indigo-100 bg-gradient-to-br from-white to-indigo-50/40 p-4 shadow-xs">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="flex items-center gap-2 text-sm font-bold text-slate-900"><Download className="h-4 w-4 text-indigo-600" />Payroll downloads</p>
+                  <p className="mt-1 text-xs text-slate-500">Choose a branch or employee, then download the exact filtered view as Excel or PDF.</p>
+                </div>
+                {(selectedBranchId !== "ALL" || selectedEmployeeId !== "ALL") && (
+                  <button type="button" onClick={() => { setSelectedBranchId("ALL"); setSelectedEmployeeId("ALL"); }} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-500 hover:bg-white hover:text-slate-800">
+                    <X className="h-3.5 w-3.5" /> Clear filters
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto]">
+                <label className="relative block">
+                  <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-indigo-500" />
+                  <select value={selectedBranchId} onChange={(event) => { setSelectedBranchId(event.target.value); setSelectedEmployeeId("ALL"); }} className="h-10 w-full appearance-none rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm font-medium text-slate-700 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+                    <option value="ALL">All branches</option>
+                    {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
+                  </select>
+                </label>
+                <label className="relative block">
+                  <Users className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-indigo-500" />
+                  <select value={selectedEmployeeId} onChange={(event) => setSelectedEmployeeId(event.target.value)} className="h-10 w-full appearance-none rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm font-medium text-slate-700 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+                    <option value="ALL">All employees</option>
+                    {employeeOptions.map((employee) => <option key={employee.id} value={employee.id}>{employee.firstName} {employee.lastName} · {employee.employeeCode || "No employee code"}</option>)}
+                  </select>
+                </label>
+                <button type="button" onClick={() => void handleExportExcel()} disabled={displayPayslips.length === 0} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"><FileSpreadsheet className="h-4 w-4" /> Download Excel</button>
+                <button type="button" onClick={handleExportPdf} disabled={displayPayslips.length === 0} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"><FileText className="h-4 w-4" /> Download PDF</button>
+              </div>
+              <p className="mt-3 text-xs font-medium text-slate-500">Showing {displayPayslips.length} of {allDisplayPayslips.length} payroll records · PDF opens a print-ready report so it can be saved directly as a PDF.</p>
+            </div>
+          )}
           {/* KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs overflow-hidden">
@@ -534,6 +676,13 @@ export default function PayrollView() {
                           >
                             <Eye className="w-3.5 h-3.5" />
                             View Letterhead
+                          </button>
+                          <button
+                            onClick={() => void handleIndividualPdf(slip)}
+                            className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition inline-flex items-center gap-1.5"
+                            title="Download this employee's official payslip PDF"
+                          >
+                            <FileText className="w-3.5 h-3.5" /> PDF
                           </button>
                           {canDisburseIndividual && slip.status === "APPROVED" && (
                             <button

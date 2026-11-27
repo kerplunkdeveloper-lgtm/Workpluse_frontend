@@ -66,6 +66,7 @@ export type CardInput = {
   background: string;
   styleId: CardStyleId;
   orientation?: CardOrientation;
+  variant?: "announcement" | "celebration";
   kindLabel: string;
   name: string;
   subtitle: string;
@@ -119,6 +120,7 @@ async function draw(input: CardInput, allowRemote: boolean): Promise<HTMLCanvasE
     input.photoUrl && (allowRemote || !isRemote(input.photoUrl)) ? loadImage(input.photoUrl) : null,
   ]);
   const portrait = input.orientation === "portrait";
+  const announcement = input.variant === "announcement";
   const royalPortrait = portrait && input.styleId === "royalPortrait";
   const style = CARD_STYLES.find((item) => item.id === input.styleId) ?? CARD_STYLES[0];
 
@@ -183,7 +185,7 @@ async function draw(input: CardInput, allowRemote: boolean): Promise<HTMLCanvasE
   context.fillText(input.companyName.toUpperCase().slice(0, 34), pad + 96, pad + 46);
 
   // Person: photo (or initials) + occasion + name
-  const photoSize = portrait ? 190 : 170;
+  const photoSize = portrait ? (announcement ? 150 : 190) : announcement ? 124 : 170;
   const photoX = portrait ? (width - photoSize) / 2 : pad;
   const photoY = portrait ? (royalPortrait ? 330 : 300) : 200;
   context.save();
@@ -212,7 +214,7 @@ async function draw(input: CardInput, allowRemote: boolean): Promise<HTMLCanvasE
   context.strokeStyle = "rgba(255,255,255,0.85)";
   context.stroke();
 
-  const textX = portrait ? width / 2 : photoX + photoSize + 44;
+  const textX = portrait ? width / 2 : photoX + photoSize + (announcement ? 32 : 44);
   context.textAlign = portrait ? "center" : "left";
   context.textBaseline = "alphabetic";
   context.fillStyle = "rgba(255,255,255,0.78)";
@@ -230,11 +232,13 @@ async function draw(input: CardInput, allowRemote: boolean): Promise<HTMLCanvasE
   }
 
   // Message + sign-off
-  context.fillStyle = "rgba(255,255,255,0.95)";
-  context.font = `500 31px ${FONT}`;
-  const lines = wrapText(context, input.message, width - pad * 2).slice(0, portrait ? 7 : 4);
-  context.textAlign = portrait ? "center" : "left";
-  lines.forEach((line, index) => context.fillText(line, portrait ? width / 2 : pad, portrait ? 790 + index * 44 : 440 + index * 44));
+  if (!announcement) {
+    context.fillStyle = "rgba(255,255,255,0.95)";
+    context.font = `500 31px ${FONT}`;
+    const lines = wrapText(context, input.message, width - pad * 2).slice(0, portrait ? 7 : 4);
+    context.textAlign = portrait ? "center" : "left";
+    lines.forEach((line, index) => context.fillText(line, portrait ? width / 2 : pad, portrait ? 790 + index * 44 : 440 + index * 44));
+  }
   context.fillStyle = "rgba(255,255,255,0.7)";
   context.font = `600 22px ${FONT}`;
   context.fillText(`With appreciation, ${input.companyName} People Team`, portrait ? width / 2 : pad, height - pad + 8);

@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, Upload, X } from "lucide-react";
+import ExcelJS from "exceljs";
 import { toast } from "sonner";
 import Modal from "@/components/ui/Modal";
 import { assetsApi } from "@/lib/api";
@@ -18,6 +19,12 @@ const TEMPLATE = [
   "LAP-00101,MacBook Pro 14,LAPTOP,Apple, A2918,C02ABC123,2026-04-01,125000,2029-04-01,NEW,EMP001,16GB,512GB SSD,M3 Pro,Issued with charger",
   ",Dell Monitor,MONITOR,Dell,P2422H,SN-0002,,,,AVAILABLE,,,,,Keep in IT storage",
 ].join("\n");
+
+const CATEGORY_ALIASES: Record<string, AssetCategory> = { LAPTOP: "LAPTOP", "LAPTOP COMPUTER": "LAPTOP", DESKTOP: "DESKTOP", "DESKTOP COMPUTER": "DESKTOP", MONITOR: "MONITOR", "EXTERNAL MONITOR": "MONITOR", "MOBILE PHONE": "MOBILE_PHONE", MOBILE_PHONE: "MOBILE_PHONE", TABLET: "TABLET", "HEADPHONES & PERIPHERALS": "HEADPHONES_PERIPHERALS", HEADPHONES_PERIPHERALS: "HEADPHONES_PERIPHERALS", "SECURITY TOKEN / KEY": "SECURITY_TOKEN_KEY", SECURITY_TOKEN_KEY: "SECURITY_TOKEN_KEY", "OFFICE FURNITURE": "OFFICE_FURNITURE", "COMPANY VEHICLE": "VEHICLE", VEHICLE: "VEHICLE", "OTHER EQUIPMENT": "OTHER", OTHER: "OTHER" };
+const CONDITION_ALIASES: Record<string, string> = { NEW: "NEW", "NEW (UNOPENED)": "NEW", EXCELLENT: "EXCELLENT", "EXCELLENT (LIKE NEW)": "EXCELLENT", GOOD: "GOOD", "GOOD (MINOR WEAR)": "GOOD", FAIR: "FAIR", "FAIR (FUNCTIONAL)": "FAIR", DAMAGED: "DAMAGED" };
+const HEADER_ALIASES: Record<string, string> = { "ASSET NAME": "name", "ASSET NAME *": "name", "ASSET CODE (UNIQUE ID)": "assetCode", "BRAND / MANUFACTURER": "brand", "MODEL NUMBER": "modelNumber", "SERIAL NUMBER": "serialNumber", "PURCHASE COST (₹)": "purchaseCost", "PURCHASE COST": "purchaseCost", "PURCHASE DATE": "purchaseDate", "WARRANTY EXPIRY": "warrantyExpiry", CONDITION: "condition", "EMPLOYEE CODE (OPTIONAL)": "employeeCode", "INTERNAL NOTES / ASSET LOCATION": "notes", "RAM / MEMORY": "ram", STORAGE: "storage", "CPU / CHIP": "processor" };
+const canonicalHeader = (value: string) => HEADER_ALIASES[value.trim().replace(/\s+/g, " ").toUpperCase()] || value.trim();
+const normalizeRow = (row: Record<string, string>) => ({ ...row, category: CATEGORY_ALIASES[String(row.category || "").trim().toUpperCase()] || String(row.category || "").trim().toUpperCase(), condition: CONDITION_ALIASES[String(row.condition || "NEW").trim().toUpperCase()] || String(row.condition || "").trim().toUpperCase(), employeeCode: String(row.employeeCode || "").trim().toUpperCase(), assetCode: String(row.assetCode || "").trim().toUpperCase() });
 
 function parseCsvLine(line: string) {
   const cells: string[] = [];
@@ -37,7 +44,7 @@ function parseCsvLine(line: string) {
 function parseCsv(text: string) {
   const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/).filter((line) => line.trim());
   if (lines.length < 2) throw new Error("Add at least one asset row after the header");
-  const headers = parseCsvLine(lines[0]).map((item) => item.trim());
+  const headers = parseCsvLine(lines[0]).map(canonicalHeader);
   const missing = ["name", "category"].filter((item) => !headers.includes(item));
   if (missing.length) throw new Error(`Template is missing required columns: ${missing.join(", ")}`);
   return lines.slice(1).map((line) => {
@@ -47,8 +54,29 @@ function parseCsv(text: string) {
     if (row.ram || row.storage || row.processor) {
       row.specifications = JSON.stringify({ ram: row.ram, storage: row.storage, processor: row.processor });
     }
-    return row;
+    return normalizeRow(row);
   });
+}
+
+async function parseExcel(file: File) {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(await file.arrayBuffer());
+  const sheet = workbook.worksheets[0];
+  if (!sheet) throw new Error("The Excel file has no worksheet");
+  const values = sheet.getRow(1).values as Array<unknown>;
+  const headers = values.slice(1).map((value) => canonicalHeader(String(value || "")));
+  const missing = ["name", "category"].filter((item) => !headers.includes(item));
+  if (missing.length) throw new Error(`Template is missing required columns: ${missing.join(", ")}`);
+  const output: Record<string, string>[] = [];
+  sheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return;
+    const cells = row.values as Array<unknown>;
+    const parsed: Record<string, string> = {};
+    headers.forEach((header, index) => { parsed[header] = String(cells[index + 1] ?? "").trim(); });
+    if (Object.values(parsed).some(Boolean)) output.push(normalizeRow(parsed));
+  });
+  if (!output.length) throw new Error("Add at least one asset row after the header");
+  return output;
 }
 
 function downloadTemplate() {
@@ -80,7 +108,7 @@ export function BulkAssetImportModal({
     if (!file) return;
     setError(null);
     try {
-      setRows(parseCsv(await file.text()));
+      setRows(file.name.toLowerCase().endsWith(".xlsx") ? await parseExcel(file) : parseCsv(await file.text()));
     } catch (err: any) {
       setRows([]);
       setError(err.message || "Could not read the CSV file");
@@ -88,20 +116,27 @@ export function BulkAssetImportModal({
     event.target.value = "";
   }
 
+  const duplicateAssetCodes = useMemo(() => {
+    const codes = rows.map((row) => row.assetCode?.trim()).filter(Boolean);
+    return new Set(codes.filter((code, index) => codes.indexOf(code) !== index));
+  }, [rows]);
+
   const invalidRows = rows.filter((row) => {
     const employeeCode = row.employeeCode?.trim();
-    return !row.name?.trim() || !row.category?.trim() || (employeeCode && !employeeCodes.has(employeeCode.toUpperCase()));
+    const cost = row.purchaseCost?.trim();
+    return !row.name?.trim() || !CATEGORY_ALIASES[row.category?.trim().toUpperCase()] || !CONDITION_ALIASES[row.condition?.trim().toUpperCase()] || (employeeCode && !employeeCodes.has(employeeCode.toUpperCase())) || Boolean(cost && (!Number.isFinite(Number(cost)) || Number(cost) < 0)) || Boolean(row.purchaseDate?.trim() && Number.isNaN(Date.parse(row.purchaseDate))) || Boolean(row.warrantyExpiry?.trim() && Number.isNaN(Date.parse(row.warrantyExpiry))) || Boolean(row.assetCode?.trim() && duplicateAssetCodes.has(row.assetCode.trim().toUpperCase()));
   });
 
   async function submit() {
     if (!rows.length) { setError("Upload the completed template first"); return; }
-    if (invalidRows.length) { setError("Fix the highlighted rows before importing. Employee Code is optional, but when supplied it must match an active employee."); return; }
+    if (invalidRows.length) { setError("Fix the highlighted rows before importing. Check name, category, condition, dates, cost, duplicate asset codes, and employee codes."); return; }
     setIsSubmitting(true);
     setError(null);
     try {
       const payload = rows.map((row) => ({
         ...row,
-        category: row.category.toUpperCase() as AssetCategory,
+        category: CATEGORY_ALIASES[row.category.toUpperCase()] as AssetCategory,
+        condition: CONDITION_ALIASES[row.condition.toUpperCase()] as any,
         employeeCode: row.employeeCode.toUpperCase(),
         purchaseCost: row.purchaseCost ? Number(row.purchaseCost) : undefined,
         specifications: row.specifications ? JSON.parse(row.specifications) : undefined,
@@ -138,16 +173,16 @@ export function BulkAssetImportModal({
 
           <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-5 py-8 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/30">
             <Upload className="w-6 h-6 text-indigo-500" />
-            <span className="font-semibold text-slate-700">Choose completed CSV file</span>
+            <span className="font-semibold text-slate-700">Choose completed CSV or Excel file</span>
             <span className="text-slate-400">Required columns: name, category · employeeCode is optional for unassigned inventory</span>
-            <input type="file" accept=".csv,text/csv" onChange={handleFile} className="hidden" />
+            <input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={handleFile} className="hidden" />
           </label>
 
           {error && <div className="p-3 bg-rose-50 text-rose-700 rounded-xl border border-rose-200 flex items-center gap-2"><AlertTriangle className="w-4 h-4 flex-shrink-0" /><span>{error}</span></div>}
 
           {rows.length > 0 && <div className="rounded-xl border border-slate-200 overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200"><span className="font-semibold text-slate-800">Preview · {rows.length} row(s)</span><span className={invalidRows.length ? "text-rose-600" : "text-emerald-600"}>{invalidRows.length ? `${invalidRows.length} need attention` : <><CheckCircle2 className="inline w-3.5 h-3.5 mr-1" />Ready to import</>}</span></div>
-            <div className="max-h-64 overflow-auto"><table className="w-full text-left"><thead className="bg-white sticky top-0 border-b border-slate-100"><tr><th className="px-3 py-2">Row</th><th className="px-3 py-2">Asset</th><th className="px-3 py-2">Category</th><th className="px-3 py-2">Employee Code</th><th className="px-3 py-2">Validation</th></tr></thead><tbody className="divide-y divide-slate-100">{rows.map((row, index) => { const employeeCode = row.employeeCode?.trim(); const invalid = !row.name?.trim() || !row.category?.trim() || Boolean(employeeCode && !employeeCodes.has(employeeCode.toUpperCase())); return <tr key={`${index}-${row.name}`} className={invalid ? "bg-rose-50/70" : ""}><td className="px-3 py-2 text-slate-400">{index + 2}</td><td className="px-3 py-2 font-medium text-slate-800">{row.name || "Missing name"}</td><td className="px-3 py-2 text-slate-600">{row.category || "Missing"}</td><td className="px-3 py-2 font-mono text-slate-700">{employeeCode || "Unassigned"}</td><td className={`px-3 py-2 ${invalid ? "text-rose-600" : "text-emerald-600"}`}>{invalid ? "Check required fields / employee code" : "Valid"}</td></tr>; })}</tbody></table></div>
+            <div className="max-h-64 overflow-auto"><table className="w-full text-left"><thead className="bg-white sticky top-0 border-b border-slate-100"><tr><th className="px-3 py-2">Row</th><th className="px-3 py-2">Asset</th><th className="px-3 py-2">Category</th><th className="px-3 py-2">Condition</th><th className="px-3 py-2">Employee Code</th><th className="px-3 py-2">Validation</th></tr></thead><tbody className="divide-y divide-slate-100">{rows.map((row, index) => { const employeeCode = row.employeeCode?.trim(); const invalid = invalidRows.includes(row); return <tr key={`${index}-${row.name}`} className={invalid ? "bg-rose-50/70" : ""}><td className="px-3 py-2 text-slate-400">{index + 2}</td><td className="px-3 py-2 font-medium text-slate-800">{row.name || "Missing name"}</td><td className="px-3 py-2 text-slate-600">{row.category || "Missing"}</td><td className="px-3 py-2 text-slate-600">{row.condition || "Missing"}</td><td className="px-3 py-2 font-mono text-slate-700">{employeeCode || "Unassigned"}</td><td className={`px-3 py-2 ${invalid ? "text-rose-600" : "text-emerald-600"}`}>{invalid ? "Check row values" : "Valid"}</td></tr>; })}</tbody></table></div>
           </div>}
 
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200"><button onClick={onClose} className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium">Cancel</button><button onClick={submit} disabled={isSubmitting || !rows.length || Boolean(invalidRows.length)} className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-sm disabled:opacity-50">{isSubmitting ? "Importing..." : `Import ${rows.length || ""} asset${rows.length === 1 ? "" : "s"}`}</button></div>
