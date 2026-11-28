@@ -10,15 +10,16 @@ import { unwrapList } from "@/lib/utils";
 
 type Insight = { tool: string; data: Record<string, any> };
 type Message = { role: "user" | "assistant"; content: string; insights?: Insight[]; choices?: string[] };
+type AssistantStatus = { enabled: boolean; providerConfigured: boolean; model: string; timeoutMs: number };
 const suggestions = ["Give me today's exception briefing", "What is my attendance status?", "How many leaves are remaining?", "Why is my punch-in not working?"];
-const promptLibrary = [...suggestions, "Where do I apply for a shoot request?", "How do I submit a shoot settlement?", "Where can I review leave approvals?", "Show all pending approvals.", "Show pending leave approvals.", "How do I approve one request?", "Apply casual leave from 2026-12-01 to 2026-12-02 for personal work.", "Apply permission on 2026-12-01 for 2 hours for bank work.", "What are my total working hours this month?", "Is my leave approved?", "How do I download my payslip?", "Explain my salary deductions.", "What documents are required for onboarding?", "What is the company leave policy?", "How do I request work from home today?", "How do I review employee documents?", "What are the payroll processing steps?"];
+const promptLibrary = [...suggestions, "Show my last punch in and punch out", "Show yesterday's attendance", "Where do I apply for a shoot request?", "How do I submit a shoot settlement?", "Where can I review leave approvals?", "Show all pending approvals.", "Show pending leave approvals.", "How do I approve one request?", "Apply casual leave from 2026-12-01 to 2026-12-02 for personal work.", "Apply permission on 2026-12-01 for 2 hours for bank work.", "What are my total working hours this month?", "Is my leave approved?", "How do I download my payslip?", "Explain my salary deductions.", "What documents are required for onboarding?", "What is the company leave policy?", "How do I request work from home today?", "How do I review employee documents?", "What are the payroll processing steps?"];
 const isTodayAbsentQuestion = (value: string) => /\b(absent|not present|did not come|didn't come)\b/i.test(value) && /\b(today|now|currently)\b/i.test(value) && /\b(who|which|all|list|show|people|employees|everyone|how many)\b/i.test(value);
 const localToday = () => {
   const today = new Date();
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 };
-const CONTINUE_OPTIONS = ["Show all employees with code, branch, and status", "Show today's absent list", "Show today's attendance summary", "Show pending approvals"];
-const needsContinuation = (content: string) => /couldn't find enough verified information|temporarily unavailable/i.test(content);
+const CONTINUE_OPTIONS = ["Show my last punch in and punch out", "Show all employees with code, branch, and status", "Show today's absent list", "Show today's attendance summary", "Show pending approvals"];
+const needsContinuation = (content: string) => /couldn't find enough verified information|could not answer|temporarily unavailable|not configured|provider.*unavailable/i.test(content);
 
 function InsightCard({ insight }: { insight: Insight }) {
   const data = insight.data || {};
@@ -51,10 +52,15 @@ export default function AssistantWidget() {
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState("");
   const [conversationId, setConversationId] = useState<string>();
+  const [serviceStatus, setServiceStatus] = useState<AssistantStatus>();
   const [messages, setMessages] = useState<Message[]>([{ role: "assistant", content: "Hello! I am your Clocked AI Assistant. I can help with attendance, leaves, payroll, policies, and HRMS features. How can I help?" }]);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, open]);
+  useEffect(() => {
+    if (!open && !fullScreen) return;
+    void aiApi.status().then((response) => setServiceStatus(response.data)).catch(() => setServiceStatus(undefined));
+  }, [open, fullScreen]);
 
   const send = async (value = draft) => {
     const text = value.trim();
@@ -96,7 +102,7 @@ export default function AssistantWidget() {
   return <>
     {(open || fullScreen) && <section aria-label="Clocked AI Assistant" className={fullScreen ? "absolute inset-0 z-40 flex min-h-full w-full flex-col overflow-hidden bg-white" : "fixed bottom-24 right-4 z-50 flex h-[min(680px,calc(100dvh-120px))] w-[min(420px,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl border border-indigo-100 bg-white shadow-2xl shadow-indigo-950/20"}>
       <header className="bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-3 text-white">
-        <div className="flex items-center justify-between"><div className="flex items-center gap-2"><span className="rounded-xl bg-white/15 p-2"><Sparkles className="h-4 w-4" /></span><div><p className="text-sm font-bold">Clocked AI Assistant</p><p className="text-[11px] text-indigo-100">Secure, role-aware HRMS help</p></div></div><div className="flex items-center gap-1"><button onClick={clear} title="New conversation" className="rounded-lg p-2 hover:bg-white/15"><Plus className="h-4 w-4" /></button>{!fullScreen && <Link href="/assistant" title="Open full assistant" className="rounded-lg p-2 hover:bg-white/15"><Maximize2 className="h-4 w-4" /></Link>}{fullScreen ? <Link href="/dashboard" title="Exit full screen" className="rounded-lg p-2 hover:bg-white/15"><X className="h-4 w-4" /></Link> : <button onClick={() => setOpen(false)} title="Close" className="rounded-lg p-2 hover:bg-white/15"><X className="h-4 w-4" /></button>}</div></div>
+        <div className="flex items-center justify-between"><div className="flex items-center gap-2"><span className="rounded-xl bg-white/15 p-2"><Sparkles className="h-4 w-4" /></span><div><p className="text-sm font-bold">Clocked AI Assistant</p><p className="text-[11px] text-indigo-100">{serviceStatus && (!serviceStatus.enabled || !serviceStatus.providerConfigured) ? "Configuration required" : "Secure, role-aware HRMS help"}</p></div></div><div className="flex items-center gap-1"><button onClick={clear} title="New conversation" className="rounded-lg p-2 hover:bg-white/15"><Plus className="h-4 w-4" /></button>{!fullScreen && <Link href="/assistant" title="Open full assistant" className="rounded-lg p-2 hover:bg-white/15"><Maximize2 className="h-4 w-4" /></Link>}{fullScreen ? <Link href="/dashboard" title="Exit full screen" className="rounded-lg p-2 hover:bg-white/15"><X className="h-4 w-4" /></Link> : <button onClick={() => setOpen(false)} title="Close" className="rounded-lg p-2 hover:bg-white/15"><X className="h-4 w-4" /></button>}</div></div>
       </header>
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-slate-50 p-4">{messages.map((m, i) => <div key={i} className={`group flex ${m.role === "user" ? "justify-end" : "justify-start"}`}><div className={`max-w-[88%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-sm leading-6 ${m.role === "user" ? "rounded-br-md bg-indigo-600 text-white" : "rounded-bl-md border border-slate-200 bg-white text-slate-700"}`}><div>{m.content}</div>{m.role === "assistant" && m.insights?.map((insight, insightIndex) => <InsightCard key={`${insight.tool}-${insightIndex}`} insight={insight} />)}{m.role === "assistant" && m.choices && <ContinueDropdown choices={m.choices} onChoose={(value) => void send(value)} />}{m.role === "assistant" && <button onClick={() => navigator.clipboard?.writeText(m.content).then(() => toast.success("Copied"))} className="mt-1 hidden items-center gap-1 text-[10px] text-slate-400 group-hover:flex"><Copy className="h-3 w-3" /> Copy</button>}</div></div>)}{busy && <div className="flex items-center gap-2 text-xs text-slate-500"><Bot className="h-4 w-4 text-indigo-500" /> Thinking...</div>}<div ref={endRef} /></div>
       {messages.length === 1 && <div className="flex flex-wrap gap-2 border-t border-slate-100 bg-white px-3 py-3">{suggestions.map((s) => <button key={s} onClick={() => void send(s)} className="rounded-full border border-indigo-100 px-2.5 py-1.5 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-50">{s}</button>)}</div>}

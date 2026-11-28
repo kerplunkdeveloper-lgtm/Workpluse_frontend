@@ -32,6 +32,7 @@ export default function PayrollView() {
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isApproving, setIsApproving] = useState<boolean>(false);
   const [isDisbursing, setIsDisbursing] = useState<boolean>(false);
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
   const [disbursingPayslipId, setDisbursingPayslipId] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<"RECORDS" | "SALARY" | "TEMPLATES">("RECORDS");
   const [expandedDailyId, setExpandedDailyId] = useState<string | null>(null);
@@ -252,6 +253,36 @@ export default function PayrollView() {
     const title = `Payroll report · ${selectedMonth}/${selectedYear}`;
     popup.document.write(`<!doctype html><html><head><title>${title}</title><style>body{font:12px Arial,sans-serif;color:#0f172a;padding:24px}h1{font-size:20px;margin:0 0 4px}p{color:#64748b;margin:0 0 18px}table{border-collapse:collapse;width:100%;font-size:10px}th{background:#eef2ff;color:#3730a3;text-align:left}th,td{border:1px solid #cbd5e1;padding:7px;white-space:nowrap}tr:nth-child(even){background:#f8fafc}@media print{body{padding:0}@page{size:A4 landscape;margin:12mm}}</style></head><body><h1>${title}</h1><p>WorkPulse payroll export · ${escapeHtml(selectedBranchId === "ALL" ? "All branches" : branches.find((b) => b.id === selectedBranchId)?.name || "Selected branch")} · ${exportRows.length} employees</p><table><thead><tr>${["Employee", "Code", "Branch", "Month", "Year", "Basic", "Gross", "Late deduction", "Pause deduction", "LOP deduction", "Deductions", "Net take-home", "Status"].map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table><script>window.onload=function(){window.print()}</script></body></html>`);
     popup.document.close();
+  };
+
+  const handleDownloadPayrollPdf = async () => {
+    const exportRows = getExportRows();
+    if (exportRows.length === 0) {
+      toast.error("No payroll records match the selected filters");
+      return;
+    }
+    setIsExportingPdf(true);
+    try {
+      const blob = await payrollApi.downloadPayrollPdf({
+        month: Number(selectedMonth),
+        year: Number(selectedYear),
+        branchId: selectedBranchId === "ALL" ? undefined : selectedBranchId,
+        employeeId: selectedEmployeeId === "ALL" ? undefined : selectedEmployeeId,
+      });
+      const url = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `payroll-${selectedMonth}-${selectedYear}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast.success(`PDF report downloaded for ${exportRows.length} employee${exportRows.length === 1 ? "" : "s"}`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || "Could not download payroll PDF");
+    } finally {
+      setIsExportingPdf(false);
+    }
   };
 
   const handleIndividualPdf = async (slip: Payslip) => {
@@ -526,7 +557,7 @@ export default function PayrollView() {
                   </select>
                 </label>
                 <button type="button" onClick={() => void handleExportExcel()} disabled={displayPayslips.length === 0} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"><FileSpreadsheet className="h-4 w-4" /> Download Excel</button>
-                <button type="button" onClick={handleExportPdf} disabled={displayPayslips.length === 0} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"><FileText className="h-4 w-4" /> Download PDF</button>
+                <button type="button" onClick={() => void handleDownloadPayrollPdf()} disabled={displayPayslips.length === 0 || isExportingPdf} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50">{isExportingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} {isExportingPdf ? "Preparing PDF…" : "Download PDF"}</button>
               </div>
               <p className="mt-3 text-xs font-medium text-slate-500">Showing {displayPayslips.length} of {allDisplayPayslips.length} payroll records · PDF opens a print-ready report so it can be saved directly as a PDF.</p>
             </div>

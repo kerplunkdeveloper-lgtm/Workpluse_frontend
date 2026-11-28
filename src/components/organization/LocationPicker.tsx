@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { PlaceResult, reverseGeocodeFull, searchPlaces } from "@/lib/geocode";
 import GoogleMapEmbed from "./GoogleMapEmbed";
 
-// Leaflet touches `window`, so the map only loads in the browser and only when opened.
+// The Google Maps JavaScript API only loads in the browser and only when opened.
 const MapPickerModal = dynamic(() => import("./MapPickerModal"), { ssr: false });
 
 export interface PickedLocation {
@@ -252,6 +252,11 @@ export default function LocationPicker({ value, radiusMeters, onChange }: Locati
               View in Maps <ExternalLink className="h-3 w-3" />
             </a>
           </div>
+          {accuracy != null && accuracy > 100 && (
+            <p role="alert" className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium leading-5 text-amber-800">
+              GPS accuracy is about {accuracy} m. Ask an admin to verify the pin or capture it again closer to the office before saving.
+            </p>
+          )}
         </div>
       ) : (
         <p className="rounded-2xl border border-dashed border-slate-200 px-3.5 py-3 text-xs text-slate-500">

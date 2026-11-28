@@ -13,7 +13,7 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: "portrait-primary",
     icons: [
       {
-        src: "/clocked-clock-icon.png",
+        src: "/logo-v2-128.png",
         sizes: "128x128",
         type: "image/png",
         purpose: "maskable",

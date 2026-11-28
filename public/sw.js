@@ -1,5 +1,28 @@
 
-/* Clocked Firebase Cloud Messaging Service Worker */
+/* Clocked Firebase Cloud Messaging + safe app-shell Service Worker */
+const SHELL_CACHE = "clocked-shell-v1";
+const SHELL_ROUTES = ["/", "/login", "/dashboard"];
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(caches.open(SHELL_CACHE).then((cache) => cache.addAll(SHELL_ROUTES).catch(() => undefined)));
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) => Promise.all(keys.filter((key) => key.startsWith("clocked-shell-") && key !== SHELL_CACHE).map((key) => caches.delete(key))))
+      .then(() => self.clients.claim())
+  );
+});
+
+// Never cache authenticated API responses. Navigation uses network-first with a
+// cached shell fallback so the app opens offline without leaking private data.
+self.addEventListener("fetch", (event) => {
+  const request = event.request;
+  if (request.method !== "GET" || new URL(request.url).origin !== self.location.origin) return;
+  if (new URL(request.url).pathname.startsWith("/api/")) return;
+  event.respondWith(fetch(request).catch(() => caches.match(request).then((cached) => cached || caches.match("/"))));
+});
 
 // Register click handler BEFORE Firebase imports.
 self.addEventListener("notificationclick", (event) => {
@@ -50,14 +73,6 @@ firebase.initializeApp({
 });
 
 const messaging = firebase.messaging();
-
-self.addEventListener("install", () => {
-  self.skipWaiting();
-});
-
-self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
-});
 
 // Receive messages when website is in background.
 messaging.onBackgroundMessage((payload) => {

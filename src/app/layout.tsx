@@ -8,6 +8,7 @@ import SystemStatusOverlay from "@/components/ui/SystemStatusOverlay";
 import HoverHints from "@/components/ui/HoverHints";
 import CookieConsent from "@/components/legal/CookieConsent";
 import MarketingAnalytics from "@/components/analytics/MarketingAnalytics";
+import ServiceWorkerRegistration from "@/components/pwa/ServiceWorkerRegistration";
 import { SEO_SITE_URL } from "@/lib/seo";
 
 export const metadata: Metadata = {
@@ -35,8 +36,9 @@ export const metadata: Metadata = {
     images: ["/og.png"],
   },
   icons: {
-    icon: "/clocked-clock-icon.png",
-    apple: "/clocked-clock-icon.png",
+    icon: [{ url: "/logo-v2-128.png", type: "image/png", sizes: "128x128" }],
+    shortcut: ["/logo-v2-128.png"],
+    apple: "/logo-v2-128.png",
   },
   appleWebApp: {
     capable: true,
@@ -70,6 +72,7 @@ export default function RootLayout({
             <HoverHints />
             <CookieConsent />
             <MarketingAnalytics />
+            <ServiceWorkerRegistration />
           </AttendanceProvider>
         </AuthProvider>
       </body>

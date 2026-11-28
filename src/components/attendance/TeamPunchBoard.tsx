@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Building2, Coffee, MapPin, RefreshCw, Search, Timer, Users, Utensils, X } from "lucide-react";
+import { Building2, CalendarDays, Coffee, MapPin, RefreshCw, Search, Timer, Users, Utensils, X } from "lucide-react";
 import { attendanceApi } from "@/lib/api";
 import { formatTime } from "@/lib/utils";
 import { mapsSearchUrl } from "@/lib/reverseGeocode";
 import { useAuth } from "@/context/AuthContext";
 import Select from "@/components/ui/Select";
 import AuthenticatedImage from "@/components/ui/AuthenticatedImage";
+import { toast } from "sonner";
 
 export interface TeamPunchPerson {
   employeeId: string;
@@ -42,21 +43,52 @@ interface PauseAnalytics {
   completedPauseCount: number;
 }
 
+type DateFilter = "TODAY" | "YESTERDAY" | "THIS_MONTH" | "CUSTOM";
+
+const localDateKey = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 export default function TeamPunchBoard() {
   const { user } = useAuth();
   const [people, setPeople] = useState<TeamPunchPerson[]>([]);
   const [clockedIn, setClockedIn] = useState(0);
   const [pauseAnalytics, setPauseAnalytics] = useState<PauseAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "ON_SHIFT" | "CLOCKED_OUT" | "NOT_IN">("ALL");
   const [branchFilter, setBranchFilter] = useState("ALL");
   const [departmentFilter, setDepartmentFilter] = useState("ALL");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("TODAY");
+  const [customDate, setCustomDate] = useState(() => localDateKey(new Date()));
   const [selectedPauseEmployeeId, setSelectedPauseEmployeeId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const dateRange = useMemo(() => {
+    const today = new Date();
+    const todayKey = localDateKey(today);
+    if (dateFilter === "YESTERDAY") {
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const key = localDateKey(yesterday);
+      return { from: key, to: key };
+    }
+    if (dateFilter === "THIS_MONTH") {
+      return { from: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-01`, to: todayKey };
+    }
+    if (dateFilter === "CUSTOM") return { from: customDate || todayKey, to: customDate || todayKey };
+    return { from: todayKey, to: todayKey };
+  }, [dateFilter, customDate]);
+
+  const load = useCallback(async (manual = false) => {
+    if (manual) setRefreshing(true);
+    setRefreshError(null);
     try {
-      const res = await attendanceApi.getLiveToday();
+      const res = await attendanceApi.getLiveToday(dateRange, { fresh: manual });
       const payload = res?.data || res;
       const list: TeamPunchPerson[] = payload?.people || [];
       setPeople(list);
@@ -64,16 +96,20 @@ export default function TeamPunchBoard() {
       setPauseAnalytics(payload?.pauseAnalytics || null);
     } catch (err) {
       console.warn("Could not load team punch locations", err);
+      setRefreshError("Could not refresh locations");
+      if (manual) toast.error("Could not refresh team punch locations");
     } finally {
       setLoading(false);
+      if (manual) setRefreshing(false);
     }
-  }, []);
+  }, [dateRange]);
 
   useEffect(() => {
     load();
+    if (dateFilter !== "TODAY") return;
     const interval = setInterval(load, 20000);
     return () => clearInterval(interval);
-  }, [load]);
+  }, [load, dateFilter]);
 
   const myId = user?.employee?.id;
 
@@ -106,12 +142,14 @@ export default function TeamPunchBoard() {
     });
   }, [people, search, statusFilter, branchFilter, departmentFilter]);
 
-  const filtersActive = search !== "" || statusFilter !== "ALL" || branchFilter !== "ALL" || departmentFilter !== "ALL";
+  const filtersActive = search !== "" || statusFilter !== "ALL" || branchFilter !== "ALL" || departmentFilter !== "ALL" || dateFilter !== "TODAY";
   const clearFilters = () => {
     setSearch("");
     setStatusFilter("ALL");
     setBranchFilter("ALL");
     setDepartmentFilter("ALL");
+    setDateFilter("TODAY");
+    setCustomDate(localDateKey(new Date()));
   };
   const selectClass =
     "rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100";
@@ -156,25 +194,55 @@ export default function TeamPunchBoard() {
             Team punch locations
           </h2>
           <p className="mt-1 text-xs text-indigo-100/70">
-            {clockedIn} on shift
+            {clockedIn} on shift · {dateFilter === "TODAY" ? "Today" : dateFilter === "YESTERDAY" ? "Yesterday" : dateFilter === "THIS_MONTH" ? "This month" : customDate}
           </p>
+          <div className="mt-4 flex flex-wrap items-center gap-1.5 rounded-2xl border border-white/10 bg-white/10 p-1.5" aria-label="Filter by date">
+            <span className="flex items-center gap-1.5 px-2 text-[10px] font-bold uppercase tracking-[.14em] text-indigo-200"><CalendarDays className="h-3.5 w-3.5" /> Date</span>
+            {([ ["TODAY", "Today"], ["YESTERDAY", "Yesterday"], ["THIS_MONTH", "This month"], ["CUSTOM", "Custom date"] ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setDateFilter(value)}
+                className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${dateFilter === value ? "bg-white text-indigo-950 shadow-sm" : "text-indigo-100 hover:bg-white/10"}`}
+              >
+                {label}
+              </button>
+            ))}
+            {dateFilter === "CUSTOM" && (
+              <input
+                type="date"
+                value={customDate}
+                onChange={(event) => setCustomDate(event.target.value)}
+                aria-label="Choose custom attendance date"
+                className="rounded-xl border-0 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800 outline-none"
+              />
+            )}
+          </div>
         </div>
         <button
           type="button"
-          onClick={load}
-          className="rounded-xl border border-white/15 bg-white/10 p-2.5 text-indigo-100 transition hover:bg-white/20"
-          title="Refresh locations"
+          onClick={() => void load(true)}
+          disabled={refreshing}
+          className="rounded-xl border border-white/15 bg-white/10 p-2.5 text-indigo-100 transition hover:bg-white/20 disabled:cursor-wait disabled:opacity-70"
+          title={refreshing ? "Refreshing locations" : "Refresh locations"}
+          aria-label={refreshing ? "Refreshing team punch locations" : "Refresh team punch locations"}
         >
-          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+          <RefreshCw className={`w-4 h-4 ${loading || refreshing ? "animate-spin" : ""}`} />
         </button>
       </div>
+      {refreshError && (
+        <div className="flex items-center justify-between gap-3 border-b border-rose-100 bg-rose-50 px-5 py-2 text-xs font-semibold text-rose-700 sm:px-7" role="status">
+          <span>{refreshError}</span>
+          <button type="button" onClick={() => void load(true)} className="font-bold underline underline-offset-2 hover:text-rose-900">Try again</button>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3 bg-white px-4 py-4 sm:grid-cols-4 sm:px-7 sm:py-5" aria-label="Today break analytics">
         <PauseMetric icon={Timer} label={selectedPauseEmployee ? "Employee on pause" : "On pause now"} value={pauseScope?.activeCount ?? 0} tone="text-amber-700" />
         <PauseMetric icon={Coffee} label={selectedPauseEmployee ? "Employee break" : "Breaks active"} value={pauseScope?.activeBreakCount ?? 0} tone="text-orange-700" />
         <PauseMetric icon={Utensils} label={selectedPauseEmployee ? "Employee lunch" : "Lunch active"} value={pauseScope?.activeLunchCount ?? 0} tone="text-indigo-700" />
         <div className="rounded-2xl border border-slate-200 bg-[linear-gradient(135deg,#fff,#f8fafc)] px-3.5 py-3 shadow-sm">
-          <p className="text-[11px] font-medium text-slate-500">Taken today</p>
+          <p className="text-[11px] font-medium text-slate-500">Taken {dateFilter === "TODAY" ? "today" : dateFilter === "YESTERDAY" ? "yesterday" : dateFilter === "THIS_MONTH" ? "this month" : "on selected date"}</p>
           <p className="mt-1 text-sm font-semibold tabular-nums text-slate-900">
             {pauseScope ? `${formatMinutes(pauseScope.totalBreakMinutes + pauseScope.totalLunchMinutes)}` : "0h 0m"}
           </p>

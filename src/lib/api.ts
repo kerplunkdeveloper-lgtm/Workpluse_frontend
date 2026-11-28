@@ -440,8 +440,9 @@ export const attendanceApi = {
     const res = await api.get("/attendance/branch-summary", BACKGROUND_REQUEST);
     return res.data;
   },
-  getLiveToday: async () => {
-    const res = await api.get("/attendance/live-today", BACKGROUND_REQUEST);
+  getLiveToday: async (params?: { from?: string; to?: string }, options?: { fresh?: boolean }) => {
+    const requestParams = options?.fresh ? { ...params, _refresh: Date.now() } : params;
+    const res = await api.get("/attendance/live-today", { ...BACKGROUND_REQUEST, params: requestParams, headers: options?.fresh ? { "Cache-Control": "no-cache" } : undefined });
     return res.data;
   },
   getMyAttendance: async (params?: any) => {
@@ -779,6 +780,10 @@ export const payrollApi = {
     });
     return res.data;
   },
+  downloadPayrollPdf: async (params: { month: number; year: number; branchId?: string; employeeId?: string }) => {
+    const res = await api.get("/payroll/payslips/export.pdf", { params, responseType: "blob" });
+    return res.data;
+  },
   getSalaryStructure: async (employeeId: string) => {
     const res = await api.get(`/payroll/salary-structure/${employeeId}`);
     return res.data;
@@ -822,6 +827,10 @@ export const payrollApi = {
       skipGlobalError: true,
       skipTransientRetry: true,
     });
+    return res.data;
+  },
+  generateBatchAsync: async (payload: { month: number; year: number }) => {
+    const res = await api.post("/payroll/generate/async", payload, { skipGlobalError: true });
     return res.data;
   },
   approveBatch: async (payload: { batchId?: string; month?: number; year?: number }) => {
@@ -874,6 +883,12 @@ export const payrollApi = {
   downloadSavedExport: async (id: string) => {
     return api.get(`/payroll/exports/${id}/download`, { responseType: "blob" });
   },
+};
+
+export const jobsApi = {
+  list: async () => (await api.get("/jobs", { skipGlobalError: true })).data,
+  get: async (id: string) => (await api.get(`/jobs/${id}`, { skipGlobalError: true })).data,
+  create: async (type: "PAYROLL_GENERATE" | "REPORT_DAILY" | "REPORT_MONTHLY", payload: Record<string, unknown>) => (await api.post("/jobs", { type, payload }, { skipGlobalError: true })).data,
 };
 
 export const billingApi = {
@@ -1172,6 +1187,7 @@ export const chatApi = {
 };
 
 export const aiApi = {
+  status: async () => (await api.get("/ai/status", { skipGlobalError: true })).data,
   chat: async (message: string, conversationId?: string, selectedEmployeeId?: string) => (await api.post("/ai/chat", { message, conversationId, selectedEmployeeId }, { skipGlobalError: true })).data,
   people: async () => (await api.get("/ai/people", { skipGlobalError: true })).data,
   conversations: async () => (await api.get("/ai/conversations", { skipGlobalError: true })).data,
@@ -1749,6 +1765,13 @@ export const reportsApi = {
     const res = await api.get("/reports/monthly", { params: { month, year } });
     return res.data;
   },
+  queueDaily: async (date?: string) => (await api.post("/reports/daily/async", { date }, { skipGlobalError: true })).data,
+  queueMonthly: async (month: number, year: number) => (await api.post("/reports/monthly/async", { month, year }, { skipGlobalError: true })).data,
+};
+
+export const analyticsApi = {
+  attendance: async (params?: { from?: string; to?: string }) => (await api.get("/analytics/attendance", { params })).data,
+  predictions: async (params?: { from?: string; to?: string }) => (await api.get("/analytics/predictions", { params })).data,
 };
 
 export const compOffApi = {

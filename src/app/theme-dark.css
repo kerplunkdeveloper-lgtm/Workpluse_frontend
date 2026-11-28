@@ -400,6 +400,63 @@ html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-topbar {
   border-color: #1d2438 !important;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 28px -28px rgba(0, 0, 0, 0.8);
 }
+
+/* The profile menu sits in the topbar rather than the main canvas. Keep its
+   text, separators, badge, hover states, and appearance control readable in
+   dark mode instead of relying on canvas-only palette rules. */
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-profile-menu {
+  background: #121829 !important;
+  border-color: #2a3249 !important;
+  color: #eef0f6 !important;
+  box-shadow: 0 24px 70px -24px rgba(0, 0, 0, 0.75) !important;
+  ring-color: rgba(129, 140, 248, 0.18) !important;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-profile-menu-header,
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-profile-menu-separator {
+  border-color: #242b42 !important;
+  background-color: transparent !important;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-profile-menu-item {
+  color: #dee2eb !important;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-profile-menu-item:hover {
+  background: #1d2740 !important;
+  color: #ffffff !important;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-profile-menu-heading {
+  color: #abb2c5 !important;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-profile-menu-role {
+  background: rgba(99, 102, 241, 0.2) !important;
+  color: #c7d2fe !important;
+  box-shadow: inset 0 0 0 1px rgba(129, 140, 248, 0.36) !important;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-profile-menu-org {
+  color: #9098ae !important;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-profile-menu-signout {
+  color: #fda4af !important;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-profile-menu-signout:hover {
+  background: rgba(244, 63, 94, 0.16) !important;
+  color: #fecdd3 !important;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-profile-menu [role="radiogroup"] {
+  background: #0f1526 !important;
+  box-shadow: inset 0 0 0 1px #242b42;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-profile-menu [role="radio"] {
+  color: #abb2c5 !important;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-profile-menu [role="radio"]:hover {
+  background: #1d2740 !important;
+  color: #ffffff !important;
+}
+html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-profile-menu [role="radio"][aria-checked="true"] {
+  background: #303b70 !important;
+  color: #ffffff !important;
+  box-shadow: inset 0 0 0 1px rgba(165, 180, 252, 0.35), 0 2px 8px rgba(0, 0, 0, 0.22);
+}
 html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-main-canvas .rounded-3xl.bg-white,
 html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-main-canvas .rounded-2xl.bg-white,
 html[data-theme="dark"] body:has(.wp-app-shell, .wp-app-skeleton) .wp-main-canvas .app-card,

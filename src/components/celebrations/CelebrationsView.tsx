@@ -448,8 +448,7 @@ function Avatar({ moment, failed, onFail }: { moment: Moment; failed: boolean; o
   return (
     <span className={`grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl text-xs font-black text-white ${moment.kind === "Birthday" ? "bg-pink-500" : "bg-indigo-500"}`}>
       {photo ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={photo} alt="" className="h-full w-full object-cover" onError={onFail} />
+        <AuthenticatedImage src={photo} alt="" className="h-full w-full object-cover" onError={onFail} />
       ) : (
         personInitials(moment.name)
       )}
