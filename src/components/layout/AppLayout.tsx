@@ -449,7 +449,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Workspace Switcher / Active Organization Card */}
         <div className={sidebarCollapsed ? "px-2 pt-3" : "px-3 pt-3"}>
           <Link
-            href={isPlatformOwner ? "/platform/clients" : canManageOrganization ? "/settings" : "/profile"}
+            href={isPlatformOwner ? "/platform/clients" : role === "DEVELOPER" ? "/developer/dashboard" : canManageOrganization ? "/settings" : "/profile"}
             title={`${orgName} (${planName})`}
             className={`wp-workspace-switcher group ${
               sidebarCollapsed ? "justify-center p-2" : "px-3 py-2"
@@ -775,7 +775,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           {/* Right: Quick Punch Executive Pill, Notifications, Chat & User Menu */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {!isPlatformOwner && role !== "COMPANY_ADMIN" && (
+            {!isPlatformOwner && role !== "COMPANY_ADMIN" && role !== "DEVELOPER" && (
             <>
             {/* Quick Punch Widget */}
             <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100/80 border border-slate-200/90 shadow-2xs">
@@ -1092,7 +1092,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     </div>
 
                     <div className="space-y-0.5">
-                      {role !== "SUPER_ADMIN" && <Link
+                      {role !== "SUPER_ADMIN" && role !== "DEVELOPER" && <Link
                         href="/profile"
                         onClick={() => setProfileDropdownOpen(false)}
                         className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-100 transition"
@@ -1118,14 +1118,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                           <span>Organization & billing</span>
                         </Link>
                       )}
-                      <Link
+                      {role !== "DEVELOPER" && <Link
                         href="/chat"
                         onClick={() => setProfileDropdownOpen(false)}
                         className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-100 transition"
                       >
                         <MessageSquare className="w-4 h-4 text-slate-400" />
                         <span>Team chat</span>
-                      </Link>
+                      </Link>}
                     </div>
 
                     <div className="h-px bg-slate-100 my-1" />
@@ -1190,7 +1190,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </button>
               </div>
 
-              {!isPlatformOwner && role !== "COMPANY_ADMIN" && (
+              {!isPlatformOwner && role !== "COMPANY_ADMIN" && role !== "DEVELOPER" && (
               <>
               {/* Mobile Quick Punch Bar */}
               <div className="mt-3 p-3 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-between">
@@ -1333,7 +1333,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             transition={{ duration: 0.18, ease: "easeOut" }}
             className="min-h-full w-full min-w-0 max-w-full overflow-x-hidden"
           >
-            <SubscriptionBanner />
+            {role !== "DEVELOPER" && <SubscriptionBanner />}
             <ErrorBoundary resetKey={pathname || ""}>{children}</ErrorBoundary>
             {canUseAiAssistant && <AssistantWidget />}
           </motion.div>

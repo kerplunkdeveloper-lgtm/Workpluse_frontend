@@ -946,6 +946,8 @@ export const platformApi = {
   },
   developers: async () => (await api.get("/admin/platform/developers", { skipGlobalError: true })).data,
   createDeveloper: async (email: string) => (await api.post("/admin/platform/developers", { email })).data,
+  updateDeveloper: async (id: string, isActive: boolean) =>
+    (await api.patch(`/admin/platform/developers/${id}`, { isActive })).data,
 };
 
 export const billingAdminApi = {

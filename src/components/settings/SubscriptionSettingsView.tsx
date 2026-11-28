@@ -25,6 +25,7 @@ import { confirmDialog } from "@/components/ui/confirmDialog";
 import CompanyLogoSetting from "@/components/settings/CompanyLogoSetting";
 import Select from "@/components/ui/Select";
 import BiometricSettings from "@/components/settings/BiometricSettings";
+import EmployeeDocumentRequirementsSetting from "@/components/settings/EmployeeDocumentRequirementsSetting";
 
 const COMMON_TIMEZONES: [string, string][] = [
   ["Asia/Kolkata", "India (IST, UTC+5:30)"],
@@ -414,6 +415,7 @@ export default function SubscriptionSettingsView() {
         </div>
 
         <CompanyLogoSetting />
+        <EmployeeDocumentRequirementsSetting />
 
         <form onSubmit={handleOrgSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

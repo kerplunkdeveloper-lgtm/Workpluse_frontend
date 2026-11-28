@@ -414,9 +414,16 @@ useEffect(() => {
     return () => window.clearInterval(timer);
   }, []);
 
-  // Team attendance is intentionally refreshed only by the user. Automatic
-  // polling was resetting pagination and filters while HR/admins reviewed rows.
+  // Keep same-day operations current without resetting pagination or filters.
+  // A completed punch-out must disappear from the exception queue promptly;
+  // historical views remain user-refreshed to avoid unnecessary traffic.
   const reload = () => setReloadKey((k) => k + 1);
+
+  useEffect(() => {
+    if (!isTeamView || (range !== "today" && status !== "PUNCH_OUT")) return;
+    const timer = window.setInterval(reload, 30_000);
+    return () => window.clearInterval(timer);
+  }, [isTeamView, range, status]);
 
   const fetchAllAttendanceRows = async () => {
     const allRows: Attendance[] = [];
@@ -883,7 +890,7 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
                           className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-600 opacity-70 ring-1 ring-slate-200 transition hover:bg-white hover:text-indigo-700 hover:ring-indigo-200 group-hover:opacity-100"
                         >
                           <Pencil className="h-3 w-3" />
-                          {isTeamView ? "Correct" : "Request fix"}
+                          {isTeamView ? (row.checkIn && !row.checkOut ? "Complete punch-out" : "Correct") : "Request fix"}
                         </button>
                       </td>
                     </tr>
@@ -942,7 +949,7 @@ export function AttendanceLogView({ rows, loading, failed, isTeamView, filtered,
                   <div className="mt-2.5 flex items-center justify-between">
                     <span className="text-xs font-medium text-amber-700">{late > 0 ? `${formatHm(late)} late` : ""}</span>
                     <button type="button" onClick={() => onCorrect(row)} className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600">
-                      <Pencil className="h-3 w-3" /> {isTeamView ? "Correct" : "Request fix"}
+                      <Pencil className="h-3 w-3" /> {isTeamView ? (row.checkIn && !row.checkOut ? "Complete punch-out" : "Correct") : "Request fix"}
                     </button>
                   </div>
                 </li>

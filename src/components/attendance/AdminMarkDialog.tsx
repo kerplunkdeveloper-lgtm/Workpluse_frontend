@@ -36,6 +36,9 @@ const nextDate = (date: string) => {
   return value.toISOString().slice(0, 10);
 };
 
+const localTimeKey = (date = new Date()) =>
+  `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+
 export interface AdminMarkInitial {
   employee?: EmployeeOption | null;
   date?: string;
@@ -54,7 +57,8 @@ function AdminMarkForm({ initial, onClose, onSaved }: { initial?: AdminMarkIniti
   const [date, setDate] = useState(() => initial?.date || localDateKey(new Date()));
   const [status, setStatus] = useState<AttendanceStatus>(initial?.status || "PRESENT");
   const [inTime, setInTime] = useState(initial?.inTime || "09:30");
-  const [outTime, setOutTime] = useState(initial?.outTime || "18:30");
+  const openPunchOut = Boolean(initial?.inTime && !initial?.outTime);
+  const [outTime, setOutTime] = useState(initial?.outTime || (openPunchOut && initial?.date === localDateKey(new Date()) ? localTimeKey() : "18:30"));
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -104,14 +108,14 @@ function AdminMarkForm({ initial, onClose, onSaved }: { initial?: AdminMarkIniti
       onClose={onClose}
       onSubmit={submit}
       busy={saving}
-      title={initial?.employee ? "Correct attendance" : "Mark attendance"}
-      description="Add or correct a day for an employee. This skips location rules and is recorded in the audit log."
+      title={openPunchOut ? "Complete punch-out" : initial?.employee ? "Correct attendance" : "Mark attendance"}
+      description={openPunchOut ? "Close the employee’s open shift with the confirmed punch-out time. This is recorded in the audit log." : "Add or correct a day for an employee. This skips location rules and is recorded in the audit log."}
       footer={
         <>
           <button type="button" onClick={onClose} disabled={saving} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-50">Cancel</button>
           <button type="submit" disabled={saving} className="keep-white inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold shadow-sm hover:bg-indigo-500 disabled:opacity-60">
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-            Save attendance
+            {openPunchOut ? "Complete punch-out" : "Save attendance"}
           </button>
         </>
       }

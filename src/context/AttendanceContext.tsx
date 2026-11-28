@@ -69,7 +69,8 @@ interface AttendanceContextType {
 const AttendanceContext = createContext<AttendanceContextType | undefined>(undefined);
 
 export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
-  const { user, token } = useAuth();
+  const { user, token, role } = useAuth();
+  const attendanceEnabled = role !== "DEVELOPER";
   const [todayStatus, setTodayStatus] = useState<AttendanceTodayStatus | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isActionLoading, setIsActionLoading] = useState<boolean>(false);
@@ -96,7 +97,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
   }, [user?.id]);
 
    const triggerSync = useCallback(async () => {
-    if (isSyncingRef.current || !token || !user?.id) return;
+    if (!attendanceEnabled || isSyncingRef.current || !token || !user?.id) return;
     isSyncingRef.current = true;
     setSyncStatus("syncing");
 
@@ -146,10 +147,11 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
       // Reset to idle after 5 seconds so badge clears
       setTimeout(() => setSyncStatus((prev) => (prev === "synced" ? "idle" : prev)), 5000);
     }
-  }, [token, user?.id, refreshPendingCount]);
+  }, [attendanceEnabled, token, user?.id, refreshPendingCount]);
 
   // ── Online / offline event listeners ────────────────────────────────────────
   useEffect(() => {
+    if (!attendanceEnabled) return;
     const onOnline = () => {
       setIsOnline(true);
       toast.info("Connection restored. Syncing offline punches...", { duration: 2500 });
@@ -170,7 +172,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
     };
-  }, [triggerSync]);
+  }, [attendanceEnabled, triggerSync]);
  
   const userRef = useRef(user);
   const policyRef = useRef(todayStatus?.locationPolicy);
@@ -286,7 +288,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
         : "locating";
 
   const fetchTodayStatus = useCallback(async (background = false) => {
-    if (!token || !isOnline) return;
+    if (!attendanceEnabled || !token || !isOnline) return;
     const requestStartedAt = Date.now();
     if (!background) setIsLoading(true);
     try {
@@ -350,14 +352,14 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       if (!background) setIsLoading(false);
     }
-  }, [token, isOnline, user?.employee?.branch?.name]);
+  }, [attendanceEnabled, token, isOnline, user?.employee?.branch?.name]);
 
   useEffect(() => {
     fetchTodayStatusRef.current = fetchTodayStatus;
   }, [fetchTodayStatus]);
 
   useEffect(() => {
-    if (token) {
+    if (attendanceEnabled && token) {
       fetchTodayStatus();
       refreshPendingCount();
       updateLocation();
@@ -368,7 +370,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
         clearInterval(statusInterval);
       };
     }
-  }, [token, fetchTodayStatus, updateLocation, refreshPendingCount]);
+  }, [attendanceEnabled, token, fetchTodayStatus, updateLocation, refreshPendingCount]);
 
   const triggerCelebration = () => {
     try {
@@ -392,6 +394,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
       coords?: GeoCoordinates,
       metadata?: Pick<OfflinePunch, "workMode" | "note" | "wfhNote" | "deviceId" | "locationLabel">
     ): Promise<boolean> => {
+      if (!attendanceEnabled) return false;
       setIsActionLoading(true);
       const punchTimestamp = new Date().toISOString();
 
@@ -506,7 +509,7 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
         setIsActionLoading(false);
       }
     },
-    [isOnline, fetchTodayStatus, refreshPendingCount, user?.id]
+    [attendanceEnabled, isOnline, fetchTodayStatus, refreshPendingCount, user?.id]
   );
 
   // ── Individual punch actions ─────────────────────────────────────────────────

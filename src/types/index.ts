@@ -116,7 +116,7 @@ export interface Employee {
   id: string;
   organizationId: string;
   userId?: string;
-  employeeCode: string;
+  employeeCode: string | null;
   reportingManagerId?: string | null;
   reportingManager?: { id: string; firstName: string; lastName?: string | null; employeeCode?: string } | null;
   firstName: string;
