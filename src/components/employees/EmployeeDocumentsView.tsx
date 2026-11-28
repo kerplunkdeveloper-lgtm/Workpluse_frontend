@@ -17,7 +17,7 @@ import Modal from "@/components/ui/Modal";
 interface EmployeeDocumentsViewProps {
   employeeId: string;
   employeeName?: string;
-  employeeCode?: string;
+  employeeCode?: string | null;
   isCurrentUserAdmin?: boolean;
   onClose?: () => void;
 }
